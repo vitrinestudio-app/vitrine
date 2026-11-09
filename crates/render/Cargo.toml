@@ -18,6 +18,4 @@ image.workspace = true
 fast_image_resize.workspace = true
 png.workspace = true
 skrifa.workspace = true
-cosmic-text.workspace = true
-parley.workspace = true
 anyhow.workspace = true
