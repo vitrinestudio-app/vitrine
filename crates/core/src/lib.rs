@@ -33,6 +33,7 @@
 //! ```
 
 pub mod io;
+pub mod markup;
 pub mod model;
 pub mod ops;
 
