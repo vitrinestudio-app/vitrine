@@ -37,6 +37,27 @@ cargo run -p arrangia-cli -- --help  # command line interface (binary: arrangia)
 cargo run -p arrangia-gui            # desktop app
 ```
 
+## Command line
+
+The `arrangia` binary works on a project folder (`--project <DIR>`, default:
+the current folder):
+
+```sh
+arrangia new my-app --lang en --lang de      # project from a template (--template phone|minimal)
+arrangia validate --project my-app           # findings by target/language; --format json, --preview, --strict
+arrangia render --project my-app --canvas    # preview PNG: --page N | --image N | --canvas | --gallery
+arrangia render --project my-app --target play-phone --page 2 --width 400 -o page.png
+arrangia export --project my-app             # all targets × languages into my-app/export/
+arrangia export --target ios-iphone-69 --lang de --force   # --force ignores the incremental cache
+```
+
+Exit codes: `0` success (warnings fail only with `validate --strict`), `1`
+the project has problems (validation errors, export failures), `2` the
+command could not run (usage error, project not loadable, IO error).
+`render` prints the path of the written PNG (default
+`<project>/.cache/render/`). Colours are used on a terminal unless
+`NO_COLOR` is set.
+
 ## Workspace layout
 
 | Path | Crate | Purpose |
