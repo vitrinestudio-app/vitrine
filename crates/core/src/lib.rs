@@ -31,6 +31,11 @@
 //! catalog/    devices, targets, gallery profiles (from data/*.yaml)
 //! ```
 
+pub mod io;
+pub mod model;
+
+pub use model::Project;
+
 /// Width of a single page in logical units (lu).
 ///
 /// All layout values are expressed in lu; the export resolution is derived
