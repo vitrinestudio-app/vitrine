@@ -24,6 +24,7 @@ mod project;
 mod render;
 mod strings;
 mod system;
+mod texts;
 
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -40,6 +41,7 @@ pub use project::*;
 pub use render::*;
 pub use strings::*;
 pub use system::*;
+pub use texts::*;
 
 use crate::dialogs::Dialogs;
 use crate::error::{CmdResult, CommandError, ErrorCode};
@@ -205,8 +207,12 @@ command_table! {
         settings_get, settings_set,
         dialog_open_project, dialog_pick_files,
         preview_stats,
+        element_info, markup_check, assets_probe, assets_upload,
     ],
-    image: [render_image, render_canvas, render_gallery, render_preview_edit],
+    image: [
+        render_image, render_canvas, render_gallery, render_preview_edit,
+        render_preview_string, asset_thumbnail,
+    ],
 }
 
 /// Default language of the open project when `lang` is `None`.
@@ -221,3 +227,6 @@ fn absolute(dir: &std::path::Path) -> CmdResult<PathBuf> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod tests_texts;

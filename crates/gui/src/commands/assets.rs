@@ -6,15 +6,22 @@
 //! variant is detected from the pixel size via the device catalog when not
 //! given (preferring variants the project's targets use).
 
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Component, Path, PathBuf};
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::SystemTime;
 
+use arrangia_core::Project;
 use arrangia_core::catalog;
-use arrangia_core::model::{Lang, PixelSize};
+use arrangia_core::model::{ElementKind, Fill, Lang, PixelSize};
 use arrangia_core::resolve::SCREENSHOT_EXTENSIONS;
+use arrangia_render::raster::{Filter, SourceImage};
+use arrangia_render::scene::Resample;
 use serde::{Deserialize, Serialize};
 
 use super::{AppState, NoArgs};
-use crate::error::{CmdResult, CommandError};
+use crate::error::{CmdResult, CommandError, ErrorCode};
+use crate::preview::{PixelFormat, PreviewImage};
 
 /// Image extensions accepted in `assets/`.
 pub const ASSET_EXTENSIONS: [&str; 4] = ["png", "jpg", "jpeg", "svg"];
@@ -69,6 +76,13 @@ pub struct AssetsListing {
     pub screenshots: Vec<ScreenshotFile>,
     pub assets: Vec<AssetFile>,
     pub fonts: Vec<AssetFile>,
+    /// Screenshot key → device elements using it (base elements, all strips).
+    pub screenshot_keys: BTreeMap<String, Vec<String>>,
+    /// Asset path → elements (image, background) using it; strip-wide
+    /// backgrounds are listed as `<strip>:background`.
+    pub asset_usage: BTreeMap<String, Vec<String>>,
+    /// Screenshot variants named by targets (in target order, unique).
+    pub variants: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -240,7 +254,11 @@ pub fn assets_list(app: &AppState, _: NoArgs) -> CmdResult<AssetsListing> {
             })
             .collect()
     };
+    let (screenshot_keys, asset_usage, variants) = session.with_project(usage);
     Ok(AssetsListing {
+        screenshot_keys,
+        asset_usage,
+        variants,
         screenshots,
         assets: list("assets", &ASSET_EXTENSIONS),
         fonts: list("fonts", &FONT_EXTENSIONS)
@@ -252,6 +270,53 @@ pub fn assets_list(app: &AppState, _: NoArgs) -> CmdResult<AssetsListing> {
             })
             .collect(),
     })
+}
+
+type Usage = (
+    BTreeMap<String, Vec<String>>,
+    BTreeMap<String, Vec<String>>,
+    Vec<String>,
+);
+
+/// Which elements use which screenshot keys and assets, and the screenshot
+/// variants of the targets.
+fn usage(p: &Project) -> Usage {
+    let mut keys: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut assets: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let fill = |f: &Fill, who: String, assets: &mut BTreeMap<String, Vec<String>>| {
+        if let Fill::Image { asset, .. } = f {
+            assets.entry(asset.clone()).or_default().push(who);
+        }
+    };
+    for s in &p.strips {
+        for b in &s.backgrounds {
+            fill(b, format!("{}:background", s.id), &mut assets);
+        }
+        s.walk_elements(&mut |e| match &e.kind {
+            ElementKind::Device(d) => {
+                if let Some(k) = &d.screenshot {
+                    keys.entry(k.clone()).or_default().push(e.id.to_string());
+                }
+            }
+            ElementKind::Image(i) => {
+                assets
+                    .entry(i.asset.clone())
+                    .or_default()
+                    .push(e.id.to_string());
+            }
+            ElementKind::Background(b) => fill(&b.fill, e.id.to_string(), &mut assets),
+            _ => {}
+        });
+    }
+    let mut variants: Vec<String> = Vec::new();
+    for t in &p.targets {
+        if let Some(v) = &t.screenshots
+            && !variants.contains(v)
+        {
+            variants.push(v.clone());
+        }
+    }
+    (keys, assets, variants)
 }
 
 /// Free destination `dir/stem.ext` (`stem-2.ext` … unless `replace`).
@@ -401,9 +466,274 @@ pub fn assets_remove(app: &AppState, args: AssetsRemoveArgs) -> CmdResult<Vec<St
     Ok(removed)
 }
 
+// ----- probe (variant detection before importing) ------------------------------
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AssetsProbeArgs {
+    /// Absolute files to inspect.
+    #[serde(default)]
+    pub paths: Vec<PathBuf>,
+    /// Pixel sizes `[w, h]` (files the UI only has as bytes).
+    #[serde(default)]
+    pub sizes: Vec<[u32; 2]>,
+}
+
+/// What an import would detect for one file or size.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProbedFile {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub width: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<u32>,
+    /// The variant `assets_import` would pick (targets' variants first).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variant: Option<String>,
+    /// All catalog variants matching the pixel size.
+    pub candidates: Vec<String>,
+}
+
+/// Variant detection for files (`paths`) or pixel sizes (`sizes`), in
+/// that order, without copying anything.
+pub fn assets_probe(app: &AppState, args: AssetsProbeArgs) -> CmdResult<Vec<ProbedFile>> {
+    let session = app.session()?;
+    let target_variants: Vec<String> = session.with_project(|p| {
+        p.targets
+            .iter()
+            .filter_map(|t| t.screenshots.clone())
+            .collect()
+    });
+    let probe = |path: Option<PathBuf>, size: Option<(u32, u32)>| {
+        let candidates = size.map_or_else(Vec::new, |(w, h)| variants_for_size(w, h));
+        let variant = candidates
+            .iter()
+            .find(|c| target_variants.contains(c))
+            .or_else(|| candidates.first())
+            .cloned();
+        ProbedFile {
+            path,
+            width: size.map(|s| s.0),
+            height: size.map(|s| s.1),
+            variant,
+            candidates,
+        }
+    };
+    let mut out: Vec<ProbedFile> = args
+        .paths
+        .iter()
+        .map(|p| probe(Some(p.clone()), dims(p)))
+        .collect();
+    out.extend(args.sizes.iter().map(|[w, h]| probe(None, Some((*w, *h)))));
+    Ok(out)
+}
+
+// ----- upload (files the UI only has as bytes, e.g. browser drag & drop) ------
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AssetsUploadArgs {
+    /// Original file name (its stem is the default key, its extension the type).
+    pub name: String,
+    /// File content, base64 (standard alphabet, padding optional).
+    pub data: String,
+    pub kind: AssetKind,
+    #[serde(default)]
+    pub lang: Option<String>,
+    #[serde(default)]
+    pub variant: Option<String>,
+    #[serde(default)]
+    pub key: Option<String>,
+    #[serde(default)]
+    pub replace: bool,
+}
+
+/// Decodes standard base64 (whitespace and padding tolerated).
+pub fn decode_base64(text: &str) -> Option<Vec<u8>> {
+    fn value(c: u8) -> Option<u32> {
+        Some(u32::from(match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' | b'-' => 62,
+            b'/' | b'_' => 63,
+            _ => return None,
+        }))
+    }
+    let mut out = Vec::with_capacity(text.len() / 4 * 3);
+    let (mut acc, mut bits) = (0u32, 0u32);
+    for &c in text.as_bytes() {
+        if c == b'=' || c.is_ascii_whitespace() {
+            continue;
+        }
+        acc = (acc << 6) | value(c)?;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+            acc &= (1 << bits) - 1;
+        }
+    }
+    Some(out)
+}
+
+/// Like `assets_import`, for one file given as bytes (the dev bridge in a
+/// browser has no file paths). The bytes are written to a temporary file
+/// first; `source` in the result is the given `name`.
+pub fn assets_upload(app: &AppState, args: AssetsUploadArgs) -> CmdResult<Vec<ImportedFile>> {
+    let bytes =
+        decode_base64(&args.data).ok_or_else(|| CommandError::invalid("`data` is not base64"))?;
+    let name = Path::new(&args.name)
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .filter(|n| !n.starts_with('.'))
+        .ok_or_else(|| CommandError::invalid(format!("invalid file name `{}`", args.name)))?;
+    let dir = std::env::temp_dir().join(format!(
+        "arrangia-upload-{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos())
+    ));
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| CommandError::io(format!("{}: {e}", dir.display())))?;
+    let tmp = dir.join(&name);
+    let result = std::fs::write(&tmp, &bytes)
+        .map_err(|e| CommandError::io(format!("{}: {e}", tmp.display())))
+        .and_then(|()| {
+            assets_import(
+                app,
+                AssetsImportArgs {
+                    paths: vec![tmp.clone()],
+                    kind: args.kind,
+                    lang: args.lang,
+                    variant: args.variant,
+                    key: args.key,
+                    replace: args.replace,
+                },
+            )
+        });
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut out = result?;
+    for f in &mut out {
+        f.source = PathBuf::from(&name);
+    }
+    Ok(out)
+}
+
+// ----- thumbnails ------------------------------------------------------------------
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AssetThumbnailArgs {
+    /// Project-relative path below `screenshots/` or `assets/`.
+    pub path: String,
+    /// Longer side in px (default 160, at most 1024).
+    #[serde(default)]
+    pub max_edge: Option<u32>,
+}
+
+/// Default and largest thumbnail edge (px).
+pub const THUMBNAIL_EDGE: u32 = 160;
+const THUMBNAIL_MAX_EDGE: u32 = 1024;
+/// Thumbnails kept in memory (oldest dropped first).
+const THUMBNAIL_CACHE_LEN: usize = 512;
+
+type ThumbKey = (PathBuf, Option<SystemTime>, u64, u32);
+
+/// Encoded thumbnails plus their insertion order (oldest first).
+type ThumbCache = Mutex<(HashMap<ThumbKey, Arc<PreviewImage>>, Vec<ThumbKey>)>;
+
+/// Encoded thumbnails keyed by (absolute path, mtime, file length, edge).
+fn thumbnail_cache() -> &'static ThumbCache {
+    static CACHE: std::sync::OnceLock<ThumbCache> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new((HashMap::new(), Vec::new())))
+}
+
+/// A small PNG of a screenshot or image asset (aspect kept), cached by
+/// path, modification time and size. Raster files are decoded on their
+/// own (not kept in the render cache); SVGs go through the render
+/// context's asset cache.
+pub fn asset_thumbnail(app: &AppState, args: AssetThumbnailArgs) -> CmdResult<Arc<PreviewImage>> {
+    let session = app.session()?;
+    let p = Path::new(&args.path);
+    let ok = p.components().all(|c| matches!(c, Component::Normal(_)))
+        && matches!(
+            p.components().next(),
+            Some(Component::Normal(first)) if first == "screenshots" || first == "assets"
+        );
+    if !ok {
+        return Err(CommandError::invalid(format!(
+            "`{}` is not a file below screenshots/ or assets/",
+            args.path
+        )));
+    }
+    let abs = session.dir().join(p);
+    let meta = std::fs::metadata(&abs)
+        .map_err(|e| CommandError::not_found(format!("`{}`: {e}", args.path)))?;
+    let edge = args
+        .max_edge
+        .unwrap_or(THUMBNAIL_EDGE)
+        .clamp(16, THUMBNAIL_MAX_EDGE);
+    let key: ThumbKey = (abs.clone(), meta.modified().ok(), meta.len(), edge);
+    let cache = thumbnail_cache();
+    if let Some(hit) = cache
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .0
+        .get(&key)
+    {
+        return Ok(hit.clone());
+    }
+    let fit = |w: f64, h: f64| -> (u32, u32) {
+        let k = (f64::from(edge) / w.max(h)).min(1.0);
+        (
+            ((w * k).round() as u32).max(1),
+            ((h * k).round() as u32).max(1),
+        )
+    };
+    let render_err = |e: String| CommandError::new(ErrorCode::Render, e);
+    let pixmap = if ext_of(&abs).as_deref() == Some("svg") {
+        let assets = session.render_context();
+        let assets = assets.assets();
+        let (w, h) = assets
+            .natural_size(&args.path)
+            .map_err(|e| render_err(e.to_string()))?;
+        let (tw, th) = fit(w.max(1.0), h.max(1.0));
+        let pm = assets
+            .pixmap(&args.path, tw, th, Resample::Stretch, Filter::Bilinear)
+            .map_err(|e| render_err(e.to_string()))?;
+        (*pm).clone()
+    } else {
+        let img = SourceImage::load(&abs).map_err(|e| render_err(format!("{}: {e}", args.path)))?;
+        let (tw, th) = fit(f64::from(img.width), f64::from(img.height));
+        img.resample(tw, th, None, Filter::Bilinear)
+            .map_err(|e| render_err(e.to_string()))?
+    };
+    let image = Arc::new(PreviewImage::encode(&pixmap, None, PixelFormat::Png)?);
+    let mut guard = cache.lock().unwrap_or_else(PoisonError::into_inner);
+    let (map, order) = &mut *guard;
+    map.insert(key.clone(), image.clone());
+    order.push(key);
+    if order.len() > THUMBNAIL_CACHE_LEN {
+        let old = order.remove(0);
+        map.remove(&old);
+    }
+    Ok(image)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn decodes_base64() {
+        assert_eq!(decode_base64("aGVsbG8=").unwrap(), b"hello");
+        assert_eq!(decode_base64("aGVsbG8").unwrap(), b"hello");
+        assert_eq!(decode_base64("AAEC\n/w==").unwrap(), [0, 1, 2, 255]);
+        assert!(decode_base64("a*b").is_none());
+    }
 
     #[test]
     fn sanitizes_names() {
