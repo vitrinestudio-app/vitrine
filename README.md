@@ -15,9 +15,41 @@ Website: <https://arrangia.app>
 
 ## Status
 
-**Pre-alpha, Phase 0 (rendering spike).** Nothing usable yet; the workspace
-contains crate stubs only. The full concept (in German) is in
-[`docs/KONZEPT.md`](docs/KONZEPT.md).
+**Pre-alpha. Phase 1 (core + command line) is complete, pending review.**
+Projects can be created, validated, previewed and exported headless with
+the `arrangia` command line tool; the desktop app (Phase 2), store upload
+and the MCP server are not built yet. The full concept (in German) is in
+[`docs/KONZEPT.md`](docs/KONZEPT.md), the Phase 1 task list in
+[`docs/plan/phase-1.md`](docs/plan/phase-1.md).
+
+### Example
+
+[`tests/fixtures/example`](tests/fixtures/example) is a complete project
+for a fictional garden planner, exported from one YAML file into iPhone,
+Google Play, iPad landscape, Mac App Store, web slides and banner targets
+in English and German. Store gallery previews as Arrangia renders them:
+
+![iPhone 6.9" set: one continuous canvas, a phone crossing pages 3 and 4](docs/example/iphone-gallery-en.jpg)
+
+The same phone pages as an iPad landscape set (two pages per image,
+tablet frames, a variant with adjusted positions), in German:
+
+![iPad 13" landscape set in German](docs/example/ipad-gallery-de.jpg)
+
+Mac App Store set and a web app in a browser window and in a notebook
+with browser chrome:
+
+![Mac App Store set](docs/example/mac-gallery-en.jpg)
+
+![Web app slides](docs/example/web-gallery-en.jpg)
+
+A blog header cut from the same canvas without gaps:
+
+![Blog header](docs/example/blog-header-de.jpg)
+
+The app screenshots inside the frames are generated
+(`crates/render/examples/screens.rs`); device frames are drawn
+parametrically, no vendor artwork is included.
 
 ## Building
 
@@ -38,6 +70,18 @@ cargo run -p arrangia-gui            # desktop app
 ```
 
 ## Command line
+
+Quick start:
+
+```sh
+cargo install --path crates/cli                # or: cargo run -p arrangia-cli --release -- …
+arrangia new my-app --lang en --lang de        # a phone project from a template
+# put screenshots into my-app/screenshots/en/ios-phone/<key>.png (see project.yaml)
+arrangia validate --project my-app             # what is missing or does not fit
+arrangia export --project my-app               # PNG/JPEG files in my-app/export/<target>/<lang>/
+```
+
+Try it on the example: `arrangia export --project tests/fixtures/example`.
 
 The `arrangia` binary works on a project folder (`--project <DIR>`, default:
 the current folder):
@@ -75,6 +119,10 @@ command could not run (usage error, project not loadable, IO error).
 - **License: not yet decided.** Options are MIT OR Apache-2.0 or a copyleft
   license (MPL-2.0/GPL). Until this is settled there is no LICENSE file, no
   `license` field in the manifests, and all crates are `publish = false`.
-  Bundled fonts will be under the SIL Open Font License.
-- **Gallery gap widths** for each store profile still have to be measured on
-  real store views.
+  The bundled fonts (Inter) are under the SIL Open Font License
+  (`assets/fonts/OFL.txt`).
+- **Gallery gap widths** of the native store apps (iOS App Store on iPhone
+  and iPad, Mac App Store, Play Store app) are estimates marked
+  `not yet measured` in `crates/core/data/galleries.yaml`; only the store
+  websites have been measured. They still have to be measured on real
+  devices.

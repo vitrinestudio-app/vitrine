@@ -47,6 +47,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       slot values against the catalog
 - [ ] Measure native store app galleries (iOS App Store, Mac App Store,
       Play Store app) on real devices and replace the placeholders
+      (→ Follow-ups)
 
 ## 1.4 Resolve (`core::resolve`)
 - [x] target × language → resolved scene: variant + overrides, content_scale,
@@ -87,7 +88,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       (`export/.arrangia-export.json`)
 - [ ] Image shadows from the image alpha (currently the image rect);
       SVG text needs a font database for usvg (text in SVG assets is
-      currently not rendered)
+      currently not rendered) (→ Follow-ups)
 
 ## 1.8 Validation (`core::validate`)
 - [x] Text in gap, text overflow per language/page, emergency word break
@@ -109,16 +110,50 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       (no upward search); `--page`/`--image` are 1-based like export names
 
 ## 1.10 Example project + golden tests
-- [ ] `tests/fixtures/example/`: phone portrait, iPad landscape via
-      `group: 2` + variant + device_map, Mac (16:10), web app in browser frame
-      and in laptop frame with `chrome: browser`, blog banner, en + de
-- [ ] Golden tests with per-pixel tolerance and max share of differing
-      pixels; `ARRANGIA_UPDATE_GOLDEN=1` to update; `*.actual.png`/`*.diff.png`
-      on failure
+- [x] `tests/fixtures/example/`: phone portrait (6 pages, continuous
+      gradient + diagonal band through the gaps, a rotated phone across
+      pages 3/4, callouts), iPhone 6.9″ + 6.3″, Google Play (`device_map`
+      + `android` variant), iPad landscape via `group: 2` +
+      `tablet-landscape` variant + `device_map`, Mac (16:10: notebook,
+      all-in-one, phone), web app in a browser frame and in a notebook with
+      `chrome: browser`, blog header + Open Graph banners, en + de (spans,
+      bold, soft hyphens, screenshot fallbacks); validates with 0 errors /
+      0 warnings
+- [x] Screenshot generator `crates/render/examples/screens.rs`
+      (deterministic fake UI, committed PNGs ≈ 5 MB)
+- [x] Validation: with `chrome: browser` on laptops/desktops the expected
+      screenshot aspect is the area below the bars (found by the fixture)
+- [x] Golden tests (`crates/render/tests/golden.rs`): all output images
+      of all targets (en) + de for iPhone and blog header at 25 %, gallery
+      previews at 320 px; per-channel tolerance 8/255, max 0.5 % differing
+      pixels; `ARRANGIA_UPDATE_GOLDEN=1` to update; `*.actual.png` /
+      `*.diff.png` on failure; fixture validation test; CLI test
+      (`validate --strict` + export of the web targets)
+- [x] Windows: YAML round-trip tests independent of checkout line
+      endings (with `.gitattributes` forcing LF)
 
 ## 1.11 Docs
-- [ ] ADRs for model decisions (home page coordinates, anchors/variants,
-      markup/soft hyphen), update CLAUDE.md / README
+- [x] ADRs for model decisions: already covered – home page coordinates
+      and ids by ADR 0002 (*Units, coordinates, references*) and ADR 0004
+      (*Frame geometry*, *Anchors and boxes*), anchors / variants /
+      `content_scale` / `device_map` by ADR 0004, markup and soft hyphen by
+      ADR 0003; ADR 0005 amended for browser chrome
+- [x] CLAUDE.md (commands, architecture, golden tests), README (status,
+      quick start, example images in `docs/example/`, open questions)
+
+## Follow-ups (after Phase 1)
+- Measure the native store app galleries (gap, corner radius) on real
+  devices and replace the `not yet measured` placeholders in
+  `galleries.yaml` (1.3).
+- Image shadows from the image alpha instead of the image rect (1.7);
+  the example works around it with shape cards behind SVG icons.
+- Text inside SVG assets (usvg needs a font database; 1.7).
+- Golden tests run on macOS locally; the first CI run on Linux/Windows
+  shows whether 8/255 and 0.5 % absorb the platform differences
+  (SIMD resampling, libm); widen only with a measured reason.
+- Banner `focus` for `fit: cover` (ADR 0004 open question); the example's
+  blog header uses a `rect` region instead.
+- Per-language element overrides (KONZEPT §5.1) are not modelled yet.
 
 ## Decisions taken with the user
 - Text engine: parley (ADR 0001).

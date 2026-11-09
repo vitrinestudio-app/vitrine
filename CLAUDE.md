@@ -15,7 +15,9 @@ The binding concept is **`docs/KONZEPT.md`** (German). Read it before changing
 the model, renderer or architecture. The user communicates in German; code,
 comments, commit messages and repo docs are in English.
 
-Status: pre-alpha, Phase 0 (rendering spike). See roadmap in KONZEPT.md §12.
+Status: pre-alpha. Phase 1 (core + CLI) is complete pending review
+(`docs/plan/phase-1.md`); Phase 2 (GUI editor) is next. See the roadmap in
+KONZEPT.md §12.
 
 ## Core ideas
 
@@ -48,11 +50,42 @@ crates/
   mcp/      arrangia-mcp      MCP server (rmcp) over core/render/publish
   cli/      arrangia-cli      binary `arrangia` (clap)
   gui/      arrangia-gui      Tauri 2 app; frontend in gui/ui/ (vanilla ES modules)
-assets/fonts/           bundled OFL fonts (planned)
-tests/fixtures/         sample projects and golden reference images (planned)
+assets/fonts/           bundled OFL fonts (Inter 4.1, embedded by core::layout)
+tests/fixtures/example/ example project (all target kinds, en + de) and its
+                        golden reference images (golden/)
 docs/KONZEPT.md         concept (binding)
 docs/adr/               architecture decision records
+docs/plan/              task lists per phase
+docs/example/           preview images of the example project (README)
 ```
+
+### Architecture (Phase 1)
+
+`core` (no rendering, no network):
+
+- `model` – typed project model (strips, elements, styles, targets,
+  variants); `io` – YAML load/save (`serde-saphyr`, canonical form,
+  revision + atomic save, ADR 0002); `ops` – Operations API with inverse
+  ops and history (the only way to change the model).
+- `catalog` – embedded device, target-preset and gallery catalogs
+  (`data/*.yaml`); `geometry` – page → canvas mapping, anchors, grouping,
+  viewports (ADR 0004).
+- `resolve` – project × target × language → `ResolvedScene` (variants,
+  `content_scale`, `device_map`, i18n + screenshot fallback chains,
+  styles, diagnostics; ADR 0004).
+- `markup` – inline markup parser; `layout` – parley text layout with
+  auto-fit, soft hyphens and layout reports, bundled + project fonts
+  only (ADR 0003).
+- `validate` – findings per target × language (texts, screenshots, store
+  rules; ADR 0005).
+
+`render` (tiny-skia, ADR 0006): `scene` – rasterize a resolved scene
+(`RenderContext`, asset cache, prepared scenes); `frames` – parametric
+device frames and browser chrome from the catalog; `text` – glyph outlines
+of `core::layout` results; `export` – page/banner files, gallery previews,
+incremental manifest; plus `paint`/`blur`/`raster` helpers.
+
+`cli` – `arrangia new|render|export|validate` on top of `core` + `render`.
 
 ## Stack
 
@@ -96,10 +129,38 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all
 cargo run -p arrangia-cli -- --help          # CLI (binary `arrangia`)
 cargo run -p arrangia-gui                    # start the GUI
-ARRANGIA_UPDATE_GOLDEN=1 cargo test          # rewrite golden reference images (review the diff!)
+ARRANGIA_UPDATE_GOLDEN=1 cargo test -p arrangia-render --test golden   # rewrite golden references (review the diff!)
+
+# CLI on the example project (release build: a full export takes ~2 s)
+cargo run -p arrangia-cli --release -- --project tests/fixtures/example validate
+cargo run -p arrangia-cli --release -- --project tests/fixtures/example export
+cargo run -p arrangia-cli --release -- --project tests/fixtures/example render --target ios-iphone-69 --gallery --max-edge 800 -o /path/to/gallery.png
+
+# regenerate the example screenshots (deterministic fake app UI)
+cargo run -p arrangia-render --release --example screens -- tests/fixtures/example/screenshots
 ```
 
-Golden tests (planned) compare renders of `tests/fixtures` against reference
-PNGs with a per-pixel tolerance and a maximum share of differing pixels. On
-failure they write `*.actual.png` / `*.diff.png` next to the reference (ignored
-by Git). With `ARRANGIA_UPDATE_GOLDEN=1` they overwrite the references instead.
+CLI usage (`--project <DIR>`, default the current folder): `new <dir>
+[--template phone|minimal] [--lang …]`, `validate [--target] [--lang]
+[--preview] [--strict] [--format json]`, `render [--target] [--lang]
+[--page N | --image N | --canvas | --gallery] [--width|--max-edge|--scale]
+[-o file]`, `export [--target] [--lang] [--out dir] [--no-gallery]
+[--force] [--format json]`. Exit codes: 0 ok, 1 project problems, 2 could
+not run.
+
+Golden tests (`crates/render/tests/golden.rs`) render every output image
+of every target of `tests/fixtures/example` (en, plus de for the iPhone
+set and the blog header) at 25 % and the gallery previews at 320 px, and
+compare them with `tests/fixtures/example/golden/`: a pixel differs above
+8/255 in any channel, an image fails above 0.5 % differing pixels
+(constants at the top of the file). On failure they write `*.actual.png` /
+`*.diff.png` next to the reference (ignored by Git). With
+`ARRANGIA_UPDATE_GOLDEN=1` they rewrite references that are missing or
+outside the tolerance and delete stale ones. They run in the normal debug
+`cargo test` (dependencies are built with `opt-level = 2`, our crates are
+not; ~7 s on 10 cores). Changing the fixture or the renderer visibly means
+updating the references in the same commit.
+
+Cross-platform tests: paths via `Path::join`, never compare paths as
+strings; line endings are LF (`.gitattributes`), tests reading checked-in
+text normalise `\r\n` anyway.

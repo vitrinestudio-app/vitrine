@@ -68,7 +68,11 @@ skipped.
   ("`fr` uses the default `en` screenshot for `planner`").
 - Screenshot aspect vs device display (fixed-aspect models only) beyond
   `Thresholds::screenshot_aspect` (2 %, `catalog::ASPECT_TOLERANCE`) →
-  warn ("wrong device?"). Free-aspect models adapt (ADR 0004).
+  warn ("wrong device?"). Free-aspect models adapt (ADR 0004). With
+  `chrome: browser` on a laptop / desktop the expected aspect is that of
+  the area below the browser bars (`BrowserChrome::in_display`, shared
+  with the renderer; about 16:9 on a 16:10 notebook), and so is the
+  upscale check (added in task 1.10).
 - Upscaling: display size in export px (element size × display fraction ×
   viewport scale) vs screenshot px; factor per `fit` (`cover`/`stretch`:
   max of both axes, `contain`: min) above `Thresholds::max_upscale`
