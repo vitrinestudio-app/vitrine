@@ -1,0 +1,532 @@
+# Arrangia target presets (KONZEPT §6.4): store screenshot sizes, store slots
+# and store rules. Loaded by `arrangia_core::catalog` (embedded at build time).
+#
+# All values checked on 2026-11-09 against the sources below. Map store
+# screenshot sets by PIXEL SIZE, not by the API enum name: Apple kept the old
+# `screenshotDisplayType` identifiers (APP_IPHONE_67, APP_IPHONE_61 …) and
+# changed which device sizes they accept.
+#
+# Field reference
+#   checked     date all values were last verified (YYYY-MM-DD)
+#   sources     key → {url, kind}; kind = primary | secondary | forum | measured | convention
+#   rules       store rule sets, referenced by presets (`rules:`); used by validation
+#     count            images per set (per localization): {min, max}
+#     formats          allowed export formats (png = 24-bit PNG)
+#     alpha            false = alpha channel / transparency not allowed
+#     sizes            exact = the image must have one of the preset's sizes;
+#                      range = any size within min_side/max_side/max_ratio/aspects
+#     min_side/max_side  pixel limits per side
+#     max_ratio        long side / short side must be <= this
+#     aspects          allowed aspect ratios (either orientation listed explicitly)
+#     max_file_size    bytes, null = not documented
+#   presets     one entry per screenshot set / banner format
+#     id, label, store (apple | google | none), platform (ios | ipados | macos |
+#     android | chromeos | web), kind (pages | banner; default pages)
+#     sizes        {portrait: [[w, h] …], landscape: [[w, h] …]}; first = default
+#     slot         store slot as in project targets: {apple: {display_type}} /
+#                  {google: {image_type}}; absent = no API upload slot
+#     gallery      default gallery profile (galleries.yaml)
+#     device       default device model (devices.yaml); screenshots = default
+#                  screenshot variant key
+#     requirement  required | conditional | optional (for publishing)
+#     status       verified (primary source) | secondary (only third-party
+#                  sources for part of the entry, see note) | unverified |
+#                  convention (no store rule, common practice)
+
+checked: 2026-11-09
+
+sources:
+  A1:
+    url: https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications
+    kind: primary
+  A2:
+    url: https://developer.apple.com/documentation/appstoreconnectapi/screenshotdisplaytype
+    kind: primary
+  A3:
+    url: https://developer.apple.com/app-store/product-page/
+    kind: primary
+  F1:
+    url: https://github.com/fastlane/fastlane/blob/master/deliver/lib/deliver/app_screenshot.rb
+    kind: secondary
+  F3:
+    url: https://github.com/fastlane/fastlane/pull/30444
+    kind: secondary
+  AF1:
+    url: https://developer.apple.com/forums/thread/845505
+    kind: forum
+  G1:
+    url: https://support.google.com/googleplay/android-developer/answer/9866151?hl=en
+    kind: primary
+  G2:
+    url: https://developers.google.com/android-publisher/api-ref/rest/v3/AppImageType
+    kind: primary
+  G3:
+    url: https://androidpublisher.googleapis.com/$discovery/rest?version=v3
+    kind: primary
+  OG:
+    url: https://ogp.me/
+    kind: convention
+
+# Store API slot values. Apple: complete `ScreenshotDisplayType` enum (A2,
+# fetched 2026-11-09; no descriptions, no Duo value). Google: `AppImageType`
+# (G2) without `appImageTypeUnspecified`. A preset slot outside these lists
+# must have `status: unverified`.
+store_slots:
+  apple: [
+    APP_IPHONE_67, APP_IPHONE_65, APP_IPHONE_61, APP_IPHONE_58, APP_IPHONE_55,
+    APP_IPHONE_47, APP_IPHONE_40, APP_IPHONE_35,
+    APP_IPAD_PRO_3GEN_129, APP_IPAD_PRO_3GEN_11, APP_IPAD_PRO_129, APP_IPAD_105, APP_IPAD_97,
+    APP_WATCH_ULTRA, APP_WATCH_SERIES_10, APP_WATCH_SERIES_7, APP_WATCH_SERIES_4, APP_WATCH_SERIES_3,
+    APP_DESKTOP, APP_APPLE_TV, APP_APPLE_VISION_PRO,
+    IMESSAGE_APP_IPHONE_67, IMESSAGE_APP_IPHONE_65, IMESSAGE_APP_IPHONE_61, IMESSAGE_APP_IPHONE_58,
+    IMESSAGE_APP_IPHONE_55, IMESSAGE_APP_IPHONE_47, IMESSAGE_APP_IPHONE_40,
+    IMESSAGE_APP_IPAD_PRO_3GEN_129, IMESSAGE_APP_IPAD_PRO_3GEN_11, IMESSAGE_APP_IPAD_PRO_129,
+    IMESSAGE_APP_IPAD_105, IMESSAGE_APP_IPAD_97,
+  ]
+  google: [
+    phoneScreenshots, sevenInchScreenshots, tenInchScreenshots, tvScreenshots,
+    wearScreenshots, icon, featureGraphic, tvBanner,
+  ]
+
+rules:
+  apple-screenshots:
+    label: App Store screenshots
+    store: apple
+    count: {min: 1, max: 10}
+    formats: [png, jpeg]
+    alpha: false
+    sizes: exact
+    max_file_size: null
+    note: >-
+      Per device size and localization (A1). Colour space and maximum file
+      size are not documented on the current Apple pages. Only the largest
+      required size is needed; App Store Connect scales down for smaller
+      classes.
+    sources: [A1, A3]
+
+  google-screenshots:
+    label: Google Play screenshots (phone)
+    store: google
+    count: {min: 2, max: 8}
+    formats: [png, jpeg]
+    alpha: false
+    sizes: range
+    min_side: 320
+    max_side: 3840
+    max_ratio: 2.0
+    max_file_size: 8388608
+    note: >-
+      Up to 8 per device type; at least 2 screenshots across all device types
+      to publish. Recommended: at least 4, 9:16 >= 1080x1920 or 16:9 >=
+      1920x1080. The 8 MB limit is primary-sourced on G1 only for Android XR;
+      for phone/tablet it comes from the Play Console UI as quoted by
+      secondary sources. API transport limit is 15 MB (G3).
+    sources: [G1, G2, G3]
+
+  google-large-screens:
+    label: Google Play screenshots (7"/10" tablet, Chromebook)
+    store: google
+    count: {min: 4, max: 8}
+    formats: [png, jpeg]
+    alpha: false
+    sizes: range
+    min_side: 1080
+    max_side: 3840
+    aspects: ["16:9", "9:16"]
+    max_file_size: 8388608
+    note: >-
+      Minimum of 4 is needed to be shown/featured on large screens. G1's
+      large-screen section allows sides up to 7680 px but the general rule
+      says max 3840 px; we use the stricter 3840. 8 MB: see
+      google-screenshots.
+    sources: [G1]
+
+  google-feature-graphic:
+    label: Google Play feature graphic
+    store: google
+    count: {min: 1, max: 1}
+    formats: [png, jpeg]
+    alpha: false
+    sizes: exact
+    max_file_size: null
+    note: >-
+      Required to publish. Keep key content away from the edges and centred;
+      avoid pure white/black/dark grey backgrounds. File size limit not
+      stated on G1 (API transport limit 15 MB, G3).
+    sources: [G1, G3]
+
+presets:
+  # ---------------------------------------------------------------- Apple iPhone
+  - id: ios-iphone-69
+    label: iPhone 6.9″ / 6.7″ (Dynamic Island, large display)
+    store: apple
+    platform: ios
+    sizes:
+      portrait: [[1320, 2868], [1290, 2796], [1260, 2736]]
+      landscape: [[2868, 1320], [2796, 1290], [2736, 1260]]
+    slot: {apple: {display_type: APP_IPHONE_67}}
+    gallery: appstore-iphone
+    device: iphone-island
+    screenshots: ios-phone
+    rules: apple-screenshots
+    requirement: conditional
+    status: secondary
+    note: >-
+      6.9″ → APP_IPHONE_67 per fastlane only (F1, "These are actually 6.9″
+      iPhones"); there is no APP_IPHONE_69 and A2 has no descriptions.
+      A1 contradicts itself on the required set: the header requires
+      "Dynamic Island (medium display)" (ios-iphone-63), the Face ID (large)
+      section still implies 6.9″ or 6.5″ is required. Providing 6.9″ is safe.
+    sources: [A1, A2, F1]
+
+  - id: ios-iphone-65
+    label: iPhone 6.5″ (Face ID, large display)
+    store: apple
+    platform: ios
+    sizes:
+      portrait: [[1284, 2778], [1242, 2688]]
+      landscape: [[2778, 1284], [2688, 1242]]
+    slot: {apple: {display_type: APP_IPHONE_65}}
+    gallery: appstore-iphone
+    device: iphone-notch
+    screenshots: ios-phone
+    rules: apple-screenshots
+    requirement: conditional
+    status: verified
+    note: Required per A1 if no Dynamic Island (large) screenshots are provided.
+    sources: [A1, A2, F1]
+
+  - id: ios-iphone-63
+    label: iPhone 6.3″ (Dynamic Island, medium display)
+    store: apple
+    platform: ios
+    sizes:
+      portrait: [[1206, 2622], [1179, 2556]]
+      landscape: [[2622, 1206], [2556, 1179]]
+    slot: {apple: {display_type: APP_IPHONE_61}}
+    gallery: appstore-iphone
+    device: iphone-island
+    screenshots: ios-phone
+    rules: apple-screenshots
+    requirement: required
+    status: secondary
+    note: >-
+      Required per the A1 header. 6.3″ → APP_IPHONE_61 per fastlane only
+      (F1, "These are actually 6.3″ iPhones").
+    sources: [A1, A2, F1]
+
+  - id: ios-iphone-61
+    label: iPhone 6.1″ / 5.8″ (Face ID, medium display)
+    store: apple
+    platform: ios
+    sizes:
+      portrait: [[1170, 2532], [1125, 2436], [1080, 2340]]
+      landscape: [[2532, 1170], [2436, 1125], [2340, 1080]]
+    slot: {apple: {display_type: APP_IPHONE_58}}
+    gallery: appstore-iphone
+    device: iphone-notch
+    screenshots: ios-phone
+    rules: apple-screenshots
+    requirement: optional
+    status: secondary
+    note: >-
+      Scaled from Dynamic Island (medium) if absent. 6.1″ → APP_IPHONE_58 per
+      fastlane only (F1, "These are actually 6.1″ iPhones").
+    sources: [A1, A2, F1]
+
+  - id: ios-iphone-55
+    label: iPhone 5.5″ (Home button, large display)
+    store: apple
+    platform: ios
+    sizes:
+      portrait: [[1242, 2208]]
+      landscape: [[2208, 1242]]
+    slot: {apple: {display_type: APP_IPHONE_55}}
+    gallery: appstore-iphone
+    device: iphone-home
+    screenshots: ios-phone
+    rules: apple-screenshots
+    requirement: optional
+    status: verified
+    sources: [A1, A2, F1]
+
+  - id: ios-iphone-47
+    label: iPhone 4.7″ (Home button, medium display)
+    store: apple
+    platform: ios
+    sizes:
+      portrait: [[750, 1334]]
+      landscape: [[1334, 750]]
+    slot: {apple: {display_type: APP_IPHONE_47}}
+    gallery: appstore-iphone
+    device: iphone-home
+    screenshots: ios-phone
+    rules: apple-screenshots
+    requirement: optional
+    status: verified
+    note: Legacy; scaled from 5.5″ if absent. 4″ and 3.5″ classes are not included.
+    sources: [A1, A2, F1]
+
+  - id: ios-iphone-duo-outer
+    label: iPhone Duo (outer display)
+    store: apple
+    platform: ios
+    sizes:
+      portrait: [[1398, 2034]]
+      landscape: [[2034, 1398]]
+    slot: {apple: {display_type: APP_IPHONE_DUO}}
+    gallery: appstore-iphone
+    screenshots: ios-phone-duo-outer
+    rules: apple-screenshots
+    requirement: optional
+    status: unverified
+    note: >-
+      Sizes from A1 (added Sep 2026); required from April 2027 for apps built
+      with the iOS 27.1 SDK or later. API type UNVERIFIED: APP_IPHONE_DUO is
+      not in Apple's enum (A2, 2026-11-09); only fastlane (F3) claims it works
+      for both inner and outer sizes, and the name may change. No device
+      model yet (no `device`).
+    sources: [A1, A2, F3, AF1]
+
+  - id: ios-iphone-duo-inner
+    label: iPhone Duo (inner display)
+    store: apple
+    platform: ios
+    sizes:
+      portrait: [[2007, 2853]]
+      landscape: [[2853, 2007]]
+    slot: {apple: {display_type: APP_IPHONE_DUO}}
+    gallery: appstore-iphone
+    screenshots: ios-phone-duo-inner
+    rules: apple-screenshots
+    requirement: optional
+    status: unverified
+    note: See ios-iphone-duo-outer (API type unverified, same slot for both).
+    sources: [A1, A2, F3, AF1]
+
+  # ------------------------------------------------------------------ Apple iPad
+  - id: ios-ipad-13
+    label: iPad 13″
+    store: apple
+    platform: ipados
+    sizes:
+      portrait: [[2064, 2752], [2048, 2732]]
+      landscape: [[2752, 2064], [2732, 2048]]
+    slot: {apple: {display_type: APP_IPAD_PRO_3GEN_129}}
+    gallery: appstore-ipad
+    device: ipad-modern
+    screenshots: ios-tablet
+    rules: apple-screenshots
+    requirement: required
+    status: secondary
+    note: >-
+      Required if the app runs on iPad (A1). 13″ → APP_IPAD_PRO_3GEN_129 per
+      fastlane (F1).
+    sources: [A1, A2, F1]
+
+  - id: ios-ipad-129
+    label: iPad Pro 12.9″ (2nd generation)
+    store: apple
+    platform: ipados
+    sizes:
+      portrait: [[2048, 2732]]
+      landscape: [[2732, 2048]]
+    slot: {apple: {display_type: APP_IPAD_PRO_129}}
+    gallery: appstore-ipad
+    device: ipad-home
+    screenshots: ios-tablet
+    rules: apple-screenshots
+    requirement: optional
+    status: secondary
+    note: Scaled from 13″ if absent.
+    sources: [A1, A2, F1]
+
+  - id: ios-ipad-11
+    label: iPad 11″
+    store: apple
+    platform: ipados
+    sizes:
+      portrait: [[1668, 2388], [1668, 2420], [1640, 2360], [1512, 2316], [1488, 2266]]
+      landscape: [[2388, 1668], [2420, 1668], [2360, 1640], [2316, 1512], [2266, 1488]]
+    slot: {apple: {display_type: APP_IPAD_PRO_3GEN_11}}
+    gallery: appstore-ipad
+    device: ipad-modern
+    screenshots: ios-tablet
+    rules: apple-screenshots
+    requirement: optional
+    status: secondary
+    note: >-
+      Scaled from 13″ if absent. 1512x2316 is listed on A1 but not in
+      fastlane's mapping (F1); trust A1. The sizes differ in aspect (0.65 to
+      0.70), none matches the 3:4 display of ipad-modern; use a variant or
+      fit: cover.
+    sources: [A1, A2, F1]
+
+  - id: ios-ipad-105
+    label: iPad 10.5″
+    store: apple
+    platform: ipados
+    sizes:
+      portrait: [[1668, 2224]]
+      landscape: [[2224, 1668]]
+    slot: {apple: {display_type: APP_IPAD_105}}
+    gallery: appstore-ipad
+    device: ipad-home
+    screenshots: ios-tablet
+    rules: apple-screenshots
+    requirement: optional
+    status: secondary
+    note: Legacy; scaled from 12.9″ if absent. 9.7″ is not included.
+    sources: [A1, A2, F1]
+
+  # ------------------------------------------------------------------- Apple Mac
+  - id: mac
+    label: Mac App Store (16:10)
+    store: apple
+    platform: macos
+    sizes:
+      landscape: [[2880, 1800], [2560, 1600], [1440, 900], [1280, 800]]
+    slot: {apple: {display_type: APP_DESKTOP}}
+    gallery: appstore-mac
+    device: macbook
+    screenshots: mac
+    rules: apple-screenshots
+    requirement: required
+    status: verified
+    note: Required for Mac apps; any one of the four 16:10 sizes.
+    sources: [A1, A2]
+
+  # ----------------------------------------------------------------- Google Play
+  - id: play-phone
+    label: Google Play phone (9:16)
+    store: google
+    platform: android
+    sizes:
+      portrait: [[1080, 1920], [1440, 2560]]
+      landscape: [[1920, 1080], [2560, 1440]]
+    slot: {google: {image_type: phoneScreenshots}}
+    gallery: play-phone
+    device: android-punchhole
+    screenshots: android-phone
+    rules: google-screenshots
+    requirement: required
+    status: verified
+    note: 9:16 >= 1080x1920 meets the recommendation for promotional formats.
+    sources: [G1, G2]
+
+  - id: play-phone-2x1
+    label: Google Play phone (1:2)
+    store: google
+    platform: android
+    sizes:
+      portrait: [[1080, 2160], [1440, 2880]]
+      landscape: [[2160, 1080], [2880, 1440]]
+    slot: {google: {image_type: phoneScreenshots}}
+    gallery: play-phone
+    device: android-punchhole
+    screenshots: android-phone
+    rules: google-screenshots
+    requirement: required
+    status: verified
+    note: >-
+      Tallest allowed aspect (long side <= 2x short side). Raw 20:9 device
+      screenshots (1080x2400) exceed this limit and need a frame/canvas.
+    sources: [G1, G2]
+
+  - id: play-tablet-7
+    label: Google Play 7″ tablet
+    store: google
+    platform: android
+    sizes:
+      portrait: [[1080, 1920], [1440, 2560]]
+      landscape: [[1920, 1080], [2560, 1440]]
+    slot: {google: {image_type: sevenInchScreenshots}}
+    gallery: play-tablet
+    device: android-tablet
+    screenshots: android-tablet
+    rules: google-large-screens
+    requirement: optional
+    status: verified
+    sources: [G1, G2]
+
+  - id: play-tablet-10
+    label: Google Play 10″ tablet
+    store: google
+    platform: android
+    sizes:
+      portrait: [[1440, 2560], [2160, 3840], [1080, 1920]]
+      landscape: [[2560, 1440], [3840, 2160], [1920, 1080]]
+    slot: {google: {image_type: tenInchScreenshots}}
+    gallery: play-tablet
+    device: android-tablet
+    screenshots: android-tablet
+    rules: google-large-screens
+    requirement: optional
+    status: verified
+    sources: [G1, G2]
+
+  - id: play-chromebook
+    label: Google Play Chromebook
+    store: google
+    platform: chromeos
+    sizes:
+      landscape: [[1920, 1080], [2560, 1440], [3840, 2160]]
+    gallery: play-tablet
+    device: generic-laptop
+    screenshots: chromebook
+    rules: google-large-screens
+    requirement: optional
+    status: verified
+    note: No Android Publisher API image type (G2); upload in the Play Console only.
+    sources: [G1, G2]
+
+  - id: play-feature-graphic
+    label: Google Play feature graphic
+    store: google
+    platform: android
+    kind: banner
+    sizes:
+      landscape: [[1024, 500]]
+    slot: {google: {image_type: featureGraphic}}
+    gallery: none
+    rules: google-feature-graphic
+    requirement: required
+    status: verified
+    sources: [G1, G2]
+
+  # --------------------------------------------- Banners (conventions, no store rules)
+  - id: banner-blog-header
+    label: Blog header (12:5)
+    store: none
+    platform: web
+    kind: banner
+    sizes:
+      landscape: [[2400, 1000]]
+    gallery: none
+    status: convention
+    note: Common blog/article header size; not a store rule.
+
+  - id: banner-open-graph
+    label: Open Graph / social preview
+    store: none
+    platform: web
+    kind: banner
+    sizes:
+      landscape: [[1200, 630]]
+    gallery: none
+    status: convention
+    note: >-
+      De-facto size for og:image previews (Facebook, LinkedIn, X large card);
+      the Open Graph protocol itself does not prescribe a size.
+    sources: [OG]
+
+  - id: banner-web-hero
+    label: Website hero (12:5, 2x)
+    store: none
+    platform: web
+    kind: banner
+    sizes:
+      landscape: [[2880, 1200], [1440, 600]]
+    gallery: none
+    status: convention
+    note: Example hero size for a 1440 px wide layout at 2x; not a store rule.

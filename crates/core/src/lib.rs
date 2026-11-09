@@ -19,7 +19,7 @@
 //! - **Validation** and **catalogs** (devices, targets, gallery profiles),
 //!   the latter loaded from data files in `crates/core/data/`.
 //!
-//! Module layout (`model`, `io`, `ops` exist; the rest follows in Phase 1).
+//! Module layout (`model`, `io`, `ops`, `catalog` exist; the rest follows in Phase 1).
 //! The file format is described in `docs/adr/0002-project-file-format.md`.
 //!
 //! ```text
@@ -32,6 +32,7 @@
 //! catalog/    devices, targets, gallery profiles (from data/*.yaml)
 //! ```
 
+pub mod catalog;
 pub mod io;
 pub mod model;
 pub mod ops;

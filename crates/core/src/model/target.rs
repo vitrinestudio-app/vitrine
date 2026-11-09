@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::common::PixelSize;
 use super::fmt::{flow_map, flow_seq, flow_style, num};
 use super::ids::{Lang, StripId, TargetId, VariantId, is_valid_id};
+use crate::catalog::{CornerRadius, GalleryProfile};
 
 /// Pages export (one image per page or page group) or one banner image.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -233,11 +234,16 @@ impl GalleryRef {
         Ok(())
     }
 
-    /// Effective gap and radius given the referenced profile (if found).
-    pub fn resolve(&self, profile: Option<&GalleryProfile>) -> (f64, f64) {
+    /// Effective gap and corner radius given the referenced profile (if
+    /// found), in the profile's lu (see [`GalleryProfile::gap_on_canvas`]).
+    /// An overridden radius is circular.
+    pub fn resolve(&self, profile: Option<&GalleryProfile>) -> (f64, CornerRadius) {
         (
             self.gap.or(profile.map(|p| p.gap)).unwrap_or(0.0),
-            self.radius.or(profile.map(|p| p.radius)).unwrap_or(0.0),
+            self.radius
+                .map(CornerRadius::circular)
+                .or(profile.map(|p| p.radius))
+                .unwrap_or_default(),
         )
     }
 }
@@ -283,25 +289,6 @@ impl<'de> Deserialize<'de> for GalleryRef {
         }
         d.deserialize_any(V)
     }
-}
-
-/// A store gallery profile (catalog data, `galleries.yaml`): gap between
-/// export images and corner radius, both in lu relative to the page width.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct GalleryProfile {
-    pub id: String,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub name: String,
-    #[serde(serialize_with = "num")]
-    pub gap: f64,
-    #[serde(serialize_with = "num")]
-    pub radius: f64,
-    /// `false` while the values are placeholders (`not yet measured`).
-    #[serde(default)]
-    pub measured: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub source: Option<String>,
 }
 
 /// Banner region: a page range (inclusive, `{ pages: [0, 2] }`) or a free

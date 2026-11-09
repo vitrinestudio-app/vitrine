@@ -34,8 +34,8 @@ pub use style::{
     TextTransform,
 };
 pub use target::{
-    AppleSlot, BannerFit, GalleryProfile, GalleryRef, Gaps, GoogleSlot, ImageFormat, Region,
-    RegionRect, StoreSlot, Target, TargetKind,
+    AppleSlot, BannerFit, GalleryRef, Gaps, GoogleSlot, ImageFormat, Region, RegionRect, StoreSlot,
+    Target, TargetKind,
 };
 
 use fmt::flow_seq;

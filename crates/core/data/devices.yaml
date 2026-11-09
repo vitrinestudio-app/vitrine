@@ -1,0 +1,358 @@
+# Arrangia device catalog (KONZEPT §4.1): data for the built-in parametric
+# frames. Our own generic artwork, no vendor graphics: the shapes resemble
+# device classes but do not reproduce any product. Drawing is done in
+# `arrangia-render` (styles `stylized` and `detailed`). Loaded by
+# `arrangia_core::catalog` (embedded at build time).
+#
+# Geometry
+#   unit         model unit of the numbers (mm for hardware, px for the
+#                browser window, nominal for `none`). Only ratios matter: the
+#                renderer scales the outer width to the element's `width` (lu).
+#   natural      orientation the geometry is given in. `landscape` for a
+#                portrait-natural device = the frame rotated 90° counter-
+#                clockwise (the top edge goes to the left, like an iPhone held
+#                with the island on the left); the screenshot is not rotated.
+#   body         housing (laptops: the lid; desktops: the screen housing):
+#                {w, h, radius}, origin = top-left corner of the body
+#   rim          thickness of the metal rim (`detailed` style)
+#   display      visible display area {x, y, w, h, radius} relative to body
+#   cutouts      kind: island | notch | punch_hole (drawn over the
+#                screenshot, inside the display) or home_button | camera |
+#                speaker (in the bezel, outside the display);
+#                shape: pill | circle | notch | rect; {x, y, w, h, radius}
+#   buttons      {name, edge: left|right|top|bottom, at, length, depth}:
+#                `at` = start along the edge from the top/left body corner,
+#                `depth` = how far the button sticks out of the body
+#   laptop       hinge {w, h} centred below the lid, base {w, h, radius,
+#                lip {w, h}} centred below the hinge (front view)
+#   stand        desktop stand: neck {w, h} centred below the body, foot
+#                {w, h, radius} centred below the neck
+#   browser      true = the body is a browser window drawn with
+#                `browser_chrome`; the display is its content area
+#   colors       names from the `colors` palette; default_color = default
+#   screenshot   aspect (portrait-natural devices: portrait w:h) or `free`,
+#                variant = default screenshot variant key, sizes = typical
+#                raw screenshot sizes, targets = target presets
+#                (targets.yaml) whose sizes match the display within 2 %
+
+# Named colour variants. `body`/`edge` are the flat colours of the
+# `stylized` style; `rim` = light/mid/dark of the material gradient and
+# `glass` = front glass around the display in the `detailed` style.
+colors:
+  black-titanium: {label: Black titanium, body: "#2C2C30", edge: "#1C1C1F", rim: ["#8A8A90", "#3C3C41", "#1B1B1E"], glass: "#060607"}
+  natural-titanium: {label: Natural titanium, body: "#D8D6D1", edge: "#BEBCB7", rim: ["#F2F1EE", "#BEBCB7", "#7E7C78"], glass: "#060607"}
+  white-titanium: {label: White titanium, body: "#EDEDEB", edge: "#D6D6D3", rim: ["#FFFFFF", "#E3E2DF", "#A9A8A5"], glass: "#060607"}
+  midnight: {label: Midnight, body: "#1C1C1F", edge: "#111113", rim: ["#2C2C30", "#1C1C1F", "#111113"], glass: "#1C1C1F"}
+  porcelain: {label: Porcelain, body: "#F4F4F2", edge: "#D9D9D6", rim: ["#FFFFFF", "#F4F4F2", "#D9D9D6"], glass: "#F4F4F2"}
+  black: {label: Black, body: "#232325", edge: "#121213", rim: ["#3A3A3C", "#232325", "#121213"], glass: "#0A0A0B"}
+  silver: {label: Silver, body: "#E3E4E6", edge: "#C7C8CA", rim: ["#F5F5F7", "#D6D6D8", "#9C9CA0"], glass: "#060607"}
+  space-gray: {label: Space gray, body: "#7D7E80", edge: "#5E5F61", rim: ["#9A9A9E", "#6E6E73", "#3E3E42"], glass: "#060607"}
+  starlight: {label: Starlight, body: "#EAE4D7", edge: "#D2CAB8", rim: ["#F7F2E8", "#E3DCCD", "#B5AD9C"], glass: "#060607"}
+  silver-white: {label: Silver (white front), body: "#E3E4E6", edge: "#C7C8CA", rim: ["#F5F5F7", "#D6D6D8", "#9C9CA0"], glass: "#F7F7F7"}
+  gold-white: {label: Gold (white front), body: "#EBD8C3", edge: "#D7BFA4", rim: ["#F6E7D6", "#E3CDB4", "#B59A7C"], glass: "#F7F7F7"}
+  sage: {label: Sage, body: "#C3CDB9", edge: "#A6B29B", rim: ["#D8E0D2", "#B4C0AA", "#7E8B75"], glass: "#060607"}
+  pastel-blue: {label: Pastel blue, body: "#9DB7D5", edge: "#7C98BC", rim: ["#C6D7EA", "#8FAACB", "#4F6E96"], glass: "#F5F5F7"}
+  pastel-green: {label: Pastel green, body: "#A8CDB0", edge: "#86B392", rim: ["#CDE5D2", "#97BFA1", "#5A8A67"], glass: "#F5F5F7"}
+  pastel-pink: {label: Pastel pink, body: "#E8B4B8", edge: "#D4949A", rim: ["#F5D6D8", "#E2A6AB", "#B06E75"], glass: "#F5F5F7"}
+
+# Browser window chrome, used by the `browser` model and by `chrome: browser`
+# on laptops/desktops. Values in px at `reference_width` content width; the
+# renderer scales them with the display width.
+browser_chrome:
+  reference_width: 1440
+  tab_bar: 40
+  toolbar: 48
+  window_radius: 10
+  tab: {width: 240, radius: 8}
+  url_field: {height: 32, radius: 16}
+  traffic_lights: {left: 16, diameter: 12, spacing: 8}
+  themes:
+    light: {frame: "#DEE1E6", toolbar: "#FFFFFF", tab: "#FFFFFF", url_field: "#F1F3F4", text: "#1F1F1F", muted: "#5F6368"}
+    dark: {frame: "#1F1F23", toolbar: "#35363A", tab: "#35363A", url_field: "#202124", text: "#E8EAED", muted: "#9AA0A6"}
+
+devices:
+  # --------------------------------------------------------------- phones
+  - id: iphone-island
+    label: Phone with island
+    class: phone
+    unit: mm
+    natural: portrait
+    orientations: [portrait, landscape]
+    body: {w: 77.6, h: 160.2, radius: 13.2}
+    rim: 1.05
+    display: {x: 3.6, y: 3.6, w: 70.4, h: 153.0, radius: 9.6}
+    cutouts:
+      - {kind: island, shape: pill, x: 28.8, y: 5.4, w: 20.0, h: 5.8}
+    buttons:
+      - {name: action, edge: left, at: 26.4, length: 8.0, depth: 0.66}
+      - {name: volume_up, edge: left, at: 40.9, length: 13.6, depth: 0.66}
+      - {name: volume_down, edge: left, at: 57.7, length: 13.6, depth: 0.66}
+      - {name: power, edge: right, at: 43.3, length: 20.8, depth: 0.66}
+    colors: [black-titanium, natural-titanium, white-titanium, midnight, porcelain]
+    default_color: black-titanium
+    screenshot:
+      aspect: "1320:2868"
+      variant: ios-phone
+      sizes: [[1320, 2868], [1290, 2796], [1260, 2736], [1206, 2622], [1179, 2556]]
+      targets: [ios-iphone-69, ios-iphone-63]
+
+  - id: iphone-notch
+    label: Phone with notch
+    class: phone
+    unit: mm
+    natural: portrait
+    orientations: [portrait, landscape]
+    body: {w: 71.5, h: 146.4, radius: 10.0}
+    rim: 1.0
+    display: {x: 3.6, y: 3.6, w: 64.3, h: 139.2, radius: 6.4}
+    cutouts:
+      - {kind: notch, shape: notch, x: 20.65, y: 3.6, w: 30.2, h: 5.1, radius: 2.4}
+    buttons:
+      - {name: mute, edge: left, at: 20.5, length: 5.9, depth: 0.6}
+      - {name: volume_up, edge: left, at: 32.2, length: 9.5, depth: 0.6}
+      - {name: volume_down, edge: left, at: 43.9, length: 9.5, depth: 0.6}
+      - {name: power, edge: right, at: 35.1, length: 14.6, depth: 0.6}
+    colors: [midnight, black, silver, starlight, porcelain]
+    default_color: midnight
+    screenshot:
+      aspect: "1170:2532"
+      variant: ios-phone
+      sizes: [[1170, 2532], [1125, 2436], [1080, 2340], [1284, 2778], [1242, 2688]]
+      targets: [ios-iphone-65, ios-iphone-61]
+
+  - id: iphone-home
+    label: Phone with home button
+    class: phone
+    unit: mm
+    natural: portrait
+    orientations: [portrait, landscape]
+    body: {w: 78.1, h: 158.4, radius: 11.0}
+    rim: 0.9
+    display: {x: 4.8, y: 18.3, w: 68.5, h: 121.8, radius: 0}
+    cutouts:
+      - {kind: speaker, shape: pill, x: 33.55, y: 8.6, w: 11.0, h: 1.4}
+      - {kind: camera, shape: circle, x: 26.8, y: 8.1, w: 2.4, h: 2.4}
+      - {kind: home_button, shape: circle, x: 33.55, y: 143.75, w: 11.0, h: 11.0}
+    buttons:
+      - {name: mute, edge: left, at: 22.2, length: 7.1, depth: 0.6}
+      - {name: volume_up, edge: left, at: 34.8, length: 9.5, depth: 0.6}
+      - {name: volume_down, edge: left, at: 47.5, length: 9.5, depth: 0.6}
+      - {name: power, edge: right, at: 31.7, length: 11.9, depth: 0.6}
+    colors: [space-gray, silver-white, gold-white, midnight, porcelain]
+    default_color: space-gray
+    screenshot:
+      aspect: "1242:2208"
+      variant: ios-phone
+      sizes: [[1242, 2208], [750, 1334]]
+      targets: [ios-iphone-55, ios-iphone-47]
+
+  - id: android-punchhole
+    label: Android phone with punch-hole camera
+    class: phone
+    unit: mm
+    natural: portrait
+    orientations: [portrait, landscape]
+    body: {w: 73.0, h: 155.9, radius: 9.5}
+    rim: 0.7
+    display: {x: 2.6, y: 2.6, w: 67.8, h: 150.7, radius: 7.0}
+    cutouts:
+      - {kind: punch_hole, shape: circle, x: 35.0, y: 3.5, w: 3.0, h: 3.0}
+    buttons:
+      - {name: volume, edge: right, at: 39.0, length: 18.7, depth: 0.5}
+      - {name: power, edge: right, at: 65.5, length: 10.9, depth: 0.5}
+    colors: [midnight, porcelain, sage, silver]
+    default_color: midnight
+    screenshot:
+      aspect: "1080:2400"
+      variant: android-phone
+      sizes: [[1080, 2400], [1440, 3200]]
+      # 20:9 raw screenshots exceed Play's 2:1 limit, so no Play preset
+      # matches directly; the frame is placed on a 9:16 or 1:2 page.
+      targets: []
+
+  # -------------------------------------------------------------- tablets
+  - id: ipad-modern
+    label: Tablet without home button
+    class: tablet
+    unit: mm
+    natural: portrait
+    orientations: [portrait, landscape]
+    body: {w: 215.5, h: 281.3, radius: 14.1}
+    rim: 1.83
+    display: {x: 9.1, y: 9.1, w: 197.3, h: 263.1, radius: 5.0}
+    cutouts:
+      # on the long right edge = top edge in landscape
+      - {kind: camera, shape: circle, x: 208.75, y: 139.4, w: 2.5, h: 2.5}
+    buttons:
+      - {name: volume_up, edge: right, at: 211.0, length: 16.9, depth: 1.4}
+      - {name: volume_down, edge: right, at: 232.1, length: 16.9, depth: 1.4}
+      - {name: power, edge: bottom, at: 176.7, length: 21.6, depth: 1.4}
+    colors: [space-gray, silver, midnight, porcelain]
+    default_color: space-gray
+    screenshot:
+      aspect: "2064:2752"
+      variant: ios-tablet
+      sizes: [[2064, 2752], [2048, 2732]]
+      # 11-inch sizes (ios-ipad-11) are 0.65-0.70, not 3:4: not matched.
+      targets: [ios-ipad-13]
+
+  - id: ipad-home
+    label: Tablet with home button
+    class: tablet
+    unit: mm
+    natural: portrait
+    orientations: [portrait, landscape]
+    body: {w: 174.1, h: 250.6, radius: 12.0}
+    rim: 1.2
+    display: {x: 10.0, y: 22.55, w: 154.1, h: 205.5, radius: 0}
+    cutouts:
+      - {kind: camera, shape: circle, x: 85.85, y: 10.1, w: 2.4, h: 2.4}
+      - {kind: home_button, shape: circle, x: 81.3, y: 233.55, w: 11.5, h: 11.5}
+    buttons:
+      - {name: volume_up, edge: right, at: 30.0, length: 9.0, depth: 0.8}
+      - {name: volume_down, edge: right, at: 42.0, length: 9.0, depth: 0.8}
+      - {name: power, edge: top, at: 140.0, length: 12.0, depth: 0.8}
+    colors: [space-gray, silver-white, gold-white]
+    default_color: space-gray
+    screenshot:
+      aspect: "2048:2732"
+      variant: ios-tablet
+      sizes: [[2048, 2732], [1668, 2224]]
+      targets: [ios-ipad-129, ios-ipad-105]
+
+  - id: android-tablet
+    label: Android tablet
+    class: tablet
+    unit: mm
+    natural: portrait
+    orientations: [portrait, landscape]
+    body: {w: 166.0, h: 256.6, radius: 10.0}
+    rim: 0.8
+    display: {x: 7.5, y: 7.5, w: 151.0, h: 241.6, radius: 4.0}
+    cutouts:
+      - {kind: camera, shape: circle, x: 160.95, y: 127.25, w: 2.1, h: 2.1}
+    buttons:
+      - {name: volume, edge: top, at: 90.0, length: 22.0, depth: 0.6}
+      - {name: power, edge: top, at: 120.0, length: 12.0, depth: 0.6}
+    colors: [midnight, silver, sage]
+    default_color: midnight
+    screenshot:
+      aspect: "1600:2560"
+      variant: android-tablet
+      sizes: [[1600, 2560], [1752, 2800]]
+      # 16:10 display; Play tablet presets require 16:9, so none matches.
+      targets: []
+
+  # -------------------------------------------------------------- laptops
+  - id: macbook
+    label: Notebook (16:10)
+    class: laptop
+    unit: mm
+    natural: landscape
+    orientations: [landscape]
+    body: {w: 304.0, h: 196.75, radius: 9.0}
+    rim: 0.6
+    display: {x: 5.0, y: 5.0, w: 294.0, h: 183.75, radius: 4.0}
+    cutouts:
+      - {kind: camera, shape: circle, x: 151.2, y: 1.7, w: 1.6, h: 1.6}
+    laptop:
+      hinge: {w: 280.0, h: 1.6}
+      base: {w: 340.0, h: 9.0, radius: 4.5, lip: {w: 52.0, h: 2.4}}
+    colors: [space-gray, silver, midnight, starlight]
+    default_color: space-gray
+    screenshot:
+      aspect: "2880:1800"
+      variant: mac
+      sizes: [[2880, 1800], [2560, 1600], [1440, 900], [1280, 800]]
+      targets: [mac]
+
+  - id: generic-laptop
+    label: Laptop (16:9)
+    class: laptop
+    unit: mm
+    natural: landscape
+    orientations: [landscape]
+    body: {w: 320.0, h: 193.0, radius: 6.0}
+    rim: 0.5
+    display: {x: 8.0, y: 8.0, w: 304.0, h: 171.0, radius: 0}
+    cutouts:
+      - {kind: camera, shape: circle, x: 159.1, y: 3.1, w: 1.8, h: 1.8}
+    laptop:
+      hinge: {w: 300.0, h: 2.0}
+      base: {w: 352.0, h: 10.0, radius: 3.0, lip: {w: 60.0, h: 2.0}}
+    colors: [black, silver]
+    default_color: black
+    screenshot:
+      aspect: "1920:1080"
+      variant: web
+      sizes: [[1920, 1080], [2560, 1440], [3840, 2160]]
+      targets: [play-chromebook]
+
+  # ------------------------------------------------------------- desktops
+  - id: imac
+    label: All-in-one desktop (16:9)
+    class: desktop
+    unit: mm
+    natural: landscape
+    orientations: [landscape]
+    body: {w: 547.0, h: 346.0, radius: 10.0}
+    rim: 0
+    display: {x: 13.5, y: 13.5, w: 520.0, h: 292.5, radius: 0}
+    cutouts:
+      - {kind: camera, shape: circle, x: 272.6, y: 5.85, w: 1.8, h: 1.8}
+    stand:
+      neck: {w: 130.0, h: 105.0}
+      foot: {w: 150.0, h: 6.0, radius: 2.0}
+    colors: [silver, pastel-blue, pastel-green, pastel-pink]
+    default_color: silver
+    screenshot:
+      aspect: "4480:2520"
+      variant: mac
+      sizes: [[4480, 2520], [2560, 1440], [1920, 1080]]
+      # 16:9; Mac App Store screenshots are 16:10 (use macbook or fit: cover).
+      targets: [play-chromebook]
+
+  - id: generic-monitor
+    label: Monitor (16:9)
+    class: desktop
+    unit: mm
+    natural: landscape
+    orientations: [landscape]
+    body: {w: 540.0, h: 317.0, radius: 4.0}
+    rim: 0
+    display: {x: 6.0, y: 6.0, w: 528.0, h: 297.0, radius: 0}
+    stand:
+      neck: {w: 40.0, h: 110.0}
+      foot: {w: 200.0, h: 10.0, radius: 4.0}
+    colors: [black, silver]
+    default_color: black
+    screenshot:
+      aspect: "2560:1440"
+      variant: web
+      sizes: [[2560, 1440], [1920, 1080], [3840, 2160]]
+      targets: [play-chromebook]
+
+  # --------------------------------------------------------- frameless etc.
+  - id: browser
+    label: Browser window
+    class: browser
+    unit: px
+    natural: landscape
+    orientations: [landscape]
+    body: {w: 1440, h: 988, radius: 10}
+    display: {x: 0, y: 88, w: 1440, h: 900, radius: 0}
+    browser: true
+    screenshot:
+      aspect: free
+      variant: web
+
+  - id: none
+    label: No frame (rounded screenshot)
+    class: none
+    unit: nominal
+    natural: portrait
+    orientations: [portrait, landscape]
+    body: {w: 1000, h: 1000, radius: 40}
+    display: {x: 0, y: 0, w: 1000, h: 1000, radius: 40}
+    screenshot:
+      aspect: free
