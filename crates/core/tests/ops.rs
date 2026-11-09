@@ -268,6 +268,7 @@ fn strips_and_references() {
             patch: StripPatch {
                 aspect: Some(Aspect::new(1290, 2796)),
                 count: Some(8),
+                ids: Some(vec!["hero".into(), "planner".into()]),
                 backgrounds: Some(vec![Fill::Color {
                     color: arrangia_core::model::ColorRef::Named("primary".into()),
                 }]),
@@ -735,6 +736,7 @@ mod prop {
                 patch: StripPatch {
                     aspect: (b % 2 == 0).then(|| Aspect::new(1 + a % 30, 1 + b % 40)),
                     count: (b % 3 == 0).then_some(1 + b % 9),
+                    ids: (b % 7 == 0).then(|| vec![format!("p{a}"), "second".into()]),
                     backgrounds: (b % 5 == 0).then(|| {
                         vec![Fill::Color {
                             color: arrangia_core::model::ColorRef::Named("accent".into()),

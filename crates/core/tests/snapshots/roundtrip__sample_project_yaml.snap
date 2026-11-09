@@ -28,7 +28,7 @@ styles:
   frame: detailed
 strips:
 - id: phone
-  page: {aspect: 1320:2868, count: 5}
+  page: {aspect: 1320:2868, count: 5, ids: [hero, planner, harvest]}
   backgrounds:
   - kind: linear-gradient
     angle: 160

@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use super::common::Aspect;
 use super::element::{Element, ElementPatch};
 use super::fill::Fill;
-use super::fmt::{flow_style, num};
-use super::ids::{ElementId, StripId, VariantId};
+use super::fmt::{flow_seq, flow_style, num};
+use super::ids::{ElementId, StripId, VariantId, is_valid_id};
 
 /// A continuous canvas of `page.count` equally sized pages.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -31,7 +31,11 @@ impl Strip {
     pub fn new(id: StripId, aspect: Aspect, count: u32) -> Self {
         Self {
             id,
-            page: PageSpec { aspect, count },
+            page: PageSpec {
+                aspect,
+                count,
+                ids: Vec::new(),
+            },
             backgrounds: Vec::new(),
             elements: Vec::new(),
             variants: BTreeMap::new(),
@@ -57,16 +61,61 @@ impl Strip {
     }
 }
 
-/// Page geometry of a strip: `page: { aspect: "1320:2868", count: 5 }`.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+/// Page geometry of a strip: `page: { aspect: "1320:2868", count: 5 }`,
+/// optionally with page ids used in export file names
+/// (`ids: [hero, planner]` → `01_hero.png`, `02_planner.png`, `03_page-03.png`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(remote = "Self", deny_unknown_fields)]
 pub struct PageSpec {
     /// Design aspect ratio of one page.
     pub aspect: Aspect,
     /// Number of pages (>= 1).
     pub count: u32,
+    /// Optional page ids by index (may be shorter than `count`; missing ids
+    /// default to `page-01`, `page-02` …). Unique within the strip.
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        serialize_with = "flow_seq"
+    )]
+    pub ids: Vec<String>,
 }
 flow_style!(PageSpec);
+
+impl PageSpec {
+    /// Id of page `index` (0-based): the explicit id or `page-NN` (1-based).
+    pub fn page_id(&self, index: u32) -> String {
+        self.ids
+            .get(index as usize)
+            .cloned()
+            .unwrap_or_else(|| format!("page-{:02}", index + 1))
+    }
+
+    /// Check count and page ids on their own.
+    pub fn check(&self) -> Result<(), String> {
+        if self.count == 0 {
+            return Err("page count must be >= 1".into());
+        }
+        if self.ids.len() > self.count as usize {
+            return Err(format!(
+                "{} page ids given but only {} pages",
+                self.ids.len(),
+                self.count
+            ));
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for i in 0..self.count {
+            let id = self.page_id(i);
+            if !is_valid_id(&id) {
+                return Err(format!("invalid page id `{id}`"));
+            }
+            if !seen.insert(id.clone()) {
+                return Err(format!("duplicate page id `{id}`"));
+            }
+        }
+        Ok(())
+    }
+}
 
 /// Derived geometry of a strip for another format (§3.4). Only the
 /// overridden properties differ; everything else is shared.
@@ -83,4 +132,40 @@ pub struct Variant {
     /// Per-element overrides, by element id.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub overrides: BTreeMap<ElementId, ElementPatch>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn spec(yaml: &str) -> PageSpec {
+        crate::io::from_yaml(yaml).unwrap()
+    }
+
+    #[test]
+    fn page_ids_default_and_explicit() {
+        let p = spec("{ aspect: \"1320:2868\", count: 3, ids: [hero, planner] }");
+        assert_eq!(p.page_id(0), "hero");
+        assert_eq!(p.page_id(1), "planner");
+        assert_eq!(p.page_id(2), "page-03");
+        assert!(p.check().is_ok());
+        let yaml = crate::io::to_yaml(&p).unwrap();
+        assert_eq!(
+            yaml,
+            "{aspect: 1320:2868, count: 3, ids: [hero, planner]}\n"
+        );
+        let p = spec("{ aspect: \"1:2\", count: 2 }");
+        assert_eq!(p.page_id(1), "page-02");
+        assert_eq!(crate::io::to_yaml(&p).unwrap(), "{aspect: 1:2, count: 2}\n");
+    }
+
+    #[test]
+    fn page_id_errors() {
+        let err = |y: &str| spec(y).check().unwrap_err();
+        assert!(err("{ aspect: \"1:2\", count: 1, ids: [a, b] }").contains("only 1 pages"));
+        assert!(err("{ aspect: \"1:2\", count: 2, ids: [a, a] }").contains("duplicate"));
+        assert!(err("{ aspect: \"1:2\", count: 2, ids: [page-02] }").contains("duplicate"));
+        assert!(err("{ aspect: \"1:2\", count: 1, ids: [\"a b\"] }").contains("invalid"));
+        assert!(err("{ aspect: \"1:2\", count: 0 }").contains(">= 1"));
+    }
 }

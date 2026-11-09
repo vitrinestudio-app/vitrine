@@ -721,12 +721,10 @@ impl Project {
 
     /// Strip contents (elements, overrides, backgrounds) against the project.
     fn check_strip(&self, strip: &Strip) -> Result<(), OpError> {
-        if strip.page.count == 0 {
-            return Err(invalid(format!(
-                "strip `{}`: page count must be >= 1",
-                strip.id
-            )));
-        }
+        strip
+            .page
+            .check()
+            .map_err(|e| invalid(format!("strip `{}`: {e}", strip.id)))?;
         for b in &strip.backgrounds {
             for c in b.colors() {
                 check_color(c, &self.styles)?;

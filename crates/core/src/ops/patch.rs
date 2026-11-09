@@ -36,6 +36,9 @@ pub struct StripPatch {
     pub aspect: Option<Aspect>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub count: Option<u32>,
+    /// Page ids (`[]` removes all explicit ids).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backgrounds: Option<Vec<Fill>>,
 }
@@ -49,6 +52,9 @@ impl StripPatch {
         }
         if let Some(c) = self.count {
             inv.count = Some(std::mem::replace(&mut s.page.count, c));
+        }
+        if let Some(ids) = &self.ids {
+            inv.ids = Some(std::mem::replace(&mut s.page.ids, ids.clone()));
         }
         if let Some(b) = &self.backgrounds {
             inv.backgrounds = Some(std::mem::replace(&mut s.backgrounds, b.clone()));

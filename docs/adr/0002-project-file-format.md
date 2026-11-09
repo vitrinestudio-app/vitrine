@@ -60,6 +60,11 @@ for byte, tested).
   address elements by id alone); strip, target ids are unique in the
   project, variant ids within their strip. Translation keys are flat
   strings and may contain dots (`hero.title`).
+- **Page ids**: `page: {aspect, count, ids: [hero, planner]}`; `ids` is
+  optional and may be shorter than `count`, missing ids default to
+  `page-01`, `page-02` … (1-based). Page ids are unique within the strip and
+  name the export files (`<nn>_<page-id>.png`). Elements still refer to
+  pages by index, so renaming a page id never breaks a reference.
 - **`page` is a 0-based index** (home page). Positions are relative to the
   top-left corner of the home page, in **lu** (page width 1000 lu).
 - `at` is the element centre for devices, images, shapes and free text

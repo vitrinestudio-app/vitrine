@@ -172,9 +172,9 @@ impl Project {
             if !strips.insert(&s.id) {
                 return Err(format!("duplicate strip id `{}`", s.id));
             }
-            if s.page.count == 0 {
-                return Err(format!("strip `{}`: page count must be >= 1", s.id));
-            }
+            s.page
+                .check()
+                .map_err(|e| format!("strip `{}`: {e}", s.id))?;
             let mut dup = None;
             s.walk_elements(&mut |e| {
                 if !elements.insert(&e.id) && dup.is_none() {
