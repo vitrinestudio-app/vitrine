@@ -307,6 +307,51 @@ fn export_writes_opaque_png_and_is_incremental() {
 }
 
 #[test]
+fn export_reports_progress_and_can_be_cancelled() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+    let dir = folder();
+    let p = project();
+    let ctx = ctx(dir.path());
+    let calls = Arc::new(AtomicUsize::new(0));
+    let seen = calls.clone();
+    let opts = ExportOptions {
+        out_dir: Some(dir.path().join("out")),
+        targets: vec!["pages".into()],
+        langs: vec!["de".into()],
+        gallery: false,
+        hooks: arrangia_render::export::ExportHooks {
+            progress: Some(Arc::new(move |_, done, total| {
+                assert!(done <= total);
+                seen.fetch_add(1, Ordering::Relaxed);
+            })),
+            cancel: None,
+        },
+        ..ExportOptions::default()
+    };
+    let report = export(&p, &ctx, &opts);
+    assert!(!report.cancelled);
+    assert_eq!(calls.load(Ordering::Relaxed), report.files.len());
+
+    let cancel = Arc::new(AtomicBool::new(true));
+    let cancelled = export(
+        &p,
+        &ctx,
+        &ExportOptions {
+            out_dir: Some(dir.path().join("out2")),
+            hooks: arrangia_render::export::ExportHooks {
+                progress: None,
+                cancel: Some(cancel),
+            },
+            ..opts
+        },
+    );
+    assert!(cancelled.cancelled);
+    assert!(cancelled.files.is_empty());
+}
+
+#[test]
 fn rendering_is_deterministic_and_previews_scale() {
     let dir = folder();
     let p = project();

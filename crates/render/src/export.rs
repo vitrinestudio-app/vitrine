@@ -23,6 +23,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Instant;
 
 use arrangia_core::Project;
@@ -65,6 +67,39 @@ pub struct ExportOptions {
     pub gallery_height: u32,
     /// Skip files whose inputs did not change.
     pub incremental: bool,
+    /// Progress reporting and cancellation (GUI).
+    pub hooks: ExportHooks,
+}
+
+/// Called after every file (written, skipped or failed) with the file,
+/// the number of files done and the total number of files. Runs on the
+/// export's worker threads.
+pub type ProgressFn = dyn Fn(&ExportedFile, usize, usize) + Send + Sync;
+
+/// Optional callbacks of an export.
+#[derive(Clone, Default)]
+pub struct ExportHooks {
+    pub progress: Option<Arc<ProgressFn>>,
+    /// When set to `true`, files not started yet are not exported; the
+    /// report has `cancelled: true`.
+    pub cancel: Option<Arc<AtomicBool>>,
+}
+
+impl std::fmt::Debug for ExportHooks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExportHooks")
+            .field("progress", &self.progress.is_some())
+            .field("cancel", &self.cancel)
+            .finish()
+    }
+}
+
+impl ExportHooks {
+    fn cancelled(&self) -> bool {
+        self.cancel
+            .as_ref()
+            .is_some_and(|c| c.load(Ordering::Relaxed))
+    }
 }
 
 impl Default for ExportOptions {
@@ -76,6 +111,7 @@ impl Default for ExportOptions {
             gallery: true,
             gallery_height: 1200,
             incremental: true,
+            hooks: ExportHooks::default(),
         }
     }
 }
@@ -138,6 +174,8 @@ pub struct ExportReport {
     pub errors: Vec<String>,
     pub resolve_ms: f64,
     pub total_ms: f64,
+    /// Cancelled via [`ExportHooks::cancel`]; `files` holds what was done.
+    pub cancelled: bool,
     #[serde(skip)]
     seen: BTreeSet<(String, String, String)>,
 }
@@ -241,10 +279,15 @@ pub fn export(project: &Project, ctx: &RenderContext, opts: &ExportOptions) -> E
             tasks.push((i, Task::Gallery));
         }
     }
-    let outputs: Vec<Output> = tasks
-        .par_iter()
-        .map(|(i, task)| run_task(ctx, &jobs[*i], &prepared[*i], task, &out_dir, &old, opts))
-        .collect();
+    let outputs = run_tasks(ctx, &jobs, &prepared, &tasks, &out_dir, &old, opts);
+    if outputs.len() < tasks.len() {
+        report.cancelled = true;
+        report.errors.push(format!(
+            "export cancelled after {} of {} files",
+            outputs.len(),
+            tasks.len()
+        ));
+    }
 
     // 3. Collect.
     let mut manifest = old;
@@ -281,6 +324,34 @@ pub fn export(project: &Project, ctx: &RenderContext, opts: &ExportOptions) -> E
     }
     report.total_ms = ms(start);
     report
+}
+
+/// Runs all tasks in parallel, with progress reports; stops starting new
+/// tasks once cancelled.
+fn run_tasks(
+    ctx: &RenderContext,
+    jobs: &[Job],
+    prepared: &[PreparedScene<'_>],
+    tasks: &[(usize, Task)],
+    out_dir: &Path,
+    old: &BTreeMap<String, String>,
+    opts: &ExportOptions,
+) -> Vec<Output> {
+    let total = tasks.len();
+    let done = AtomicUsize::new(0);
+    tasks
+        .par_iter()
+        .filter_map(|(i, task)| {
+            if opts.hooks.cancelled() {
+                return None;
+            }
+            let o = run_task(ctx, &jobs[*i], &prepared[*i], task, out_dir, old, opts);
+            if let Some(progress) = &opts.hooks.progress {
+                progress(&o.file, done.fetch_add(1, Ordering::Relaxed) + 1, total);
+            }
+            Some(o)
+        })
+        .collect()
 }
 
 fn job(
