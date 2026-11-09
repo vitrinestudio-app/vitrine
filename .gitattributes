@@ -1,0 +1,10 @@
+# Keep LF everywhere so byte-exact round-trip and snapshot tests pass on Windows.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ttf binary
+*.otf binary
+*.woff2 binary
+*.ico binary
+*.icns binary
