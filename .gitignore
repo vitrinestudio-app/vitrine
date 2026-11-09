@@ -37,3 +37,6 @@ Desktop.ini
 *.swo
 .fleet/
 .zed/
+
+# Claude Code agent worktrees
+/.claude/worktrees/
