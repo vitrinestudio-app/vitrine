@@ -36,7 +36,7 @@ driver `cargo run -p arrangia-render --release --example spike`
 | Shadows | Own 3-pass box blur (“boxes for Gauss”) on an alpha mask of the device silhouette. For large sigma the mask is rendered at 1/k resolution (k = ⌊σ/3⌋, max 8) and bilinearly upsampled while compositing directly into the target (own source-over loop; a transformed `draw_pixmap` was 20 ms+ slower per shadow). Two layers: ambient (σ 48 lu, dy 46 lu, 42 %) + contact (σ 10 lu, dy 10 lu, 30 %). |
 | Resampling | Screenshots are decoded once (`image`), then resampled with **fast_image_resize Lanczos3** (`fit_into_destination` = cover) to the exact pixel size of the device screen and cached per (key, w, h). tiny-skia then maps them with a **bilinear** pattern that only handles rotation and sub-pixel scale (bicubic cost +30 ms/page for no visible gain). |
 | PNG | `png` 0.18: 24-bit RGB (alpha flattened onto white — pages are opaque anyway), `sRGB` chunk (perceptual), `Compression::High`, adaptive filtering. **No oxipng**: it hard-depends on `libdeflater` (C). |
-| Frames | Own parametric vector frames (`frames.rs`), styles `stylized` and `detailed`; no vendor artwork. Housing uses “continuous” squircle-like corners. |
+| Frames | Own parametric vector frames (`frames.rs`; since Phase 1 `frames/`, drawn from the device catalog), styles `stylized` and `detailed`; no vendor artwork. Housing uses “continuous” squircle-like corners. |
 
 ### cosmic-text 0.19 vs parley 0.12
 
@@ -180,6 +180,7 @@ Total ≈ 16 MB. All PNGs are 8-bit RGB without alpha, with sRGB chunk.
 - `canvas-debug_en_gap40.png`, `canvas-debug_en_group2-gap60.png` – canvas view with page boundaries, hatched gaps, page origins.
 - `frames_styles.png` – phone (stylized porcelain/midnight, detailed silver/graphite) and tablet frames.
 - `frames_closeup.png` – island, corner radius and screen mask close-up, stylized vs detailed.
+- `frames_catalog_stylized.png`, `frames_catalog_detailed.png` – Phase 1 contact sheets of all catalog frames (`cargo run -p arrangia-render --release --example frames`).
 - `text-engines_comparison.png` – the same headlines through cosmic-text and parley (auto-fit, overflow, emergency break).
 
 ## Consequences

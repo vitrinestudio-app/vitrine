@@ -20,13 +20,14 @@ use std::sync::{Arc, Mutex};
 use tiny_skia::{FillRule, Mask, Pixmap, Transform};
 
 use crate::blur::{ShadowPx, draw_shadow};
-use crate::frames::{DeviceGeometry, DeviceModel, FrameColors, FrameStyle, draw_device};
+use crate::frames::{catalog_device, device_geometry, device_size, draw_device};
 use crate::geometry::{AnchorY, PAGE_W, Rect, StripLayout, Viewport};
 use crate::paint::{Rgba, css_gradient_line, hex, linear, round_rect, shader_paint};
 use crate::raster::SourceImage;
 use crate::text::{TextPaths, draw_text, to_paths};
 use arrangia_core::layout::{Fit, ResolvedSpanStyle, ResolvedTextStyle, TextInput, TextLayouter};
 use arrangia_core::model::Align;
+pub use arrangia_core::model::{FrameStyle, Orientation};
 
 /// Canvas design aspect (iPhone 6.9″ portrait).
 pub const DESIGN_ASPECT: (f64, f64) = (1320.0, 2868.0);
@@ -59,10 +60,13 @@ pub enum ElementKind {
         stops: Vec<(f32, Rgba)>,
     },
     Device {
-        model: DeviceModel,
+        /// Catalog model id.
+        model: &'static str,
+        orientation: Orientation,
         width: f64,
         screenshot: &'static str,
-        colors: FrameColors,
+        /// Catalog colour name.
+        color: &'static str,
     },
     /// Text bound to its home page (`clip: page`), box with margins.
     Text {
@@ -184,10 +188,11 @@ pub fn demo_scene() -> Scene {
                 rotation: -8.0,
             },
             kind: ElementKind::Device {
-                model: DeviceModel::PhoneIsland,
+                model: "iphone-island",
+                orientation: Orientation::Portrait,
                 width: 800.0,
                 screenshot: "phone-home",
-                colors: FrameColors::silver(),
+                color: "natural-titanium",
             },
         },
         Element {
@@ -200,10 +205,11 @@ pub fn demo_scene() -> Scene {
                 rotation: 6.0,
             },
             kind: ElementKind::Device {
-                model: DeviceModel::PhoneIsland,
+                model: "iphone-island",
+                orientation: Orientation::Portrait,
                 width: 700.0,
                 screenshot: "phone-harvest",
-                colors: FrameColors::graphite(),
+                color: "black-titanium",
             },
         },
         Element {
@@ -216,10 +222,11 @@ pub fn demo_scene() -> Scene {
                 rotation: -5.0,
             },
             kind: ElementKind::Device {
-                model: DeviceModel::TabletLandscape,
+                model: "ipad-modern",
+                orientation: Orientation::Landscape,
                 width: 1150.0,
                 screenshot: "tablet-planner",
-                colors: FrameColors::graphite(),
+                color: "space-gray",
             },
         },
         headline("title-0", 0, "title.0"),
@@ -461,46 +468,43 @@ pub fn render(
             }
             ElementKind::Device {
                 model,
+                orientation,
                 width,
                 screenshot,
-                colors,
+                color,
             } => {
                 let k = params.variant.content_scale;
-                let aspect = match model {
-                    DeviceModel::PhoneIsland => DESIGN_ASPECT.1 / DESIGN_ASPECT.0,
-                    DeviceModel::TabletLandscape => 2064.0 / 2752.0,
+                let Some(dev) =
+                    catalog_device(model, *orientation, params.style.clone(), Some(color))
+                else {
+                    continue;
                 };
-                let g = DeviceGeometry::new(*model, width * k, aspect);
+                let size = device_size(&dev, width * k, None);
+                let g = device_geometry(&dev, size);
                 // Cull devices that are entirely outside the viewport.
-                let radius = (g.body.w.hypot(g.body.h)) / 2.0 + 200.0;
+                let radius = (g.outer.w.hypot(g.outer.h)) / 2.0 + 200.0;
                 if !Rect::new(cx - radius, cy - radius, 2.0 * radius, 2.0 * radius)
                     .intersects(&visible)
                 {
                     continue;
                 }
-                if let Some(body) = g.body_path() {
-                    for (sigma, dy, alpha) in SHADOWS {
-                        draw_shadow(
-                            &mut pm,
-                            &body,
-                            place,
-                            ShadowPx {
-                                sigma: sigma * k * view.scale,
-                                dx: 0.0,
-                                dy: dy * k * view.scale,
-                                color: [0, 0, 0, (alpha * 255.0) as u8],
-                            },
-                        );
-                    }
+                for (sigma, dy, alpha) in SHADOWS {
+                    draw_shadow(
+                        &mut pm,
+                        &g.silhouette,
+                        place,
+                        ShadowPx {
+                            sigma: sigma * k * view.scale,
+                            dx: 0.0,
+                            dy: dy * k * view.scale,
+                            color: [0, 0, 0, (alpha * 255.0) as u8],
+                        },
+                    );
                 }
                 let sw = (g.screen.w * view.scale).round().max(1.0) as u32;
                 let sh = (g.screen.h * view.scale).round().max(1.0) as u32;
                 let shot = shots.get(screenshot, sw, sh);
-                let colors = match params.style {
-                    FrameStyle::Detailed => *colors,
-                    FrameStyle::Stylized => colors.flat(),
-                };
-                draw_device(&mut pm, &g, params.style, &colors, shot.as_deref(), place);
+                draw_device(&mut pm.as_mut(), &dev, size, shot.as_deref(), place);
             }
             ElementKind::Text {
                 top, left, right, ..

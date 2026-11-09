@@ -24,7 +24,7 @@ use arrangia_core::layout::{
     Fit, FontLibrary, ResolvedSpanStyle, ResolvedTextStyle, TextInput, TextLayouter,
 };
 use arrangia_core::model::{Align, VAlign};
-use arrangia_render::frames::{DeviceGeometry, DeviceModel, FrameColors, FrameStyle, draw_device};
+use arrangia_render::frames::{catalog_device, device_geometry, device_size, draw_device};
 use arrangia_render::geometry::{AnchorY, PAGE_W, StripLayout, Viewport};
 use arrangia_render::paint::{hex, round_rect, solid};
 use arrangia_render::raster::{SourceImage, downscale, save_png_rgb};
@@ -32,6 +32,7 @@ use arrangia_render::spike::{
     self, PLACEHOLDER_GAP_LU, Placement, PreparedText, RenderParams, Scene, Screenshots, Variant,
     compose, screens,
 };
+use arrangia_render::spike::{FrameStyle, Orientation};
 use arrangia_render::text::{draw_layout, draw_text, to_paths};
 use tiny_skia::{FillRule, Pixmap, Stroke, Transform};
 
@@ -448,86 +449,73 @@ fn frames_sheet(ctx: &mut Ctx) {
             None,
         );
     }
-    let phone_aspect = 2868.0 / 1320.0;
-    let items: [(f32, FrameStyle, FrameColors, &'static str); 4] = [
-        (
-            250.0,
-            FrameStyle::Stylized,
-            FrameColors::porcelain(),
-            "phone-home",
-        ),
-        (
-            660.0,
-            FrameStyle::Stylized,
-            FrameColors::midnight(),
-            "phone-harvest",
-        ),
+    let device = |model: &str, o: Orientation, style: FrameStyle, color: &str| {
+        catalog_device(model, o, style, Some(color)).expect("catalog model")
+    };
+    let items = [
+        (250.0f32, FrameStyle::Stylized, "porcelain", "phone-home"),
+        (660.0, FrameStyle::Stylized, "midnight", "phone-harvest"),
         (
             1110.0,
             FrameStyle::Detailed,
-            FrameColors::silver(),
+            "natural-titanium",
             "phone-home",
         ),
         (
             1520.0,
             FrameStyle::Detailed,
-            FrameColors::graphite(),
+            "black-titanium",
             "phone-harvest",
         ),
     ];
-    for (x, style, colors, shot) in items {
-        let g = DeviceGeometry::new(DeviceModel::PhoneIsland, 360.0, phone_aspect);
+    for (x, style, color, shot) in items {
+        let dev = device("iphone-island", Orientation::Portrait, style, color);
+        let size = device_size(&dev, 360.0, None);
+        let g = device_geometry(&dev, size);
         let ts = Transform::from_translate(x, 690.0).pre_rotate(-8.0);
-        if let Some(body) = g.body_path() {
-            for (sigma, dy, a) in [(26.0, 24.0, 0.42), (6.0, 6.0, 0.3)] {
-                arrangia_render::blur::draw_shadow(
-                    &mut pm,
-                    &body,
-                    ts,
-                    arrangia_render::blur::ShadowPx {
-                        sigma,
-                        dx: 0.0,
-                        dy,
-                        color: [0, 0, 0, (a * 255.0) as u8],
-                    },
-                );
-            }
+        for (sigma, dy, a) in [(26.0, 24.0, 0.42), (6.0, 6.0, 0.3)] {
+            arrangia_render::blur::draw_shadow(
+                &mut pm,
+                &g.silhouette,
+                ts,
+                arrangia_render::blur::ShadowPx {
+                    sigma,
+                    dx: 0.0,
+                    dy,
+                    color: [0, 0, 0, (a * 255.0) as u8],
+                },
+            );
         }
         let shot = ctx
             .shots
             .get(shot, g.screen.w.round() as u32, g.screen.h.round() as u32);
-        draw_device(&mut pm, &g, style, &colors, shot.as_deref(), ts);
+        draw_device(&mut pm.as_mut(), &dev, size, shot.as_deref(), ts);
     }
-    let tg = DeviceGeometry::new(DeviceModel::TabletLandscape, 560.0, 2064.0 / 2752.0);
-    for (x, y, style, colors) in [
-        (
-            2060.0f32,
-            420.0f32,
-            FrameStyle::Stylized,
-            FrameColors::porcelain(),
-        ),
-        (2060.0, 940.0, FrameStyle::Detailed, FrameColors::graphite()),
+    for (x, y, style, color) in [
+        (2060.0f32, 420.0f32, FrameStyle::Stylized, "silver"),
+        (2060.0, 940.0, FrameStyle::Detailed, "space-gray"),
     ] {
+        let dev = device("ipad-modern", Orientation::Landscape, style, color);
+        let size = device_size(&dev, 560.0, None);
+        let tg = device_geometry(&dev, size);
         let ts = Transform::from_translate(x, y);
-        if let Some(body) = tg.body_path() {
-            arrangia_render::blur::draw_shadow(
-                &mut pm,
-                &body,
-                ts,
-                arrangia_render::blur::ShadowPx {
-                    sigma: 22.0,
-                    dx: 0.0,
-                    dy: 18.0,
-                    color: [0, 0, 0, 100],
-                },
-            );
-        }
+        arrangia_render::blur::draw_shadow(
+            &mut pm,
+            &tg.silhouette,
+            ts,
+            arrangia_render::blur::ShadowPx {
+                sigma: 22.0,
+                dx: 0.0,
+                dy: 18.0,
+                color: [0, 0, 0, 100],
+            },
+        );
         let shot = ctx.shots.get(
             "tablet-planner",
             tg.screen.w.round() as u32,
             tg.screen.h.round() as u32,
         );
-        draw_device(&mut pm, &tg, style, &colors, shot.as_deref(), ts);
+        draw_device(&mut pm.as_mut(), &dev, size, shot.as_deref(), ts);
     }
     // Labels
     for (x, text) in [
@@ -548,21 +536,23 @@ fn frames_sheet(ctx: &mut Ctx) {
     // Close-up of the island/top of both styles (2x zoom crop).
     let mut zoom = Pixmap::new(1600, 760).expect("size");
     zoom.fill(tiny_skia::Color::from_rgba8(30, 50, 45, 255));
-    for (i, (style, colors)) in [
-        (FrameStyle::Stylized, FrameColors::midnight()),
-        (FrameStyle::Detailed, FrameColors::silver()),
+    for (i, (style, color)) in [
+        (FrameStyle::Stylized, "midnight"),
+        (FrameStyle::Detailed, "natural-titanium"),
     ]
     .into_iter()
     .enumerate()
     {
-        let g = DeviceGeometry::new(DeviceModel::PhoneIsland, 700.0, phone_aspect);
-        let ts = Transform::from_translate(400.0 + 800.0 * i as f32, 50.0 - g.body.y as f32);
+        let dev = device("iphone-island", Orientation::Portrait, style, color);
+        let size = device_size(&dev, 700.0, None);
+        let g = device_geometry(&dev, size);
+        let ts = Transform::from_translate(400.0 + 800.0 * i as f32, 50.0 - g.outer.y as f32);
         let shot = ctx.shots.get(
             "phone-home",
             g.screen.w.round() as u32,
             g.screen.h.round() as u32,
         );
-        draw_device(&mut zoom, &g, style, &colors, shot.as_deref(), ts);
+        draw_device(&mut zoom.as_mut(), &dev, size, shot.as_deref(), ts);
     }
     ctx.save(&zoom, "frames_closeup.png");
 }

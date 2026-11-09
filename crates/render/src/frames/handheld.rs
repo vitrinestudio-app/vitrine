@@ -1,0 +1,278 @@
+//! Phones and tablets: buttons, housing, front glass, screen, cutouts.
+
+use arrangia_core::catalog::{CutoutKind, CutoutShape, Edge};
+use tiny_skia::Pixmap;
+
+use super::Ctx;
+use super::palette::{contrast, luma, mix, shade};
+use super::shapes::{self, inset};
+use crate::paint::{Rgba, hex, linear, radial, shader_paint, solid};
+
+/// Colour of the bezel (front face around the display). `stylized`: the
+/// housing colour for light housings; mid and dark housings get a near-black
+/// face so the colour shows as the rim (a flat two-tone look).
+fn face(cx: &Ctx<'_, '_>) -> Rgba {
+    if cx.detailed {
+        cx.pal.glass
+    } else if luma(cx.pal.body) < 0.6 {
+        mix(cx.pal.body, hex("#141416"), 0.7)
+    } else {
+        cx.pal.body
+    }
+}
+
+pub fn draw(cx: &mut Ctx<'_, '_>, img: Option<&Pixmap>) {
+    buttons(cx);
+    housing(cx);
+    cx.screen(img);
+    display_cutouts(cx);
+    bezel_features(cx);
+    if cx.detailed {
+        glass_finish(cx);
+    }
+}
+
+fn buttons(cx: &mut Ctx<'_, '_>) {
+    let d = cx.l.device;
+    let (bw, bh) = (d.body.w, d.body.h);
+    for b in &d.buttons {
+        // Full button incl. the part hidden behind the housing.
+        let t = b.depth * 2.4;
+        let hide = t - b.depth;
+        let r = match b.edge {
+            Edge::Left => cx.l.rect_xywh(-b.depth, b.at, t, b.length),
+            Edge::Right => cx.l.rect_xywh(bw - hide, b.at, t, b.length),
+            Edge::Top => cx.l.rect_xywh(b.at, -b.depth, b.length, t),
+            Edge::Bottom => cx.l.rect_xywh(b.at, bh - hide, b.length, t),
+        };
+        let path = shapes::round(r, r.w.min(r.h) * 0.42);
+        if cx.detailed {
+            let [light, mid, dark] = cx.pal.rim;
+            // Gradient across the thin dimension (outwards = towards the
+            // light), in local space so it follows the rotated frame.
+            let (p0, p1) = if r.w < r.h {
+                ((r.x as f32, 0.0), (r.right() as f32, 0.0))
+            } else {
+                ((0.0, r.y as f32), (0.0, r.bottom() as f32))
+            };
+            let sh = linear(
+                p0,
+                p1,
+                &[(0.0, dark), (0.35, light), (0.7, mid), (1.0, dark)],
+            );
+            cx.fill(path.as_ref(), &shader_paint(sh));
+        } else {
+            cx.color(path.as_ref(), cx.pal.edge);
+        }
+    }
+}
+
+fn housing(cx: &mut Ctx<'_, '_>) {
+    let b = cx.l.body;
+    let br = cx.l.body_r;
+    let body = cx.l.body_path();
+    // Visible metal rim (falls back to a thin edge for rim-less data).
+    let rim = cx.l.rim().max(b.w.min(b.h) * 0.008);
+    let glass_rect = inset(b, rim);
+    let glass = shapes::smooth(glass_rect, br - rim);
+    if cx.detailed {
+        let [light, mid, dark] = cx.pal.rim;
+        // Diagonal material gradient, lit from the top left.
+        let sh = linear(
+            (b.x as f32, b.y as f32),
+            (b.right() as f32, b.bottom() as f32),
+            &[
+                (0.0, light),
+                (0.18, mid),
+                (0.55, dark),
+                (0.82, mid),
+                (1.0, light),
+            ],
+        );
+        // Only the ring is filled (the glass covers the rest).
+        let e = rim * 0.3;
+        let inner = shapes::smooth(inset(glass_rect, e), br - rim - e);
+        let ring = match (&body, &inner) {
+            (Some(o), Some(i)) => shapes::ring(o, i),
+            _ => body.clone(),
+        };
+        cx.fill_even_odd(ring.as_ref(), &shader_paint(sh));
+        // Polished outer edge.
+        let ins = rim * 0.2;
+        let edge = shapes::smooth(inset(b, ins), br - ins);
+        let hl = linear(
+            (b.x as f32, b.y as f32),
+            (b.right() as f32, b.bottom() as f32),
+            &[
+                (0.0, [255, 255, 255, 200]),
+                (0.35, [255, 255, 255, 40]),
+                (0.65, [255, 255, 255, 25]),
+                (1.0, [255, 255, 255, 140]),
+            ],
+        );
+        cx.stroke(edge.as_ref(), &shader_paint(hl), rim * 0.28);
+        cx.color(glass.as_ref(), cx.pal.glass);
+    } else {
+        cx.color(body.as_ref(), cx.pal.body);
+        let face = face(cx);
+        if face != cx.pal.body {
+            cx.color(glass.as_ref(), face);
+        }
+        // A hairline separates the rim from the face.
+        let line = shade(cx.pal.edge, -0.04);
+        cx.stroke(glass.as_ref(), &solid(line), rim * 0.3);
+    }
+}
+
+/// Island, notch and punch-hole: drawn over the screenshot.
+fn display_cutouts(cx: &mut Ctx<'_, '_>) {
+    let d = cx.l.device;
+    let face = face(cx);
+    for c in d.cutouts.iter().filter(|c| c.kind.over_display()) {
+        match (c.kind, c.shape) {
+            (CutoutKind::Notch, _) | (_, CutoutShape::Notch) => {
+                // Extends up into the bezel (to the glass edge) so it joins
+                // the face without a seam.
+                let top = d.rim.min(c.y);
+                let p = cx.l.path(shapes::notch(c.x, c.y, c.w, c.h, c.radius, top));
+                cx.color(p.as_ref(), face);
+                if cx.detailed {
+                    // Speaker slit and front camera inside the notch.
+                    let sw = c.w * 0.26;
+                    let sh = c.h * 0.16;
+                    let sr =
+                        cx.l.rect_xywh(c.x + (c.w - sw) / 2.0, c.y + c.h * 0.22, sw, sh);
+                    cx.color(shapes::pill(sr).as_ref(), hex("#1B1C20"));
+                    let (lx, ly) = cx.l.pt(c.x + c.w * 0.72, c.y + c.h * 0.45);
+                    cx.lens(lx, ly, c.h * 0.17 * cx.l.s);
+                }
+            }
+            (_, CutoutShape::Circle) => {
+                let r = c.w.min(c.h) / 2.0;
+                let (x, y) = cx.l.pt(c.x + c.w / 2.0, c.y + c.h / 2.0);
+                let rs = r * cx.l.s;
+                cx.color(shapes::circle(x, y, rs).as_ref(), hex("#000000"));
+                if cx.detailed {
+                    cx.lens(x, y, rs * 0.62);
+                }
+            }
+            _ => {
+                let r = cx.l.rect(&c.rect());
+                cx.color(shapes::pill(r).as_ref(), hex("#000000"));
+                if cx.detailed {
+                    // Lens at the (natural) right end of the pill.
+                    let (lx, ly) = cx.l.pt(c.right_end(), c.y + c.h / 2.0);
+                    cx.lens(lx, ly, c.h * 0.30 * cx.l.s);
+                }
+            }
+        }
+    }
+}
+
+trait CutoutExt {
+    fn right_end(&self) -> f64;
+}
+
+impl CutoutExt for arrangia_core::catalog::Cutout {
+    fn right_end(&self) -> f64 {
+        self.x + self.w - self.h / 2.0
+    }
+}
+
+/// Camera, speaker and home button in the bezel.
+fn bezel_features(cx: &mut Ctx<'_, '_>) {
+    let d = cx.l.device;
+    let face = face(cx);
+    let s = cx.l.s;
+    for c in d.cutouts.iter().filter(|c| !c.kind.over_display()) {
+        let (x, y) = cx.l.pt(c.x + c.w / 2.0, c.y + c.h / 2.0);
+        let r = c.w.min(c.h) / 2.0 * s;
+        match c.kind {
+            CutoutKind::Camera => {
+                if cx.detailed {
+                    cx.color(
+                        shapes::circle(x, y, r * 1.25).as_ref(),
+                        mix(face, hex("#000000"), 0.5),
+                    );
+                    cx.lens(x, y, r);
+                } else {
+                    cx.color(shapes::circle(x, y, r).as_ref(), contrast(face, 0.22));
+                }
+            }
+            CutoutKind::Speaker => {
+                let rect = cx.l.rect(&c.rect());
+                let col = if cx.detailed {
+                    mix(face, hex("#000000"), 0.55)
+                } else {
+                    contrast(face, 0.16)
+                };
+                cx.color(shapes::pill(rect).as_ref(), col);
+                if cx.detailed {
+                    cx.stroke(
+                        shapes::pill(rect).as_ref(),
+                        &solid([255, 255, 255, 22]),
+                        rect.w.min(rect.h) * 0.12,
+                    );
+                }
+            }
+            CutoutKind::HomeButton => home_button(cx, x, y, r, face),
+            _ => {}
+        }
+    }
+}
+
+fn home_button(cx: &mut Ctx<'_, '_>, x: f64, y: f64, r: f64, face: Rgba) {
+    let circle = shapes::circle(x, y, r);
+    if cx.detailed {
+        // Slightly concave glass: darker towards the top left.
+        let sh = radial(
+            ((x + r * 0.25) as f32, (y + r * 0.3) as f32),
+            (r * 1.3) as f32,
+            &[
+                (0.0, shade(face, 0.04)),
+                (1.0, mix(face, hex("#000000"), 0.12)),
+            ],
+        );
+        cx.fill(circle.as_ref(), &shader_paint(sh));
+        let [light, mid, dark] = cx.pal.rim;
+        let ring = linear(
+            ((x - r) as f32, (y - r) as f32),
+            ((x + r) as f32, (y + r) as f32),
+            &[(0.0, dark), (0.5, mid), (1.0, light)],
+        );
+        cx.stroke(
+            shapes::circle(x, y, r * 0.97).as_ref(),
+            &shader_paint(ring),
+            r * 0.07,
+        );
+    } else {
+        cx.stroke(
+            shapes::circle(x, y, r * 0.96).as_ref(),
+            &solid(contrast(face, 0.2)),
+            r * 0.07,
+        );
+    }
+}
+
+/// Glass sheen and glass edge (`detailed`).
+fn glass_finish(cx: &mut Ctx<'_, '_>) {
+    let b = cx.l.body;
+    let rim = cx.l.rim().max(b.w.min(b.h) * 0.008);
+    let g = inset(b, rim);
+    let glass = shapes::smooth(g, cx.l.body_r - rim);
+    let sheen = linear(
+        (g.x as f32, g.y as f32),
+        ((g.x + g.w * 0.9) as f32, (g.y + g.w * 1.1) as f32),
+        &[
+            (0.0, [255, 255, 255, 24]),
+            (0.40, [255, 255, 255, 9]),
+            (0.42, [255, 255, 255, 0]),
+            (1.0, [255, 255, 255, 0]),
+        ],
+    );
+    cx.fill(glass.as_ref(), &shader_paint(sheen));
+    cx.stroke(glass.as_ref(), &solid([255, 255, 255, 28]), rim * 0.18);
+    // Subtle inner edge of the display (where the panel meets the glass).
+    let screen = cx.l.screen_path();
+    cx.stroke(screen.as_ref(), &solid([0, 0, 0, 70]), rim * 0.12);
+}
