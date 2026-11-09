@@ -10,7 +10,14 @@ const tauri = window.__TAURI__;
 export const isTauri = Boolean(tauri?.core?.invoke);
 
 /** Commands answering with a binary preview image. */
-export const IMAGE_COMMANDS = new Set(['render_image', 'render_canvas', 'render_gallery', 'render_preview_edit']);
+export const IMAGE_COMMANDS = new Set([
+  'render_image',
+  'render_canvas',
+  'render_gallery',
+  'render_preview_edit',
+  'render_preview_string',
+  'asset_thumbnail',
+]);
 
 const FORMATS = { 0: 'rgba', 1: 'png' };
 

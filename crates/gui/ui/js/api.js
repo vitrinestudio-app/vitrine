@@ -59,4 +59,31 @@ export const api = {
   group: (view, ids) => invoke('edit_group', { ...view, ids }),
   ungroup: (view, ids) => invoke('edit_ungroup', { ...view, ids }),
   resetOverride: (view, id, field) => invoke('edit_reset_override', { ...view, id, field }),
+
+  // ----- texts + translations (2.7) -----
+  /** Raw ops as one undo step (`label`: history label). */
+  applyOps: (ops, label) => invoke('apply_ops', label ? { ops, label } : { ops }),
+  /** Sets (`value` string) or removes (`null`) a translation: one undo step. */
+  setString: (lang, key, value, label) => invoke('apply_ops', { ops: [{ op: 'set_string', lang, key, value }], ...(label ? { label } : {}) }),
+  stringsGet: () => invoke('strings_get'),
+  stringsMissing: () => invoke('strings_missing'),
+  /** Validation of all targets (or `targets`) in `langs` (null = all). */
+  validateMany: (targets = null, langs = null) => invoke('validate', { targets, langs, preview: true }),
+  /** The resolved element in the view (+ own string, markup diagnostics). */
+  elementInfo: (view, id) => invoke('element_info', { ...view, id }),
+  markupCheck: (text) => invoke('markup_check', { text }),
+  /** Output image with translation `key` set to `value` (uncommitted). */
+  renderPreviewString: (view, key, value, image, width, interactive = true) =>
+    invoke('render_preview_string', { ...view, key, value, image, width, interactive }),
+
+  // ----- assets (2.8) -----
+  assetsList: () => invoke('assets_list'),
+  /** `kind`: screenshot | asset | font; opts: { lang, variant, key, replace }. */
+  assetsImport: (paths, kind, opts = {}) => invoke('assets_import', { paths, kind, ...opts }),
+  assetsUpload: (name, data, kind, opts = {}) => invoke('assets_upload', { name, data, kind, ...opts }),
+  assetsProbe: ({ paths = [], sizes = [] }) => invoke('assets_probe', { paths, sizes }),
+  assetsRemove: (paths) => invoke('assets_remove', { paths }),
+  assetThumbnail: (path, maxEdge) => invoke('asset_thumbnail', { path, max_edge: maxEdge }),
+  pickFiles: (args = {}) => invoke('dialog_pick_files', args),
+  catalogFonts: () => invoke('catalog_fonts'),
 };

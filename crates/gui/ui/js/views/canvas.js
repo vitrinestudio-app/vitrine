@@ -18,6 +18,7 @@ import { t } from '../i18n.js';
 import { currentTarget, effectiveVariant, store, viewArgs } from '../store.js';
 import { drawOverlay, screen } from './overlay.js';
 import { snapAngle, snapBox, snapLines } from './snap.js';
+import { openTextEditor } from './textedit.js';
 
 const ZOOM_STEPS = [0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8];
 const MIN_ZOOM = 0.02;
@@ -666,7 +667,37 @@ export function mountCanvas(root) {
   el.addEventListener('dblclick', (e) => {
     const hit = hitTest(toLu(e), true);
     if (hit) store.set({ selection: [hit] });
+    if (store.get().overlay?.elements.find((x) => x.id === hit)?.kind === 'text') editText(hit);
   });
+
+  // ----- inline text editing (views/textedit.js) ---------------------------------------
+
+  let textEdit = null;
+  const textHooks = {
+    el,
+    view,
+    slots: () => slots,
+    drawPreview(slot, bitmap) {
+      slot.preview.width = bitmap.width;
+      slot.preview.height = bitmap.height;
+      slot.preview.getContext('2d').drawImage(bitmap, 0, 0);
+      bitmap.close?.();
+      slot.el.classList.add('previewing');
+    },
+    clearPreviews,
+  };
+
+  async function editText(id) {
+    if (drag) return;
+    textEdit?.close(true);
+    textEdit = await openTextEditor(textHooks, id);
+  }
+
+  /** Overlay element (not background) under client point (`x`, `y`), or null. */
+  function elementAt(x, y) {
+    const id = hitTest(toLu({ clientX: x, clientY: y }), true);
+    return id ? store.get().overlay.elements.find((e) => e.id === id) ?? null : null;
+  }
 
   // Space-drag panning.
   const isTyping = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName) || e.target?.isContentEditable;
@@ -792,9 +823,12 @@ export function mountCanvas(root) {
     percent: () => Math.round((view().zoom / exportScale()) * 100),
     nudge,
     cancel,
+    editText,
+    elementAt,
     isBusy: () => Boolean(drag),
     unmount() {
       cancel();
+      textEdit?.close(false);
       for (const u of unsubs) u();
       resize.disconnect();
       window.removeEventListener('keydown', onKeyDown);
