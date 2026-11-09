@@ -27,6 +27,9 @@ pub struct TargetsFile {
 pub struct Source {
     pub url: String,
     pub kind: SourceKind,
+    /// What exactly was checked (for sources without a stable page URL).
+    #[serde(default)]
+    pub note: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]

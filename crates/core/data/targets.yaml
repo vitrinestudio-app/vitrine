@@ -8,7 +8,7 @@
 #
 # Field reference
 #   checked     date all values were last verified (YYYY-MM-DD)
-#   sources     key → {url, kind}; kind = primary | secondary | forum | measured | convention
+#   sources     key → {url, kind, note}; kind = primary | secondary | forum | measured | convention
 #   rules       store rule sets, referenced by presets (`rules:`); used by validation
 #     count            images per set (per localization): {min, max}
 #     formats          allowed export formats (png = 24-bit PNG)
@@ -45,6 +45,14 @@ sources:
   A3:
     url: https://developer.apple.com/app-store/product-page/
     kind: primary
+  ASC:
+    url: https://appstoreconnect.apple.com/
+    kind: primary
+    note: >-
+      App Store Connect web app, device configuration table and API, checked
+      2026-11-09 (logged in, read-only): the uploader's per-display-type size
+      table in the web app bundle, the `appScreenshotSets` of an existing app
+      and the media manager UI (which sets are required).
   F1:
     url: https://github.com/fastlane/fastlane/blob/master/deliver/lib/deliver/app_screenshot.rb
     kind: secondary
@@ -161,23 +169,24 @@ presets:
     label: iPhone 6.9″ / 6.7″ (Dynamic Island, large display)
     store: apple
     platform: ios
+    # 1260x2736 / 2736x1260 is listed on A1 but rejected by the App Store
+    # Connect uploader (ASC); left out so validation does not approve it.
     sizes:
-      portrait: [[1320, 2868], [1290, 2796], [1260, 2736]]
-      landscape: [[2868, 1320], [2796, 1290], [2736, 1260]]
+      portrait: [[1320, 2868], [1290, 2796]]
+      landscape: [[2868, 1320], [2796, 1290]]
     slot: {apple: {display_type: APP_IPHONE_67}}
     gallery: appstore-iphone
     device: iphone-island
     screenshots: ios-phone
     rules: apple-screenshots
-    requirement: conditional
-    status: secondary
+    requirement: optional
+    status: verified
     note: >-
-      6.9″ → APP_IPHONE_67 per fastlane only (F1, "These are actually 6.9″
-      iPhones"); there is no APP_IPHONE_69 and A2 has no descriptions.
-      A1 contradicts itself on the required set: the header requires
-      "Dynamic Island (medium display)" (ios-iphone-63), the Face ID (large)
-      section still implies 6.9″ or 6.5″ is required. Providing 6.9″ is safe.
-    sources: [A1, A2, F1]
+      6.9″ → APP_IPHONE_67, confirmed by the ASC size table (also F1: "These
+      are actually 6.9″ iPhones"). Optional per the ASC media manager; only
+      the 6.3″ set (ios-iphone-63) is required. 1260x2736 is listed on A1 but
+      not accepted by the ASC uploader.
+    sources: [A1, A2, ASC, F1]
 
   - id: ios-iphone-65
     label: iPhone 6.5″ (Face ID, large display)
@@ -191,10 +200,12 @@ presets:
     device: iphone-notch
     screenshots: ios-phone
     rules: apple-screenshots
-    requirement: conditional
+    requirement: optional
     status: verified
-    note: Required per A1 if no Dynamic Island (large) screenshots are provided.
-    sources: [A1, A2, F1]
+    note: >-
+      Optional per the ASC media manager (A1 still calls it required without
+      Dynamic Island (large) screenshots).
+    sources: [A1, A2, ASC, F1]
 
   - id: ios-iphone-63
     label: iPhone 6.3″ (Dynamic Island, medium display)
@@ -209,11 +220,12 @@ presets:
     screenshots: ios-phone
     rules: apple-screenshots
     requirement: required
-    status: secondary
+    status: verified
     note: >-
-      Required per the A1 header. 6.3″ → APP_IPHONE_61 per fastlane only
-      (F1, "These are actually 6.3″ iPhones").
-    sources: [A1, A2, F1]
+      Required per the ASC media manager ("iPhone with Dynamic Island
+      (medium display)") and the A1 header. 6.3″ → APP_IPHONE_61, confirmed
+      by the ASC size table.
+    sources: [A1, A2, ASC, F1]
 
   - id: ios-iphone-61
     label: iPhone 6.1″ / 5.8″ (Face ID, medium display)
@@ -228,11 +240,11 @@ presets:
     screenshots: ios-phone
     rules: apple-screenshots
     requirement: optional
-    status: secondary
+    status: verified
     note: >-
-      Scaled from Dynamic Island (medium) if absent. 6.1″ → APP_IPHONE_58 per
-      fastlane only (F1, "These are actually 6.1″ iPhones").
-    sources: [A1, A2, F1]
+      Scaled from Dynamic Island (medium) if absent. 6.1″ → APP_IPHONE_58,
+      confirmed by the ASC size table.
+    sources: [A1, A2, ASC, F1]
 
   - id: ios-iphone-55
     label: iPhone 5.5″ (Home button, large display)
@@ -248,7 +260,7 @@ presets:
     rules: apple-screenshots
     requirement: optional
     status: verified
-    sources: [A1, A2, F1]
+    sources: [A1, A2, ASC, F1]
 
   - id: ios-iphone-47
     label: iPhone 4.7″ (Home button, medium display)
@@ -265,7 +277,7 @@ presets:
     requirement: optional
     status: verified
     note: Legacy; scaled from 5.5″ if absent. 4″ and 3.5″ classes are not included.
-    sources: [A1, A2, F1]
+    sources: [A1, A2, ASC, F1]
 
   - id: ios-iphone-duo-outer
     label: iPhone Duo (outer display)
@@ -284,9 +296,11 @@ presets:
       Sizes from A1 (added Sep 2026); required from April 2027 for apps built
       with the iOS 27.1 SDK or later. API type UNVERIFIED: APP_IPHONE_DUO is
       not in Apple's enum (A2, 2026-11-09); only fastlane (F3) claims it works
-      for both inner and outer sizes, and the name may change. No device
-      model yet (no `device`).
-    sources: [A1, A2, F3, AF1]
+      for both inner and outer sizes, and the name may change. ASC
+      (2026-11-09) has it only behind a feature flag (display class
+      IPHONE_DUO, screenshot group IPHONE_DUO_PROFILE) and exposes no sizes.
+      No device model yet (no `device`).
+    sources: [A1, A2, ASC, F3, AF1]
 
   - id: ios-iphone-duo-inner
     label: iPhone Duo (inner display)
@@ -318,11 +332,11 @@ presets:
     screenshots: ios-tablet
     rules: apple-screenshots
     requirement: required
-    status: secondary
+    status: verified
     note: >-
-      Required if the app runs on iPad (A1). 13″ → APP_IPAD_PRO_3GEN_129 per
-      fastlane (F1).
-    sources: [A1, A2, F1]
+      Required if the app runs on iPad (A1). 13″ → APP_IPAD_PRO_3GEN_129,
+      confirmed by the ASC size table.
+    sources: [A1, A2, ASC, F1]
 
   - id: ios-ipad-129
     label: iPad Pro 12.9″ (2nd generation)
@@ -337,30 +351,32 @@ presets:
     screenshots: ios-tablet
     rules: apple-screenshots
     requirement: optional
-    status: secondary
+    status: verified
     note: Scaled from 13″ if absent.
-    sources: [A1, A2, F1]
+    sources: [A1, A2, ASC, F1]
 
   - id: ios-ipad-11
     label: iPad 11″
     store: apple
     platform: ipados
+    # 1512x2316 / 2316x1512 is listed on A1 but rejected by the App Store
+    # Connect uploader (ASC); left out so validation does not approve it.
     sizes:
-      portrait: [[1668, 2388], [1668, 2420], [1640, 2360], [1512, 2316], [1488, 2266]]
-      landscape: [[2388, 1668], [2420, 1668], [2360, 1640], [2316, 1512], [2266, 1488]]
+      portrait: [[1668, 2388], [1668, 2420], [1640, 2360], [1488, 2266]]
+      landscape: [[2388, 1668], [2420, 1668], [2360, 1640], [2266, 1488]]
     slot: {apple: {display_type: APP_IPAD_PRO_3GEN_11}}
     gallery: appstore-ipad
     device: ipad-modern
     screenshots: ios-tablet
     rules: apple-screenshots
     requirement: optional
-    status: secondary
+    status: verified
     note: >-
-      Scaled from 13″ if absent. 1512x2316 is listed on A1 but not in
-      fastlane's mapping (F1); trust A1. The sizes differ in aspect (0.65 to
-      0.70), none matches the 3:4 display of ipad-modern; use a variant or
-      fit: cover.
-    sources: [A1, A2, F1]
+      Scaled from 13″ if absent. 1512x2316 is listed on A1 but not accepted
+      by the ASC uploader (nor in F1's mapping). The sizes differ in aspect
+      (0.65 to 0.70), none matches the 3:4 display of ipad-modern; use a
+      variant or fit: cover.
+    sources: [A1, A2, ASC, F1]
 
   - id: ios-ipad-105
     label: iPad 10.5″
@@ -375,9 +391,9 @@ presets:
     screenshots: ios-tablet
     rules: apple-screenshots
     requirement: optional
-    status: secondary
+    status: verified
     note: Legacy; scaled from 12.9″ if absent. 9.7″ is not included.
-    sources: [A1, A2, F1]
+    sources: [A1, A2, ASC, F1]
 
   # ------------------------------------------------------------------- Apple Mac
   - id: mac
@@ -393,8 +409,8 @@ presets:
     rules: apple-screenshots
     requirement: required
     status: verified
-    note: Required for Mac apps; any one of the four 16:10 sizes.
-    sources: [A1, A2]
+    note: Required for Mac apps; any one of the four 16:10 sizes (landscape only, ASC).
+    sources: [A1, A2, ASC]
 
   # ----------------------------------------------------------------- Google Play
   - id: play-phone
