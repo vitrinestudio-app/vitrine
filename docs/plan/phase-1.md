@@ -101,8 +101,12 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Apple presets verified against App Store Connect (2026-11-09)
 
 ## 1.9 CLI
-- [ ] `arrangia new <dir>` (from a template), `render` (preview PNG of page /
+- [x] `arrangia new <dir>` (from a template), `render` (preview PNG of page /
       canvas / gallery), `export [--target] [--lang]`, `validate` (exit code)
+- [x] Exit codes: 0 ok (warnings only fail `validate --strict`), 1 project
+      problems (validation errors, export failures), 2 could not run (usage,
+      project not loadable, IO); `--project` defaults to the current folder
+      (no upward search); `--page`/`--image` are 1-based like export names
 
 ## 1.10 Example project + golden tests
 - [ ] `tests/fixtures/example/`: phone portrait, iPad landscape via

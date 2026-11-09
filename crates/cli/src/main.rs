@@ -46,13 +46,25 @@ struct Cli {
 #[derive(Debug, Args)]
 pub struct Global {
     /// Project folder (the folder containing `project.yaml`).
-    #[arg(long, global = true, default_value = ".", value_name = "DIR")]
+    #[arg(
+        long,
+        global = true,
+        default_value = ".",
+        value_name = "DIR",
+        help_heading = "Global options"
+    )]
     pub project: PathBuf,
     /// Print only results and errors.
-    #[arg(short, long, global = true, conflicts_with = "verbose")]
+    #[arg(
+        short,
+        long,
+        global = true,
+        conflicts_with = "verbose",
+        help_heading = "Global options"
+    )]
     pub quiet: bool,
-    /// Print more details (every exported file, font loading).
-    #[arg(short, long, global = true)]
+    /// Print more details (every exported file, image sizes).
+    #[arg(short, long, global = true, help_heading = "Global options")]
     pub verbose: bool,
 }
 
