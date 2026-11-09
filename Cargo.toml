@@ -41,6 +41,13 @@ keyring = "4.2.0"
 # Rendering (to be confirmed by the Phase 0 spike)
 tiny-skia = "0.12.0"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
+fast_image_resize = "6.1.0"
+png = "0.18.1"
+skrifa = "0.44.0"
+# Text engines compared in the Phase 0 spike (docs/adr/0001-render-pipeline.md).
+# No system font discovery: only bundled/project fonts are used.
+cosmic-text = { version = "0.19.0", default-features = false, features = ["std"] }
+parley = { version = "0.12.0", default-features = false, features = ["std"] }
 rayon = "1.12.0"
 
 # Front ends

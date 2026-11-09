@@ -14,7 +14,10 @@
 //! - **Export**: cutting pages (omitting gap content), banners, gallery
 //!   previews, removing alpha, encoding PNG/JPEG.
 //!
-//! The concrete libraries are decided by the Phase 0 spike (see `docs/adr/`).
+//! The concrete libraries are decided by the Phase 0 spike (see
+//! `docs/adr/0001-render-pipeline.md`).
+
+pub mod geometry;
 
 /// Page width in lu as defined by `arrangia-core`.
 pub fn core_page_width_lu() -> f64 {
