@@ -1,0 +1,15 @@
+[package]
+name = "arrangia-publish"
+description = "Arrangia store publishing: App Store Connect, Google Play, keychain access"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+arrangia-core.workspace = true

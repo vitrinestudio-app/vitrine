@@ -1,0 +1,15 @@
+[package]
+name = "arrangia-render"
+description = "Arrangia renderer: rasterization, device frames, text rendering, export encoding"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+arrangia-core.workspace = true
