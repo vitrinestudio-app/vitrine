@@ -20,6 +20,7 @@
 //! `docs/adr/0005-rasterize-and-export.md`.
 
 pub mod blur;
+pub mod export;
 pub mod frames;
 pub mod geometry;
 pub mod paint;
@@ -27,6 +28,7 @@ pub mod raster;
 pub mod scene;
 pub mod text;
 
+pub use export::{ExportOptions, ExportReport, export};
 pub use scene::{
     CanvasOptions, PreparedScene, Quality, RenderContext, RenderIssue, RenderOptions, Rendered,
     Scale, rasterize, render_canvas,
