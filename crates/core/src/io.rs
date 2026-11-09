@@ -185,7 +185,8 @@ impl Project {
     /// Save to a project folder.
     ///
     /// Checks that the revision on disk equals `self.revision` (unless there
-    /// is no `project.yaml` yet), writes changed `i18n/*.yaml` files and then
+    /// is no `project.yaml` yet), writes changed `i18n/*.yaml` files (and
+    /// deletes those of languages without strings) and then
     /// `project.yaml` with `revision + 1`, each atomically. On success
     /// `self.revision` is the new revision.
     pub fn save(&mut self, dir: impl AsRef<Path>) -> Result<(), IoError> {
@@ -200,8 +201,27 @@ impl Project {
         }
         fs::create_dir_all(dir).map_err(io_err(dir))?;
 
+        // Translation files of languages without strings in the model
+        // (language removed, last key deleted) are removed, otherwise the
+        // next load would bring them back.
+        let i18n = dir.join(I18N_DIR);
+        if i18n.is_dir() {
+            for entry in fs::read_dir(&i18n).map_err(io_err(&i18n))?.flatten() {
+                let path = entry.path();
+                let stem = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                if path.extension().is_some_and(|x| x == "yaml")
+                    && !stem.starts_with('.')
+                    && Lang::parse(&stem).is_ok()
+                    && !self.strings.contains_key(stem.as_str())
+                {
+                    fs::remove_file(&path).map_err(io_err(&path))?;
+                }
+            }
+        }
         if !self.strings.is_empty() {
-            let i18n = dir.join(I18N_DIR);
             fs::create_dir_all(&i18n).map_err(io_err(&i18n))?;
             for (lang, map) in &self.strings {
                 let path = i18n.join(format!("{lang}.yaml"));

@@ -16,6 +16,7 @@
 
 mod history;
 mod patch;
+mod structure;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -126,6 +127,74 @@ pub enum Op {
     },
     RemoveTarget {
         id: TargetId,
+    },
+    /// Rename an element; its variant overrides follow.
+    RenameElement {
+        from: ElementId,
+        to: ElementId,
+    },
+    /// Rename a strip; targets showing it follow.
+    RenameStrip {
+        from: StripId,
+        to: StripId,
+    },
+    /// Rename a target; `visible_in.targets` of elements and variant
+    /// overrides follow.
+    RenameTarget {
+        from: TargetId,
+        to: TargetId,
+    },
+    /// Rename a variant of a strip; targets using it follow.
+    RenameVariant {
+        strip: StripId,
+        from: VariantId,
+        to: VariantId,
+    },
+    /// Move an element into a group, out of it (`parent: None` = top level
+    /// of its strip) or to another position. `index` is the position in the
+    /// new list after the element was taken out of its old one (default:
+    /// end = topmost). Positions are not compensated (see
+    /// `core::edit::Editor::group`/`ungroup` for that).
+    MoveElementTo {
+        id: ElementId,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        parent: Option<ElementId>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        index: Option<usize>,
+    },
+    /// Remove one field (YAML name, e.g. `at`) from an element's variant
+    /// override; an override left empty is removed.
+    ResetOverrideField {
+        strip: StripId,
+        variant: VariantId,
+        element: ElementId,
+        field: String,
+    },
+    /// Make an available language the default (fallback) language.
+    SetDefaultLanguage {
+        lang: Lang,
+    },
+    /// Add a language to `languages.available` (default: at the end).
+    /// `strings` restores its translations when undoing a removal.
+    AddLanguage {
+        lang: Lang,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        index: Option<usize>,
+        #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+        strings: BTreeMap<StringKey, String>,
+    },
+    /// Remove a language and its translations. Refused for the default
+    /// language and for languages still named by `visible_in` or a target's
+    /// `langs`. Explicit `languages.fallback` entries are kept (they may
+    /// name languages outside `available`).
+    RemoveLanguage {
+        lang: Lang,
+    },
+    /// Rename a translation key in every language and in every text element
+    /// (and variant override) using it.
+    RenameStringKey {
+        from: StringKey,
+        to: StringKey,
     },
 }
 
@@ -559,6 +628,27 @@ impl Project {
                     index: Some(ti),
                 })
             }
+            Op::RenameElement { from, to } => self.rename_element(from, to),
+            Op::RenameStrip { from, to } => self.rename_strip(from, to),
+            Op::RenameTarget { from, to } => self.rename_target(from, to),
+            Op::RenameVariant { strip, from, to } => self.rename_variant(strip, from, to),
+            Op::MoveElementTo { id, parent, index } => {
+                self.move_element_to(id, parent.as_ref(), index)
+            }
+            Op::ResetOverrideField {
+                strip,
+                variant,
+                element,
+                field,
+            } => self.reset_override_field(strip, variant, element, &field),
+            Op::SetDefaultLanguage { lang } => self.set_default_language(lang),
+            Op::AddLanguage {
+                lang,
+                index,
+                strings,
+            } => self.add_language(lang, index, strings),
+            Op::RemoveLanguage { lang } => self.remove_language(lang),
+            Op::RenameStringKey { from, to } => self.rename_string_key(from, to),
         }
     }
 

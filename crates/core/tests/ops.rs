@@ -653,7 +653,7 @@ mod prop {
     fn make_op(p: &Project, kind: u8, a: u32, b: u32, x: f64) -> Option<Op> {
         let pick = Pick::new(p);
         let page = b % 6; // sometimes out of range on purpose
-        Some(match kind % 16 {
+        Some(match kind % 26 {
             0 => {
                 let (_, id, is_text) = pick.element(a)?;
                 let yaml = match b % 7 {
@@ -812,6 +812,98 @@ mod prop {
                 }
                 Op::SetStyles { styles }
             }
+            16 => {
+                let (_, id, _) = pick.element(a)?;
+                let to = if b % 3 == 0 {
+                    pick.element(b)?.1.clone()
+                } else {
+                    ElementId::new(&format!("{id}-r{}", b % 4))
+                };
+                Op::RenameElement {
+                    from: id.clone(),
+                    to,
+                }
+            }
+            17 => Op::RenameStrip {
+                from: pick.strip(a)?.id.clone(),
+                to: StripId::new(["phone", "web", "renamed", "other"][b as usize % 4]),
+            },
+            18 => Op::RenameTarget {
+                from: pick.target(a)?.id.clone(),
+                to: TargetId::new(["android-phone", "t-renamed", "t2"][b as usize % 3]),
+            },
+            19 => {
+                let s = pick.strip(a)?;
+                Op::RenameVariant {
+                    strip: s.id.clone(),
+                    from: s
+                        .variants
+                        .keys()
+                        .nth(b as usize % s.variants.len().max(1))?
+                        .clone(),
+                    to: VariantId::new(["v-renamed", "tablet-landscape", "v0"][b as usize % 3]),
+                }
+            }
+            20 => {
+                let (strip, id, _) = pick.element(a)?;
+                let s = p.strip(strip.as_str())?;
+                let mut groups = Vec::new();
+                s.walk_elements(&mut |e| {
+                    if matches!(e.kind, arrangia_core::model::ElementKind::Group(_)) {
+                        groups.push(e.id.clone());
+                    }
+                });
+                let parent = if b % 3 == 0 || groups.is_empty() {
+                    None
+                } else {
+                    Some(groups[b as usize % groups.len()].clone())
+                };
+                Op::MoveElementTo {
+                    id: id.clone(),
+                    parent,
+                    index: (b % 2 == 0).then_some(b as usize % 3),
+                }
+            }
+            21 => {
+                let s = pick.strip(a)?;
+                let (vid, v) = s
+                    .variants
+                    .iter()
+                    .nth(b as usize % s.variants.len().max(1))?;
+                let (eid, patch) = v
+                    .overrides
+                    .iter()
+                    .nth(a as usize % v.overrides.len().max(1))?;
+                let fields = patch.fields();
+                let field = if b % 5 == 0 {
+                    "width"
+                } else {
+                    fields.get(b as usize % fields.len().max(1))?
+                };
+                Op::ResetOverrideField {
+                    strip: s.id.clone(),
+                    variant: vid.clone(),
+                    element: eid.clone(),
+                    field: field.to_owned(),
+                }
+            }
+            22 => Op::SetDefaultLanguage {
+                lang: if b % 4 == 0 {
+                    Lang::new("it")
+                } else {
+                    pick.lang(a)
+                },
+            },
+            23 => Op::AddLanguage {
+                lang: Lang::new(["it", "nl", "de", "pt-BR"][a as usize % 4]),
+                index: (b % 2 == 0).then_some(b as usize % 3),
+                strings: Default::default(),
+            },
+            24 => Op::RemoveLanguage { lang: pick.lang(a) },
+            25 => Op::RenameStringKey {
+                from: StringKey::new(["hero.title", "hero.sub", "nope"][a as usize % 3]),
+                to: StringKey::new(["hero.headline", "hero.sub", "x.y"][b as usize % 3]),
+            },
             _ => {
                 let mut languages = p.languages.clone();
                 if b % 2 == 0 {
@@ -941,4 +1033,302 @@ fn catalog_references_are_checked() {
             patch: io::from_yaml("{ store: { apple: { display_type: APP_IPHONE_DUO } } }").unwrap(),
         },
     );
+}
+
+// ----- structural ops (Phase 2) ---------------------------------------------
+
+#[test]
+fn rename_element_moves_overrides() {
+    let mut p = sample();
+    apply_and_undo(
+        &mut p,
+        Op::RenameElement {
+            from: ElementId::new("hero-phone"),
+            to: ElementId::new("phone"),
+        },
+    );
+    assert!(p.element("hero-phone").is_none());
+    let v = &p.strips[0].variants[&VariantId::new("tablet-landscape")];
+    assert!(v.overrides.contains_key("phone"));
+    assert!(!v.overrides.contains_key("hero-phone"));
+    // Inside a group: membership is kept.
+    apply_and_undo(
+        &mut p,
+        Op::RenameElement {
+            from: ElementId::new("badge"),
+            to: ElementId::new("badge-2"),
+        },
+    );
+    let (_, g) = p.element("badge-group").unwrap();
+    assert_eq!(g.children()[0].id.as_str(), "badge-2");
+    let err = p
+        .apply(Op::RenameElement {
+            from: ElementId::new("band"),
+            to: ElementId::new("title-1"),
+        })
+        .unwrap_err();
+    assert!(err.to_string().contains("already exists"), "{err}");
+}
+
+#[test]
+fn rename_strip_target_variant_update_references() {
+    let mut p = sample();
+    apply_and_undo(
+        &mut p,
+        Op::RenameStrip {
+            from: StripId::new("phone"),
+            to: StripId::new("handset"),
+        },
+    );
+    assert_eq!(
+        p.targets
+            .iter()
+            .filter(|t| t.strip.as_str() == "handset")
+            .count(),
+        4
+    );
+
+    apply_and_undo(
+        &mut p,
+        Op::RenameTarget {
+            from: TargetId::new("ios-phone-69"),
+            to: TargetId::new("iphone"),
+        },
+    );
+    let (_, bg) = p.element("page4-bg").unwrap();
+    assert_eq!(
+        bg.visible_in.as_ref().unwrap().targets[0].as_str(),
+        "iphone"
+    );
+
+    apply_and_undo(
+        &mut p,
+        Op::RenameVariant {
+            strip: StripId::new("handset"),
+            from: VariantId::new("tablet-landscape"),
+            to: VariantId::new("tablet"),
+        },
+    );
+    let t = p.target("ios-ipad-13-landscape").unwrap();
+    assert_eq!(t.variant.as_ref().unwrap().as_str(), "tablet");
+}
+
+#[test]
+fn move_element_into_and_out_of_group() {
+    let mut p = sample();
+    apply_and_undo(
+        &mut p,
+        Op::MoveElementTo {
+            id: ElementId::new("band"),
+            parent: Some(ElementId::new("badge-group")),
+            index: Some(0),
+        },
+    );
+    let (_, g) = p.element("badge-group").unwrap();
+    assert_eq!(g.children()[0].id.as_str(), "band");
+    apply_and_undo(
+        &mut p,
+        Op::MoveElementTo {
+            id: ElementId::new("badge"),
+            parent: None,
+            index: None,
+        },
+    );
+    assert_eq!(p.strips[0].elements.last().unwrap().id.as_str(), "badge");
+    // Reorder within the same list.
+    apply_and_undo(
+        &mut p,
+        Op::MoveElementTo {
+            id: ElementId::new("band"),
+            parent: Some(ElementId::new("badge-group")),
+            index: Some(1),
+        },
+    );
+    let (_, g) = p.element("badge-group").unwrap();
+    assert_eq!(g.children()[1].id.as_str(), "band");
+    for (parent, msg) in [
+        ("badge-group", "into itself"),
+        ("title-1", "is not a group"),
+    ] {
+        let err = p
+            .apply(Op::MoveElementTo {
+                id: ElementId::new("badge-group"),
+                parent: Some(ElementId::new(parent)),
+                index: None,
+            })
+            .unwrap_err();
+        assert!(err.to_string().contains(msg), "{err}");
+    }
+}
+
+#[test]
+fn reset_one_override_field() {
+    let mut p = sample();
+    let strip = StripId::new("phone");
+    let variant = VariantId::new("tablet-landscape");
+    apply_and_undo(
+        &mut p,
+        Op::ResetOverrideField {
+            strip: strip.clone(),
+            variant: variant.clone(),
+            element: ElementId::new("hero-phone"),
+            field: "rotation".into(),
+        },
+    );
+    let o = &p.strips[0].variants[&variant].overrides["hero-phone"];
+    assert_eq!(o.fields(), vec!["at"]);
+    // Last field → the override disappears.
+    apply_and_undo(
+        &mut p,
+        Op::ResetOverrideField {
+            strip: strip.clone(),
+            variant: variant.clone(),
+            element: ElementId::new("sub-1"),
+            field: "visible".into(),
+        },
+    );
+    assert!(
+        !p.strips[0].variants[&variant]
+            .overrides
+            .contains_key("sub-1")
+    );
+    for (field, msg) in [("width", "does not set `width`"), ("wdith", "unknown")] {
+        let err = p
+            .apply(Op::ResetOverrideField {
+                strip: strip.clone(),
+                variant: variant.clone(),
+                element: ElementId::new("hero-phone"),
+                field: field.into(),
+            })
+            .unwrap_err();
+        assert!(err.to_string().contains(msg), "{err}");
+    }
+}
+
+#[test]
+fn languages_default_add_remove() {
+    let mut p = sample();
+    apply_and_undo(
+        &mut p,
+        Op::SetDefaultLanguage {
+            lang: Lang::new("de"),
+        },
+    );
+    assert_eq!(p.languages.default.as_str(), "de");
+    assert!(
+        p.apply(Op::SetDefaultLanguage {
+            lang: Lang::new("it")
+        })
+        .is_err()
+    );
+
+    apply_and_undo(
+        &mut p,
+        Op::AddLanguage {
+            lang: Lang::new("it"),
+            index: Some(1),
+            strings: Default::default(),
+        },
+    );
+    assert_eq!(p.languages.available[1].as_str(), "it");
+
+    // Removing drops the translations; undo brings them back.
+    p.apply(Op::UpdateTarget {
+        id: TargetId::new("blog-header"),
+        patch: io::from_yaml("{ langs: [de] }").unwrap(),
+    })
+    .unwrap();
+    let inv = apply_and_undo(
+        &mut p,
+        Op::RemoveLanguage {
+            lang: Lang::new("en"),
+        },
+    );
+    assert!(!p.strings.contains_key("en"));
+    let Op::AddLanguage { strings, index, .. } = inv else {
+        panic!("{inv:?}")
+    };
+    assert_eq!(index, Some(0));
+    assert_eq!(strings.len(), 2);
+
+    let err = p
+        .apply(Op::RemoveLanguage {
+            lang: Lang::new("de"),
+        })
+        .unwrap_err();
+    assert!(err.to_string().contains("default language"), "{err}");
+    // Still used by a target's `langs`.
+    let mut q = sample();
+    q.apply(Op::SetDefaultLanguage {
+        lang: Lang::new("fr"),
+    })
+    .unwrap();
+    let err = q
+        .apply(Op::RemoveLanguage {
+            lang: Lang::new("de"),
+        })
+        .unwrap_err();
+    assert!(err.to_string().contains("target `blog-header`"), "{err}");
+}
+
+#[test]
+fn rename_string_key_everywhere() {
+    let mut p = sample();
+    p.apply(Op::SetVariantOverride {
+        strip: StripId::new("phone"),
+        variant: VariantId::new("tablet-landscape"),
+        element: ElementId::new("sub-1"),
+        patch: Some(patch("{ text: hero.title }")),
+    })
+    .unwrap();
+    apply_and_undo(
+        &mut p,
+        Op::RenameStringKey {
+            from: StringKey::new("hero.title"),
+            to: StringKey::new("hero.headline"),
+        },
+    );
+    assert_eq!(
+        p.string("de", "hero.headline"),
+        Some("Plane deine Beete **in Minuten**")
+    );
+    assert!(p.string("en", "hero.title").is_none());
+    assert!(!p.string_key_in_use("hero.title"));
+    let o = &p.strips[0].variants[&VariantId::new("tablet-landscape")].overrides["sub-1"];
+    assert_eq!(o.text, Some(Some(StringKey::new("hero.headline"))));
+    for (from, to, msg) in [
+        ("hero.sub", "hero.headline", "already exists"),
+        ("nope", "x", "unknown translation key"),
+    ] {
+        let err = p
+            .apply(Op::RenameStringKey {
+                from: StringKey::new(from),
+                to: StringKey::new(to),
+            })
+            .unwrap_err();
+        assert!(err.to_string().contains(msg), "{err}");
+    }
+}
+
+#[test]
+fn save_deletes_translation_file_of_removed_language() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut p = sample();
+    p.save(dir.path()).unwrap();
+    assert!(dir.path().join("i18n").join("de.yaml").is_file());
+    // Used by the blog header's `langs` first.
+    p.apply(Op::UpdateTarget {
+        id: TargetId::new("blog-header"),
+        patch: io::from_yaml("{ langs: ~ }").unwrap(),
+    })
+    .unwrap();
+    p.apply(Op::RemoveLanguage {
+        lang: Lang::new("de"),
+    })
+    .unwrap();
+    p.save(dir.path()).unwrap();
+    assert!(!dir.path().join("i18n").join("de.yaml").exists());
+    let back = Project::load(dir.path()).unwrap();
+    assert!(!back.strings.contains_key("de"));
+    assert!(back.strings.contains_key("en"));
 }
