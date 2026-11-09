@@ -1,0 +1,438 @@
+---
+source: crates/core/tests/edit.rs
+expression: v
+---
+canvas:
+  h: 1500
+  w: 6160
+  x: 0
+  y: 0
+elements:
+  - aspect_locked: false
+    handles:
+      - at:
+          x: 436.792
+          y: 1995.945
+        handle: nw
+      - at:
+          x: 2487.014
+          y: 1541.422
+        handle: n
+      - at:
+          x: 4537.235
+          y: 1086.899
+        handle: ne
+      - at:
+          x: 4550.222
+          y: 1145.477
+        handle: e
+      - at:
+          x: 4563.208
+          y: 1204.055
+        handle: se
+      - at:
+          x: 2512.986
+          y: 1658.578
+        handle: s
+      - at:
+          x: 462.765
+          y: 2113.101
+        handle: sw
+      - at:
+          x: 449.778
+          y: 2054.523
+        handle: w
+    id: band
+    kind: shape
+    move_point:
+      x: 2500
+      y: 1600
+    page: 1
+    pivot:
+      x: 2500
+      y: 1600
+    quad:
+      - x: 436.792
+        y: 1995.945
+      - x: 4537.235
+        y: 1086.899
+      - x: 4563.208
+        y: 1204.055
+      - x: 462.765
+        y: 2113.101
+    rect:
+      h: 120
+      w: 4200
+      x: 400
+      y: 1540
+    rotation: -12.5
+    z: -1
+  - aspect_locked: true
+    handles:
+      - at:
+          x: 665.249
+          y: 448.31
+        handle: nw
+      - at:
+          x: 972
+          y: 426.86
+        handle: n
+      - at:
+          x: 1278.751
+          y: 405.409
+        handle: ne
+      - at:
+          x: 1306.751
+          y: 805.823
+        handle: e
+      - at:
+          x: 1334.751
+          y: 1206.236
+        handle: se
+      - at:
+          x: 1028
+          y: 1227.686
+        handle: s
+      - at:
+          x: 721.249
+          y: 1249.136
+        handle: sw
+      - at:
+          x: 693.249
+          y: 848.723
+        handle: w
+    id: hero-phone
+    kind: device
+    move_point:
+      x: 1000
+      y: 827.273
+    overridden:
+      - at
+      - rotation
+    page: 0
+    pivot:
+      x: 1000
+      y: 827.273
+    quad:
+      - x: 665.249
+        y: 448.31
+      - x: 1278.751
+        y: 405.409
+      - x: 1334.751
+        y: 1206.236
+      - x: 721.249
+        y: 1249.136
+    rect:
+      h: 802.782
+      w: 615
+      x: 692.5
+      y: 425.882
+    rotation: -4
+    z: 0
+  - aspect_locked: false
+    clip:
+      h: 1500
+      w: 1000
+      x: 0
+      y: 0
+    handles:
+      - at:
+          x: 70
+          y: 90
+        handle: nw
+      - at:
+          x: 500
+          y: 90
+        handle: n
+      - at:
+          x: 930
+          y: 90
+        handle: ne
+      - at:
+          x: 930
+          y: 167.76
+        handle: e
+      - at:
+          x: 930
+          y: 245.52
+        handle: se
+      - at:
+          x: 500
+          y: 245.52
+        handle: s
+      - at:
+          x: 70
+          y: 245.52
+        handle: sw
+      - at:
+          x: 70
+          y: 167.76
+        handle: w
+    id: title-1
+    kind: text
+    move_point:
+      x: 500
+      y: 90
+    overridden:
+      - box
+    page: 0
+    pivot:
+      x: 500
+      y: 795
+    quad:
+      - x: 70
+        y: 90
+      - x: 930
+        y: 90
+      - x: 930
+        y: 245.52
+      - x: 70
+        y: 245.52
+    rect:
+      h: 155.52
+      w: 860
+      x: 70
+      y: 90
+    rotation: 0
+    text:
+      auto_height: true
+      content:
+        h: 155.52
+        w: 597.516
+        x: 201.242
+        y: 90
+      content_quad:
+        - x: 201.242
+          y: 90
+        - x: 798.758
+          y: 90
+        - x: 798.758
+          y: 245.52
+        - x: 201.242
+          y: 245.52
+      font_size: 72
+      lines: 2
+      margins: true
+      overflow: false
+    z: 0
+  - aspect_locked: false
+    groups:
+      - badge-group
+    handles:
+      - at:
+          x: 2790
+          y: 230
+        handle: nw
+      - at:
+          x: 2900
+          y: 230
+        handle: n
+      - at:
+          x: 3010
+          y: 230
+        handle: ne
+      - at:
+          x: 3010
+          y: 340
+        handle: e
+      - at:
+          x: 3010
+          y: 450
+        handle: se
+      - at:
+          x: 2900
+          y: 450
+        handle: s
+      - at:
+          x: 2790
+          y: 450
+        handle: sw
+      - at:
+          x: 2790
+          y: 340
+        handle: w
+    id: badge
+    kind: image
+    move_point:
+      x: 2900
+      y: 340
+    page: 2
+    pivot:
+      x: 2900
+      y: 340
+    quad:
+      - x: 2790
+        y: 230
+      - x: 3010
+        y: 230
+      - x: 3010
+        y: 450
+      - x: 2790
+        y: 450
+    rect:
+      h: 220
+      w: 220
+      x: 2790
+      y: 230
+    rotation: 0
+    z: 0
+  - aspect_locked: false
+    groups:
+      - badge-group
+    handles:
+      - at:
+          x: 2770
+          y: 210
+        handle: nw
+      - at:
+          x: 2900
+          y: 210
+        handle: n
+      - at:
+          x: 3030
+          y: 210
+        handle: ne
+      - at:
+          x: 3030
+          y: 340
+        handle: e
+      - at:
+          x: 3030
+          y: 470
+        handle: se
+      - at:
+          x: 2900
+          y: 470
+        handle: s
+      - at:
+          x: 2770
+          y: 470
+        handle: sw
+      - at:
+          x: 2770
+          y: 340
+        handle: w
+    id: badge-ring
+    kind: shape
+    move_point:
+      x: 2900
+      y: 340
+    page: 2
+    pivot:
+      x: 2900
+      y: 340
+    quad:
+      - x: 2770
+        y: 210
+      - x: 3030
+        y: 210
+      - x: 3030
+        y: 470
+      - x: 2770
+        y: 470
+    rect:
+      h: 260
+      w: 260
+      x: 2770
+      y: 210
+    rotation: 0
+    z: 0
+gaps:
+  - h: 1500
+    w: 80
+    x: 2000
+    y: 0
+  - h: 1500
+    w: 80
+    x: 4080
+    y: 0
+groups:
+  - bounds:
+      h: 260
+      w: 260
+      x: 2770
+      y: 210
+    id: badge-group
+    members:
+      - badge
+      - badge-ring
+    move_point:
+      x: 2900
+      y: 340
+images:
+  - index: 0
+    pages:
+      - 0
+      - 1
+    rect:
+      h: 1500
+      w: 2000
+      x: 0
+      y: 0
+  - index: 1
+    pages:
+      - 2
+      - 3
+    rect:
+      h: 1500
+      w: 2000
+      x: 2080
+      y: 0
+  - index: 2
+    pages:
+      - 4
+    rect:
+      h: 1500
+      w: 2000
+      x: 4160
+      y: 0
+lang: en
+pages:
+  - column: 0
+    id: hero
+    image: 0
+    index: 0
+    rect:
+      h: 1500
+      w: 1000
+      x: 0
+      y: 0
+  - column: 1
+    id: planner
+    image: 0
+    index: 1
+    rect:
+      h: 1500
+      w: 1000
+      x: 1000
+      y: 0
+  - column: 0
+    id: harvest
+    image: 1
+    index: 2
+    rect:
+      h: 1500
+      w: 1000
+      x: 2080
+      y: 0
+  - column: 1
+    id: page-04
+    image: 1
+    index: 3
+    rect:
+      h: 1500
+      w: 1000
+      x: 3080
+      y: 0
+  - column: 0
+    id: page-05
+    image: 2
+    index: 4
+    rect:
+      h: 1500
+      w: 1000
+      x: 4160
+      y: 0
+strip: phone
+target: ios-ipad-13-landscape
+variant: tablet-landscape
