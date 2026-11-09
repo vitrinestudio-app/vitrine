@@ -211,6 +211,7 @@ fn closeups(dir: &Path) -> anyhow::Result<()> {
         item("macbook", L, 1600.0).color("silver").chrome(),
         item("imac", L, 1400.0).color("pastel-green").web(),
         item("ipad-modern", L, 1400.0).color("space-gray"),
+        item("browser", L, 1200.0).web().dark(),
     ];
     for (style, name) in [
         (FrameStyle::Stylized, "stylized"),
@@ -221,7 +222,7 @@ fn closeups(dir: &Path) -> anyhow::Result<()> {
             let (w, h) = (p.size.x + 160.0, p.size.y + 160.0);
             let mut pm = Pixmap::new(w as u32, h as u32).expect("size");
             pm.fill(tiny_skia::Color::from_rgba8(226, 230, 236, 255));
-            draw_item(&mut pm, &p, w / 2.0, h / 2.0);
+            draw_item(&mut pm, &p, w / 2.0, h / 2.0, 4.0);
             save_png_rgb(
                 &pm,
                 &dir.join(format!("{name}_{n}_{}.png", it.model)),
@@ -313,7 +314,7 @@ fn sheet(style: &FrameStyle, name: &str) -> Pixmap {
             let cx = x + p.size.x / 2.0;
             // Devices sit on a common baseline per row.
             let cy = y + row_h - p.size.y / 2.0;
-            draw_item(&mut pm, p, cx, cy);
+            draw_item(&mut pm, p, cx, cy, 0.0);
             let o = match p.item.orientation {
                 Orientation::Portrait => "portrait",
                 Orientation::Landscape => "landscape",
@@ -345,14 +346,14 @@ fn sheet(style: &FrameStyle, name: &str) -> Pixmap {
     pm
 }
 
-fn draw_item(pm: &mut Pixmap, p: &Placed, cx: f64, cy: f64) {
+fn draw_item(pm: &mut Pixmap, p: &Placed, cx: f64, cy: f64, degrees: f32) {
     let g = device_geometry(&p.dev, p.size);
     // Snap the screen to whole pixels so the generated UI is not resampled
     // at a half-pixel offset (the scene renderer gets the same effect from
     // its own resampling; here the shot is drawn 1:1).
     let cx = (cx + g.screen.x).round() - g.screen.x;
     let cy = (cy + g.screen.y).round() - g.screen.y;
-    let ts = Transform::from_translate(cx as f32, cy as f32);
+    let ts = Transform::from_translate(cx as f32, cy as f32).pre_rotate(degrees);
     let k = p.size.x / 600.0;
     for (sigma, dy, a) in [(22.0, 18.0, 0.28), (5.0, 4.0, 0.22)] {
         draw_shadow(
