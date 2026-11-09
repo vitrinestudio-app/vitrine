@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use super::{EditError, Editor, Handle, local_to_canvas, move_point};
 use crate::geometry::{Rect, Vec2};
-use crate::layout::{TextLayouter, layout_text, span_styles};
+use crate::layout::{TextDiagnostic, TextLayouter, layout_text, span_styles};
 use crate::model::{ElementId, ElementKindTag, Lang, StripId, TargetId, VariantId};
 use crate::resolve::{ResolvedKind, ResolvedScene};
 
@@ -108,6 +108,9 @@ pub struct OverlayText {
     /// Font size after auto-fit, lu.
     pub font_size: f64,
     pub overflow: bool,
+    /// Words broken without a hyphen (emergency breaks), in line order.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub emergency_breaks: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -173,6 +176,15 @@ impl Editor<'_> {
                         lines: placed.layout.lines.len(),
                         font_size: f64::from(placed.layout.font_size),
                         overflow: placed.layout.overflow,
+                        emergency_breaks: placed
+                            .layout
+                            .diagnostics
+                            .iter()
+                            .filter_map(|d| match d {
+                                TextDiagnostic::EmergencyBreak { word, .. } => Some(word.clone()),
+                                _ => None,
+                            })
+                            .collect(),
                     });
                 } else if t.frame.auto_height {
                     // No text: a free box shrinks to its centre line.
