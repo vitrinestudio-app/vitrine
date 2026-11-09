@@ -4,30 +4,29 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Arrangia</title>
-    <link rel="stylesheet" href="styles.css" />
-    <script type="module" src="main.js"></script>
+    <link rel="stylesheet" href="styles/base.css" />
+    <link rel="stylesheet" href="styles/controls.css" />
+    <link rel="stylesheet" href="styles/shell.css" />
+    <link rel="stylesheet" href="styles/canvas.css" />
+    <script type="module" src="js/main.js"></script>
   </head>
   <body>
-    <main class="welcome">
+    <div id="app" class="app" hidden>
+      <header class="topbar" id="topbar"></header>
+      <aside class="sidebar sidebar-left" id="sidebar"></aside>
+      <main class="center">
+        <section class="view" id="view"></section>
+        <footer class="bottombar" id="bottombar"></footer>
+      </main>
+      <aside class="sidebar sidebar-right" id="inspector"></aside>
+    </div>
+    <div id="welcome" class="welcome" hidden>
       <h1 data-i18n="app.title">Arrangia</h1>
       <p data-i18n="app.tagline"></p>
-      <p class="version"><span data-i18n="app.version"></span> <span id="app-version">…</span></p>
-      <!-- Smoke screen for the backend pipeline (task 2.3); the real shell comes in 2.4. -->
-      <section id="project" class="project" hidden>
-        <h2 id="project-name"></h2>
-        <div class="controls">
-          <label><span data-i18n="preview.target"></span> <select id="target"></select></label>
-          <label><span data-i18n="preview.lang"></span> <select id="lang"></select></label>
-          <label><span data-i18n="preview.image"></span> <select id="image"></select></label>
-        </div>
-        <canvas id="preview" width="0" height="0"></canvas>
-        <p id="preview-info" class="version"></p>
-      </section>
-      <p id="no-project" class="version" hidden>
-        <span data-i18n="project.none"></span>
-        <button id="open" type="button" data-i18n="project.open"></button>
-      </p>
-      <p id="status" class="version"></p>
-    </main>
+      <p class="muted"><span data-i18n="project.none"></span></p>
+      <button id="open-project" class="btn btn-primary" type="button" data-i18n="project.open"></button>
+      <p class="muted small"><span data-i18n="app.version"></span> <span id="app-version">…</span></p>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

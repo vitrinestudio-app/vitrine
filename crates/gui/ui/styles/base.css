@@ -1,0 +1,182 @@
+/* Design tokens, themes and base element styles.
+ * Light is the default; dark follows the OS unless `data-theme` on <html>
+ * forces one (`?theme=dark|light` in the URL, see js/main.js). */
+
+:root {
+  color-scheme: light;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --fs: 12px;
+  --fs-small: 11px;
+  --fs-title: 13px;
+  --radius: 6px;
+  --radius-small: 4px;
+
+  --bg: #ffffff;
+  --bg-panel: #f6f6f7;
+  --bg-chrome: #ececee;
+  --bg-hover: rgb(0 0 0 / 5%);
+  --bg-active: rgb(0 0 0 / 9%);
+  --bg-input: #ffffff;
+  --bg-canvas: #e4e4e7;
+  --fg: #1d1d1f;
+  --fg-muted: #6e6e73;
+  --fg-faint: #a1a1a6;
+  --border: rgb(0 0 0 / 11%);
+  --border-strong: rgb(0 0 0 / 20%);
+  --accent: #0a84ff;
+  --accent-fg: #ffffff;
+  --accent-soft: rgb(10 132 255 / 14%);
+  --danger: #e5484d;
+  --warning: #d97706;
+  --success: #2f9e5b;
+  --focus: 0 0 0 3px rgb(10 132 255 / 35%);
+  --shadow-page: 0 1px 2px rgb(0 0 0 / 12%), 0 4px 16px rgb(0 0 0 / 8%);
+  --shadow-pop: 0 4px 20px rgb(0 0 0 / 16%), 0 0 0 0.5px rgb(0 0 0 / 12%);
+
+  /* canvas overlay (SVG) */
+  --sel: #0a84ff;
+  --hover-line: rgb(10 132 255 / 70%);
+  --guide: #ff2d78;
+  --hatch: rgb(60 60 67 / 38%);
+  --gap-fill: rgb(228 228 231 / 45%);
+  --label: #6e6e73;
+  --override: #bf5af2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #1e1e20;
+    --bg-panel: #252528;
+    --bg-chrome: #2c2c2f;
+    --bg-hover: rgb(255 255 255 / 6%);
+    --bg-active: rgb(255 255 255 / 11%);
+    --bg-input: #1b1b1d;
+    --bg-canvas: #161618;
+    --fg: #f2f2f4;
+    --fg-muted: #a1a1a8;
+    --fg-faint: #6b6b72;
+    --border: rgb(255 255 255 / 9%);
+    --border-strong: rgb(255 255 255 / 18%);
+    --accent: #0a84ff;
+    --accent-soft: rgb(10 132 255 / 22%);
+    --shadow-page: 0 1px 2px rgb(0 0 0 / 50%), 0 6px 20px rgb(0 0 0 / 35%);
+    --shadow-pop: 0 6px 24px rgb(0 0 0 / 50%), 0 0 0 0.5px rgb(255 255 255 / 12%);
+    --hatch: rgb(235 235 245 / 30%);
+    --gap-fill: rgb(22 22 24 / 50%);
+    --label: #8e8e95;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1e1e20;
+  --bg-panel: #252528;
+  --bg-chrome: #2c2c2f;
+  --bg-hover: rgb(255 255 255 / 6%);
+  --bg-active: rgb(255 255 255 / 11%);
+  --bg-input: #1b1b1d;
+  --bg-canvas: #161618;
+  --fg: #f2f2f4;
+  --fg-muted: #a1a1a8;
+  --fg-faint: #6b6b72;
+  --border: rgb(255 255 255 / 9%);
+  --border-strong: rgb(255 255 255 / 18%);
+  --accent: #0a84ff;
+  --accent-soft: rgb(10 132 255 / 22%);
+  --shadow-page: 0 1px 2px rgb(0 0 0 / 50%), 0 6px 20px rgb(0 0 0 / 35%);
+  --shadow-pop: 0 6px 24px rgb(0 0 0 / 50%), 0 0 0 0.5px rgb(255 255 255 / 12%);
+  --hatch: rgb(235 235 245 / 30%);
+  --gap-fill: rgb(22 22 24 / 50%);
+  --label: #8e8e95;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: var(--fs);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.muted {
+  color: var(--fg-muted);
+}
+
+.small {
+  font-size: var(--fs-small);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+svg.icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Start screen (no project open). */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  text-align: center;
+}
+
+.welcome h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.welcome p {
+  margin: 0;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  max-width: min(560px, 90vw);
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--bg-chrome);
+  color: var(--fg);
+  box-shadow: var(--shadow-pop);
+  font-size: var(--fs);
+  z-index: 100;
+}
+
+.toast.error {
+  border-left: 3px solid var(--danger);
+}

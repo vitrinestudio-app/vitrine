@@ -1,0 +1,269 @@
+/* Canvas view (rendered pixmaps + SVG overlay) and the pages/gallery views. */
+
+.canvas-view {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  outline: none;
+  cursor: default;
+  touch-action: none;
+}
+
+.canvas-view.panning,
+.canvas-view.space {
+  cursor: grab;
+}
+
+.canvas-view.panning:active {
+  cursor: grabbing;
+}
+
+/* World: positioned in lu, scaled by the zoom (transform set in JS). */
+.canvas-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.canvas-slot {
+  position: absolute;
+  overflow: hidden;
+}
+
+.canvas-slot canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.canvas-slot.image {
+  box-shadow: var(--shadow-page);
+  background: var(--bg);
+}
+
+.canvas-slot.gap {
+  opacity: 0.42;
+}
+
+.canvas-slot canvas.preview {
+  visibility: hidden;
+}
+
+.canvas-slot.previewing canvas.preview {
+  visibility: visible;
+}
+
+/* Screen-space overlay. */
+.canvas-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.canvas-overlay .handle,
+.canvas-overlay .rotate-handle {
+  pointer-events: all;
+}
+
+.ov-gap {
+  fill: url(#hatch);
+}
+
+.ov-gap-edge {
+  stroke: var(--hatch);
+  stroke-width: 1;
+  fill: none;
+}
+
+.ov-hatch-line {
+  stroke: var(--hatch);
+  stroke-width: 1;
+}
+
+.ov-page-line {
+  stroke: rgb(0 0 0 / 14%);
+  stroke-dasharray: 3 3;
+  fill: none;
+}
+
+.ov-label {
+  fill: var(--label);
+  font: 500 11px var(--font);
+}
+
+.ov-label .ov-label-id {
+  fill: var(--fg-faint);
+  font-weight: 400;
+}
+
+.ov-label.home {
+  fill: var(--sel);
+}
+
+.ov-hover {
+  fill: none;
+  stroke: var(--hover-line);
+  stroke-width: 1;
+}
+
+.ov-sel {
+  fill: none;
+  stroke: var(--sel);
+  stroke-width: 1.5;
+}
+
+.ov-sel-group {
+  fill: none;
+  stroke: var(--sel);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.ov-ghost {
+  fill: rgb(10 132 255 / 6%);
+  stroke: var(--sel);
+  stroke-width: 1.5;
+}
+
+.ov-overflow {
+  fill: rgb(229 72 77 / 8%);
+  stroke: var(--danger);
+  stroke-width: 1.5;
+}
+
+.ov-emergency {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
+
+.ov-override {
+  fill: var(--override);
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+.ov-marquee {
+  fill: rgb(10 132 255 / 8%);
+  stroke: var(--sel);
+  stroke-width: 1;
+}
+
+.ov-guide {
+  stroke: var(--guide);
+  stroke-width: 1;
+}
+
+.ov-guide-mark {
+  stroke: var(--guide);
+  stroke-width: 1;
+}
+
+.handle {
+  fill: #fff;
+  stroke: var(--sel);
+  stroke-width: 1.25;
+}
+
+.handle:hover {
+  fill: var(--sel);
+}
+
+.rotate-handle {
+  fill: #fff;
+  stroke: var(--sel);
+  stroke-width: 1.25;
+  cursor: grab;
+}
+
+.rotate-stem {
+  stroke: var(--sel);
+  stroke-width: 1;
+}
+
+.ov-pivot {
+  fill: none;
+  stroke: var(--sel);
+  stroke-width: 1;
+}
+
+/* Readouts (angle, size, home page). */
+.ov-pill rect {
+  fill: var(--sel);
+}
+
+.ov-pill text {
+  fill: #fff;
+  font: 500 11px var(--font);
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-pill.dark rect {
+  fill: rgb(29 29 31 / 88%);
+}
+
+.canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+}
+
+/* Pages and gallery views. */
+.strip-view {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  padding: 32px;
+}
+
+.strip-row {
+  display: flex;
+  align-items: flex-start;
+  margin: auto;
+}
+
+.strip-row figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.strip-row canvas {
+  display: block;
+  box-shadow: var(--shadow-page);
+  background: var(--bg);
+}
+
+.strip-row figcaption {
+  font-size: var(--fs-small);
+  color: var(--fg-muted);
+}
+
+.gallery-frame {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.gallery-frame canvas {
+  display: block;
+  border-radius: 10px;
+  box-shadow: var(--shadow-page);
+}

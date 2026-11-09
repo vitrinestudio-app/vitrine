@@ -1,0 +1,62 @@
+// Typed wrappers over the transport (`invoke`). Every backend command the UI
+// uses goes through here, so argument shapes live in one place. JSDoc types
+// mirror the Rust serde types in crates/gui/src/commands.
+//
+// `view` is the view context `{ target, lang, variant? }` from
+// `viewArgs()` in store.js (variant omitted = the target's own variant,
+// `null` = base elements).
+
+import { invoke, listen, toImageBitmap } from './transport.js';
+
+export { listen, toImageBitmap };
+
+/**
+ * @typedef {{x:number,y:number}} Vec2
+ * @typedef {{x:number,y:number,w:number,h:number}} Rect
+ * @typedef {{applied:boolean, revision:number, changes:object, history:object, created?:string[]}} EditResult
+ * @typedef {{width:number,height:number,format:string,originX:number,originY:number,scale:number,data:ArrayBuffer}} Preview
+ */
+
+export const api = {
+  appInfo: () => invoke('app_info'),
+  summary: () => invoke('project_summary'),
+  openDialog: () => invoke('dialog_open_project'),
+  historyState: () => invoke('history_state'),
+  undo: () => invoke('undo'),
+  redo: () => invoke('redo'),
+  /** @returns {Promise<object>} validation counts + findings */
+  validate: (target, lang) => invoke('validate', { targets: [target], langs: [lang], preview: true }),
+
+  /** Overlay (hit-test) data of the view. */
+  overlay: (view) => invoke('overlay', view),
+
+  // ----- rendering (resolve to a Preview) -----
+  /** Output image `image` at `width` px. */
+  renderImage: (view, image, width, opts = {}) => invoke('render_image', { ...view, image, width, ...opts }),
+  /** Canvas `region` (lu) at `scale` px per lu. */
+  renderRegion: (view, region, scale, opts = {}) =>
+    invoke('render_canvas', { ...view, region, scale, overlay: false, ...opts }),
+  renderGallery: (view, height) => invoke('render_gallery', { ...view, height }),
+  /**
+   * A gesture in progress (`edit`: {kind:'move_by'|'move'|'resize'|'rotate', …});
+   * `interactive` (default true) renders at half `width`.
+   */
+  renderPreviewEdit: (view, edit, image, width, interactive = true) =>
+    invoke('render_preview_edit', { ...view, edit, image, width, interactive }),
+
+  // ----- edit intents (one undo step each; resolve to EditResult) -----
+  move: (view, id, x, y, keepPage = false) => invoke('edit_move', { ...view, id, x, y, keep_page: keepPage }),
+  moveBy: (view, ids, dx, dy, keepPage = false) => invoke('edit_move_by', { ...view, ids, dx, dy, keep_page: keepPage }),
+  /** `fixed`: handle name (`nw`, `n`, … `center`) that stays in place. */
+  resize: (view, id, { width, height }, fixed) => invoke('edit_resize', { ...view, id, width, height, fixed }),
+  rotate: (view, id, degrees) => invoke('edit_rotate', { ...view, id, degrees }),
+  setPage: (view, id, page, keepVisualPosition = true) =>
+    invoke('edit_set_page', { ...view, id, page, keep_visual_position: keepVisualPosition }),
+  /** `order`: `front` | `back` | `forward` | `backward`. */
+  reorder: (view, ids, order) => invoke('edit_reorder', { ...view, ids, order }),
+  duplicate: (view, ids, dx = 40, dy = 40) => invoke('edit_duplicate', { ...view, ids, dx, dy }),
+  remove: (view, ids) => invoke('edit_remove', { ...view, ids }),
+  group: (view, ids) => invoke('edit_group', { ...view, ids }),
+  ungroup: (view, ids) => invoke('edit_ungroup', { ...view, ids }),
+  resetOverride: (view, id, field) => invoke('edit_reset_override', { ...view, id, field }),
+};

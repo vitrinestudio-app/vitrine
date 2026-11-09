@@ -1,0 +1,349 @@
+/* Buttons, selects, segmented controls, tabs, badges, lists. */
+
+.btn,
+.icon-btn,
+.select {
+  font: inherit;
+  color: inherit;
+  height: 26px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  outline: none;
+  cursor: default;
+}
+
+.btn {
+  padding: 0 10px;
+  border-color: var(--border);
+  background: var(--bg-input);
+  box-shadow: 0 0.5px 1px rgb(0 0 0 / 6%);
+}
+
+.btn:hover {
+  background: var(--bg-hover);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+.btn-primary:hover {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+
+.btn-small {
+  height: 22px;
+  padding: 0 8px;
+  font-size: var(--fs-small);
+}
+
+.icon-btn {
+  width: 28px;
+  justify-content: center;
+  color: var(--fg-muted);
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.icon-btn:active:not(:disabled) {
+  background: var(--bg-active);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+}
+
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.select:focus-visible,
+.segmented button:focus-visible,
+.tabs button:focus-visible,
+.list-item:focus-visible {
+  box-shadow: var(--focus);
+}
+
+/* Native select, styled compact; label + value + chevron. */
+.picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--radius);
+  position: relative;
+  color: var(--fg);
+}
+
+.picker:hover {
+  background: var(--bg-hover);
+}
+
+.picker:focus-within {
+  box-shadow: var(--focus);
+}
+
+.picker .picker-label {
+  color: var(--fg-muted);
+}
+
+.picker .picker-value {
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.picker .picker-value.variant-active {
+  color: var(--override);
+}
+
+.picker svg.icon {
+  width: 12px;
+  height: 12px;
+  color: var(--fg-muted);
+}
+
+.picker select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  font: inherit;
+  cursor: default;
+}
+
+/* Segmented control (view switch). */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 7px;
+  background: var(--bg-active);
+}
+
+.segmented button {
+  font: inherit;
+  color: var(--fg-muted);
+  border: 0;
+  background: transparent;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  outline: none;
+}
+
+.segmented button:hover {
+  color: var(--fg);
+}
+
+.segmented button[aria-pressed="true"] {
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 0.5px 2px rgb(0 0 0 / 18%);
+}
+
+.segmented svg.icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Sidebar tabs. */
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 8px 0;
+}
+
+.tabs button {
+  flex: 1;
+  font: inherit;
+  font-size: var(--fs-small);
+  color: var(--fg-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  outline: none;
+}
+
+.tabs button:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--bg-active);
+  color: var(--fg);
+}
+
+/* Badges. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--fg-muted);
+  background: var(--bg-hover);
+}
+
+.badge svg.icon {
+  width: 13px;
+  height: 13px;
+}
+
+.badge.ok {
+  color: var(--success);
+}
+
+.badge.warn {
+  color: var(--warning);
+  background: rgb(217 119 6 / 12%);
+}
+
+.badge.error {
+  color: var(--danger);
+  background: rgb(229 72 77 / 12%);
+}
+
+/* Lists (strips, layers). */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 8px;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius);
+  outline: none;
+}
+
+.list-item:hover {
+  background: var(--bg-hover);
+}
+
+.list-item[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.list-item[aria-selected="true"] .muted {
+  color: rgb(255 255 255 / 75%);
+}
+
+.list-item .grow {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-title {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--fg-muted);
+  padding: 12px 16px 4px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+.placeholder {
+  padding: 16px;
+  color: var(--fg-faint);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+
+/* Key/value rows (inspector). */
+.props {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 6px 8px;
+  padding: 4px 16px 12px;
+  align-items: center;
+}
+
+.props dt {
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.props dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 4px 0 8px;
+  border-radius: 10px;
+  background: rgb(191 90 242 / 14%);
+  color: var(--override);
+  font-size: var(--fs-small);
+  margin: 0 4px 4px 0;
+}
+
+.chip button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip button:hover {
+  background: rgb(191 90 242 / 20%);
+}
+
+.chip svg.icon {
+  width: 11px;
+  height: 11px;
+}
+
+.props-chips {
+  padding: 0 16px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.props-chips .btn {
+  margin-top: 4px;
+}

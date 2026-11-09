@@ -1,0 +1,166 @@
+/* App shell: top bar, sidebars, centre view, bottom bar (KONZEPT §9.1). */
+
+.app {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr) 256px;
+  grid-template-rows: 44px minmax(0, 1fr);
+  grid-template-areas:
+    "top top top"
+    "left center right";
+  height: 100%;
+}
+
+.topbar {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar .project-name {
+  font-weight: 600;
+  font-size: var(--fs-title);
+  padding: 0 8px 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.topbar .sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border-strong);
+  margin: 0 6px;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.topbar .logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(140deg, #34c759, #0a84ff);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-right: 4px;
+}
+
+.topbar .logo svg.icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.8;
+}
+
+.sidebar {
+  background: var(--bg-panel);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-left {
+  grid-area: left;
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-right {
+  grid-area: right;
+  border-left: 1px solid var(--border);
+}
+
+.panel-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 16px;
+  font-weight: 600;
+  font-size: var(--fs-title);
+  border-bottom: 1px solid var(--border);
+}
+
+.center {
+  grid-area: center;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.view {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  background: var(--bg-canvas);
+  overflow: hidden;
+}
+
+.bottombar {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-chrome);
+}
+
+.bottombar .spacer {
+  flex: 1;
+}
+
+.zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.zoom-value {
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg);
+  text-align: center;
+  outline: none;
+}
+
+.zoom-value:hover {
+  background: var(--bg-hover);
+}
+
+.status-text {
+  color: var(--fg-muted);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1100px) {
+  .app {
+    grid-template-columns: 200px minmax(0, 1fr) 220px;
+  }
+
+  .topbar .picker .picker-label {
+    display: none;
+  }
+}
