@@ -6,7 +6,8 @@ use tiny_skia::{
 
 use crate::geometry::{StripLayout, Viewport};
 use crate::paint::{Rgba, hex, round_rect, shader_paint, solid};
-use crate::text::{Align, FontLibrary, TextEngine, TextStyle, parse_markup, to_paths};
+use crate::text::draw_layout;
+use arrangia_core::layout::{ResolvedTextStyle, TextInput, TextLayouter};
 
 /// Store gallery preview: export images side by side with the gallery gap
 /// and rounded corners, the way the store shows them.
@@ -69,8 +70,7 @@ pub fn debug_overlay(
     pm: &mut Pixmap,
     layout: &StripLayout,
     view: &Viewport,
-    engine: &mut dyn TextEngine,
-    fonts: &FontLibrary,
+    layouter: &mut TextLayouter,
 ) {
     let vt = view.transform();
     // Gaps: semi-transparent veil + diagonal hatching.
@@ -128,24 +128,18 @@ pub fn debug_overlay(
             };
             pm.stroke_path(&p, &solid([255, 255, 255, 220]), &stroke, vt, None);
         }
-        let style = TextStyle {
-            family: "Inter",
+        let style = ResolvedTextStyle {
             weight: 600,
-            bold_weight: 600,
             size: 44.0,
-            line_height: 1.2,
-            color: hex("#FFFFFF"),
-            align: Align::Start,
-            span_colors: std::collections::HashMap::new(),
+            color: super::core_color(hex("#FFFFFF")),
+            ..ResolvedTextStyle::default()
         };
         let label = format!("page {i} · x = {:.0} lu", r.x);
-        let l = engine.layout(&parse_markup(&label), &style, 44.0, 900.0, false);
+        let l = layouter.layout(&TextInput::new(&label, &style, 900.0));
         let ts = vt.pre_translate((r.x + 24.0) as f32, (r.bottom() - 90.0) as f32);
-        if let Some(bg) = round_rect(-12.0, -8.0, l.max_line_width + 24.0, l.height + 16.0, 14.0) {
+        if let Some(bg) = round_rect(-12.0, -8.0, l.content.w + 24.0, l.content.h + 16.0, 14.0) {
             pm.fill_path(&bg, &solid([0, 0, 0, 150]), FillRule::Winding, ts, None);
         }
-        for (p, c) in &to_paths(&l, fonts).paths {
-            pm.fill_path(p, &solid(*c), FillRule::Winding, ts, None);
-        }
+        draw_layout(pm, &l, layouter.fonts(), ts, None);
     }
 }

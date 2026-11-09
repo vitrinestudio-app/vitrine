@@ -37,6 +37,8 @@
 pub mod catalog;
 pub mod geometry;
 pub mod io;
+pub mod layout;
+pub mod markup;
 pub mod model;
 pub mod ops;
 pub mod resolve;

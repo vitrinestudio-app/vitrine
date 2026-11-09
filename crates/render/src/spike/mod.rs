@@ -22,11 +22,11 @@ use tiny_skia::{FillRule, Mask, Pixmap, Transform};
 use crate::blur::{ShadowPx, draw_shadow};
 use crate::frames::{DeviceGeometry, DeviceModel, FrameColors, FrameStyle, draw_device};
 use crate::geometry::{AnchorY, PAGE_W, Rect, StripLayout, Viewport};
-use crate::paint::{Rgba, css_gradient_line, hex, linear, round_rect, shader_paint, solid};
+use crate::paint::{Rgba, css_gradient_line, hex, linear, round_rect, shader_paint};
 use crate::raster::SourceImage;
-use crate::text::{
-    Align, Fit, FontLibrary, TextEngine, TextPaths, TextStyle, layout_fit, parse_markup, to_paths,
-};
+use crate::text::{TextPaths, draw_text, to_paths};
+use arrangia_core::layout::{Fit, ResolvedSpanStyle, ResolvedTextStyle, TextInput, TextLayouter};
+use arrangia_core::model::Align;
 
 /// Canvas design aspect (iPhone 6.9″ portrait).
 pub const DESIGN_ASPECT: (f64, f64) = (1320.0, 2868.0);
@@ -261,20 +261,39 @@ pub fn demo_scene() -> Scene {
     }
 }
 
+/// Converts a spike colour into a model colour.
+pub fn core_color(c: Rgba) -> arrangia_core::model::Rgba {
+    arrangia_core::model::Rgba {
+        r: c[0],
+        g: c[1],
+        b: c[2],
+        a: c[3],
+    }
+}
+
 /// Headline style of the spike.
-pub fn headline_style(size: f32) -> TextStyle {
-    TextStyle {
-        family: "Inter Display",
+pub fn headline_style(size: f32) -> ResolvedTextStyle {
+    ResolvedTextStyle {
+        font: "Inter Display".to_owned(),
         weight: 700,
-        bold_weight: 900,
         size,
         line_height: 1.08,
-        color: hex("#FFFFFF"),
-        align: Align::Center,
-        span_colors: [("accent".to_owned(), hex("#FFC65C"))]
-            .into_iter()
-            .collect(),
+        color: core_color(hex("#FFFFFF")),
+        ..ResolvedTextStyle::default()
     }
+}
+
+/// Span styles of the spike (`[accent]…[/]`).
+pub fn spike_spans() -> std::collections::BTreeMap<String, ResolvedSpanStyle> {
+    [(
+        "accent".to_owned(),
+        ResolvedSpanStyle {
+            color: Some(core_color(hex("#FFC65C"))),
+            ..ResolvedSpanStyle::default()
+        },
+    )]
+    .into_iter()
+    .collect()
 }
 
 /// A laid-out text element (independent of target resolution).
@@ -283,19 +302,16 @@ pub struct PreparedText {
     pub paths: TextPaths,
     pub size: f32,
     pub lines: usize,
+    /// Fits without overflow and without emergency word breaks.
     pub fits: bool,
     pub height: f32,
     pub width: f32,
 }
 
-/// Lays out all text elements of `scene` for `lang` with `engine`.
-pub fn prepare_texts(
-    scene: &Scene,
-    lang: &str,
-    engine: &mut dyn TextEngine,
-    fonts: &FontLibrary,
-) -> Texts {
+/// Lays out all text elements of `scene` for `lang`.
+pub fn prepare_texts(scene: &Scene, lang: &str, layouter: &mut TextLayouter) -> Texts {
     let mut out = HashMap::new();
+    let spans = spike_spans();
     for el in &scene.elements {
         if let ElementKind::Text {
             key,
@@ -314,29 +330,26 @@ pub fn prepare_texts(
                 .or_else(|| scene.texts.get("en").and_then(|t| t.get(key)))
                 .copied()
                 .unwrap_or(key);
-            let spans = parse_markup(markup);
             let width = (PAGE_W - left - right) as f32;
-            let fitted = layout_fit(
-                engine,
-                &spans,
-                &headline_style(*size),
-                width,
-                &Fit {
-                    min_size: *min_size,
-                    max_lines: *max_lines,
-                    max_height: None,
-                    balance: true,
+            let style = headline_style(*size);
+            let layout = layouter.layout(&TextInput {
+                spans: Some(&spans),
+                align: Align::Center,
+                fit: Fit {
+                    shrink_to: Some(*min_size),
+                    max_lines: Some(*max_lines as u32),
                 },
-            );
+                ..TextInput::new(markup, &style, width)
+            });
             out.insert(
                 el.id,
                 PreparedText {
-                    paths: to_paths(&fitted.layout, fonts),
-                    size: fitted.size,
-                    lines: fitted.layout.line_count,
-                    fits: fitted.fits,
-                    height: fitted.layout.height,
-                    width: fitted.layout.max_line_width,
+                    paths: to_paths(&layout, layouter.fonts()),
+                    size: layout.font_size,
+                    lines: layout.lines.len(),
+                    fits: !layout.overflow && layout.diagnostics.is_empty(),
+                    height: layout.content.h,
+                    width: layout.lines.iter().map(|l| l.width).fold(0.0, f32::max),
                 },
             );
         }
@@ -503,8 +516,7 @@ pub fn render(
                 let ts = vt.pre_translate(bx as f32, by as f32);
                 // clip: page — only build a mask if the text actually
                 // leaves its page (e.g. emergency overflow).
-                let needs_clip = t.paths.paths.iter().any(|(p, _)| {
-                    let b = p.bounds();
+                let needs_clip = t.paths.bounds().is_some_and(|b| {
                     f64::from(b.left()) + bx < page.x
                         || f64::from(b.right()) + bx > page.right()
                         || f64::from(b.bottom()) + by > page.bottom()
@@ -514,9 +526,7 @@ pub fn render(
                 } else {
                     None
                 };
-                for (path, color) in &t.paths.paths {
-                    pm.fill_path(path, &solid(*color), FillRule::Winding, ts, mask.as_ref());
-                }
+                draw_text(&mut pm, &t.paths, ts, mask.as_ref());
             }
         }
     }
@@ -548,8 +558,7 @@ pub fn image_viewport(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text::cosmic::CosmicEngine;
-    use crate::text::parley_engine::ParleyEngine;
+    use arrangia_core::layout::FontLibrary;
 
     /// A vertical white bar anchored to page 0, centred 20 lu right of its
     /// right edge — i.e. inside a 40 lu gap.
@@ -624,28 +633,18 @@ mod tests {
     }
 
     #[test]
-    fn german_headlines_shrink_more_and_engines_agree() {
-        let fonts = FontLibrary::bundled();
+    fn german_headlines_shrink_more() {
         let scene = demo_scene();
-        let mut cosmic = CosmicEngine::new(&fonts);
-        let mut parley = ParleyEngine::new(&fonts);
-        for engine in [&mut cosmic as &mut dyn TextEngine, &mut parley] {
-            let en = prepare_texts(&scene, "en", engine, &fonts);
-            let de = prepare_texts(&scene, "de", engine, &fonts);
-            let en1 = &en["title-1"];
-            let de1 = &de["title-1"];
-            assert!(de1.fits && en1.fits);
-            assert!(de1.size < en1.size - 20.0, "{} vs {}", de1.size, en1.size);
-            for t in en.values().chain(de.values()) {
-                assert!(t.lines <= 2);
-                assert!(t.width <= 840.5, "no overflow: {}", t.width);
-            }
-        }
-        let c = prepare_texts(&scene, "de", &mut cosmic, &fonts);
-        let p = prepare_texts(&scene, "de", &mut parley, &fonts);
-        for id in c.keys() {
-            assert!((c[id].size - p[id].size).abs() < 0.5, "{id}");
-            assert_eq!(c[id].lines, p[id].lines, "{id}");
+        let mut layouter = TextLayouter::new(FontLibrary::bundled());
+        let en = prepare_texts(&scene, "en", &mut layouter);
+        let de = prepare_texts(&scene, "de", &mut layouter);
+        let en1 = &en["title-1"];
+        let de1 = &de["title-1"];
+        assert!(de1.fits && en1.fits);
+        assert!(de1.size < en1.size - 20.0, "{} vs {}", de1.size, en1.size);
+        for t in en.values().chain(de.values()) {
+            assert!(t.lines <= 2);
+            assert!(t.width <= 840.5, "no overflow: {}", t.width);
         }
     }
 }

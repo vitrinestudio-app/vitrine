@@ -59,12 +59,14 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] proptest for anchor/coordinate mapping
 
 ## 1.5 Text layout (`core::layout`)
-- [ ] Inline markup parser: `**bold**`, `_italic_`, `[span]…[/]`, `\n`,
+- [x] Inline markup parser: `**bold**`, `_italic_`, `[span]…[/]`, `\n`,
       soft hyphen (`\-` and U+00AD) — break only there when needed, render a
       visible hyphen
-- [ ] parley layout, auto-fit (`shrink_to`, `max_lines`), box from page margins
-- [ ] Bundled fonts + project `fonts/`; no system fonts in tests
-- [ ] Layout report: boxes, chosen font size, overflow, emergency word breaks
+- [x] parley layout, auto-fit (`shrink_to`, `max_lines`), box from page margins
+      (box size is the caller's input; margins → width happen in resolve 1.4)
+- [x] Bundled fonts + project `fonts/`; no system fonts in tests
+- [x] Layout report: boxes, chosen font size, overflow, emergency word breaks
+      (ADR 0003)
 
 ## 1.6 Render (`render`)
 - [ ] Rasterize resolved scene (backgrounds linear/radial/image, shapes, images
@@ -73,7 +75,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       `detailed`, colour variants, portrait/landscape; `chrome: browser` on
       laptop/desktop; browser frame with URL, tabs, light/dark
 - [ ] Screenshot fit cover/contain/stretch, placeholder when missing
-- [ ] Remove cosmic-text; spike example reduced or removed
+- [x] Remove cosmic-text; spike example reduced or removed (done in 1.5)
 
 ## 1.7 Export (`render::export`)
 - [ ] Page export (gap content omitted), grouped export, banner (region,

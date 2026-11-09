@@ -1,11 +1,13 @@
 //! Phase 0 rendering spike.
 //!
 //! ```sh
-//! cargo run -p arrangia-render --release --example spike [-- --engine cosmic|parley] [--regen-assets] [--runs N]
+//! cargo run -p arrangia-render --release --example spike [-- --regen-assets] [--runs N]
 //! ```
 //!
 //! Writes all images to `docs/spike/` and prints timings. See
-//! `docs/adr/0001-render-pipeline.md`.
+//! `docs/adr/0001-render-pipeline.md`. Text goes through `arrangia_core::layout`
+//! (the cosmic-text comparison of Phase 0 was removed in Phase 1; its image
+//! `docs/spike/text-engines_comparison.png` is kept as a historical record).
 
 #![allow(
     clippy::too_many_lines,
@@ -18,6 +20,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use arrangia_core::layout::{
+    Fit, FontLibrary, ResolvedSpanStyle, ResolvedTextStyle, TextInput, TextLayouter,
+};
+use arrangia_core::model::{Align, VAlign};
 use arrangia_render::frames::{DeviceGeometry, DeviceModel, FrameColors, FrameStyle, draw_device};
 use arrangia_render::geometry::{AnchorY, PAGE_W, StripLayout, Viewport};
 use arrangia_render::paint::{hex, round_rect, solid};
@@ -26,11 +32,7 @@ use arrangia_render::spike::{
     self, PLACEHOLDER_GAP_LU, Placement, PreparedText, RenderParams, Scene, Screenshots, Variant,
     compose, screens,
 };
-use arrangia_render::text::cosmic::CosmicEngine;
-use arrangia_render::text::parley_engine::ParleyEngine;
-use arrangia_render::text::{
-    Align, Fit, FontLibrary, TextEngine, TextStyle, layout_fit, parse_markup, to_paths,
-};
+use arrangia_render::text::{draw_layout, draw_text, to_paths};
 use tiny_skia::{FillRule, Pixmap, Stroke, Transform};
 
 const BG_WHITE: [u8; 3] = [255, 255, 255];
@@ -39,7 +41,7 @@ const PLACEHOLDER_GAP_IPAD_LU: f64 = 60.0;
 
 struct Ctx {
     out: PathBuf,
-    fonts: FontLibrary,
+    layouter: TextLayouter,
     scene: Scene,
     shots: Screenshots,
     written: Vec<(String, usize, u32, u32)>,
@@ -70,7 +72,6 @@ fn main() -> anyhow::Result<()> {
             .position(|a| a == name)
             .and_then(|i| args.get(i + 1).cloned())
     };
-    let engine_name = arg("--engine").unwrap_or_else(|| "parley".to_owned());
     let runs: usize = arg("--runs").and_then(|s| s.parse().ok()).unwrap_or(15);
     let regen = args.iter().any(|a| a == "--regen-assets");
 
@@ -82,7 +83,9 @@ fn main() -> anyhow::Result<()> {
         std::fs::remove_dir_all(out.join("pages"))?;
     }
     for e in std::fs::read_dir(&out).into_iter().flatten().flatten() {
-        if e.path().extension().is_some_and(|x| x == "png") {
+        if e.path().extension().is_some_and(|x| x == "png")
+            && e.file_name() != "text-engines_comparison.png"
+        {
             std::fs::remove_file(e.path())?;
         }
     }
@@ -90,12 +93,8 @@ fn main() -> anyhow::Result<()> {
 
     // ---- one-time costs -------------------------------------------------
     let t = Instant::now();
-    let fonts = FontLibrary::bundled();
-    let mut cosmic = CosmicEngine::new(&fonts);
-    let t_cosmic_init = t.elapsed();
-    let t = Instant::now();
-    let mut parley = ParleyEngine::new(&fonts);
-    let t_parley_init = t.elapsed();
+    let mut layouter = TextLayouter::new(FontLibrary::bundled());
+    let t_layouter_init = t.elapsed();
 
     let assets = root.join("assets/spike");
     let shot_files = [
@@ -105,19 +104,19 @@ fn main() -> anyhow::Result<()> {
     ];
     if regen || shot_files.iter().any(|(_, f)| !assets.join(f).exists()) {
         println!("generating test screenshots in {}", assets.display());
-        let e: &mut dyn TextEngine = &mut parley;
+        let e = &mut layouter;
         save_png_rgb(
-            &screens::phone_home(e, &fonts),
+            &screens::phone_home(e),
             &assets.join("phone-home.png"),
             BG_WHITE,
         )?;
         save_png_rgb(
-            &screens::phone_harvest(e, &fonts),
+            &screens::phone_harvest(e),
             &assets.join("phone-harvest.png"),
             BG_WHITE,
         )?;
         save_png_rgb(
-            &screens::tablet_planner(e, &fonts),
+            &screens::tablet_planner(e),
             &assets.join("tablet-planner.png"),
             BG_WHITE,
         )?;
@@ -131,18 +130,11 @@ fn main() -> anyhow::Result<()> {
 
     let mut ctx = Ctx {
         out,
-        fonts,
+        layouter,
         scene: spike::demo_scene(),
         shots,
         written: Vec::new(),
     };
-
-    let engine: &mut dyn TextEngine = if engine_name == "parley" {
-        &mut parley
-    } else {
-        &mut cosmic
-    };
-    println!("text engine for exports: {}", engine.name());
 
     // ---- exports ----------------------------------------------------------
     let texts: HashMap<&str, HashMap<&'static str, PreparedText>> = ["en", "de"]
@@ -150,7 +142,7 @@ fn main() -> anyhow::Result<()> {
         .map(|lang| {
             (
                 lang,
-                spike::prepare_texts(&ctx.scene, lang, engine, &ctx.fonts),
+                spike::prepare_texts(&ctx.scene, lang, &mut ctx.layouter),
             )
         })
         .collect();
@@ -278,7 +270,7 @@ fn main() -> anyhow::Result<()> {
             style: FrameStyle::Detailed,
         };
         let mut pm = spike::render(&ctx.scene, &texts["en"], &ctx.shots, &params, &view);
-        compose::debug_overlay(&mut pm, &layout, &view, engine, &ctx.fonts);
+        compose::debug_overlay(&mut pm, &layout, &view, &mut ctx.layouter);
         ctx.save(&pm, "canvas-debug_en_gap40.png");
         let layout = design
             .with_gap(PLACEHOLDER_GAP_IPAD_LU)
@@ -290,20 +282,19 @@ fn main() -> anyhow::Result<()> {
             style: FrameStyle::Detailed,
         };
         let mut pm = spike::render(&ctx.scene, &texts["en"], &ctx.shots, &params, &view);
-        compose::debug_overlay(&mut pm, &layout, &view, engine, &ctx.fonts);
+        compose::debug_overlay(&mut pm, &layout, &view, &mut ctx.layouter);
         ctx.save(&pm, "canvas-debug_en_group2-gap60.png");
     }
 
     frames_sheet(&mut ctx);
-    engine_comparison(&mut ctx, &mut cosmic, &mut parley);
+    text_layout_sheet(&mut ctx);
 
     // ---- timings -------------------------------------------------------------
     println!();
     println!("machine: {}", machine());
     println!(
-        "one-time: cosmic-text FontSystem {:.1} ms, parley FontContext {:.1} ms, screenshot decode (3 PNGs) {:.1} ms",
-        ms(t_cosmic_init),
-        ms(t_parley_init),
+        "one-time: text layouter (fonts) {:.1} ms, screenshot decode (3 PNGs) {:.1} ms",
+        ms(t_layouter_init),
         ms(t_decode)
     );
     println!(
@@ -311,17 +302,15 @@ fn main() -> anyhow::Result<()> {
         ms(t_first_export)
     );
     let layout = design.with_gap(PLACEHOLDER_GAP_LU);
-    for (name, e) in [
-        ("cosmic-text", &mut cosmic as &mut dyn TextEngine),
-        ("parley", &mut parley as &mut dyn TextEngine),
-    ] {
+    {
+        let name = "parley";
         let mut prep = Vec::new();
         for _ in 0..runs {
             let t = Instant::now();
-            let _ = spike::prepare_texts(&ctx.scene, "de", e, &ctx.fonts);
+            let _ = spike::prepare_texts(&ctx.scene, "de", &mut ctx.layouter);
             prep.push(t.elapsed());
         }
-        let tx = spike::prepare_texts(&ctx.scene, "de", e, &ctx.fonts);
+        let tx = spike::prepare_texts(&ctx.scene, "de", &mut ctx.layouter);
         for (label, w, h) in [
             ("export 1320x2868", 1320u32, 2868u32),
             ("preview 400x869", 400, 869),
@@ -541,41 +530,19 @@ fn frames_sheet(ctx: &mut Ctx) {
         draw_device(&mut pm, &tg, style, &colors, shot.as_deref(), ts);
     }
     // Labels
-    let mut e = ParleyEngine::new(&ctx.fonts);
-    let label =
-        |pm: &mut Pixmap, e: &mut ParleyEngine, fonts: &FontLibrary, x: f32, y: f32, s: &str| {
-            let style = small_style();
-            let l = e.layout(&parse_markup(s), &style, 30.0, 440.0, false);
-            let ts = Transform::from_translate(x - 220.0, y);
-            for (p, c) in &to_paths(&l, fonts).paths {
-                pm.fill_path(p, &solid(*c), FillRule::Winding, ts, None);
-            }
-        };
-    let fonts = ctx.fonts.clone();
-    label(
-        &mut pm,
-        &mut e,
-        &fonts,
-        455.0,
-        1290.0,
-        "**stylized** · porcelain / midnight",
-    );
-    label(
-        &mut pm,
-        &mut e,
-        &fonts,
-        1315.0,
-        1290.0,
-        "**detailed** · silver / graphite",
-    );
-    label(
-        &mut pm,
-        &mut e,
-        &fonts,
-        2060.0,
-        1290.0,
-        "tablet · stylized / detailed",
-    );
+    for (x, text) in [
+        (455.0, "**stylized** · porcelain / midnight"),
+        (1315.0, "**detailed** · silver / graphite"),
+        (2060.0, "tablet · stylized / detailed"),
+    ] {
+        let style = small_style();
+        let l = ctx.layouter.layout(&TextInput {
+            align: Align::Center,
+            ..TextInput::new(text, &style, 440.0)
+        });
+        let ts = Transform::from_translate(x - 220.0, 1290.0);
+        draw_layout(&mut pm, &l, ctx.layouter.fonts(), ts, None);
+    }
     ctx.save(&pm, "frames_styles.png");
 
     // Close-up of the island/top of both styles (2x zoom crop).
@@ -600,184 +567,158 @@ fn frames_sheet(ctx: &mut Ctx) {
     ctx.save(&zoom, "frames_closeup.png");
 }
 
-fn small_style() -> TextStyle {
-    TextStyle {
-        family: "Inter",
-        weight: 400,
-        bold_weight: 600,
+fn small_style() -> ResolvedTextStyle {
+    ResolvedTextStyle {
         size: 30.0,
-        line_height: 1.2,
-        color: hex("#FFFFFF"),
-        align: Align::Center,
-        span_colors: HashMap::new(),
+        color: spike::core_color(hex("#FFFFFF")),
+        ..ResolvedTextStyle::default()
     }
 }
 
-/// Same headlines through both engines, side by side.
-fn engine_comparison(ctx: &mut Ctx, cosmic: &mut CosmicEngine, parley: &mut ParleyEngine) {
-    let cases: [(&str, &str, Option<bool>); 5] = [
+/// Text layout features of `arrangia_core::layout`: auto-fit, soft hyphens,
+/// emergency breaks, inline styles.
+fn text_layout_sheet(ctx: &mut Ctx) {
+    let fit = |shrink_to: f32, max_lines: u32| Fit {
+        shrink_to: Some(shrink_to),
+        max_lines: Some(max_lines),
+    };
+    let cases: [(&str, &str, Fit); 6] = [
         (
-            "auto-fit (de)",
+            "auto-fit 104 → 56 lu, 2 lines (de)",
             "**Mischkulturempfehlungen** für jedes Beet",
-            None,
+            fit(56.0, 2),
         ),
         (
             "auto-fit (de)",
             "Behalte jede [accent]Ernte[/] auf einen Blick im Griff",
-            None,
+            fit(56.0, 2),
         ),
         (
-            "auto-fit (en)",
-            "Plan your beds [accent]in minutes[/] — **really**",
-            None,
+            "soft hyphens Misch\\-kultur\\-empfehlungen, no shrinking",
+            "**Misch\\-kultur\\-empfehlungen** für jedes Beet",
+            fit(104.0, 3),
         ),
         (
-            "104 lu, no fit: word wrap only",
+            "no soft hyphen, no shrinking: emergency break (warning)",
             "**Mischkulturempfehlungen** für jedes Beet",
-            Some(false),
+            fit(104.0, 3),
         ),
         (
-            "104 lu, no fit: emergency break",
-            "**Mischkulturempfehlungen** für jedes Beet",
-            Some(true),
+            "max_lines 1 at shrink_to: overflow (error)",
+            "Plane deine Beete [accent]in Minuten[/] und behalte alles im Blick",
+            fit(80.0, 1),
+        ),
+        (
+            "_italic_ (synthetic oblique), [hl]highlight[/], **bold**",
+            "Plane _deine_ Beete [hl]in Minuten[/] — **wirklich**",
+            fit(56.0, 2),
         ),
     ];
     let row_h = 420.0f32;
-    let col_w = 1000.0f32;
     let label_h = 70.0f32;
-    let w = (2.0 * col_w) as u32;
-    let h = (cases.len() as f32 * (row_h + label_h) + 90.0) as u32;
+    let w = 1000u32;
+    let h = (cases.len() as f32 * (row_h + label_h) + 30.0) as u32;
     let mut pm = Pixmap::new(w, h).expect("size");
     pm.fill(tiny_skia::Color::from_rgba8(16, 52, 42, 255));
-    let fonts = ctx.fonts.clone();
-    let mut lbl = ParleyEngine::new(&fonts);
-    let mut text_at =
-        |pm: &mut Pixmap, x: f32, y: f32, wdt: f32, s: &str, size: f32, color: [u8; 4]| {
-            let mut st = small_style();
-            st.align = Align::Start;
-            st.color = color;
-            let l = lbl.layout(&parse_markup(s), &st, size, wdt, false);
-            for (p, c) in &to_paths(&l, &fonts).paths {
-                pm.fill_path(
-                    p,
-                    &solid(*c),
-                    FillRule::Winding,
-                    Transform::from_translate(x, y),
-                    None,
-                );
-            }
-        };
-    text_at(
-        &mut pm,
-        30.0,
-        25.0,
-        900.0,
-        "**cosmic-text 0.19**",
-        40.0,
-        hex("#FFFFFF"),
+    let mut spans = spike::spike_spans();
+    spans.insert(
+        "hl".to_owned(),
+        ResolvedSpanStyle {
+            color: Some(spike::core_color(hex("#10342A"))),
+            background: Some(spike::core_color(hex("#FFC65C"))),
+            ..ResolvedSpanStyle::default()
+        },
     );
-    text_at(
-        &mut pm,
-        col_w + 30.0,
-        25.0,
-        900.0,
-        "**parley 0.12**",
-        40.0,
-        hex("#FFFFFF"),
-    );
-    for (ri, (title, markup, mode)) in cases.iter().enumerate() {
-        let y0 = 90.0 + ri as f32 * (row_h + label_h);
-        for (ci, engine) in [cosmic as &mut dyn TextEngine, parley as &mut dyn TextEngine]
-            .into_iter()
-            .enumerate()
-        {
-            let x0 = ci as f32 * col_w;
-            let spans = parse_markup(markup);
-            let style = spike::headline_style(104.0);
-            let bw = 840.0f32;
-            let (layout, size, fits) = match mode {
-                None => {
-                    let f = layout_fit(
-                        engine,
-                        &spans,
-                        &style,
-                        bw,
-                        &Fit {
-                            min_size: 56.0,
-                            max_lines: 2,
-                            max_height: None,
-                            balance: true,
-                        },
-                    );
-                    (f.layout, f.size, f.fits)
-                }
-                Some(emergency) => {
-                    let l = engine.layout(&spans, &style, 104.0, bw, *emergency);
-                    let fits = l.max_line_width <= bw;
-                    (l, 104.0, fits)
-                }
-            };
-            // page-like panel + box outline
-            if let Some(p) = round_rect(x0 + 10.0, y0, col_w - 20.0, row_h, 18.0) {
-                pm.fill_path(
-                    &p,
-                    &solid([255, 255, 255, 18]),
-                    FillRule::Winding,
-                    Transform::identity(),
-                    None,
-                );
-            }
-            if let Some(r) = tiny_skia::Rect::from_xywh(x0 + 80.0, y0 + 40.0, bw, row_h - 60.0) {
-                let p = tiny_skia::PathBuilder::from_rect(r);
-                pm.stroke_path(
-                    &p,
-                    &solid([255, 198, 92, 150]),
-                    &Stroke {
-                        width: 2.0,
-                        dash: tiny_skia::StrokeDash::new(vec![10.0, 8.0], 0.0),
-                        ..Stroke::default()
-                    },
-                    Transform::identity(),
-                    None,
-                );
-            }
-            // Clip each panel like a page (`clip: page`).
-            let mut clip = tiny_skia::Mask::new(pm.width(), pm.height()).expect("mask");
-            if let Some(r) = tiny_skia::Rect::from_xywh(x0 + 10.0, y0, col_w - 20.0, row_h) {
-                clip.fill_path(
-                    &tiny_skia::PathBuilder::from_rect(r),
-                    FillRule::Winding,
-                    true,
-                    Transform::identity(),
-                );
-            }
-            let paths = to_paths(&layout, &ctx.fonts);
-            for (p, c) in &paths.paths {
-                pm.fill_path(
-                    p,
-                    &solid(*c),
-                    FillRule::Winding,
-                    Transform::from_translate(x0 + 80.0, y0 + 40.0),
-                    Some(&clip),
-                );
-            }
-            let info = format!(
-                "{title}: {:.1} lu · {} line(s) · widest {:.0} / {bw:.0} lu · {}",
-                size,
-                layout.line_count,
-                layout.max_line_width,
-                if fits { "fits" } else { "OVERFLOWS" }
-            );
-            text_at(
-                &mut pm,
-                x0 + 30.0,
-                y0 + row_h + 14.0,
-                col_w - 60.0,
-                &info,
-                26.0,
-                hex("#CFE3D8"),
+    let bw = 840.0f32;
+    for (ri, (title, markup, fit)) in cases.iter().enumerate() {
+        let y0 = 30.0 + ri as f32 * (row_h + label_h);
+        let style = spike::headline_style(104.0);
+        let layout = ctx.layouter.layout(&TextInput {
+            spans: Some(&spans),
+            align: Align::Center,
+            valign: VAlign::Center,
+            height: Some(row_h - 60.0),
+            fit: *fit,
+            ..TextInput::new(markup, &style, bw)
+        });
+        if let Some(p) = round_rect(10.0, y0, w as f32 - 20.0, row_h, 18.0) {
+            pm.fill_path(
+                &p,
+                &solid([255, 255, 255, 18]),
+                FillRule::Winding,
+                Transform::identity(),
+                None,
             );
         }
+        if let Some(r) = tiny_skia::Rect::from_xywh(80.0, y0 + 30.0, bw, row_h - 60.0) {
+            let p = tiny_skia::PathBuilder::from_rect(r);
+            pm.stroke_path(
+                &p,
+                &solid([255, 198, 92, 150]),
+                &Stroke {
+                    width: 2.0,
+                    dash: tiny_skia::StrokeDash::new(vec![10.0, 8.0], 0.0),
+                    ..Stroke::default()
+                },
+                Transform::identity(),
+                None,
+            );
+        }
+        // Clip each panel like a page (`clip: page`).
+        let mut clip = tiny_skia::Mask::new(pm.width(), pm.height()).expect("mask");
+        if let Some(r) = tiny_skia::Rect::from_xywh(10.0, y0, w as f32 - 20.0, row_h) {
+            clip.fill_path(
+                &tiny_skia::PathBuilder::from_rect(r),
+                FillRule::Winding,
+                true,
+                Transform::identity(),
+            );
+        }
+        let paths = to_paths(&layout, ctx.layouter.fonts());
+        draw_text(
+            &mut pm,
+            &paths,
+            Transform::from_translate(80.0, y0 + 30.0),
+            Some(&clip),
+        );
+        let report = layout.report();
+        let status = if report.overflow {
+            "OVERFLOW".to_owned()
+        } else if report.diagnostics.is_empty() {
+            "fits".to_owned()
+        } else {
+            report
+                .diagnostics
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("; ")
+        };
+        let info = format!(
+            "{title}: {:.2} lu · {} line(s) · {status}",
+            report.font_size, report.line_count
+        );
+        let mut st = small_style();
+        st.size = 22.0;
+        st.color = spike::core_color(hex("#CFE3D8"));
+        // Show the label literally: escape markup characters.
+        let literal: String = info
+            .chars()
+            .flat_map(|c| {
+                let esc = matches!(c, '\\' | '_' | '*' | '[').then_some('\\');
+                esc.into_iter().chain(std::iter::once(c))
+            })
+            .collect();
+        let l = ctx
+            .layouter
+            .layout(&TextInput::new(&literal, &st, w as f32 - 60.0));
+        draw_layout(
+            &mut pm,
+            &l,
+            ctx.layouter.fonts(),
+            Transform::from_translate(30.0, y0 + row_h + 12.0),
+            None,
+        );
     }
-    ctx.save(&pm, "text-engines_comparison.png");
+    ctx.save(&pm, "text-layout.png");
 }

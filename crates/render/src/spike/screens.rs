@@ -11,13 +11,14 @@
 use tiny_skia::{FillRule, Pixmap, Transform};
 
 use crate::paint::{Rgba, circle, hex, linear, round_rect, shader_paint, solid, with_alpha};
-use crate::text::{Align, FontLibrary, TextEngine, TextStyle, parse_markup, to_paths};
+use crate::text::draw_layout;
+use arrangia_core::layout::{ResolvedSpanStyle, ResolvedTextStyle, TextInput, TextLayouter};
+use arrangia_core::model::Align;
 
 /// Minimal immediate-mode UI painter in points (`s` px per pt).
 struct Ui<'a> {
     pm: Pixmap,
-    engine: &'a mut dyn TextEngine,
-    fonts: &'a FontLibrary,
+    layouter: &'a mut TextLayouter,
     s: f32,
 }
 
@@ -64,29 +65,35 @@ impl Ui<'_> {
         s: &str,
         align: Align,
     ) {
-        let style = TextStyle {
-            family: if size >= 26.0 {
+        let style = ResolvedTextStyle {
+            font: if size >= 26.0 {
                 "Inter Display"
             } else {
                 "Inter"
-            },
+            }
+            .to_owned(),
             weight,
-            bold_weight: 700,
             size,
             line_height: 1.2,
-            color: c,
-            align,
-            span_colors: [("accent".to_owned(), hex("#2F8A4C"))]
-                .into_iter()
-                .collect(),
+            color: super::core_color(c),
+            ..ResolvedTextStyle::default()
         };
-        let l = self.engine.layout(&parse_markup(s), &style, size, w, false);
-        let paths = to_paths(&l, self.fonts);
+        let spans = [(
+            "accent".to_owned(),
+            ResolvedSpanStyle {
+                color: Some(super::core_color(hex("#2F8A4C"))),
+                ..ResolvedSpanStyle::default()
+            },
+        )]
+        .into_iter()
+        .collect();
+        let l = self.layouter.layout(&TextInput {
+            spans: Some(&spans),
+            align,
+            ..TextInput::new(s, &style, w)
+        });
         let ts = self.ts().pre_translate(x, y);
-        for (p, col) in &paths.paths {
-            self.pm
-                .fill_path(p, &solid(*col), FillRule::Winding, ts, None);
-        }
+        draw_layout(&mut self.pm, &l, self.layouter.fonts(), ts, None);
     }
 
     fn status_bar(&mut self, w: f32, dark: bool) {
@@ -148,12 +155,11 @@ fn plants_dots(ui: &mut Ui<'_>, x: f32, y: f32, w: f32, h: f32, seed: u32) {
 }
 
 /// Phone "My Garden" home screen, 1320 × 2868 px.
-pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
+pub fn phone_home(layouter: &mut TextLayouter) -> Pixmap {
     let (w, h, s) = (440.0, 956.0, 3.0);
     let mut ui = Ui {
         pm: Pixmap::new(1320, 2868).expect("size"),
-        engine,
-        fonts,
+        layouter,
         s,
     };
     ui.rect(0.0, 0.0, w, h, 0.0, hex("#F5F6F1"));
@@ -166,7 +172,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
         600,
         hex(MUTED),
         "Spring 2026 · 4 beds",
-        Align::Start,
+        Align::Left,
     );
     ui.text(
         20.0,
@@ -176,7 +182,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
         700,
         hex(INK),
         "My Garden",
-        Align::Start,
+        Align::Left,
     );
     ui.dot(w - 42.0, 104.0, 20.0, hex("#DDE8D8"));
     ui.text(
@@ -208,7 +214,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
         600,
         with_alpha(hex("#FFFFFF"), 0.8),
         "NEXT TASK",
-        Align::Start,
+        Align::Left,
     );
     ui.text(
         36.0,
@@ -218,7 +224,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
         700,
         hex("#FFFFFF"),
         "Water tomatoes",
-        Align::Start,
+        Align::Left,
     );
     ui.text(
         36.0,
@@ -228,7 +234,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
         400,
         with_alpha(hex("#FFFFFF"), 0.85),
         "Today, 18:00 · Bed 1",
-        Align::Start,
+        Align::Left,
     );
     ui.rect(
         36.0,
@@ -263,16 +269,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
     );
 
     // beds grid
-    ui.text(
-        20.0,
-        338.0,
-        200.0,
-        22.0,
-        700,
-        hex(INK),
-        "Beds",
-        Align::Start,
-    );
+    ui.text(20.0, 338.0, 200.0, 22.0, 700, hex(INK), "Beds", Align::Left);
     ui.text(
         w - 120.0,
         342.0,
@@ -281,7 +278,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
         600,
         hex(GREEN),
         "See all",
-        Align::End,
+        Align::Right,
     );
     let names = [
         ("Bed 1", "Tomatoes & basil", "6 plants · 2 tasks"),
@@ -306,7 +303,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
             600,
             hex(INK),
             n,
-            Align::Start,
+            Align::Left,
         );
         ui.text(
             x + 14.0,
@@ -316,7 +313,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
             400,
             hex(INK),
             sub,
-            Align::Start,
+            Align::Left,
         );
         ui.text(
             x + 14.0,
@@ -326,7 +323,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
             400,
             hex(MUTED),
             meta,
-            Align::Start,
+            Align::Left,
         );
     }
 
@@ -341,7 +338,7 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
         400,
         hex("#5A4210"),
         "**Tip:** Basil next to tomatoes keeps pests away.",
-        Align::Start,
+        Align::Left,
     );
 
     // tab bar
@@ -359,12 +356,11 @@ pub fn phone_home(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
 }
 
 /// Phone "Harvest" statistics screen, 1320 × 2868 px (dark).
-pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
+pub fn phone_harvest(layouter: &mut TextLayouter) -> Pixmap {
     let (w, h, s) = (440.0, 956.0, 3.0);
     let mut ui = Ui {
         pm: Pixmap::new(1320, 2868).expect("size"),
-        engine,
-        fonts,
+        layouter,
         s,
     };
     ui.rect(0.0, 0.0, w, h, 0.0, hex("#0F1512"));
@@ -377,7 +373,7 @@ pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap
         600,
         hex("#8FA396"),
         "Season 2026",
-        Align::Start,
+        Align::Left,
     );
     ui.text(
         20.0,
@@ -387,7 +383,7 @@ pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap
         700,
         hex("#FFFFFF"),
         "Harvest",
-        Align::Start,
+        Align::Left,
     );
 
     ui.rect(16.0, 146.0, w - 32.0, 330.0, 24.0, hex("#18211C"));
@@ -399,7 +395,7 @@ pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap
         600,
         hex("#8FA396"),
         "TOTAL THIS SEASON",
-        Align::Start,
+        Align::Left,
     );
     ui.text(
         36.0,
@@ -409,7 +405,7 @@ pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap
         700,
         hex("#FFFFFF"),
         "38.4 kg",
-        Align::Start,
+        Align::Left,
     );
     ui.text(
         36.0,
@@ -419,7 +415,7 @@ pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap
         600,
         hex("#6FD08C"),
         "+12 % vs. 2025",
-        Align::Start,
+        Align::Left,
     );
     let vals = [0.25, 0.42, 0.38, 0.6, 0.82, 0.95, 0.7, 0.5];
     let months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
@@ -466,7 +462,7 @@ pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap
         700,
         hex("#FFFFFF"),
         "By crop",
-        Align::Start,
+        Align::Left,
     );
     for (i, (n, v, c, frac)) in rows.iter().enumerate() {
         let y = 540.0 + i as f32 * 58.0;
@@ -480,7 +476,7 @@ pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap
             600,
             hex("#FFFFFF"),
             n,
-            Align::Start,
+            Align::Left,
         );
         ui.rect(60.0, y + 33.0, 220.0, 5.0, 2.5, hex("#26302A"));
         ui.rect(60.0, y + 33.0, 220.0 * frac, 5.0, 2.5, hex(c));
@@ -492,7 +488,7 @@ pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap
             600,
             hex("#DDE6DF"),
             v,
-            Align::End,
+            Align::Right,
         );
     }
     ui.rect(0.0, h - 84.0, w, 84.0, 0.0, hex("#151C18"));
@@ -512,18 +508,17 @@ pub fn phone_harvest(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap
 }
 
 /// Tablet "Bed planner" screen, landscape 2752 × 2064 px.
-pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixmap {
+pub fn tablet_planner(layouter: &mut TextLayouter) -> Pixmap {
     let (w, h, s) = (1376.0, 1032.0, 2.0);
     let mut ui = Ui {
         pm: Pixmap::new(2752, 2064).expect("size"),
-        engine,
-        fonts,
+        layouter,
         s,
     };
     ui.rect(0.0, 0.0, w, h, 0.0, hex("#F5F6F1"));
     // sidebar
     ui.rect(0.0, 0.0, 300.0, h, 0.0, hex("#ECEFE7"));
-    ui.text(24.0, 18.0, 80.0, 15.0, 600, hex(INK), "9:41", Align::Start);
+    ui.text(24.0, 18.0, 80.0, 15.0, 600, hex(INK), "9:41", Align::Left);
     ui.text(
         24.0,
         64.0,
@@ -532,7 +527,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         700,
         hex(INK),
         "Garden",
-        Align::Start,
+        Align::Left,
     );
     let items = [
         "Overview",
@@ -549,7 +544,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         }
         let c = if i == 1 { hex(GREEN) } else { hex("#4A544C") };
         ui.rect(28.0, y + 10.0, 20.0, 20.0, 6.0, c);
-        ui.text(62.0, y + 9.0, 200.0, 17.0, 600, c, it, Align::Start);
+        ui.text(62.0, y + 9.0, 200.0, 17.0, 600, c, it, Align::Left);
     }
     // header
     ui.text(
@@ -560,7 +555,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         700,
         hex(INK),
         "Bed 1 · Tomatoes & basil",
-        Align::Start,
+        Align::Left,
     );
     ui.text(
         332.0,
@@ -570,7 +565,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         400,
         hex(MUTED),
         "120 × 240 cm · sunny · planted 14 May",
-        Align::Start,
+        Align::Left,
     );
     ui.rect(w - 230.0, 60.0, 200.0, 40.0, 20.0, hex(GREEN));
     ui.text(
@@ -638,7 +633,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         700,
         hex(INK),
         "Tomato",
-        Align::Start,
+        Align::Left,
     );
     ui.text(
         ix + 20.0,
@@ -648,7 +643,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         400,
         hex(MUTED),
         "Solanum lycopersicum",
-        Align::Start,
+        Align::Left,
     );
     ui.text(
         ix + 20.0,
@@ -658,7 +653,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         600,
         hex(MUTED),
         "GOOD NEIGHBOURS",
-        Align::Start,
+        Align::Left,
     );
     for (i, n) in ["Basil", "Marigold", "Carrot", "Parsley"]
         .iter()
@@ -686,7 +681,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         600,
         hex(MUTED),
         "AVOID",
-        Align::Start,
+        Align::Left,
     );
     for (i, n) in ["Fennel", "Potato"].iter().enumerate() {
         let x = ix + 20.0 + i as f32 * 140.0;
@@ -710,7 +705,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         400,
         hex(INK),
         "Water every 2 days. Harvest from **late July**.",
-        Align::Start,
+        Align::Left,
     );
 
     ui.rect(ix, gy + 444.0, iw, 416.0, 22.0, hex("#FFFFFF"));
@@ -722,7 +717,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
         700,
         hex(INK),
         "This week",
-        Align::Start,
+        Align::Left,
     );
     let tasks = [
         ("Water bed 1", "Today"),
@@ -746,7 +741,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
             600,
             hex(INK),
             t,
-            Align::Start,
+            Align::Left,
         );
         ui.text(
             ix + 56.0,
@@ -756,7 +751,7 @@ pub fn tablet_planner(engine: &mut dyn TextEngine, fonts: &FontLibrary) -> Pixma
             400,
             hex(MUTED),
             d,
-            Align::Start,
+            Align::Left,
         );
     }
     ui.pm

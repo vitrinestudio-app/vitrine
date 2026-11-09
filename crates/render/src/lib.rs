@@ -10,7 +10,8 @@
 //!   strip or a single page (planned: `tiny-skia`).
 //! - **Device frames** drawn parametrically from catalog data in the styles
 //!   `stylized` and `detailed`, plus imported and custom frame packs.
-//! - **Text rendering** from the layout computed in `arrangia-core`.
+//! - **Text rendering**: glyph outlines of the `TextLayout` computed by
+//!   `arrangia_core::layout`, drawn as paths (`text`).
 //! - **Export**: cutting pages (omitting gap content), banners, gallery
 //!   previews, removing alpha, encoding PNG/JPEG.
 //!
