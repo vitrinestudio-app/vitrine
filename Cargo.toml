@@ -58,6 +58,15 @@ clap = { version = "4.6.7", features = ["derive"] }
 rmcp = "3.9.0"
 tauri = { version = "2.12.5", features = [] }
 tauri-build = { version = "2.7.4", features = [] }
+# File dialogs, used from Rust only (the web view keeps `core:default`).
+tauri-plugin-dialog = "2.8.4"
+
+# GUI session: file watching, platform folders, dev HTTP bridge
+notify = "8.2.0"
+notify-debouncer-full = "0.7.0"
+directories = "6.0.0"
+# Dev-only HTTP bridge (`arrangia-devbridge`, feature `devbridge`); not shipped.
+tiny_http = "0.12.0"
 
 # Testing
 insta = { version = "1.49.0", features = ["yaml"] }

@@ -7,17 +7,50 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 publish = false
+default-run = "arrangia-gui"
+
+[lib]
+name = "arrangia_gui"
+path = "src/lib.rs"
 
 [[bin]]
 name = "arrangia-gui"
 path = "src/main.rs"
 
+# Dev harness: serves ui/ and the commands over HTTP for browser-based
+# checks (docs/adr/0008). Never part of the release bundle.
+[[bin]]
+name = "arrangia-devbridge"
+path = "src/bin/arrangia-devbridge.rs"
+required-features = ["devbridge"]
+
+[features]
+devbridge = ["dep:tiny_http"]
+
 [build-dependencies]
 tauri-build.workspace = true
 
 [dependencies]
+arrangia-core.workspace = true
+arrangia-render.workspace = true
 tauri.workspace = true
+tauri-plugin-dialog.workspace = true
 serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+rusqlite.workspace = true
+notify.workspace = true
+notify-debouncer-full.workspace = true
+directories.workspace = true
+png.workspace = true
+tiny-skia.workspace = true
+imagesize.workspace = true
+tiny_http = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile.workspace = true
+# Enables the bridge for the integration tests (`cargo test --all`).
+arrangia-gui = { path = ".", features = ["devbridge"] }
 
 [lints]
 workspace = true

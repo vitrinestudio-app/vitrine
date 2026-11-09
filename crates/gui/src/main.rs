@@ -1,49 +1,231 @@
 //! Arrangia desktop editor.
 //!
 //! The web view only shows pixmaps rendered in Rust and draws interaction
-//! overlays on top. All file and system access goes through custom Tauri
-//! commands defined here; the web view itself only gets `core:default`.
+//! overlays on top. All file and system access goes through the custom
+//! commands below; the web view itself only gets `core:default`. Every
+//! command is a thin wrapper around `arrangia_gui::commands` (the same
+//! functions the dev HTTP bridge serves), run on a blocking worker thread.
+//!
+//! JS calls them as `invoke(name, { args: {...} })` (see `ui/js/transport.js`);
+//! image commands answer with an `ArrayBuffer` (header + PNG/RGBA, see
+//! `arrangia_gui::preview::PreviewImage::to_tauri_bytes`).
 
 // Hide the console window on Windows release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use serde::Serialize;
+use std::path::PathBuf;
+use std::sync::{Arc, OnceLock};
 
-/// Basic information about the running application.
-#[derive(Debug, Clone, Serialize)]
-struct AppInfo {
-    name: &'static str,
-    version: &'static str,
-}
+use arrangia_gui::commands::{self, AppState};
+use arrangia_gui::dialogs::{Dialogs, FileFilter};
+use arrangia_gui::settings::AppPaths;
+use arrangia_gui::{CommandError, EventSink};
+use tauri::{AppHandle, Emitter};
+use tauri_plugin_dialog::DialogExt;
 
-fn app_info_value() -> AppInfo {
-    AppInfo {
-        name: "Arrangia",
-        version: env!("CARGO_PKG_VERSION"),
+type Shared = Arc<AppState>;
+
+/// Forwards backend events to the web view (`app.emit`).
+#[derive(Default)]
+struct TauriEvents(OnceLock<AppHandle>);
+
+impl EventSink for TauriEvents {
+    fn emit(&self, event: &str, payload: serde_json::Value) {
+        if let Some(app) = self.0.get() {
+            let _ = app.emit(event, payload);
+        }
     }
 }
 
-/// Returns name and version of the app to the frontend.
-#[tauri::command]
-fn app_info() -> AppInfo {
-    app_info_value()
+/// Native dialogs via `tauri-plugin-dialog`, used from Rust only.
+#[derive(Default)]
+struct TauriDialogs(OnceLock<AppHandle>);
+
+impl Dialogs for TauriDialogs {
+    fn pick_folder(&self, title: &str) -> Option<PathBuf> {
+        let app = self.0.get()?;
+        app.dialog()
+            .file()
+            .set_title(title)
+            .blocking_pick_folder()
+            .and_then(|p| p.into_path().ok())
+    }
+
+    fn pick_files(&self, title: &str, filters: &[FileFilter], multiple: bool) -> Vec<PathBuf> {
+        let Some(app) = self.0.get() else {
+            return Vec::new();
+        };
+        let mut dialog = app.dialog().file().set_title(title);
+        for f in filters {
+            let ext: Vec<&str> = f.extensions.iter().map(String::as_str).collect();
+            dialog = dialog.add_filter(&f.name, &ext);
+        }
+        let picked = if multiple {
+            dialog.blocking_pick_files().unwrap_or_default()
+        } else {
+            dialog.blocking_pick_file().into_iter().collect()
+        };
+        picked
+            .into_iter()
+            .filter_map(|p| p.into_path().ok())
+            .collect()
+    }
+}
+
+/// Runs a command on a blocking worker thread.
+async fn run<T: Send + 'static>(
+    f: impl FnOnce() -> Result<T, CommandError> + Send + 'static,
+) -> Result<T, CommandError> {
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| CommandError::internal(format!("command panicked: {e}")))?
+}
+
+/// `#[tauri::command]` wrappers answering with JSON.
+macro_rules! json_commands {
+    ($($name:ident: $args:ty),* $(,)?) => {$(
+        #[tauri::command]
+        async fn $name(
+            state: tauri::State<'_, Shared>,
+            args: $args,
+        ) -> Result<serde_json::Value, CommandError> {
+            let app = state.inner().clone();
+            run(move || {
+                let out = commands::$name(&app, args)?;
+                serde_json::to_value(out).map_err(|e| CommandError::internal(e.to_string()))
+            })
+            .await
+        }
+    )*};
+}
+
+/// `#[tauri::command]` wrappers answering with a binary preview image.
+macro_rules! image_commands {
+    ($($name:ident: $args:ty),* $(,)?) => {$(
+        #[tauri::command]
+        async fn $name(
+            state: tauri::State<'_, Shared>,
+            args: $args,
+        ) -> Result<tauri::ipc::Response, CommandError> {
+            let app = state.inner().clone();
+            run(move || {
+                let image = commands::$name(&app, args)?;
+                Ok(tauri::ipc::Response::new(image.to_tauri_bytes()))
+            })
+            .await
+        }
+    )*};
+}
+
+json_commands! {
+    app_info: commands::NoArgs,
+    project_new: commands::ProjectNewArgs,
+    project_open: commands::ProjectOpenArgs,
+    project_close: commands::NoArgs,
+    project_summary: commands::NoArgs,
+    project_get: commands::NoArgs,
+    recent_projects: commands::NoArgs,
+    recent_remove: commands::RecentRemoveArgs,
+    apply_ops: commands::ApplyOpsArgs,
+    undo: commands::NoArgs,
+    redo: commands::NoArgs,
+    history_state: commands::NoArgs,
+    validate: commands::ValidateArgs,
+    export: commands::ExportArgs,
+    export_cancel: commands::NoArgs,
+    strings_get: commands::StringsGetArgs,
+    strings_missing: commands::NoArgs,
+    assets_list: commands::NoArgs,
+    assets_import: commands::AssetsImportArgs,
+    assets_remove: commands::AssetsRemoveArgs,
+    catalog_devices: commands::NoArgs,
+    catalog_targets: commands::NoArgs,
+    catalog_galleries: commands::NoArgs,
+    catalog_fonts: commands::NoArgs,
+    settings_get: commands::NoArgs,
+    settings_set: commands::SettingsSetArgs,
+    dialog_open_project: commands::DialogOpenProjectArgs,
+    dialog_pick_files: commands::DialogPickFilesArgs,
+    preview_stats: commands::NoArgs,
+}
+
+image_commands! {
+    render_image: commands::RenderImageArgs,
+    render_canvas: commands::RenderCanvasArgs,
+    render_gallery: commands::RenderGalleryArgs,
 }
 
 fn main() {
+    let events = Arc::new(TauriEvents::default());
+    let dialogs = Arc::new(TauriDialogs::default());
+    let paths = AppPaths::platform()
+        .unwrap_or_else(|| AppPaths::in_dir(&std::env::temp_dir().join("arrangia")));
+    let state: Shared = Arc::new(AppState::new(paths, events.clone(), dialogs.clone()));
+
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![app_info])
+        .plugin(tauri_plugin_dialog::init())
+        .manage(state)
+        .setup(move |app| {
+            let _ = events.0.set(app.handle().clone());
+            let _ = dialogs.0.set(app.handle().clone());
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            app_info,
+            project_new,
+            project_open,
+            project_close,
+            project_summary,
+            project_get,
+            recent_projects,
+            recent_remove,
+            apply_ops,
+            undo,
+            redo,
+            history_state,
+            validate,
+            export,
+            export_cancel,
+            strings_get,
+            strings_missing,
+            assets_list,
+            assets_import,
+            assets_remove,
+            catalog_devices,
+            catalog_targets,
+            catalog_galleries,
+            catalog_fonts,
+            settings_get,
+            settings_set,
+            dialog_open_project,
+            dialog_pick_files,
+            preview_stats,
+            render_image,
+            render_canvas,
+            render_gallery,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Arrangia");
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
-    fn app_info_reports_package_version() {
-        let info = app_info_value();
-        assert_eq!(info.name, "Arrangia");
-        assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
+    fn every_library_command_has_a_tauri_wrapper() {
+        let source = include_str!("main.rs");
+        let handler = source
+            .split("generate_handler![")
+            .nth(1)
+            .and_then(|s| s.split(']').next())
+            .unwrap();
+        for name in arrangia_gui::commands::JSON_COMMANDS
+            .iter()
+            .chain(arrangia_gui::commands::IMAGE_COMMANDS)
+        {
+            assert!(
+                handler.split(',').any(|n| n.trim() == *name),
+                "`{name}` is not registered in main.rs"
+            );
+        }
     }
 }
