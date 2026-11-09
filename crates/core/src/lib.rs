@@ -32,6 +32,7 @@
 //! layout/     text layout and auto-fit
 //! validate/   findings per target × language (references, texts, screenshots, store rules)
 //! catalog/    devices, targets, gallery profiles (from data/*.yaml)
+//! templates   built-in project templates (`arrangia new`, GUI)
 //! ```
 
 pub mod catalog;
@@ -42,6 +43,7 @@ pub mod markup;
 pub mod model;
 pub mod ops;
 pub mod resolve;
+pub mod templates;
 pub mod validate;
 
 pub use model::Project;
