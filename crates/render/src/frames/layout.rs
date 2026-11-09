@@ -83,25 +83,21 @@ pub fn kind(device: &Device) -> Kind {
     }
 }
 
-/// Outer size (lu) of `dev` at `width` lu: from the catalog aspect, or for
-/// `aspect: free` models from the screenshot's `w / h` when given.
-pub fn outer_size(dev: &ResolvedDevice, width: f64, screenshot_aspect: Option<f64>) -> Vec2 {
-    let d = &dev.device;
+/// Outer size (lu) of `dev` at `width` lu, exactly as `core::resolve`
+/// sizes device elements: the catalog outer aspect of `dev.device` (for
+/// `aspect: free` models already adapted to the screenshot), inverted when
+/// the device is shown in its non-natural orientation.
+pub fn outer_size(dev: &ResolvedDevice, width: f64) -> Vec2 {
+    let o = dev.device.outer_size();
     let width = width.max(1e-6);
-    match (kind(d), screenshot_aspect.filter(|a| *a > 0.0)) {
-        (Kind::Browser, Some(a)) => {
-            let chrome = browser_chrome();
-            let chrome_h = chrome.height() * width / chrome.reference_width;
-            Vec2::new(width, chrome_h + width / a)
-        }
-        (Kind::Bare, Some(a)) => Vec2::new(width, width / a),
-        (Kind::Browser | Kind::Bare, None) => Vec2::new(width, width * d.body.h / d.body.w),
-        _ => {
-            let o = d.outer_size();
-            let ratio = if rotated(dev) { o.w / o.h } else { o.h / o.w };
-            Vec2::new(width, width * ratio)
-        }
-    }
+    let ratio = if o.w <= 0.0 || o.h <= 0.0 {
+        1.0
+    } else if dev.orientation == dev.device.natural {
+        o.h / o.w
+    } else {
+        o.w / o.h
+    };
+    Vec2::new(width, width * ratio)
 }
 
 fn map_rect(m: Transform, r: &catalog::Rect) -> Rect {
@@ -131,7 +127,7 @@ impl<'a> Layout<'a> {
         let h = if dev.free_aspect && size.y > 0.0 {
             size.y
         } else {
-            outer_size(dev, w, None).y
+            outer_size(dev, w).y
         };
         let outer = Rect::centered(Vec2::ZERO, w, h);
         match kind {

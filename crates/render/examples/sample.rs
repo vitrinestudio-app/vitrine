@@ -7,8 +7,11 @@
 //! ```
 //!
 //! The sample project is copied to `<out-dir>/project` and given
-//! screenshots (the Phase 0 spike test screens in `assets/spike/`) and an
-//! SVG badge. Writes `<out-dir>/previews/*`, `<out-dir>/canvas/*` and
+//! screenshots (the Phase 0 spike test screens in `assets/spike/` plus
+//! generated wide "web" and landscape screens), an SVG badge, a `web` target
+//! and a `devices` strip exercising more frames (landscape phone and tablet,
+//! desktop with browser chrome, frameless screenshot, a missing screenshot
+//! placeholder). Writes `<out-dir>/previews/*`, `<out-dir>/canvas/*` and
 //! exports to `<out-dir>/project/export/`.
 
 use std::fmt::Write as _;
@@ -20,6 +23,83 @@ use arrangia_core::resolve::{FsAssets, ResolveOptions, resolve};
 use arrangia_render::export::{ExportOptions, export};
 use arrangia_render::raster::{encode_png_rgb_with, save_png_rgb};
 use arrangia_render::scene::{CanvasOptions, RenderContext, RenderOptions};
+
+/// Extra strip and targets appended to the copied sample project.
+const DEVICES_STRIP: &str = r##"- id: devices
+  page: {aspect: 16:10, count: 3}
+  backgrounds:
+  - kind: linear-gradient
+    angle: 180
+    stops: [["#EEF1F5", 0], ["#D5DCE6", 1]]
+  elements:
+  - id: phone-landscape
+    kind: device
+    page: 0
+    at: {x: 420, y: 330}
+    width: 680
+    rotation: -6
+    model: iphone-island
+    orientation: landscape
+    color: natural-titanium
+    screenshot: wide
+    shadow: soft
+  - id: phone-missing
+    kind: device
+    page: 0
+    at: {x: 870, y: 360}
+    width: 210
+    model: android-punchhole
+    frame: stylized
+    color: porcelain
+    screenshot: settings
+    shadow: soft
+  - id: imac-chrome
+    kind: device
+    page: 1
+    at: {x: 500, y: 300}
+    width: 600
+    model: imac
+    color: pastel-blue
+    chrome: browser
+    url: https://grove.eco/harvest
+    screenshot: site
+    shadow: soft
+  - id: frameless
+    kind: device
+    page: 2
+    at: {x: 190, y: 330}
+    width: 230
+    model: none
+    screenshot: home
+    shadow: soft
+  - id: tablet-landscape
+    kind: device
+    page: 2
+    at: {x: 640, y: 330}
+    width: 600
+    model: ipad-modern
+    orientation: landscape
+    frame: stylized
+    color: midnight
+    screenshot: wide
+    shadow: soft
+"##;
+
+const EXTRA_TARGETS: &str = r"- id: web
+  kind: banner
+  strip: web
+  size: [2880, 900]
+  region: {pages: [0, 1]}
+  fit: cover
+  gaps: none
+- id: devices
+  kind: banner
+  strip: devices
+  size: [4320, 900]
+  region: {pages: [0, 2]}
+  fit: cover
+  gaps: none
+";
 
 const BADGE: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
   <circle cx="110" cy="110" r="104" fill="#2F6B3A"/>
@@ -52,7 +132,6 @@ fn setup(out: &Path) -> anyhow::Result<PathBuf> {
         ("en/ios-phone/home.png", "phone-home.png"),
         ("en/home.png", "phone-home.png"),
         ("de/ios-phone/home.png", "phone-harvest.png"),
-        ("en/dashboard.png", "tablet-planner.png"),
         ("en/planner.png", "tablet-planner.png"),
     ];
     for (to, from) in shots {
@@ -60,9 +139,49 @@ fn setup(out: &Path) -> anyhow::Result<PathBuf> {
         std::fs::create_dir_all(to.parent().expect("parent"))?;
         std::fs::copy(spike.join(from), to)?;
     }
+    for (name, w, h, accent) in [
+        ("site", 1440, 900, [0x2F, 0x6B, 0x3A]),
+        ("dashboard", 1440, 900, [0x3D, 0x5A, 0xA8]),
+        ("wide", 2556, 1179, [0xE8, 0xA3, 0x3D]),
+    ] {
+        let to = project.join(format!("screenshots/en/{name}.png"));
+        save_png_rgb(&fake_screen(w, h, accent), &to, [255, 255, 255])?;
+    }
+    let yaml = project.join("project.yaml");
+    let text = std::fs::read_to_string(&yaml)?
+        .replace("\ntargets:\n", &format!("\n{DEVICES_STRIP}targets:\n"))
+        + EXTRA_TARGETS;
+    std::fs::write(&yaml, text)?;
     std::fs::create_dir_all(project.join("assets"))?;
     std::fs::write(project.join("assets/badge-new.svg"), BADGE)?;
     Ok(project)
+}
+
+/// A plain generated "app/web page" screen: header bar, hero block, cards.
+fn fake_screen(w: u32, h: u32, accent: [u8; 3]) -> tiny_skia::Pixmap {
+    use tiny_skia::{Color, Paint, Rect, Transform};
+    let mut pm = tiny_skia::Pixmap::new(w, h).expect("screen size");
+    pm.fill(Color::from_rgba8(0xF7, 0xF8, 0xF6, 255));
+    let (wf, hf) = (w as f32, h as f32);
+    let mut rect = |x: f32, y: f32, rw: f32, rh: f32, c: [u8; 3]| {
+        let mut paint = Paint::default();
+        paint.set_color_rgba8(c[0], c[1], c[2], 255);
+        if let Some(r) = Rect::from_xywh(x * wf, y * hf, rw * wf, rh * hf) {
+            pm.fill_rect(r, &paint, Transform::identity(), None);
+        }
+    };
+    rect(0.0, 0.0, 1.0, 0.09, [0xFF, 0xFF, 0xFF]);
+    rect(0.04, 0.03, 0.12, 0.03, accent);
+    rect(0.05, 0.15, 0.9, 0.36, accent);
+    rect(0.09, 0.24, 0.4, 0.05, [0xFF, 0xFF, 0xFF]);
+    rect(0.09, 0.32, 0.28, 0.03, [0xEE, 0xF2, 0xEC]);
+    for i in 0..3 {
+        let x = 0.05 + i as f32 * 0.31;
+        rect(x, 0.57, 0.28, 0.36, [0xFF, 0xFF, 0xFF]);
+        rect(x + 0.02, 0.6, 0.24, 0.16, [0xDD, 0xE8, 0xD6]);
+        rect(x + 0.02, 0.8, 0.16, 0.025, [0x9A, 0xA2, 0x9A]);
+    }
+    pm
 }
 
 fn ms(d: Duration) -> f64 {

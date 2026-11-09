@@ -56,13 +56,22 @@ fast_image_resize, png).
   scale. SVG assets are rendered with resvg at that size (no text, no
   embedded raster images: `default-features = false`). Image fill `tile`
   repeats at the natural size (1 px or SVG unit = 1 lu).
-- Devices: `device_geometry` / `draw_device` (device-local model units,
-  centred on the outer box; the caller scales to the element width). The
-  renderer resamples the screenshot to the screen's on-screen pixel size
-  (`fit`), draws the shadow, then the frame. Landscape devices with a
-  portrait geometry are the frame rotated 90° counter-clockwise; the
-  screenshot is not rotated. Until the catalog-driven frames land,
-  `scene::device` adapts the spike frames.
+- Devices: `frames::device_geometry(dev, size)` / `frames::draw_device`
+  (catalog-driven parametric frames, ADR 0001). Units are **device-local
+  lu**: the outer box (incl. laptop base / desktop stand) is centred at
+  (0, 0) and has exactly the resolved element size, so the painter passes
+  the element's local transform unchanged (no model-unit scaling). The
+  element height comes from `core::resolve` (catalog outer aspect; for
+  `aspect: free` models `ResolvedDevice::device` is already adapted to the
+  screenshot aspect); `frames::device_size` gives the same size for callers
+  that build a `ResolvedDevice` themselves. The renderer resamples the
+  screenshot to the screen's on-screen pixel size (`fit`: cover / contain /
+  stretch; Lanczos3 for export), draws the shadow from the silhouette, then
+  the frame, which stretches the given pixmap onto `geometry.screen`;
+  without a screenshot the frame draws a placeholder with the key.
+  Landscape devices with a portrait geometry are the frame rotated 90°
+  counter-clockwise; the screen rect is landscape-shaped and the screenshot
+  is not rotated.
 
 ### Caching
 
@@ -109,8 +118,6 @@ Apple M1 Pro, release, sample project (`cargo run -p arrangia-render
 
 - The GUI renders previews with `RenderOptions::preview(w)` from a
   `PreparedScene` and re-prepares only when texts change.
-- The coordinator replaces `scene::device` internals with the catalog
-  frames (`crate::frames`) without touching the painter.
 - Open: image shadows from alpha; text inside SVG assets; colour
   management (P3 → sRGB); `aspect: free` devices follow the screenshot
   (resolve, ADR 0005).

@@ -3,7 +3,7 @@
 //! the pivot); opacity and clipping go through an offscreen layer covering
 //! only the element's pixel bounds.
 
-use arrangia_core::geometry::{Rect, Viewport};
+use arrangia_core::geometry::{Rect, Vec2, Viewport};
 use arrangia_core::model::{FitMode, ImageFillMode, Rgba, ShapeKind};
 use arrangia_core::resolve::{
     ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedKind, ResolvedShadowLayer,
@@ -15,8 +15,9 @@ use tiny_skia::{
 };
 
 use super::assets::Resample;
-use super::{IssueKind, PreparedScene, Quality, RenderContext, RenderIssue, Rendered, device};
+use super::{IssueKind, PreparedScene, Quality, RenderContext, RenderIssue, Rendered};
 use crate::blur::{ShadowPx, draw_shadow};
+use crate::frames;
 use crate::geometry::view_transform;
 use crate::paint::{css_gradient_line, linear, radial, round_rect, shader_paint, solid};
 use crate::raster::Filter;
@@ -83,8 +84,9 @@ enum Item<'a> {
     },
     Device {
         dev: &'a ResolvedDevice,
-        geo: device::DeviceGeometry,
-        k: f64,
+        geo: frames::DeviceGeometry,
+        /// Element size (lu); the frame's outer box.
+        size: Vec2,
     },
     Text {
         paths: TextPaths,
@@ -329,13 +331,12 @@ impl Painter<'_> {
                 }
             },
             ResolvedKind::Device(dev) => {
-                let geo = device::device_geometry(dev);
-                let k = if geo.outer.w > 0.0 {
-                    w / geo.outer.w
-                } else {
-                    1.0
-                };
-                Item::Device { dev, geo, k }
+                let size = Vec2::new(w, h);
+                Item::Device {
+                    dev,
+                    geo: frames::device_geometry(dev, size),
+                    size,
+                }
             }
             ResolvedKind::Text(_) => {
                 // Box origin relative to the element centre (the rotation
@@ -363,15 +364,11 @@ impl Painter<'_> {
                 let m = shape.stroke.as_ref().map_or(0.0, |s| s.width as f32) / 2.0 + 1.0;
                 tiny_skia::Rect::from_ltrb(b.left() - m, b.top() - m, b.right() + m, b.bottom() + m)
             }
-            Item::Device { geo, k, .. } => {
+            Item::Device { geo, .. } => {
+                // Margin for buttons sticking out of the housing.
                 let o = geo.outer;
                 let m = o.w.max(o.h) * 0.03;
-                tsr(Rect::new(
-                    (o.x - m) * k,
-                    (o.y - m) * k,
-                    (o.w + 2.0 * m) * k,
-                    (o.h + 2.0 * m) * k,
-                ))
+                tsr(Rect::new(o.x - m, o.y - m, o.w + 2.0 * m, o.h + 2.0 * m))
             }
             Item::Text { paths, origin } => {
                 let b = paths.bounds()?;
@@ -590,12 +587,11 @@ impl Painter<'_> {
                     pm.fill_path(&p, &solid(MISSING_ASSET), FillRule::Winding, lt, None);
                 }
             }
-            Item::Device { dev, geo, k } => {
-                let dt = lt.pre_scale(*k as f32, *k as f32);
+            Item::Device { dev, geo, size } => {
                 if !shadows.is_empty() {
-                    self.shadow(pm, &geo.silhouette, dt, shadows);
+                    self.shadow(pm, &geo.silhouette, lt, shadows);
                 }
-                let s = scale_of(dt);
+                let s = scale_of(lt);
                 let shot = dev
                     .screenshot
                     .as_ref()
@@ -620,7 +616,7 @@ impl Painter<'_> {
                             }
                         }
                     });
-                device::draw_device(&mut pm.as_mut(), dev, shot.as_deref(), dt);
+                frames::draw_device(&mut pm.as_mut(), dev, *size, shot.as_deref(), lt);
             }
             Item::Text { paths, origin } => {
                 let ts = lt.pre_translate(origin.0, origin.1);

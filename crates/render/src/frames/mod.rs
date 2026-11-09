@@ -56,13 +56,13 @@ pub struct DeviceGeometry {
     pub silhouette: Path,
 }
 
-/// Outer size (lu) of `dev` for an element `width`: the height follows the
-/// catalog aspect, or — for `aspect: free` models (browser, none) — the
-/// screenshot's `w / h` when known (`screenshot_aspect`).
-///
-/// Pass the result as `size` to [`device_geometry`] / [`draw_device`].
-pub fn device_size(dev: &ResolvedDevice, width: f64, screenshot_aspect: Option<f64>) -> Vec2 {
-    layout::outer_size(dev, width, screenshot_aspect)
+/// Outer size (lu) of `dev` for an element `width`. Agrees with the element
+/// size `core::resolve` computes (catalog aspect; for `aspect: free` models
+/// the display already follows the screenshot in `dev.device`), so scene
+/// rendering simply passes the resolved element size; this is for callers
+/// that build a [`ResolvedDevice`] themselves ([`catalog_device`]).
+pub fn device_size(dev: &ResolvedDevice, width: f64) -> Vec2 {
+    layout::outer_size(dev, width)
 }
 
 /// Geometry of `dev` with outer size `size` (lu, usually the resolved
@@ -175,6 +175,22 @@ pub fn catalog_device(
         content_scale: 1.0,
         shadow: Vec::new(),
     })
+}
+
+/// `dev` with an `aspect: free` display (browser, `none`) adapted to a
+/// screenshot of aspect `w / h`, the way `core::resolve` does it when the
+/// screenshot's pixel size is known. Fixed-aspect models are unchanged.
+#[must_use]
+pub fn with_screenshot_aspect(mut dev: ResolvedDevice, aspect: f64) -> ResolvedDevice {
+    if dev.free_aspect && aspect.is_finite() && aspect > 0.0 {
+        let r = if dev.orientation == dev.device.natural {
+            aspect
+        } else {
+            1.0 / aspect
+        };
+        dev.device = dev.device.with_display_aspect(r);
+    }
+    dev
 }
 
 /// Drawing context shared by the model-specific painters.

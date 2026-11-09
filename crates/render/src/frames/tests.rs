@@ -19,7 +19,7 @@ fn all_devices() -> Vec<ResolvedDevice> {
 #[test]
 fn geometry_invariants() {
     for dev in all_devices() {
-        let size = device_size(&dev, 400.0, None);
+        let size = device_size(&dev, 400.0);
         let g = device_geometry(&dev, size);
         let id = format!("{} {:?}", dev.model, dev.orientation);
         let eps = 1e-3;
@@ -84,7 +84,8 @@ fn free_aspect_follows_screenshot() {
     for model in ["browser", "none"] {
         let dev = catalog_device(model, Orientation::Landscape, FrameStyle::Detailed, None)
             .expect("model");
-        let size = device_size(&dev, 600.0, Some(1440.0 / 2000.0));
+        let dev = with_screenshot_aspect(dev, 1440.0 / 2000.0);
+        let size = device_size(&dev, 600.0);
         let g = device_geometry(&dev, size);
         assert!((g.screen.w / g.screen.h - 0.72).abs() < 1e-6, "{model}");
     }
@@ -99,7 +100,7 @@ fn chrome_on_laptop_shrinks_screen() {
         None,
     )
     .expect("m");
-    let size = device_size(&dev, 600.0, None);
+    let size = device_size(&dev, 600.0);
     let plain = device_geometry(&dev, size).screen;
     dev.chrome = Some(Chrome::Browser);
     let with = device_geometry(&dev, size).screen;
@@ -118,7 +119,7 @@ fn landscape_rotates_counter_clockwise() {
         None,
     )
     .expect("m");
-    let l = Layout::new(&dev, device_size(&dev, 400.0, None));
+    let l = Layout::new(&dev, device_size(&dev, 400.0));
     let (x, _) = l.pt(dev.device.body.w / 2.0, 0.0);
     assert!(x < -150.0, "top edge maps to the left, got {x}");
     let (_, y) = l.pt(dev.device.body.w, dev.device.body.h / 2.0);
@@ -137,7 +138,7 @@ fn draws_every_model_in_both_styles() {
                 dev.chrome = (i == 1).then_some(Chrome::Browser);
             }
             let mut pm = Pixmap::new(300, 300).expect("pixmap");
-            let size = device_size(&dev, 250.0, None);
+            let size = device_size(&dev, 250.0);
             draw_device(
                 &mut pm.as_mut(),
                 &dev,
@@ -166,7 +167,7 @@ fn custom_colors_and_degenerate_sizes_do_not_panic() {
     assert!(matches!(dev.color, DeviceColor::Custom(_)));
     let mut pm = Pixmap::new(50, 50).expect("pixmap");
     for w in [0.0, 1e-4, 3.0] {
-        let size = device_size(&dev, w, None);
+        let size = device_size(&dev, w);
         let _ = device_geometry(&dev, size);
         draw_device(&mut pm.as_mut(), &dev, size, None, Transform::identity());
     }

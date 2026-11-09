@@ -70,11 +70,11 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## 1.6 Render (`render`)
 - [x] Rasterize resolved scene (backgrounds linear/radial/image, shapes, images
-      PNG/JPEG/SVG via resvg, devices, text with clip to page) — ADR 0006;
-      devices currently via the spike-frame adapter `render::scene::device`
-- [ ] Parametric frames for all catalog models, styles `stylized` and
+      PNG/JPEG/SVG via resvg, devices, text with clip to page) — ADR 0006
+- [x] Parametric frames for all catalog models, styles `stylized` and
       `detailed`, colour variants, portrait/landscape; `chrome: browser` on
       laptop/desktop; browser frame with URL, tabs, light/dark
+      (`render::frames`, contact sheets `docs/spike/frames_catalog_*.png`)
 - [x] Screenshot fit cover/contain/stretch, placeholder when missing
 - [x] Remove cosmic-text; spike example reduced or removed (done in 1.5)
 

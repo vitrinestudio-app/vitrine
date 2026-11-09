@@ -13,14 +13,8 @@
 //! same pixels (no clocks, no randomness, no thread-dependent order).
 
 pub mod assets;
-pub mod device;
 mod draw;
 mod overlay;
-#[allow(
-    dead_code,
-    reason = "temporary: spike frames until the renderer switches to crate::frames"
-)]
-mod spike_frames;
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};

@@ -24,6 +24,7 @@ use arrangia_core::model::{Appearance, Chrome, FrameStyle, Orientation};
 use arrangia_render::blur::{ShadowPx, draw_shadow};
 use arrangia_render::frames::{
     catalog_device, device_geometry, device_size, draw_device, glyphs, shapes,
+    with_screenshot_aspect,
 };
 use arrangia_render::paint::{Rgba, hex, linear, shader_paint, solid, with_alpha};
 use arrangia_render::raster::save_png_rgb;
@@ -263,7 +264,11 @@ fn place(item: Item, style: &FrameStyle) -> Placed {
         ("none", Orientation::Landscape) => Some(2752.0 / 2064.0),
         _ => None,
     };
-    let size = device_size(&dev, item.width, aspect);
+    let dev = match aspect {
+        Some(a) => with_screenshot_aspect(dev, a),
+        None => dev,
+    };
+    let size = device_size(&dev, item.width);
     Placed { item, dev, size }
 }
 
