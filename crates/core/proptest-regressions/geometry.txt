@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 7f504cc0c4236796668648b6a541dcfe3a1372318027fe3353678cc1e71b0581 # shrinks to l = CanvasLayout { page_count: 7, reference_page_height: 500.0, page_height: 1000.0, gap: 166.41016664844355, group: 1 }
