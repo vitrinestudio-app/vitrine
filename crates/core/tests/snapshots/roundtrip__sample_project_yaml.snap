@@ -1,0 +1,166 @@
+---
+source: crates/core/tests/roundtrip.rs
+expression: p.to_yaml().unwrap()
+---
+format: arrangia/1
+revision: 7
+name: grove.eco
+languages:
+  default: en
+  available: [en, de, fr, es]
+  fallback:
+    pt-BR: es
+styles:
+  colors:
+    accent: "#E8A33D"
+    primary: "#2F6B3A"
+    text: "#1D1D1F"
+  text:
+    headline: {font: Inter, weight: 800, size: 72, line_height: 1.08, color: "@text"}
+    sub: {font: Inter, weight: 500, size: 38, line_height: 1.25, color: "@text"}
+  spans:
+    accent: {color: "@accent"}
+  shadows:
+    soft:
+      layers:
+      - {color: "#0000006B", blur: 48, y: 46}
+      - {color: "#0000004D", blur: 10, y: 10}
+  frame: detailed
+strips:
+- id: phone
+  page: {aspect: 1320:2868, count: 5}
+  backgrounds:
+  - kind: linear-gradient
+    angle: 160
+    stops: [["#EAF4E4", 0], ["#B7D9A6", 1]]
+  elements:
+  - id: hero-phone
+    kind: device
+    page: 0
+    at: {x: 1000, y: 2172}
+    width: 820
+    rotation: -8
+    anchor_y: bottom
+    model: iphone-island
+    orientation: portrait
+    screenshot: home
+    shadow: soft
+  - id: title-1
+    kind: text
+    page: 0
+    anchor_y: top
+    text: hero.title
+    style: headline
+    box: {top: 140, left: 80, right: 80}
+    align: center
+    fit: {shrink_to: 52, max_lines: 3}
+  - id: sub-1
+    kind: text
+    page: 0
+    text: hero.sub
+    style: sub
+    box: {top: 420, left: 80, right: 80}
+    align: center
+  - id: band
+    kind: shape
+    page: 1
+    at: {x: 1500, y: 1600}
+    width: 4200
+    height: 120
+    rotation: -12.5
+    shape: rect
+    fill: "@accent"
+    opacity: 0.35
+    z: -1
+  - id: badge-group
+    kind: group
+    page: 2
+    at: {x: 0, y: 40}
+    children:
+    - id: badge
+      kind: image
+      page: 2
+      at: {x: 820, y: 300}
+      width: 220
+      height: 220
+      asset: assets/badge-new.svg
+    - id: badge-ring
+      kind: shape
+      page: 2
+      at: {x: 820, y: 300}
+      width: 260
+      height: 260
+      shape: ellipse
+      stroke: {color: "@primary", width: 6}
+  - id: page4-bg
+    kind: background
+    page: 4
+    fill:
+      kind: radial-gradient
+      center: {x: 0.5, y: 0.3}
+      stops: [["#FFFFFF", 0], ["#B7D9A6", 1]]
+    visible_in: {targets: [ios-phone-69]}
+  variants:
+    tablet-landscape:
+      content_scale: 0.75
+      overrides:
+        hero-phone: {at: {x: 1000, y: 1500}, rotation: -4}
+        sub-1: {visible: false}
+        title-1: {box: {top: 90, left: 70, right: 70}}
+- id: web
+  page: {aspect: 16:10, count: 2}
+  backgrounds:
+  - "#F2F2F7"
+  elements:
+  - id: web-browser
+    kind: device
+    page: 0
+    at: {x: 500, y: 360}
+    width: 860
+    model: browser
+    url: https://grove.eco
+    appearance: dark
+    screenshot: dashboard
+  - id: web-laptop
+    kind: device
+    page: 1
+    at: {x: 500, y: 360}
+    width: 900
+    model: macbook
+    chrome: browser
+    url: https://grove.eco/plan
+    screenshot: planner
+    fit: contain
+targets:
+- id: ios-phone-69
+  strip: phone
+  size: [1320, 2868]
+  screenshots: ios-phone
+  gallery: appstore-iphone
+  store: {apple: {display_type: APP_IPHONE_67}}
+- id: android-phone
+  strip: phone
+  size: [1080, 2160]
+  screenshots: android-phone
+  gallery: {preset: play-phone, gap: 30}
+  device_map: {iphone-island: android-punchhole}
+  store: {google: {image_type: phoneScreenshots}}
+- id: ios-ipad-13-landscape
+  strip: phone
+  variant: tablet-landscape
+  group: 2
+  size: [2752, 2064]
+  screenshots: ios-tablet
+  gallery: appstore-ipad
+  device_map: {iphone-island: ipad-modern}
+  store: {apple: {display_type: APP_IPAD_PRO_3GEN_129}}
+- id: blog-header
+  kind: banner
+  strip: phone
+  size: [2400, 1000]
+  region: {pages: [0, 2]}
+  fit: cover
+  gaps: none
+  format: jpeg
+  quality: 90
+  langs: [en, de]
