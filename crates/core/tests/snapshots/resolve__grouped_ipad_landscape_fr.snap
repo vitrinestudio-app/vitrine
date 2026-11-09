@@ -1,0 +1,336 @@
+---
+source: crates/core/tests/resolve.rs
+expression: snapshot_value(&s)
+---
+backgrounds:
+  - angle: 160
+    kind: linear-gradient
+    stops:
+      - color: "#EAF4E4"
+        pos: 0
+      - color: "#B7D9A6"
+        pos: 1
+diagnostics:
+  - code: partial_image
+    level: info
+    message: "5 pages with `group: 2`: the last image has 1 empty column(s)"
+  - code: screenshot_fallback
+    element: hero-phone
+    level: info
+    message: "`fr` uses fallback screenshot `screenshots/en/ios-tablet/home.jpg` for `home`"
+  - code: text_fallback
+    element: title-1
+    level: info
+    message: "text `hero.title` for `fr` uses `en`"
+elements:
+  - center:
+      x: 2500
+      y: 1600
+    clip: ~
+    id: band
+    opacity: 0.35
+    page: 1
+    pivot:
+      x: 0
+      y: 0
+    props:
+      fill:
+        color: "#E8A33D"
+        kind: color
+      kind: shape
+      radius: 0
+      shadow: []
+      shape: rect
+      stroke: ~
+    rotation: -12.5
+    size:
+      x: 4200
+      y: 120
+    z: -1
+  - center:
+      x: 1000
+      y: 827.2727
+    clip: ~
+    id: hero-phone
+    opacity: 1
+    page: 0
+    pivot:
+      x: 0
+      y: 0
+    props:
+      color:
+        named: space-gray
+      content_scale: 0.75
+      fit: cover
+      frame: detailed
+      kind: device
+      mapped_from: iphone-island
+      model: ipad-modern
+      orientation: portrait
+      screenshot:
+        key: home
+        lang: en
+        path: screenshots/en/ios-tablet/home.jpg
+        source: fallback_variant
+        variant: ios-tablet
+      shadow:
+        - blur: 36
+          color: "#0000006B"
+          x: 0
+          y: 34.5
+        - blur: 7.5
+          color: "#0000004D"
+          x: 0
+          y: 7.5
+    rotation: -4
+    size:
+      x: 615
+      y: 802.7819
+    z: 0
+  - center:
+      x: 500
+      y: 795
+    clip:
+      h: 1500
+      w: 1000
+      x: 0
+      y: 0
+    id: title-1
+    opacity: 1
+    page: 0
+    pivot:
+      x: 0
+      y: 0
+    props:
+      align: center
+      frame:
+        auto_height: true
+        margins: true
+        rect:
+          h: 1410
+          w: 860
+          x: 70
+          y: 90
+      key: hero.title
+      kind: text
+      max_lines: 3
+      shrink_to: 52
+      style:
+        color: "#1D1D1F"
+        font: Inter
+        italic: false
+        line_height: 1.08
+        shadow: []
+        size: 72
+        tracking: 0
+        transform: none
+        weight: 800
+      text: Plan your beds **in minutes**
+      text_lang: en
+      valign: top
+    rotation: 0
+    size:
+      x: 860
+      y: 1410
+    z: 0
+  - center:
+      x: 2900
+      y: 340
+    clip: ~
+    groups:
+      - badge-group
+    id: badge
+    opacity: 1
+    page: 2
+    pivot:
+      x: 0
+      y: 0
+    props:
+      asset: assets/badge-new.svg
+      fit: contain
+      kind: image
+      shadow: []
+    rotation: 0
+    size:
+      x: 220
+      y: 220
+    z: 0
+  - center:
+      x: 2900
+      y: 340
+    clip: ~
+    groups:
+      - badge-group
+    id: badge-ring
+    opacity: 1
+    page: 2
+    pivot:
+      x: 0
+      y: 0
+    props:
+      fill: ~
+      kind: shape
+      radius: 0
+      shadow: []
+      shape: ellipse
+      stroke:
+        color: "#2F6B3A"
+        width: 6
+    rotation: 0
+    size:
+      x: 260
+      y: 260
+    z: 0
+frame:
+  canvas:
+    h: 1500
+    w: 6160
+    x: 0
+    y: 0
+  gallery:
+    background: "#FFFFFF"
+    gap: 80
+    preset: appstore-ipad
+    radius:
+      x: 40
+      y: 40
+  gaps:
+    - h: 1500
+      w: 80
+      x: 2000
+      y: 0
+    - h: 1500
+      w: 80
+      x: 4080
+      y: 0
+  images:
+    - columns:
+        - h: 1500
+          w: 1000
+          x: 0
+          y: 0
+        - h: 1500
+          w: 1000
+          x: 1000
+          y: 0
+      index: 0
+      pages:
+        - 0
+        - 1
+      source:
+        h: 1500
+        w: 2000
+        x: 0
+        y: 0
+      viewport:
+        height_px: 2064
+        origin_x: 0
+        origin_y: 0
+        scale: 1.376
+        width_px: 2752
+    - columns:
+        - h: 1500
+          w: 1000
+          x: 2080
+          y: 0
+        - h: 1500
+          w: 1000
+          x: 3080
+          y: 0
+      index: 1
+      pages:
+        - 2
+        - 3
+      source:
+        h: 1500
+        w: 2000
+        x: 2080
+        y: 0
+      viewport:
+        height_px: 2064
+        origin_x: 2080
+        origin_y: 0
+        scale: 1.376
+        width_px: 2752
+    - columns:
+        - h: 1500
+          w: 1000
+          x: 4160
+          y: 0
+      index: 2
+      pages:
+        - 4
+      source:
+        h: 1500
+        w: 2000
+        x: 4160
+        y: 0
+      viewport:
+        height_px: 2064
+        origin_x: 4160
+        origin_y: 0
+        scale: 1.376
+        width_px: 2752
+  kind: pages
+  layout:
+    gap: 80
+    group: 2
+    page_count: 5
+    page_height: 1500
+    reference_page_height: 2172.7273
+  pages:
+    - column: 0
+      id: hero
+      image: 0
+      index: 0
+      rect:
+        h: 1500
+        w: 1000
+        x: 0
+        y: 0
+    - column: 1
+      id: planner
+      image: 0
+      index: 1
+      rect:
+        h: 1500
+        w: 1000
+        x: 1000
+        y: 0
+    - column: 0
+      id: harvest
+      image: 1
+      index: 2
+      rect:
+        h: 1500
+        w: 1000
+        x: 2080
+        y: 0
+    - column: 1
+      id: page-04
+      image: 1
+      index: 3
+      rect:
+        h: 1500
+        w: 1000
+        x: 3080
+        y: 0
+    - column: 0
+      id: page-05
+      image: 2
+      index: 4
+      rect:
+        h: 1500
+        w: 1000
+        x: 4160
+        y: 0
+  size:
+    - 2752
+    - 2064
+lang: fr
+spans:
+  accent:
+    color: "#E8A33D"
+strip: phone
+target: ios-ipad-13-landscape
+variant: tablet-landscape

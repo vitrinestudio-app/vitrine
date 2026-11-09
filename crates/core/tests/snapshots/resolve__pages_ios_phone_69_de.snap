@@ -1,0 +1,434 @@
+---
+source: crates/core/tests/resolve.rs
+expression: snapshot_value(&s)
+---
+backgrounds:
+  - angle: 160
+    kind: linear-gradient
+    stops:
+      - color: "#EAF4E4"
+        pos: 0
+      - color: "#B7D9A6"
+        pos: 1
+diagnostics: []
+elements:
+  - center:
+      x: 2545
+      y: 1600
+    clip: ~
+    id: band
+    opacity: 0.35
+    page: 1
+    pivot:
+      x: 0
+      y: 0
+    props:
+      fill:
+        color: "#E8A33D"
+        kind: color
+      kind: shape
+      radius: 0
+      shadow: []
+      shape: rect
+      stroke: ~
+    rotation: -12.5
+    size:
+      x: 4200
+      y: 120
+    z: -1
+  - center:
+      x: 1000
+      y: 2172
+    clip: ~
+    id: hero-phone
+    opacity: 1
+    page: 0
+    pivot:
+      x: 0
+      y: 0
+    props:
+      color:
+        named: black-titanium
+      content_scale: 1
+      fit: cover
+      frame: detailed
+      kind: device
+      model: iphone-island
+      orientation: portrait
+      screenshot:
+        key: home
+        lang: de
+        path: screenshots/de/ios-phone/home.png
+        source: lang_variant
+        variant: ios-phone
+      shadow:
+        - blur: 48
+          color: "#0000006B"
+          x: 0
+          y: 46
+        - blur: 10
+          color: "#0000004D"
+          x: 0
+          y: 10
+    rotation: -8
+    size:
+      x: 820
+      y: 1692.8351
+    z: 0
+  - center:
+      x: 500
+      y: 1156.3636
+    clip:
+      h: 2172.7273
+      w: 1000
+      x: 0
+      y: 0
+    id: title-1
+    opacity: 1
+    page: 0
+    pivot:
+      x: 0
+      y: 0
+    props:
+      align: center
+      frame:
+        auto_height: true
+        margins: true
+        rect:
+          h: 2032.7273
+          w: 840
+          x: 80
+          y: 140
+      key: hero.title
+      kind: text
+      max_lines: 3
+      shrink_to: 52
+      style:
+        color: "#1D1D1F"
+        font: Inter
+        italic: false
+        line_height: 1.08
+        shadow: []
+        size: 72
+        tracking: 0
+        transform: none
+        weight: 800
+      text: Plane deine Beete **in Minuten**
+      text_lang: de
+      valign: top
+    rotation: 0
+    size:
+      x: 840
+      y: 2032.7273
+    z: 0
+  - center:
+      x: 500
+      y: 1296.3636
+    clip:
+      h: 2172.7273
+      w: 1000
+      x: 0
+      y: 0
+    id: sub-1
+    opacity: 1
+    page: 0
+    pivot:
+      x: 0
+      y: 0
+    props:
+      align: center
+      frame:
+        auto_height: true
+        margins: true
+        rect:
+          h: 1752.7273
+          w: 840
+          x: 80
+          y: 420
+      key: hero.sub
+      kind: text
+      max_lines: ~
+      shrink_to: ~
+      style:
+        color: "#1D1D1F"
+        font: Inter
+        italic: false
+        line_height: 1.25
+        shadow: []
+        size: 38
+        tracking: 0
+        transform: none
+        weight: 500
+      text: "Mit [accent]Mischkultur[/] zu mehr Ernte"
+      text_lang: de
+      valign: top
+    rotation: 0
+    size:
+      x: 840
+      y: 1752.7273
+    z: 0
+  - center:
+      x: 2910
+      y: 340
+    clip: ~
+    groups:
+      - badge-group
+    id: badge
+    opacity: 1
+    page: 2
+    pivot:
+      x: 0
+      y: 0
+    props:
+      asset: assets/badge-new.svg
+      fit: contain
+      kind: image
+      shadow: []
+    rotation: 0
+    size:
+      x: 220
+      y: 220
+    z: 0
+  - center:
+      x: 2910
+      y: 340
+    clip: ~
+    groups:
+      - badge-group
+    id: badge-ring
+    opacity: 1
+    page: 2
+    pivot:
+      x: 0
+      y: 0
+    props:
+      fill: ~
+      kind: shape
+      radius: 0
+      shadow: []
+      shape: ellipse
+      stroke:
+        color: "#2F6B3A"
+        width: 6
+    rotation: 0
+    size:
+      x: 260
+      y: 260
+    z: 0
+  - center:
+      x: 4680
+      y: 1086.3636
+    clip: ~
+    id: page4-bg
+    opacity: 1
+    page: 4
+    pivot:
+      x: 0
+      y: 0
+    props:
+      fill:
+        center:
+          x: 0.5
+          y: 0.3
+        kind: radial-gradient
+        radius: 0.5
+        stops:
+          - color: "#FFFFFF"
+            pos: 0
+          - color: "#B7D9A6"
+            pos: 1
+      kind: background
+    rotation: 0
+    size:
+      x: 1000
+      y: 2172.7273
+    z: 0
+frame:
+  canvas:
+    h: 2172.7273
+    w: 5180
+    x: 0
+    y: 0
+  gallery:
+    background: "#FFFFFF"
+    gap: 45
+    preset: appstore-iphone
+    radius:
+      x: 125
+      y: 125
+  gaps:
+    - h: 2172.7273
+      w: 45
+      x: 1000
+      y: 0
+    - h: 2172.7273
+      w: 45
+      x: 2045
+      y: 0
+    - h: 2172.7273
+      w: 45
+      x: 3090
+      y: 0
+    - h: 2172.7273
+      w: 45
+      x: 4135
+      y: 0
+  images:
+    - columns:
+        - h: 2172.7273
+          w: 1000
+          x: 0
+          y: 0
+      index: 0
+      pages:
+        - 0
+      source:
+        h: 2172.7273
+        w: 1000
+        x: 0
+        y: 0
+      viewport:
+        height_px: 2868
+        origin_x: 0
+        origin_y: 0
+        scale: 1.32
+        width_px: 1320
+    - columns:
+        - h: 2172.7273
+          w: 1000
+          x: 1045
+          y: 0
+      index: 1
+      pages:
+        - 1
+      source:
+        h: 2172.7273
+        w: 1000
+        x: 1045
+        y: 0
+      viewport:
+        height_px: 2868
+        origin_x: 1045
+        origin_y: 0
+        scale: 1.32
+        width_px: 1320
+    - columns:
+        - h: 2172.7273
+          w: 1000
+          x: 2090
+          y: 0
+      index: 2
+      pages:
+        - 2
+      source:
+        h: 2172.7273
+        w: 1000
+        x: 2090
+        y: 0
+      viewport:
+        height_px: 2868
+        origin_x: 2090
+        origin_y: 0
+        scale: 1.32
+        width_px: 1320
+    - columns:
+        - h: 2172.7273
+          w: 1000
+          x: 3135
+          y: 0
+      index: 3
+      pages:
+        - 3
+      source:
+        h: 2172.7273
+        w: 1000
+        x: 3135
+        y: 0
+      viewport:
+        height_px: 2868
+        origin_x: 3135
+        origin_y: 0
+        scale: 1.32
+        width_px: 1320
+    - columns:
+        - h: 2172.7273
+          w: 1000
+          x: 4180
+          y: 0
+      index: 4
+      pages:
+        - 4
+      source:
+        h: 2172.7273
+        w: 1000
+        x: 4180
+        y: 0
+      viewport:
+        height_px: 2868
+        origin_x: 4180
+        origin_y: 0
+        scale: 1.32
+        width_px: 1320
+  kind: pages
+  layout:
+    gap: 45
+    group: 1
+    page_count: 5
+    page_height: 2172.7273
+    reference_page_height: 2172.7273
+  pages:
+    - column: 0
+      id: hero
+      image: 0
+      index: 0
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 0
+        y: 0
+    - column: 0
+      id: planner
+      image: 1
+      index: 1
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 1045
+        y: 0
+    - column: 0
+      id: harvest
+      image: 2
+      index: 2
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 2090
+        y: 0
+    - column: 0
+      id: page-04
+      image: 3
+      index: 3
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 3135
+        y: 0
+    - column: 0
+      id: page-05
+      image: 4
+      index: 4
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 4180
+        y: 0
+  size:
+    - 1320
+    - 2868
+lang: de
+spans:
+  accent:
+    color: "#E8A33D"
+strip: phone
+target: ios-phone-69
+variant: ~

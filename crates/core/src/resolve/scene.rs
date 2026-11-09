@@ -1,0 +1,402 @@
+//! Output of `core::resolve`: a flat, concrete scene in canvas lu, free of
+//! YAML concepts (no `@colour` refs, no style names, no variants, no
+//! anchors, no home pages).
+
+use std::collections::BTreeMap;
+
+use serde::Serialize;
+
+use crate::catalog::{ColorVariant, Device};
+use crate::geometry::{CanvasLayout, Rect, Vec2, Viewport};
+use crate::model::{
+    Align, Appearance, Chrome, ElementId, FitMode, FrameStyle, ImageFillMode, Lang, Orientation,
+    PixelSize, Rgba, ShapeKind, StringKey, StripId, TargetId, TargetKind, TextTransform, VAlign,
+    VariantId,
+};
+
+/// A target × language, resolved.
+#[derive(Clone, Debug, Serialize)]
+pub struct ResolvedScene {
+    pub target: TargetId,
+    pub strip: StripId,
+    /// Requested language.
+    pub lang: Lang,
+    /// Variant applied (`None` if the target names none or it is unknown).
+    pub variant: Option<VariantId>,
+    pub frame: Frame,
+    /// Canvas-wide backgrounds, bottom to top, covering [`Frame::canvas`]
+    /// (pages and gaps; stretched to the target page height).
+    pub backgrounds: Vec<ResolvedFill>,
+    /// Elements in painting order (bottom to top), groups flattened.
+    pub elements: Vec<ResolvedElement>,
+    /// All span styles of the project for inline markup `[name]…[/]`.
+    pub spans: BTreeMap<String, ResolvedSpanStyle>,
+    /// Infos and warnings collected while resolving.
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+impl ResolvedScene {
+    pub fn element(&self, id: &str) -> Option<&ResolvedElement> {
+        self.elements.iter().find(|e| e.id.as_str() == id)
+    }
+}
+
+/// Canvas and output geometry of a target.
+#[derive(Clone, Debug, Serialize)]
+pub struct Frame {
+    pub kind: TargetKind,
+    /// Target size in px.
+    pub size: PixelSize,
+    /// Page placement (page height, gap, grouping); see `core::geometry`.
+    pub layout: CanvasLayout,
+    /// The whole canvas (pages and gaps), lu.
+    pub canvas: Rect,
+    pub pages: Vec<PageFrame>,
+    /// Output images: one per page or page group, or the single banner.
+    pub images: Vec<OutputImage>,
+    /// Gaps between export images (content there is in no page export).
+    pub gaps: Vec<Rect>,
+    /// Gallery profile used for the gaps (preview corner radius etc.).
+    pub gallery: Option<GalleryInfo>,
+}
+
+/// One page of the strip on the canvas.
+#[derive(Clone, Debug, Serialize)]
+pub struct PageFrame {
+    pub index: u32,
+    /// Page id for export names (`hero`, `page-02`).
+    pub id: String,
+    /// Canvas rect of the page (= its column when grouped).
+    pub rect: Rect,
+    /// Output image holding the page (pages targets).
+    pub image: Option<u32>,
+    /// Column within that image.
+    pub column: u32,
+}
+
+/// One output image.
+#[derive(Clone, Debug, Serialize)]
+pub struct OutputImage {
+    pub index: u32,
+    /// Pages shown (columns of a grouped image; pages touched by a banner).
+    pub pages: Vec<u32>,
+    /// Canvas rect covered by the image, lu (= `viewport.visible()`).
+    pub source: Rect,
+    /// Column rects (grouped page images); one entry per page.
+    pub columns: Vec<Rect>,
+    /// Canvas lu → pixel mapping of this image.
+    pub viewport: Viewport,
+}
+
+/// Gallery profile of the target in canvas lu.
+#[derive(Clone, Debug, Serialize)]
+pub struct GalleryInfo {
+    /// Preset id (`None` for a pure override without preset).
+    pub preset: Option<String>,
+    /// Gap in canvas lu.
+    pub gap: f64,
+    /// Corner radius of the images in canvas lu (`x` along the width).
+    pub radius: Vec2,
+    pub background: Option<Rgba>,
+}
+
+/// A concrete element on the canvas.
+#[derive(Clone, Debug, Serialize)]
+pub struct ResolvedElement {
+    pub id: ElementId,
+    /// Enclosing groups, outermost first.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub groups: Vec<ElementId>,
+    /// Home page (0-based).
+    pub page: u32,
+    /// Effective layer (own `z` plus the `z` of enclosing groups).
+    pub z: i32,
+    /// Centre on the canvas, lu. For text boxes: centre of [`TextFrame::rect`].
+    pub center: Vec2,
+    /// Width and height, lu (content scale applied).
+    pub size: Vec2,
+    /// Degrees, positive = clockwise (group rotation included).
+    pub rotation: f64,
+    /// Rotation pivot as offset from `center`, lu.
+    pub pivot: Vec2,
+    /// `0..=1`, group opacity multiplied in.
+    pub opacity: f64,
+    /// Clip rectangle on the canvas (`clip: page` → home page / column).
+    pub clip: Option<Rect>,
+    pub props: ResolvedKind,
+}
+
+/// Kind-specific resolved properties.
+#[derive(Clone, Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ResolvedKind {
+    /// Page background filling its home page (column).
+    Background {
+        fill: ResolvedFill,
+    },
+    Device(Box<ResolvedDevice>),
+    Text(Box<ResolvedText>),
+    Image(ResolvedImage),
+    Shape(ResolvedShape),
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ResolvedDevice {
+    /// Catalog model id after `device_map`.
+    pub model: String,
+    /// Model before `device_map`, if it was swapped.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mapped_from: Option<String>,
+    /// The catalog entry (not serialized; look it up by `model`).
+    #[serde(skip)]
+    pub device: Device,
+    pub orientation: Orientation,
+    pub frame: FrameStyle,
+    pub color: DeviceColor,
+    /// The catalog palette entry for a named colour (not serialized).
+    #[serde(skip)]
+    pub palette: Option<ColorVariant>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chrome: Option<Chrome>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub appearance: Option<Appearance>,
+    /// The display adapts to the screenshot (`aspect: free` models):
+    /// the size here uses the catalog aspect.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub free_aspect: bool,
+    pub screenshot: Option<ResolvedScreenshot>,
+    pub fit: FitMode,
+    /// Content scale applied to size, pivot and shadow.
+    pub content_scale: f64,
+    pub shadow: Vec<ResolvedShadowLayer>,
+}
+
+/// Colour of a device frame.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeviceColor {
+    /// A palette entry of `devices.yaml`.
+    Named(String),
+    /// A custom `#RRGGBB`.
+    Custom(Rgba),
+    /// The model has no colour variants.
+    None,
+}
+
+/// A screenshot asset after the lookup chain (§5.2).
+#[derive(Clone, Debug, Serialize)]
+pub struct ResolvedScreenshot {
+    pub key: String,
+    /// Path relative to the project folder; `None` = missing → placeholder
+    /// showing the key.
+    pub path: Option<String>,
+    /// Language folder the file was found in.
+    pub lang: Option<Lang>,
+    /// Screenshot variant folder that was asked for.
+    pub variant: Option<String>,
+    pub source: ScreenshotSource,
+}
+
+/// Which step of the lookup chain found the screenshot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ScreenshotSource {
+    /// `screenshots/<lang>/<variant>/<key>`
+    LangVariant,
+    /// `screenshots/<lang>/<key>`
+    Lang,
+    /// A fallback language (`de` for `de-AT`, explicit fallback, default)
+    /// with the variant folder.
+    FallbackVariant,
+    /// A fallback language without the variant folder.
+    Fallback,
+    /// Not found.
+    Missing,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ResolvedText {
+    pub key: StringKey,
+    /// Raw string with inline markup (parsed by `core::markup`); `None` if
+    /// the key exists in no language of the chain.
+    pub text: Option<String>,
+    /// Language the string came from.
+    pub text_lang: Option<Lang>,
+    pub style: ResolvedTextStyle,
+    pub frame: TextFrame,
+    pub align: Align,
+    pub valign: VAlign,
+    /// Auto-fit lower bound (lu); `None` = no shrinking.
+    pub shrink_to: Option<f64>,
+    pub max_lines: Option<u32>,
+}
+
+/// Text box on the canvas.
+#[derive(Clone, Copy, Debug, Serialize)]
+pub struct TextFrame {
+    /// Box in canvas lu. With `auto_height` its height is the space
+    /// available below the top (margin boxes without `bottom`) or 0 (free
+    /// boxes without `height`, centred at `rect.center()`).
+    pub rect: Rect,
+    /// The text block's height follows the laid-out text.
+    pub auto_height: bool,
+    /// Box from page margins (`box`) rather than a free box.
+    pub margins: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ResolvedTextStyle {
+    pub font: String,
+    pub weight: u16,
+    pub italic: bool,
+    /// Font size, lu.
+    pub size: f64,
+    /// Factor of the font size.
+    pub line_height: f64,
+    /// Letter spacing, em.
+    pub tracking: f64,
+    pub color: Rgba,
+    pub transform: TextTransform,
+    pub shadow: Vec<ResolvedShadowLayer>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ResolvedSpanStyle {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub italic: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<Rgba>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background: Option<Rgba>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ResolvedImage {
+    pub asset: String,
+    pub fit: FitMode,
+    /// No `height` was given: the renderer takes it from the asset's
+    /// aspect (`size.y` holds the width as a placeholder).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub auto_height: bool,
+    pub shadow: Vec<ResolvedShadowLayer>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ResolvedShape {
+    pub shape: ShapeKind,
+    pub radius: f64,
+    pub fill: Option<ResolvedFill>,
+    pub stroke: Option<ResolvedStroke>,
+    pub shadow: Vec<ResolvedShadowLayer>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ResolvedStroke {
+    pub color: Rgba,
+    pub width: f64,
+}
+
+/// A fill with concrete colours.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum ResolvedFill {
+    Color {
+        color: Rgba,
+    },
+    /// CSS angle convention (0 = to top, 90 = to right).
+    LinearGradient {
+        angle: f64,
+        stops: Vec<ResolvedStop>,
+    },
+    /// `center` in fractions of the area, `radius` as fraction of its
+    /// larger side.
+    RadialGradient {
+        center: Vec2,
+        radius: f64,
+        stops: Vec<ResolvedStop>,
+    },
+    Image {
+        asset: String,
+        fit: ImageFillMode,
+        focus: Vec2,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct ResolvedStop {
+    pub color: Rgba,
+    pub pos: f64,
+}
+
+/// One shadow layer in lu.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct ResolvedShadowLayer {
+    pub color: Rgba,
+    pub blur: f64,
+    pub x: f64,
+    pub y: f64,
+}
+
+/// Severity of a diagnostic.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Level {
+    Info,
+    Warn,
+}
+
+/// What a diagnostic is about (stable codes for validation, GUI, MCP).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DiagnosticCode {
+    /// The requested language is not in `languages.available`.
+    LangNotAvailable,
+    /// A text was taken from a fallback language.
+    TextFallback,
+    /// A text key exists in no language of the chain.
+    TextMissing,
+    /// A screenshot was taken from a fallback language / without variant.
+    ScreenshotFallback,
+    ScreenshotMissing,
+    UnknownVariant,
+    /// A variant override names an element that does not exist.
+    UnknownOverrideElement,
+    /// A variant override does not apply (e.g. a field of another kind).
+    InvalidOverride,
+    UnknownDevice,
+    /// `device_map` names an unknown replacement model.
+    UnknownMappedDevice,
+    /// The colour variant does not exist for the (mapped) model.
+    DeviceColorFallback,
+    UnsupportedOrientation,
+    UnknownColor,
+    UnknownTextStyle,
+    UnknownShadow,
+    UnknownGallery,
+    /// `gaps: as_store` on a banner without gallery.
+    NoGallery,
+    /// An element's home page is outside the strip.
+    PageOutOfRange,
+    /// A required size is missing; a default is used.
+    MissingSize,
+    /// Page count is not a multiple of `group`.
+    PartialImage,
+    /// A banner region exceeds the strip.
+    RegionOutOfRange,
+}
+
+/// An info or warning collected during resolve.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Diagnostic {
+    pub level: Level,
+    pub code: DiagnosticCode,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub element: Option<ElementId>,
+    pub message: String,
+}

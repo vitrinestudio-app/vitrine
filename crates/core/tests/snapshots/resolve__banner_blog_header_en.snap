@@ -1,0 +1,318 @@
+---
+source: crates/core/tests/resolve.rs
+expression: snapshot_value(&s)
+---
+backgrounds:
+  - angle: 160
+    kind: linear-gradient
+    stops:
+      - color: "#EAF4E4"
+        pos: 0
+      - color: "#B7D9A6"
+        pos: 1
+diagnostics: []
+elements:
+  - center:
+      x: 2500
+      y: 1600
+    clip: ~
+    id: band
+    opacity: 0.35
+    page: 1
+    pivot:
+      x: 0
+      y: 0
+    props:
+      fill:
+        color: "#E8A33D"
+        kind: color
+      kind: shape
+      radius: 0
+      shadow: []
+      shape: rect
+      stroke: ~
+    rotation: -12.5
+    size:
+      x: 4200
+      y: 120
+    z: -1
+  - center:
+      x: 1000
+      y: 2172
+    clip: ~
+    id: hero-phone
+    opacity: 1
+    page: 0
+    pivot:
+      x: 0
+      y: 0
+    props:
+      color:
+        named: black-titanium
+      content_scale: 1
+      fit: cover
+      frame: detailed
+      kind: device
+      model: iphone-island
+      orientation: portrait
+      screenshot:
+        key: home
+        lang: en
+        path: screenshots/en/ios-phone/home.png
+        source: lang_variant
+        variant: ios-phone
+      shadow:
+        - blur: 48
+          color: "#0000006B"
+          x: 0
+          y: 46
+        - blur: 10
+          color: "#0000004D"
+          x: 0
+          y: 10
+    rotation: -8
+    size:
+      x: 820
+      y: 1692.8351
+    z: 0
+  - center:
+      x: 500
+      y: 1156.3636
+    clip:
+      h: 2172.7273
+      w: 1000
+      x: 0
+      y: 0
+    id: title-1
+    opacity: 1
+    page: 0
+    pivot:
+      x: 0
+      y: 0
+    props:
+      align: center
+      frame:
+        auto_height: true
+        margins: true
+        rect:
+          h: 2032.7273
+          w: 840
+          x: 80
+          y: 140
+      key: hero.title
+      kind: text
+      max_lines: 3
+      shrink_to: 52
+      style:
+        color: "#1D1D1F"
+        font: Inter
+        italic: false
+        line_height: 1.08
+        shadow: []
+        size: 72
+        tracking: 0
+        transform: none
+        weight: 800
+      text: Plan your beds **in minutes**
+      text_lang: en
+      valign: top
+    rotation: 0
+    size:
+      x: 840
+      y: 2032.7273
+    z: 0
+  - center:
+      x: 500
+      y: 1296.3636
+    clip:
+      h: 2172.7273
+      w: 1000
+      x: 0
+      y: 0
+    id: sub-1
+    opacity: 1
+    page: 0
+    pivot:
+      x: 0
+      y: 0
+    props:
+      align: center
+      frame:
+        auto_height: true
+        margins: true
+        rect:
+          h: 1752.7273
+          w: 840
+          x: 80
+          y: 420
+      key: hero.sub
+      kind: text
+      max_lines: ~
+      shrink_to: ~
+      style:
+        color: "#1D1D1F"
+        font: Inter
+        italic: false
+        line_height: 1.25
+        shadow: []
+        size: 38
+        tracking: 0
+        transform: none
+        weight: 500
+      text: "Grow more with [accent]companion planting[/]"
+      text_lang: en
+      valign: top
+    rotation: 0
+    size:
+      x: 840
+      y: 1752.7273
+    z: 0
+  - center:
+      x: 2820
+      y: 340
+    clip: ~
+    groups:
+      - badge-group
+    id: badge
+    opacity: 1
+    page: 2
+    pivot:
+      x: 0
+      y: 0
+    props:
+      asset: assets/badge-new.svg
+      fit: contain
+      kind: image
+      shadow: []
+    rotation: 0
+    size:
+      x: 220
+      y: 220
+    z: 0
+  - center:
+      x: 2820
+      y: 340
+    clip: ~
+    groups:
+      - badge-group
+    id: badge-ring
+    opacity: 1
+    page: 2
+    pivot:
+      x: 0
+      y: 0
+    props:
+      fill: ~
+      kind: shape
+      radius: 0
+      shadow: []
+      shape: ellipse
+      stroke:
+        color: "#2F6B3A"
+        width: 6
+    rotation: 0
+    size:
+      x: 260
+      y: 260
+    z: 0
+frame:
+  canvas:
+    h: 2172.7273
+    w: 5000
+    x: 0
+    y: 0
+  gallery: ~
+  gaps: []
+  images:
+    - columns:
+        - h: 2172.7273
+          w: 1000
+          x: 0
+          y: 0
+        - h: 2172.7273
+          w: 1000
+          x: 1000
+          y: 0
+        - h: 2172.7273
+          w: 1000
+          x: 2000
+          y: 0
+      index: 0
+      pages:
+        - 0
+        - 1
+        - 2
+      source:
+        h: 1250
+        w: 3000
+        x: 0
+        y: 0
+      viewport:
+        height_px: 1000
+        origin_x: 0
+        origin_y: 0
+        scale: 0.8
+        width_px: 2400
+  kind: banner
+  layout:
+    gap: 0
+    group: 1
+    page_count: 5
+    page_height: 2172.7273
+    reference_page_height: 2172.7273
+  pages:
+    - column: 0
+      id: hero
+      image: ~
+      index: 0
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 0
+        y: 0
+    - column: 0
+      id: planner
+      image: ~
+      index: 1
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 1000
+        y: 0
+    - column: 0
+      id: harvest
+      image: ~
+      index: 2
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 2000
+        y: 0
+    - column: 0
+      id: page-04
+      image: ~
+      index: 3
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 3000
+        y: 0
+    - column: 0
+      id: page-05
+      image: ~
+      index: 4
+      rect:
+        h: 2172.7273
+        w: 1000
+        x: 4000
+        y: 0
+  size:
+    - 2400
+    - 1000
+lang: en
+spans:
+  accent:
+    color: "#E8A33D"
+strip: phone
+target: blog-header
+variant: ~
