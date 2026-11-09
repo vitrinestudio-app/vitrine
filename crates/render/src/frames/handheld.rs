@@ -131,11 +131,17 @@ fn display_cutouts(cx: &mut Ctx<'_, '_>) {
     for c in d.cutouts.iter().filter(|c| c.kind.over_display()) {
         match (c.kind, c.shape) {
             (CutoutKind::Notch, _) | (_, CutoutShape::Notch) => {
-                // Extends up into the bezel (to the glass edge) so it joins
-                // the face without a seam.
-                let top = d.rim.min(c.y);
+                // Cutouts are always black. On a dark face the notch
+                // extends up into the bezel (to the glass edge) so it joins
+                // the face without a seam; on a light face it starts at the
+                // display edge.
+                let top = if luma(face) < 0.25 {
+                    d.rim.min(c.y)
+                } else {
+                    c.y
+                };
                 let p = cx.l.path(shapes::notch(c.x, c.y, c.w, c.h, c.radius, top));
-                cx.color(p.as_ref(), face);
+                cx.color(p.as_ref(), hex("#000000"));
                 if cx.detailed {
                     // Speaker slit and front camera inside the notch.
                     let sw = c.w * 0.26;

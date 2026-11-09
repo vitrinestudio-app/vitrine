@@ -352,7 +352,8 @@ devices:
     unit: nominal
     natural: portrait
     orientations: [portrait, landscape]
-    body: {w: 1000, h: 1000, radius: 40}
-    display: {x: 0, y: 0, w: 1000, h: 1000, radius: 40}
+    # radius: per mille of the screenshot's short side (phone-like corners)
+    body: {w: 1000, h: 1000, radius: 100}
+    display: {x: 0, y: 0, w: 1000, h: 1000, radius: 100}
     screenshot:
       aspect: free

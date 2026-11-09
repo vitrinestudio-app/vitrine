@@ -99,57 +99,62 @@ pub fn laptop(cx: &mut Ctx<'_, '_>, img: Option<&Pixmap>) {
 }
 
 pub fn desktop(cx: &mut Ctx<'_, '_>, img: Option<&Pixmap>) {
-    let Some((neck, foot)) = cx.l.stand_parts() else {
+    let Some(st) = cx.l.stand() else {
         return;
     };
     let [light, mid, dark] = cx.pal.rim;
     let (body, edge) = (cx.pal.body, cx.pal.edge);
+    let (neck, top, front) = (st.neck_rect, st.top_rect, st.front_rect);
 
-    // Stand neck: brushed plate, in shadow right under the housing.
-    let neck_path = shapes::plain(neck);
+    // Foot: top face (lit from above), then the front edge.
+    if cx.detailed {
+        let sh = linear(
+            (0.0, top.y as f32),
+            (0.0, top.bottom() as f32),
+            &[(0.0, mix(mid, light, 0.5)), (1.0, shade(light, 0.25))],
+        );
+        cx.fill(Some(&st.top), &shader_paint(sh));
+        let sh = linear(
+            (0.0, front.y as f32),
+            (0.0, front.bottom() as f32),
+            &[(0.0, mid), (0.6, mix(mid, dark, 0.5)), (1.0, dark)],
+        );
+        cx.fill(Some(&st.front), &shader_paint(sh));
+    } else {
+        cx.color(Some(&st.top), shade(body, 0.06));
+        cx.color(Some(&st.front), edge);
+    }
+
+    // Neck: brushed plate, darker where it bends into the foot.
     if cx.detailed {
         let sh = linear(
             (neck.x as f32, 0.0),
             (neck.right() as f32, 0.0),
             &[
-                (0.0, mix(mid, dark, 0.4)),
-                (0.12, mid),
-                (0.4, mix(light, mid, 0.4)),
-                (0.88, mid),
-                (1.0, mix(mid, dark, 0.5)),
+                (0.0, mix(mid, dark, 0.45)),
+                (0.14, mid),
+                (0.42, mix(light, mid, 0.35)),
+                (0.86, mid),
+                (1.0, mix(mid, dark, 0.55)),
             ],
         );
-        cx.fill(neck_path.as_ref(), &shader_paint(sh));
+        cx.fill(Some(&st.neck), &shader_paint(sh));
     } else {
-        cx.color(neck_path.as_ref(), edge);
+        cx.color(Some(&st.neck), shade(edge, 0.03));
     }
+    let bend = linear(
+        (0.0, (neck.bottom() - neck.h * 0.18) as f32),
+        (0.0, neck.bottom() as f32),
+        &[(0.0, [0, 0, 0, 0]), (1.0, [0, 0, 0, 46])],
+    );
+    cx.fill(Some(&st.neck), &shader_paint(bend));
     // Contact shadow right under the housing.
-    let tuck = cx.l.device.stand.map_or(0.0, |s| s.neck.h * 0.15) * cx.l.s;
     let shadow = linear(
-        (0.0, (neck.y + tuck) as f32),
-        (0.0, (neck.y + tuck + neck.h * 0.16) as f32),
+        (0.0, (neck.y + st.tuck) as f32),
+        (0.0, (neck.y + st.tuck + neck.h * 0.16) as f32),
         &[(0.0, [0, 0, 0, 90]), (1.0, [0, 0, 0, 0])],
     );
-    cx.fill(neck_path.as_ref(), &shader_paint(shadow));
-
-    // Foot.
-    let foot_path = cx.l.foot_path(foot);
-    if cx.detailed {
-        let sh = linear(
-            (0.0, foot.y as f32),
-            (0.0, foot.bottom() as f32),
-            &[(0.0, shade(light, 0.3)), (0.3, light), (1.0, dark)],
-        );
-        cx.fill(foot_path.as_ref(), &shader_paint(sh));
-    } else {
-        cx.color(foot_path.as_ref(), body);
-        let lower = Rect::new(foot.x, foot.y + foot.h * 0.55, foot.w, foot.h * 0.45);
-        let fr = cx.l.device.stand.map_or(0.0, |s| s.foot.radius * cx.l.s);
-        cx.color(
-            shapes::rect(lower, [0.0, 0.0, fr, fr], false).as_ref(),
-            edge,
-        );
-    }
+    cx.fill(Some(&st.neck), &shader_paint(shadow));
 
     // Housing: chin below the display when the bottom border is much
     // larger than the top one (all-in-one), otherwise a uniform bezel.
