@@ -15,7 +15,7 @@ use arrangia_core::model::{
     Aspect, ElementId, ElementPatch, Fill, Lang, PixelSize, Point, Rgba, StringKey, Strip, StripId,
     Target, TargetId, VariantId,
 };
-use arrangia_core::ops::{Op, OpError, StripPatch, TargetPatch};
+use arrangia_core::ops::{History, Op, OpError, StripPatch, TargetPatch};
 
 fn sample() -> Project {
     Project::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/sample")).unwrap()
@@ -502,6 +502,54 @@ fn transactions_are_atomic() {
     assert_eq!(inverse.len(), 3);
     p.apply_ops(inverse).unwrap();
     assert_eq!(p, before);
+}
+
+#[test]
+fn history_undo_redo() {
+    let mut p = sample();
+    let original = p.clone();
+    let mut h = History::new();
+    assert!(!h.undo(&mut p).unwrap());
+    h.apply(&mut p, vec![Op::SetName { name: "a".into() }])
+        .unwrap();
+    h.apply(
+        &mut p,
+        vec![
+            Op::RemoveElement {
+                id: ElementId::new("hero-phone"),
+            },
+            Op::SetName { name: "b".into() },
+        ],
+    )
+    .unwrap();
+    let after = p.clone();
+    assert!(h.undo(&mut p).unwrap());
+    assert_eq!(p.name, "a");
+    assert!(p.element("hero-phone").is_some());
+    assert!(h.undo(&mut p).unwrap());
+    assert_eq!(p, original);
+    assert!(!h.can_undo());
+    assert!(h.redo(&mut p).unwrap());
+    assert!(h.redo(&mut p).unwrap());
+    assert_eq!(p, after);
+    assert!(!h.redo(&mut p).unwrap());
+    // A new step clears redo.
+    h.undo(&mut p).unwrap();
+    h.apply(&mut p, vec![Op::SetName { name: "c".into() }])
+        .unwrap();
+    assert!(!h.can_redo());
+    // Failed apply records nothing.
+    assert!(
+        h.apply(
+            &mut p,
+            vec![Op::RemoveStrip {
+                id: StripId::new("nope")
+            }]
+        )
+        .is_err()
+    );
+    h.undo(&mut p).unwrap();
+    assert_eq!(p.name, "a");
 }
 
 #[test]

@@ -3,6 +3,7 @@
 //! Every change to a project is an [`Op`]. [`Project::apply`] validates the
 //! op, applies it and returns the inverse op (undo). [`Project::apply_ops`]
 //! applies a list atomically (all or nothing) and returns the inverse list.
+//! [`History`] keeps undo/redo stacks of such transactions.
 //!
 //! Validation covers what an op touches: ids exist / are unique, page
 //! indices are within the strip, referenced styles, colours, shadows,
@@ -11,12 +12,14 @@
 //! project (e.g. after a hand edit) do not block unrelated ops; they are
 //! reported by `core::validate`.
 
+mod history;
 mod patch;
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
+pub use history::History;
 pub use patch::{StripPatch, TargetPatch};
 
 use crate::model::{
