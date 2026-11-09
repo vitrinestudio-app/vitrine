@@ -96,6 +96,12 @@ conflicts, live reload via `watch`), `preview` (binary preview payload +
 cache), `settings` (settings.yaml + recent projects in SQLite), `events`,
 `dialogs`, `bridge` (dev HTTP bridge, feature `devbridge`). UI transport
 shim: `ui/js/transport.js` (`invoke`/`listen` over Tauri or the bridge).
+Edit gestures go through `overlay` + `edit_*` commands (view context
+`{target, lang, variant}`, one undo step each) and `render_preview_edit`
+(drag previews from a scratch copy, never saved). Frontend structure and
+panel conventions: `crates/gui/ui/README.md` (store, api, editor
+controller, views, panels with `mount(el, ctx)`; `?theme=dark|light`,
+`?lang=` debug params).
 
 ## Stack
 

@@ -66,22 +66,28 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Documented in CLAUDE.md; never part of the release bundle
 
 ## 2.4 App shell + canvas view
-- [ ] Layout per §9.1: top bar (project, strip, target, language, variant,
+- [x] Layout per §9.1: top bar (project, strip, target, language, variant,
       validation badge), left (strips, layers, assets, translations), centre
       canvas, right inspector, bottom view switch (canvas | pages | store
       gallery | all languages grid)
-- [ ] Canvas: zoom/pan (wheel, trackpad pinch, space-drag, fit), preview
+- [x] Canvas: zoom/pan (wheel, trackpad pinch, space-drag, fit), preview
       images positioned in canvas lu, gaps hatched, content in gaps
       semi-transparent, page labels, low-res while interacting
-- [ ] Light/dark theme following the OS; keyboard shortcuts; en/de UI
+- [x] Light/dark theme following the OS; keyboard shortcuts; en/de UI
 
 ## 2.5 Direct manipulation
-- [ ] Select (click, shift-click, marquee), move, resize (aspect-locked for
+- [x] Select (click, shift-click, marquee), move, resize (aspect-locked for
       devices), rotate with snapping (0°, ±5°, ±15°, ±45°, ±90°; shift = free)
-- [ ] Snapping to page edges/centres, margins, other elements; guides
-- [ ] Home page follows the element centre on drop; manual override
-- [ ] Variant view: edits stored as overrides, marked + resettable
-- [ ] Arrow-key nudging, delete, duplicate, z-order
+- [x] Snapping to page edges/centres, margins, other elements; guides
+- [~] Home page follows the element centre on drop; manual override
+- [x] Variant view: edits stored as overrides, marked + resettable
+- [x] Arrow-key nudging, delete, duplicate, z-order
+- Commands `overlay`, `edit_*`, `render_preview_edit` (drag feedback:
+  overlay ghost at once + previews of the affected images from a scratch
+  copy, ~10 ms per image in release, self-paced ≤ 15 fps); render
+  commands take a `variant`, `render_canvas` a `region` (gaps).
+  Open: "All languages" view (2.7), manual home page lock in the UI
+  (`edit_set_page` exists; inspector in 2.6), group rotation handles.
 
 ## 2.6 Inspector + layers
 - [ ] Inspector per element kind (common: page, at, size, rotation, pivot,
