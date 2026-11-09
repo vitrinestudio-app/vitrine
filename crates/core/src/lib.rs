@@ -26,6 +26,7 @@
 //! model/      project, strip, page, element, style, target, variant
 //! io          YAML load/save, atomic writes, revision check
 //! ops/        Op, apply, inverse, transactions, undo/redo history
+//! geometry    page → canvas mapping, gaps, grouping, anchors, viewports
 //! resolve/    anchors, page grouping, fallbacks, device_map
 //! layout/     text layout and auto-fit
 //! validate/   warnings and errors
@@ -33,6 +34,7 @@
 //! ```
 
 pub mod catalog;
+pub mod geometry;
 pub mod io;
 pub mod model;
 pub mod ops;
