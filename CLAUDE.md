@@ -62,7 +62,7 @@ custom Tauri commands · UI i18n via JSON catalogs (`crates/gui/ui/i18n/en.json`
 `de.json`) · tokio, reqwest + rustls (publish only; core stays network-free) ·
 YAML via serde + `serde-saphyr` · SQLite (`rusqlite`, bundled) only for caches,
 history, upload log, recent projects · secrets only in the system keychain
-(`keyring`) · rendering planned with tiny-skia (confirmed by Phase 0 spike) ·
+(`keyring`) · rendering with tiny-skia, text layout with parley, glyph outlines via skrifa (ADR 0001) ·
 targets macOS, Windows, Linux.
 
 ## Rules
