@@ -340,12 +340,6 @@ impl Walker<'_, '_> {
             );
             DEFAULT_DEVICE_WIDTH
         });
-        let outer = device.outer_size();
-        let ratio = if orientation == device.natural {
-            outer.h / outer.w
-        } else {
-            outer.w / outer.h
-        };
         let (color, palette) = self.device_color(p, device, mapped_from.is_some(), d);
         let variant = self
             .inp
@@ -376,6 +370,27 @@ impl Walker<'_, '_> {
             }
             s
         });
+        // `aspect: free` models (browser, none) take the screenshot's aspect
+        // when its size is known. The screenshot is never rotated, so for a
+        // rotated model the natural-orientation aspect is inverted.
+        let free_aspect = device.screenshot.aspect.is_none();
+        let device = match screenshot.as_ref().and_then(|s| s.size) {
+            Some(px) if free_aspect && px.w > 0 && px.h > 0 => {
+                let r = f64::from(px.w) / f64::from(px.h);
+                device.with_display_aspect(if orientation == device.natural {
+                    r
+                } else {
+                    1.0 / r
+                })
+            }
+            _ => device.clone(),
+        };
+        let outer = device.outer_size();
+        let ratio = if orientation == device.natural {
+            outer.h / outer.w
+        } else {
+            outer.w / outer.h
+        };
         let k = self.content_scale;
         let shadow = self
             .inp
@@ -388,7 +403,7 @@ impl Walker<'_, '_> {
             ResolvedDevice {
                 model,
                 mapped_from,
-                device: device.clone(),
+                device,
                 orientation,
                 frame: p.frame.clone().unwrap_or_else(|| self.frame_style.clone()),
                 color,
@@ -396,7 +411,7 @@ impl Walker<'_, '_> {
                 chrome: p.chrome,
                 url: p.url.clone(),
                 appearance: p.appearance,
-                free_aspect: device.screenshot.aspect.is_none(),
+                free_aspect,
                 screenshot,
                 fit: p.fit.unwrap_or(FitMode::Cover),
                 content_scale: k,

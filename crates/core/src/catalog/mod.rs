@@ -253,6 +253,24 @@ mod tests {
     }
 
     #[test]
+    fn apple_presets_follow_app_store_connect() {
+        // Listed on Apple's help page but rejected by the ASC uploader.
+        use crate::model::PixelSize;
+        let p69 = target_preset("ios-iphone-69").unwrap();
+        assert!(!p69.has_size(PixelSize::new(1260, 2736)));
+        assert_eq!(p69.requirement, Some(Requirement::Optional));
+        assert_eq!(p69.status, PresetStatus::Verified);
+        let p11 = target_preset("ios-ipad-11").unwrap();
+        assert!(!p11.has_size(PixelSize::new(1512, 2316)));
+        let p63 = target_preset("ios-iphone-63").unwrap();
+        assert_eq!(p63.requirement, Some(Requirement::Required));
+        assert_eq!(p63.status, PresetStatus::Verified);
+        let duo = target_preset("ios-iphone-duo-outer").unwrap();
+        assert_eq!(duo.status, PresetStatus::Unverified);
+        assert!(catalog().targets.sources["ASC"].note.is_some());
+    }
+
+    #[test]
     fn check_reports_broken_data() {
         let devices = DEVICES_YAML
             .replace("x: 3.6, y: 3.6, w: 70.4", "x: 30.6, y: 3.6, w: 70.4")

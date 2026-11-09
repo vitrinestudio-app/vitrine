@@ -363,6 +363,38 @@ impl Device {
         oriented_ratio(self.display.w, self.display.h, self.natural, orientation)
     }
 
+    /// Display size as fractions `(w, h)` of the outer size
+    /// ([`Device::outer_size`]) in the given orientation.
+    pub fn display_fraction(&self, orientation: Orientation) -> (f64, f64) {
+        let o = self.outer_size();
+        let (fw, fh) = (self.display.w / o.w, self.display.h / o.h);
+        if orientation == self.natural {
+            (fw, fh)
+        } else {
+            (fh, fw)
+        }
+    }
+
+    /// A copy whose display has the aspect `ratio` (`w / h`, natural
+    /// orientation): the display keeps its width, its height changes and
+    /// the body grows or shrinks by the same amount (the chrome above a
+    /// browser display stays). Meant for `aspect: free` models, which have
+    /// no cutouts, buttons, laptop base or stand below the display; corner
+    /// radii are clamped to the new size.
+    #[must_use]
+    pub fn with_display_aspect(&self, ratio: f64) -> Device {
+        let mut d = self.clone();
+        if !(ratio.is_finite() && ratio > 0.0) {
+            return d;
+        }
+        let delta = self.display.w / ratio - self.display.h;
+        d.display.h += delta;
+        d.body.h += delta;
+        d.display.radius = d.display.radius.min(d.display.w.min(d.display.h) / 2.0);
+        d.body.radius = d.body.radius.min(d.body.w.min(d.body.h) / 2.0);
+        d
+    }
+
     /// Does a screenshot of `size` fit the display within 2 % (in the
     /// orientation the size implies)? Always true for `free` devices.
     pub fn matches_screenshot(&self, size: PixelSize) -> bool {

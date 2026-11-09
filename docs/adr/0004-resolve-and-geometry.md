@@ -25,8 +25,11 @@ This ADR records how `core::geometry` and `core::resolve` answer them.
   in task 1.6; until then the spike copy stays.
 - `core::resolve::resolve(project, target_id, lang, &ResolveOptions)
   -> Result<ResolvedScene, ResolveError>`. `ResolveOptions` carries the
-  catalog and an `AssetLookup` (file existence: `FsAssets`, `NoAssets`,
-  `BTreeSet<String>`). Only an unknown target, an unknown strip or an
+  catalog and an `AssetLookup`: file existence plus optional image
+  dimensions (`dimensions(path) -> Option<(u32, u32)>`, default `None`).
+  Implementations: `FsAssets` (reads only the image header via the
+  `imagesize` crate), `NoAssets`, `BTreeSet<String>` (no dimensions),
+  `BTreeMap<String, (u32, u32)>` (tests). Only an unknown target, an unknown strip or an
   invalid language code are errors; everything else becomes a diagnostic.
 - `ResolvedScene` is `Serialize` (not `Deserialize`): frame, canvas-wide
   backgrounds, a flat z-ordered element list in canvas lu, resolved span
@@ -106,9 +109,16 @@ This ADR records how `core::geometry` and `core::resolve` answer them.
   swapped by `device_map`, since names differ between models; warning
   otherwise).
 - Frame style: element `frame` → `styles.frame` → `detailed`.
-- `aspect: free` models (browser, `none`) use the catalog aspect and are
-  flagged `free_aspect`; adapting to the screenshot's aspect needs the
-  image and is left to the renderer (open question).
+- `aspect: free` models (browser, `none`) are flagged `free_aspect`. When
+  the screenshot's pixel size is known (`AssetLookup::dimensions`), the
+  display takes the screenshot's aspect: it keeps its width, its height
+  changes and the body grows or shrinks by the same amount (the browser
+  chrome above the display stays) — `Device::with_display_aspect`. The
+  adapted copy is `ResolvedDevice::device`, and the element height follows
+  it. For a rotated model the natural-orientation aspect is the inverse
+  (the screenshot is never rotated). Without dimensions the catalog aspect
+  is used. Deciding this in resolve (not in the renderer) keeps layout,
+  validation, export and GUI handles consistent.
 
 ### Languages and assets
 
@@ -124,7 +134,8 @@ This ADR records how `core::geometry` and `core::resolve` answer them.
   variant is the target's `screenshots`, else the model's default variant
   from the catalog. The result records path, language, variant and the
   level (`lang_variant`, `lang`, `fallback_variant`, `fallback`,
-  `missing`); missing → placeholder with the key (warning).
+  `missing`) and the pixel size if the lookup knows it; missing →
+  placeholder with the key (warning).
 - `visible_in.langs` matches the language or a prefix of it (`de` matches
   `de-AT`); `visible_in.targets` matches the target id.
 
@@ -172,8 +183,8 @@ This ADR records how `core::geometry` and `core::resolve` answer them.
 
 - Group pivot: bounding box of child reference points is predictable but
   ignores child sizes; revisit when the GUI shows group handles.
-- `aspect: free` devices: should resolve read the screenshot size to
-  derive the frame height (needs image headers in `AssetLookup`)?
+- ~~`aspect: free` devices: should resolve read the screenshot size to
+  derive the frame height?~~ Decided (task 1.8): yes, see *Devices*.
 - Banner `fit: cover` focus is fixed at `(0.5, 0)`; a `focus` field on
   banner targets may be needed.
 - `content_scale` for images (logos/badges next to devices) could become

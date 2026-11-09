@@ -274,3 +274,45 @@ fn errors() {
         ResolveError::InvalidLang(_)
     ));
 }
+
+#[test]
+fn free_aspect_device_follows_the_screenshot() {
+    let mut p = sample();
+    let mut t = p.targets[0].clone();
+    t.id = arrangia_core::model::TargetId::new("web");
+    t.strip = arrangia_core::model::StripId::new("web");
+    t.size = arrangia_core::model::PixelSize::new(2880, 1800);
+    t.screenshots = None;
+    t.gallery = None;
+    t.store = None;
+    p.targets.push(t);
+    // 1440x1080 (4:3) instead of the catalog's 16:10 browser content.
+    let files: std::collections::BTreeMap<String, (u32, u32)> =
+        [("screenshots/en/web/dashboard.png".to_owned(), (1440, 1080))].into();
+    let s = resolve(&p, "web", "en", &ResolveOptions::new(&files)).unwrap();
+    let browser = s.element("web-browser").unwrap();
+    let ResolvedKind::Device(dev) = &browser.props else {
+        panic!()
+    };
+    assert!(dev.free_aspect);
+    let shot = dev.screenshot.as_ref().unwrap();
+    assert_eq!(
+        shot.size.unwrap(),
+        arrangia_core::model::PixelSize::new(1440, 1080)
+    );
+    // Display 1440 x 1080, chrome 88 above it: body 1440 x 1168.
+    assert!(close(dev.device.display.h, 1080.0));
+    assert!(close(dev.device.body.h, 1168.0));
+    assert!(close(browser.size.x, 860.0));
+    assert!(close(browser.size.y, 860.0 * 1168.0 / 1440.0));
+    // Without dimensions the catalog aspect stays.
+    let names: BTreeSet<String> = files.keys().cloned().collect();
+    let s = resolve(&p, "web", "en", &ResolveOptions::new(&names)).unwrap();
+    let browser = s.element("web-browser").unwrap();
+    assert!(close(browser.size.y, 860.0 * 988.0 / 1440.0));
+    // A device with a fixed aspect ignores the screenshot size.
+    let ResolvedKind::Device(dev) = &s.element("web-laptop").unwrap().props else {
+        panic!()
+    };
+    assert!(!dev.free_aspect);
+}

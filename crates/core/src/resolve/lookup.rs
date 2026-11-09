@@ -1,10 +1,10 @@
 //! Language fallback chain (§5.1) and screenshot lookup chain (§5.2).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use super::scene::{ResolvedScreenshot, ScreenshotSource};
-use crate::model::{Lang, Project};
+use crate::model::{Lang, PixelSize, Project};
 
 /// Language chain for `lang`: the language itself, its shorter prefixes
 /// (`de-AT` → `de`), then explicit `languages.fallback` entries (each again
@@ -57,12 +57,22 @@ pub fn lookup_text<'p>(
     })
 }
 
-/// File existence, abstracted so resolve needs no filesystem in tests and
-/// the GUI can cache directory listings.
+/// File existence and image dimensions, abstracted so resolve and
+/// validation need no filesystem in tests and the GUI can cache directory
+/// listings.
 pub trait AssetLookup {
     /// Does the file `path` (relative to the project folder, `/`-separated)
     /// exist?
     fn exists(&self, path: &str) -> bool;
+
+    /// Pixel size `(width, height)` of the image at `path`, if known. Only
+    /// the file header needs to be read. `None` (the default) means
+    /// "unknown": free-aspect devices keep their catalog aspect and the
+    /// screenshot aspect/upscale checks are skipped.
+    fn dimensions(&self, path: &str) -> Option<(u32, u32)> {
+        let _ = path;
+        None
+    }
 }
 
 /// Looks files up below a project folder on disk.
@@ -81,6 +91,12 @@ impl AssetLookup for FsAssets {
     fn exists(&self, path: &str) -> bool {
         self.root.join(path).is_file()
     }
+
+    /// Reads only the image header (`imagesize`); EXIF rotation is ignored.
+    fn dimensions(&self, path: &str) -> Option<(u32, u32)> {
+        let s = imagesize::size(self.root.join(path)).ok()?;
+        Some((u32::try_from(s.width).ok()?, u32::try_from(s.height).ok()?))
+    }
 }
 
 /// No files at all (every screenshot is a placeholder).
@@ -93,10 +109,21 @@ impl AssetLookup for NoAssets {
     }
 }
 
-/// An in-memory set of relative paths.
+/// An in-memory set of relative paths (no dimensions).
 impl AssetLookup for BTreeSet<String> {
     fn exists(&self, path: &str) -> bool {
         self.contains(path)
+    }
+}
+
+/// An in-memory map of relative paths to image dimensions `(w, h)`.
+impl AssetLookup for BTreeMap<String, (u32, u32)> {
+    fn exists(&self, path: &str) -> bool {
+        self.contains_key(path)
+    }
+
+    fn dimensions(&self, path: &str) -> Option<(u32, u32)> {
+        self.get(path).copied()
     }
 }
 
@@ -131,6 +158,7 @@ pub fn lookup_screenshot(
                     };
                     return ResolvedScreenshot {
                         key: key.to_owned(),
+                        size: assets.dimensions(&path).map(|(w, h)| PixelSize::new(w, h)),
                         path: Some(path),
                         lang: Lang::parse(lang).ok(),
                         variant: variant.map(str::to_owned),
@@ -142,6 +170,7 @@ pub fn lookup_screenshot(
     }
     ResolvedScreenshot {
         key: key.to_owned(),
+        size: None,
         path: None,
         lang: None,
         variant: variant.map(str::to_owned),
@@ -191,6 +220,28 @@ mod tests {
         let (t, l) = lookup_text(&p, &chain, "k").unwrap();
         assert_eq!((t, l.as_str()), ("de text", "de"));
         assert!(lookup_text(&p, &chain, "nope").is_none());
+    }
+
+    #[test]
+    fn fs_assets_read_dimensions_from_the_header() {
+        let dir = tempfile::tempdir().unwrap();
+        // PNG signature + IHDR (CRC not checked by the header reader).
+        let mut png = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13];
+        png.extend_from_slice(b"IHDR");
+        png.extend_from_slice(&1206u32.to_be_bytes());
+        png.extend_from_slice(&2622u32.to_be_bytes());
+        png.extend_from_slice(&[8, 2, 0, 0, 0, 0, 0, 0, 0]);
+        std::fs::create_dir_all(dir.path().join("screenshots/en")).unwrap();
+        std::fs::write(dir.path().join("screenshots/en/home.png"), &png).unwrap();
+        std::fs::write(dir.path().join("screenshots/en/bad.png"), b"nope").unwrap();
+        let fs = FsAssets::new(dir.path());
+        assert!(fs.exists("screenshots/en/home.png"));
+        assert_eq!(fs.dimensions("screenshots/en/home.png"), Some((1206, 2622)));
+        assert_eq!(fs.dimensions("screenshots/en/bad.png"), None);
+        assert_eq!(fs.dimensions("screenshots/en/missing.png"), None);
+        let found = lookup_screenshot(&fs, &["en".to_owned()], None, "home");
+        assert_eq!(found.size, Some(PixelSize::new(1206, 2622)));
+        assert_eq!(NoAssets.dimensions("x"), None);
     }
 
     #[test]

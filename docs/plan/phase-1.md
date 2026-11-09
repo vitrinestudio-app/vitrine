@@ -84,10 +84,15 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] Parallel with rayon
 
 ## 1.8 Validation (`core::validate`)
-- [ ] Text in gap, text overflow per language/page, emergency word break
+- [x] Text in gap, text overflow per language/page, emergency word break
       without hyphen, missing translations (fallback used), screenshot fallback
       info, missing screenshot, screenshot aspect mismatch > 2 %, upscale
       warning, aspect deviation → suggest variant, unknown references
+      (ADR 0005)
+- [x] Store rules per target (size, count, format, slot) from the catalog
+- [x] `AssetLookup::dimensions` (image headers); free-aspect devices
+      (browser, `none`) follow the screenshot aspect (ADR 0004)
+- [x] Apple presets verified against App Store Connect (2026-11-09)
 
 ## 1.9 CLI
 - [ ] `arrangia new <dir>` (from a template), `render` (preview PNG of page /

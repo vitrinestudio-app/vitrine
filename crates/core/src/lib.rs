@@ -19,8 +19,8 @@
 //! - **Validation** and **catalogs** (devices, targets, gallery profiles),
 //!   the latter loaded from data files in `crates/core/data/`.
 //!
-//! Module layout (`model`, `io`, `ops`, `catalog`, `geometry`, `resolve` exist;
-//! the rest follows in Phase 1).
+//! Module layout (`model`, `io`, `ops`, `catalog`, `geometry`, `resolve`,
+//! `layout`, `markup`, `validate`).
 //! The file format is described in `docs/adr/0002-project-file-format.md`.
 //!
 //! ```text
@@ -30,7 +30,7 @@
 //! geometry    page → canvas mapping, gaps, grouping, anchors, viewports
 //! resolve/    anchors, page grouping, fallbacks, device_map
 //! layout/     text layout and auto-fit
-//! validate/   warnings and errors
+//! validate/   findings per target × language (references, texts, screenshots, store rules)
 //! catalog/    devices, targets, gallery profiles (from data/*.yaml)
 //! ```
 
@@ -42,6 +42,7 @@ pub mod markup;
 pub mod model;
 pub mod ops;
 pub mod resolve;
+pub mod validate;
 
 pub use model::Project;
 

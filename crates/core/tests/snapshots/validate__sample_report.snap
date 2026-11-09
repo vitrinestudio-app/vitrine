@@ -1,0 +1,147 @@
+---
+source: crates/core/tests/validate.rs
+expression: report
+---
+findings:
+  - level: info
+    code: screenshot_fallback
+    target: ios-phone-69
+    lang: fr
+    page: 0
+    element: hero-phone
+    message: "`fr` uses the default `en` screenshot for `home` (screenshots/en/ios-phone/home.png)"
+  - level: warn
+    code: text_fallback
+    target: ios-phone-69
+    lang: fr
+    page: 0
+    element: title-1
+    message: "`fr` has no text for `hero.title`; using `en`"
+  - level: warn
+    code: text_fallback
+    target: ios-phone-69
+    lang: fr
+    page: 0
+    element: sub-1
+    message: "`fr` has no text for `hero.sub`; using `en`"
+  - level: info
+    code: screenshot_fallback
+    target: ios-phone-69
+    lang: es
+    page: 0
+    element: hero-phone
+    message: "`es` uses the default `en` screenshot for `home` (screenshots/en/ios-phone/home.png)"
+  - level: warn
+    code: text_fallback
+    target: ios-phone-69
+    lang: es
+    page: 0
+    element: title-1
+    message: "`es` has no text for `hero.title`; using `en`"
+  - level: warn
+    code: text_fallback
+    target: ios-phone-69
+    lang: es
+    page: 0
+    element: sub-1
+    message: "`es` has no text for `hero.sub`; using `en`"
+  - level: warn
+    code: screenshot_aspect
+    target: android-phone
+    page: 0
+    element: hero-phone
+    message: "screenshot `screenshots/en/android-phone/home.png` (1080x1920, 0.562) differs from the `android-punchhole` display (0.450) by +25.0 %; wrong device?"
+  - level: info
+    code: screenshot_fallback
+    target: android-phone
+    lang: de
+    page: 0
+    element: hero-phone
+    message: "`de` uses the default `en` screenshot for `home` (screenshots/en/android-phone/home.png)"
+  - level: info
+    code: screenshot_fallback
+    target: android-phone
+    lang: fr
+    page: 0
+    element: hero-phone
+    message: "`fr` uses the default `en` screenshot for `home` (screenshots/en/android-phone/home.png)"
+  - level: warn
+    code: text_fallback
+    target: android-phone
+    lang: fr
+    page: 0
+    element: title-1
+    message: "`fr` has no text for `hero.title`; using `en`"
+  - level: warn
+    code: text_fallback
+    target: android-phone
+    lang: fr
+    page: 0
+    element: sub-1
+    message: "`fr` has no text for `hero.sub`; using `en`"
+  - level: info
+    code: screenshot_fallback
+    target: android-phone
+    lang: es
+    page: 0
+    element: hero-phone
+    message: "`es` uses the default `en` screenshot for `home` (screenshots/en/android-phone/home.png)"
+  - level: warn
+    code: text_fallback
+    target: android-phone
+    lang: es
+    page: 0
+    element: title-1
+    message: "`es` has no text for `hero.title`; using `en`"
+  - level: warn
+    code: text_fallback
+    target: android-phone
+    lang: es
+    page: 0
+    element: sub-1
+    message: "`es` has no text for `hero.sub`; using `en`"
+  - level: info
+    code: partial_image
+    target: ios-ipad-13-landscape
+    message: "5 pages with `group: 2`: the last image has 1 empty column(s)"
+  - level: warn
+    code: screenshot_upscale
+    target: ios-ipad-13-landscape
+    page: 0
+    element: hero-phone
+    message: "screenshot `screenshots/en/ios-tablet/home.jpg` (600x800) is enlarged 1.29x to fill the 775x1033 px display; it may look blurry"
+  - level: info
+    code: screenshot_fallback
+    target: ios-ipad-13-landscape
+    lang: de
+    page: 0
+    element: hero-phone
+    message: "`de` uses the default `en` screenshot for `home` (screenshots/en/ios-tablet/home.jpg)"
+  - level: info
+    code: screenshot_fallback
+    target: ios-ipad-13-landscape
+    lang: fr
+    page: 0
+    element: hero-phone
+    message: "`fr` uses the default `en` screenshot for `home` (screenshots/en/ios-tablet/home.jpg)"
+  - level: warn
+    code: text_fallback
+    target: ios-ipad-13-landscape
+    lang: fr
+    page: 0
+    element: title-1
+    message: "`fr` has no text for `hero.title`; using `en`"
+  - level: info
+    code: screenshot_fallback
+    target: ios-ipad-13-landscape
+    lang: es
+    page: 0
+    element: hero-phone
+    message: "`es` uses the default `en` screenshot for `home` (screenshots/en/ios-tablet/home.jpg)"
+  - level: warn
+    code: text_fallback
+    target: ios-ipad-13-landscape
+    lang: es
+    page: 0
+    element: title-1
+    message: "`es` has no text for `hero.title`; using `en`"
