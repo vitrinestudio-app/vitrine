@@ -30,16 +30,23 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] proptest: apply + inverse = original state
 
 ## 1.3 Catalogs (`core/data/*.yaml`)
-- [ ] `targets.yaml`: Apple iPhone/iPad/Mac sizes and display types, Google Play
+- [x] `targets.yaml`: Apple iPhone/iPad/Mac sizes and display types, Google Play
       phone/7"/10"/Chromebook/feature graphic rules, banner presets — verified
       against current Apple/Google docs, source + check date in file
-- [ ] `galleries.yaml`: gap widths + corner radii, clearly marked
-      "not yet measured" (placeholders)
-- [ ] `devices.yaml`: iphone-home, iphone-notch, iphone-island,
+- [x] `galleries.yaml`: gap widths + corner radii, clearly marked
+      "not yet measured" (placeholders); apps.apple.com / play.google.com
+      values measured from the web CSS
+- [x] `devices.yaml`: iphone-home, iphone-notch, iphone-island,
       android-punchhole, ipad-home, ipad-modern, android-tablet, macbook,
       generic-laptop, browser, imac, generic-monitor, none — outer size, display
       rect, radii, cutouts, colour variants, orientations, screenshot aspect
-- [ ] Catalog loader embedded via `include_str!`, tests
+- [x] Catalog loader embedded via `include_str!`, tests
+- [x] Optional page ids in the strip page spec (`ids: [hero, …]`, default
+      `page-01`) for export naming
+- [x] Ops check device models, colour variants, gallery presets and store
+      slot values against the catalog
+- [ ] Measure native store app galleries (iOS App Store, Mac App Store,
+      Play Store app) on real devices and replace the placeholders
 
 ## 1.4 Resolve (`core::resolve`)
 - [ ] target × language → resolved scene: variant + overrides, content_scale,
