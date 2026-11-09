@@ -147,7 +147,10 @@ pub struct ResolvedDevice {
     /// Model before `device_map`, if it was swapped.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mapped_from: Option<String>,
-    /// The catalog entry (not serialized; look it up by `model`).
+    /// The catalog entry (not serialized; look it up by `model`). For
+    /// `free_aspect` models whose screenshot size is known, a copy whose
+    /// display (and body) height follows the screenshot aspect
+    /// ([`Device::with_display_aspect`]); draw this, not the catalog entry.
     #[serde(skip)]
     pub device: Device,
     pub orientation: Orientation,
@@ -162,8 +165,9 @@ pub struct ResolvedDevice {
     pub url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub appearance: Option<Appearance>,
-    /// The display adapts to the screenshot (`aspect: free` models):
-    /// the size here uses the catalog aspect.
+    /// The display adapts to the screenshot (`aspect: free` models). When
+    /// the screenshot's pixel size is known, `device` and the element size
+    /// follow its aspect; otherwise the catalog aspect is used.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub free_aspect: bool,
     pub screenshot: Option<ResolvedScreenshot>,
@@ -197,6 +201,10 @@ pub struct ResolvedScreenshot {
     /// Screenshot variant folder that was asked for.
     pub variant: Option<String>,
     pub source: ScreenshotSource,
+    /// Pixel size of the file, if the asset lookup knows it
+    /// ([`super::AssetLookup::dimensions`]).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<PixelSize>,
 }
 
 /// Which step of the lookup chain found the screenshot.

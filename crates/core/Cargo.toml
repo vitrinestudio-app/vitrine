@@ -17,6 +17,7 @@ serde-saphyr.workspace = true
 thiserror.workspace = true
 parley.workspace = true
 skrifa.workspace = true
+imagesize.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
