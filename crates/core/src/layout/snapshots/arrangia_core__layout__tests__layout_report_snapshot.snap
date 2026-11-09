@@ -1,0 +1,60 @@
+---
+source: crates/core/src/layout/tests.rs
+expression: reports
+---
+- box:
+    x: 80
+    y: 140
+    w: 840
+    h: 224.64
+  content:
+    x: 81.89
+    y: 140
+    w: 836.21
+    h: 224.64
+  font_size: 104
+  line_count: 2
+  lines:
+    - Plane deine
+    - Beete in Minuten
+  overflow: false
+- box:
+    x: 80
+    y: 140
+    w: 840
+    h: 336.96
+  content:
+    x: 150.98
+    y: 140
+    w: 698.04
+    h: 336.96
+  font_size: 104
+  line_count: 3
+  lines:
+    - Mischkultur-
+    - empfehlungen
+    - für jedes Beet
+  overflow: false
+- box:
+    x: 80
+    y: 140
+    w: 840
+    h: 172.8
+  content:
+    x: 102.73
+    y: 140
+    w: 794.53
+    h: 172.8
+  font_size: 80
+  line_count: 2
+  lines:
+    - Mischkulturempfehl
+    - ungen für jedes Beet
+  overflow: true
+  diagnostics:
+    - kind: emergency_break
+      word: Mischkulturempfehlungen
+      line: 0
+    - kind: overflow_lines
+      lines: 2
+      max_lines: 1
