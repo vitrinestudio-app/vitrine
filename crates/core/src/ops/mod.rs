@@ -7,7 +7,9 @@
 //!
 //! Validation covers what an op touches: ids exist / are unique, page
 //! indices are within the strip, referenced styles, colours, shadows,
-//! languages, targets and variants exist, and removals of things that are
+//! languages, targets and variants exist, device models, colour variants,
+//! gallery profiles and store slot values exist in [`crate::catalog`], and
+//! removals of things that are
 //! still referenced are refused. Pre-existing problems elsewhere in the
 //! project (e.g. after a hand edit) do not block unrelated ops; they are
 //! reported by `core::validate`.
@@ -22,9 +24,11 @@ use serde::{Deserialize, Serialize};
 pub use history::History;
 pub use patch::{StripPatch, TargetPatch};
 
+use crate::catalog;
 use crate::model::{
-    ColorRef, Element, ElementId, ElementKind, ElementPatch, Lang, Languages, Project, Region,
-    StringKey, Strip, StripId, Styles, Target, TargetId, Variant, VariantId, is_valid_id,
+    ColorRef, DeviceProps, Element, ElementId, ElementKind, ElementPatch, Lang, Languages, Project,
+    Region, StoreSlot, StringKey, Strip, StripId, Styles, Target, TargetId, Variant, VariantId,
+    is_valid_id,
 };
 
 /// Overrides of removed elements, by variant, so that removal can be undone.
@@ -144,6 +148,8 @@ pub enum OpError {
     UnknownColor(String),
     #[error("unknown shadow preset `{0}`")]
     UnknownShadow(String),
+    #[error("unknown device model `{0}` (not in the device catalog)")]
+    UnknownDevice(String),
     #[error("{what} `{id}` already exists")]
     DuplicateId { what: &'static str, id: String },
     #[error("element `{element}`: page {page} is out of range (strip `{strip}` has {count} pages)")]
@@ -675,6 +681,9 @@ impl Project {
         for c in e.color_refs() {
             check_color(c, styles)?;
         }
+        if let ElementKind::Device(d) = &e.kind {
+            check_device(d)?;
+        }
         if let Some(s) = e.text_style()
             && !styles.text.contains_key(s)
         {
@@ -766,7 +775,8 @@ impl Project {
                 }
             }
         }
-        check_region(t, strip)
+        check_region(t, strip)?;
+        check_target_catalog_refs(t)
     }
 
     /// New styles must still resolve every reference in the project.
@@ -810,6 +820,9 @@ impl Project {
     fn check_element_style_refs(e: &Element, styles: &Styles) -> Result<(), OpError> {
         for c in e.color_refs() {
             check_color(c, styles)?;
+        }
+        if let ElementKind::Device(d) = &e.kind {
+            check_device(d)?;
         }
         if let Some(s) = e.text_style()
             && !styles.text.contains_key(s)
@@ -904,6 +917,71 @@ fn check_region(t: &Target, strip: &Strip) -> Result<(), OpError> {
             "target `{}`: region is outside strip `{}` ({max} pages)",
             t.id, strip.id
         )));
+    }
+    Ok(())
+}
+
+/// Device model and colour variant must exist in the catalog.
+fn check_device(d: &DeviceProps) -> Result<(), OpError> {
+    let model = catalog::device(&d.model).ok_or_else(|| OpError::UnknownDevice(d.model.clone()))?;
+    if let Some(c) = &d.color
+        && !c.starts_with('#')
+        && !model.has_color(c)
+    {
+        return Err(invalid(format!(
+            "device `{}` has no colour variant `{c}` (available: {})",
+            d.model,
+            model.colors.join(", ")
+        )));
+    }
+    Ok(())
+}
+
+/// Gallery preset, device map models and store slot values of a target
+/// must exist in the catalog.
+fn check_target_catalog_refs(t: &Target) -> Result<(), OpError> {
+    if let Some(p) = t.gallery.as_ref().and_then(|g| g.preset.as_ref())
+        && catalog::gallery(p).is_none()
+    {
+        return Err(invalid(format!(
+            "target `{}`: unknown gallery profile `{p}`",
+            t.id
+        )));
+    }
+    for model in t.device_map.keys().chain(t.device_map.values()) {
+        if catalog::device(model).is_none() {
+            return Err(OpError::UnknownDevice(model.clone()));
+        }
+    }
+    if let Some(slot) = &t.store {
+        let c = catalog::catalog();
+        let presets = &c.targets.presets;
+        let known = |value: &str, list: &[String], pick: fn(&StoreSlot) -> Option<&str>| {
+            list.iter().any(|v| v == value)
+                || presets
+                    .iter()
+                    .any(|p| p.slot.as_ref().and_then(pick) == Some(value))
+        };
+        if let Some(a) = &slot.apple
+            && !known(&a.display_type, &c.targets.store_slots.apple, |s| {
+                s.apple.as_ref().map(|a| a.display_type.as_str())
+            })
+        {
+            return Err(invalid(format!(
+                "target `{}`: unknown App Store display type `{}`",
+                t.id, a.display_type
+            )));
+        }
+        if let Some(g) = &slot.google
+            && !known(&g.image_type, &c.targets.store_slots.google, |s| {
+                s.google.as_ref().map(|g| g.image_type.as_str())
+            })
+        {
+            return Err(invalid(format!(
+                "target `{}`: unknown Google Play image type `{}`",
+                t.id, g.image_type
+            )));
+        }
     }
     Ok(())
 }

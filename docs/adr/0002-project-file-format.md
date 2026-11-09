@@ -118,8 +118,11 @@ texts, styles) is normally shared; device swaps belong to the target's
 `kind: pages` (default, omitted) or `banner`. `group`, `variant`, `size`,
 `screenshots`, `gallery` (preset id, or `{preset, gap, radius}` to override
 the catalog values), `device_map`, `format`/`quality`, `langs`, `store`
-(`{apple: {display_type}}` / `{google: {image_type}}`, strings checked
-later against the catalog). Banner-only: `region` (`{pages: [a, b]}`
+(`{apple: {display_type}}` / `{google: {image_type}}`). Gallery presets,
+device models (elements and `device_map`), device colour variants and
+store slot values are checked against `core::catalog` by ops; loading
+accepts unknown ones (reported by `core::validate`). Gallery `gap` and
+`radius` overrides are in the profile's lu (`basis` in `galleries.yaml`). Banner-only: `region` (`{pages: [a, b]}`
 inclusive, or `{rect: {page, x, y, width, height}}`), `fit`, `gaps`
 (`none | as_store`). The rules are checked on load and in ops.
 

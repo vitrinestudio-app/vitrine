@@ -89,6 +89,16 @@ fn update_element_validates() {
             "unknown language `it`",
         ),
         ("nope", "{ page: 0 }", "unknown element `nope`"),
+        (
+            "hero-phone",
+            "{ model: iphone-xyz }",
+            "unknown device model `iphone-xyz`",
+        ),
+        (
+            "hero-phone",
+            "{ color: plaid }",
+            "has no colour variant `plaid`",
+        ),
     ];
     for (id, yaml, msg) in cases {
         let err = p
@@ -763,8 +773,8 @@ mod prop {
                 let t = pick.target(a)?;
                 let yaml = match b % 4 {
                     0 => format!("{{ size: [{}, {}] }}", 100 + a % 1000, 100 + b % 1000),
-                    1 => "{ gallery: { preset: x, gap: 12 }, screenshots: ~ }".into(),
-                    2 => "{ variant: ~, device_map: { a: b } }".into(),
+                    1 => "{ gallery: { preset: play-phone, gap: 12 }, screenshots: ~ }".into(),
+                    2 => "{ variant: ~, device_map: { iphone-island: android-punchhole } }".into(),
                     _ => format!("{{ group: {} }}", b % 3),
                 };
                 Op::UpdateTarget {
@@ -881,4 +891,54 @@ mod prop {
             prop_assert_eq!(&p, &start);
         }
     }
+}
+
+#[test]
+fn catalog_references_are_checked() {
+    let mut p = sample();
+    for yaml in [
+        "{ model: iphone-notch, color: starlight }",
+        "{ color: \"#123456\" }",
+    ] {
+        apply_and_undo(
+            &mut p,
+            Op::UpdateElement {
+                id: ElementId::new("hero-phone"),
+                patch: patch(yaml),
+            },
+        );
+    }
+    let id = TargetId::new("android-phone");
+    let cases = [
+        ("{ gallery: nowhere }", "unknown gallery profile `nowhere`"),
+        (
+            "{ device_map: { iphone-island: android-xyz } }",
+            "unknown device model `android-xyz`",
+        ),
+        (
+            "{ store: { google: { image_type: phoneShots } } }",
+            "unknown Google Play image type `phoneShots`",
+        ),
+        (
+            "{ store: { apple: { display_type: APP_IPHONE_69 } } }",
+            "unknown App Store display type `APP_IPHONE_69`",
+        ),
+    ];
+    for (yaml, msg) in cases {
+        let err = p
+            .apply(Op::UpdateTarget {
+                id: id.clone(),
+                patch: io::from_yaml(yaml).unwrap(),
+            })
+            .unwrap_err();
+        assert!(err.to_string().contains(msg), "{yaml}: {err}");
+    }
+    // Undocumented but used by a catalog preset (iPhone Duo): accepted.
+    apply_and_undo(
+        &mut p,
+        Op::UpdateTarget {
+            id,
+            patch: io::from_yaml("{ store: { apple: { display_type: APP_IPHONE_DUO } } }").unwrap(),
+        },
+    );
 }
