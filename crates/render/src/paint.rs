@@ -119,6 +119,32 @@ pub fn round_rect(x: f32, y: f32, w: f32, h: f32, r: f32) -> Option<Path> {
     pb.finish()
 }
 
+/// Rounded rectangle with elliptical corners (`rx` along x, `ry` along y).
+pub fn round_rect_xy(x: f32, y: f32, w: f32, h: f32, rx: f32, ry: f32) -> Option<Path> {
+    let rx = rx.min(w / 2.0).max(0.0);
+    let ry = ry.min(h / 2.0).max(0.0);
+    let (kx, ky) = (0.552_284_8 * rx, 0.552_284_8 * ry);
+    let mut pb = PathBuilder::new();
+    pb.move_to(x + rx, y);
+    pb.line_to(x + w - rx, y);
+    pb.cubic_to(x + w - rx + kx, y, x + w, y + ry - ky, x + w, y + ry);
+    pb.line_to(x + w, y + h - ry);
+    pb.cubic_to(
+        x + w,
+        y + h - ry + ky,
+        x + w - rx + kx,
+        y + h,
+        x + w - rx,
+        y + h,
+    );
+    pb.line_to(x + rx, y + h);
+    pb.cubic_to(x + rx - kx, y + h, x, y + h - ry + ky, x, y + h - ry);
+    pb.line_to(x, y + ry);
+    pb.cubic_to(x, y + ry - ky, x + rx - kx, y, x + rx, y);
+    pb.close();
+    pb.finish()
+}
+
 /// Rounded rectangle with "continuous" (squircle-like) corners: the curve
 /// starts earlier (1.5 r from the corner) and blends smoothly into the edge,
 /// which avoids the visible kink of circular corners on device housings.

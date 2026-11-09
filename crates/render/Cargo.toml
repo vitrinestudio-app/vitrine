@@ -19,3 +19,11 @@ fast_image_resize.workspace = true
 png.workspace = true
 skrifa.workspace = true
 anyhow.workspace = true
+rayon.workspace = true
+resvg.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -38,12 +38,28 @@ impl SourceImage {
     /// aspect first (`fit: cover`, centred), and returns a pixmap ready for
     /// tiny-skia. Alpha is premultiplied by the resizer.
     pub fn resized_cover(&self, w: u32, h: u32) -> anyhow::Result<Pixmap> {
+        self.resample(w, h, Some((0.5, 0.5)), Filter::Lanczos3)
+    }
+
+    /// Resamples to exactly `w × h` (premultiplied pixmap). With `crop`
+    /// (focus fractions) the source is first cropped to the target aspect
+    /// (`cover`); without, it is stretched.
+    pub fn resample(
+        &self,
+        w: u32,
+        h: u32,
+        crop: Option<(f64, f64)>,
+        filter: Filter,
+    ) -> anyhow::Result<Pixmap> {
         let (w, h) = (w.max(1), h.max(1));
         let src = Image::from_vec_u8(self.width, self.height, self.rgba.clone(), PixelType::U8x4)?;
         let mut dst = Image::new(w, h, PixelType::U8x4);
         let opts = ResizeOptions::new()
-            .resize_alg(ResizeAlg::Convolution(FilterType::Lanczos3))
-            .fit_into_destination(Some((0.5, 0.5)));
+            .resize_alg(ResizeAlg::Convolution(match filter {
+                Filter::Bilinear => FilterType::Bilinear,
+                Filter::Lanczos3 => FilterType::Lanczos3,
+            }))
+            .fit_into_destination(crop);
         Resizer::new().resize(&src, &mut dst, &opts)?;
         let mut data = dst.into_vec();
         premultiply(&mut data);
@@ -53,6 +69,14 @@ impl SourceImage {
         )
         .ok_or_else(|| anyhow::anyhow!("pixmap"))
     }
+}
+
+/// Resampling filter: `Bilinear` (a proper convolution, cheap; previews)
+/// or `Lanczos3` (export).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Filter {
+    Bilinear,
+    Lanczos3,
 }
 
 fn premultiply(data: &mut [u8]) {
@@ -79,8 +103,18 @@ pub fn to_rgb(pm: &Pixmap, background: [u8; 3]) -> Vec<u8> {
     out
 }
 
-/// Encodes a pixmap as an opaque 24-bit RGB PNG with an sRGB chunk.
+/// Encodes a pixmap as an opaque 24-bit RGB PNG with an sRGB chunk
+/// (`Compression::High`).
 pub fn encode_png_rgb(pm: &Pixmap, background: [u8; 3]) -> anyhow::Result<Vec<u8>> {
+    encode_png_rgb_with(pm, background, png::Compression::High)
+}
+
+/// [`encode_png_rgb`] with a chosen compression level.
+pub fn encode_png_rgb_with(
+    pm: &Pixmap,
+    background: [u8; 3],
+    compression: png::Compression,
+) -> anyhow::Result<Vec<u8>> {
     let rgb = to_rgb(pm, background);
     let mut out = Vec::new();
     {
@@ -88,12 +122,26 @@ pub fn encode_png_rgb(pm: &Pixmap, background: [u8; 3]) -> anyhow::Result<Vec<u8
         enc.set_color(png::ColorType::Rgb);
         enc.set_depth(png::BitDepth::Eight);
         enc.set_source_srgb(png::SrgbRenderingIntent::Perceptual);
-        enc.set_compression(png::Compression::High);
+        enc.set_compression(compression);
         enc.set_filter(png::Filter::Adaptive);
         let mut w = enc.write_header()?;
         w.write_image_data(&rgb)?;
         w.finish()?;
     }
+    Ok(out)
+}
+
+/// Encodes a pixmap as a baseline JPEG (RGB, flattened onto `background`)
+/// with `quality` 1..=100.
+pub fn encode_jpeg(pm: &Pixmap, background: [u8; 3], quality: u8) -> anyhow::Result<Vec<u8>> {
+    let rgb = to_rgb(pm, background);
+    let mut out = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, quality.clamp(1, 100)).encode(
+        &rgb,
+        pm.width(),
+        pm.height(),
+        image::ExtendedColorType::Rgb8,
+    )?;
     Ok(out)
 }
 
@@ -137,6 +185,32 @@ mod tests {
         assert_eq!(info.color_type, png::ColorType::Rgb);
         assert_eq!(info.bit_depth, png::BitDepth::Eight);
         assert!(info.srgb.is_some());
+    }
+
+    #[test]
+    fn jpeg_roundtrip_is_rgb() {
+        let mut pm = Pixmap::new(16, 8).unwrap();
+        pm.fill(tiny_skia::Color::from_rgba8(200, 20, 30, 255));
+        let bytes = encode_jpeg(&pm, [255, 255, 255], 90).unwrap();
+        let img = image::load_from_memory(&bytes).unwrap();
+        assert_eq!(img.color(), image::ColorType::Rgb8);
+        assert_eq!((img.width(), img.height()), (16, 8));
+    }
+
+    #[test]
+    fn resample_modes() {
+        let mut pm = Pixmap::new(40, 20).unwrap();
+        pm.fill(tiny_skia::Color::from_rgba8(0, 0, 255, 255));
+        let src = SourceImage::from_pixmap(&pm);
+        let a = src
+            .resample(10, 10, Some((0.5, 0.5)), Filter::Lanczos3)
+            .unwrap();
+        let b = src.resample(10, 3, None, Filter::Bilinear).unwrap();
+        assert_eq!(
+            (a.width(), a.height(), b.width(), b.height()),
+            (10, 10, 10, 3)
+        );
+        assert_eq!(a.pixel(5, 5).unwrap().blue(), 255);
     }
 
     #[test]

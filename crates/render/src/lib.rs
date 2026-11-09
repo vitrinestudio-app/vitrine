@@ -6,8 +6,9 @@
 //!
 //! Responsibilities:
 //!
-//! - **Rasterization** of a resolved scene into an RGBA pixmap of the whole
-//!   strip or a single page (planned: `tiny-skia`).
+//! - **Rasterization** (`scene`) of a resolved scene into an RGBA pixmap of
+//!   one output image or the whole canvas (tiny-skia), with a shared,
+//!   thread-safe asset cache and text layouter pool (`RenderContext`).
 //! - **Device frames** drawn parametrically from catalog data in the styles
 //!   `stylized` and `detailed`, plus imported and custom frame packs.
 //! - **Text rendering**: glyph outlines of the `TextLayout` computed by
@@ -15,16 +16,21 @@
 //! - **Export**: cutting pages (omitting gap content), banners, gallery
 //!   previews, removing alpha, encoding PNG/JPEG.
 //!
-//! The concrete libraries are decided by the Phase 0 spike (see
-//! `docs/adr/0001-render-pipeline.md`).
+//! Libraries and pipeline: `docs/adr/0001-render-pipeline.md`,
+//! `docs/adr/0005-rasterize-and-export.md`.
 
 pub mod blur;
 pub mod frames;
 pub mod geometry;
 pub mod paint;
 pub mod raster;
-pub mod spike;
+pub mod scene;
 pub mod text;
+
+pub use scene::{
+    CanvasOptions, PreparedScene, Quality, RenderContext, RenderIssue, RenderOptions, Rendered,
+    Scale, rasterize, render_canvas,
+};
 
 /// Page width in lu as defined by `arrangia-core`.
 pub fn core_page_width_lu() -> f64 {
