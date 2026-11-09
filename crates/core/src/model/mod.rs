@@ -107,12 +107,9 @@ impl Languages {
                 return Err(format!("language `{l}` is listed twice"));
             }
         }
+        // Fallback entries may name languages outside `available` (as in
+        // KONZEPT §3.7, `pt-BR: pt`); they only extend the lookup chain.
         for (from, to) in &self.fallback {
-            if !self.is_available(to.as_str()) {
-                return Err(format!(
-                    "fallback `{from}: {to}`: `{to}` is not an available language"
-                ));
-            }
             if from == to {
                 return Err(format!("fallback `{from}` points to itself"));
             }

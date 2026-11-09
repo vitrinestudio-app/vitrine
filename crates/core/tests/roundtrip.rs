@@ -222,3 +222,14 @@ fn yaml_12_booleans_only() {
     ))
     .is_err());
 }
+
+#[test]
+fn concept_example_loads() {
+    // The `project.yaml` example of KONZEPT §3.7, verbatim (with comments).
+    let yaml = include_str!("data/konzept-3.7.yaml");
+    let p = io::project_from_yaml(yaml).unwrap();
+    assert_eq!(p.targets.len(), 4);
+    assert_eq!(p.strips[0].elements.len(), 2);
+    let again = io::project_from_yaml(&p.to_yaml().unwrap()).unwrap();
+    assert_eq!(again, p);
+}

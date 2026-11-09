@@ -1,0 +1,90 @@
+format: arrangia/1
+name: grove.eco
+
+languages:
+  default: en
+  available: [en, de, fr, es]
+  fallback:            # zusätzlich zur automatischen Kette de-AT → de → default
+    pt-BR: pt
+
+styles:
+  colors:
+    primary: "#2F6B3A"
+    accent:  "#E8A33D"
+    text:    "#1D1D1F"
+  text:
+    headline: { font: "Inter", weight: 800, size: 72, line_height: 1.08, color: "@text" }
+    sub:      { font: "Inter", weight: 500, size: 38, line_height: 1.25, color: "@text" }
+  spans:
+    accent:   { color: "@accent" }
+
+strips:
+  - id: phone
+    page: { aspect: "1320:2868", count: 5 }
+    backgrounds:
+      - kind: linear-gradient
+        angle: 160
+        stops: [["#EAF4E4", 0.0], ["#B7D9A6", 1.0]]   # läuft über alle 5 Seiten
+    elements:
+      - id: hero-phone
+        kind: device
+        model: iphone-island
+        orientation: portrait
+        screenshot: home              # Asset-Schlüssel
+        page: 0                       # Heimatseite: Seite 1
+        at: { x: 1000, y: 2172 }      # Mitte auf der rechten Kante von Seite 1 → ragt in Seite 2
+        anchor_y: bottom
+        width: 820
+        rotation: -8
+        shadow: soft
+
+      - id: title-1
+        kind: text
+        page: 0
+        text: hero.title              # Schlüssel in i18n/*.yaml
+        style: headline
+        box: { top: 140, left: 80, right: 80 }
+        align: center
+        anchor_y: top
+        fit: { shrink_to: 52, max_lines: 3 }
+
+    variants:
+      tablet-landscape:               # für Ziele mit group: 2
+        content_scale: 0.75
+        overrides:
+          hero-phone: { at: { x: 1000, y: 1500 }, rotation: -4 }
+          title-1:    { box: { top: 90, left: 70, right: 70 } }
+
+targets:
+  - id: ios-phone-69
+    strip: phone
+    size: [1320, 2868]
+    screenshots: ios-phone            # welche Screenshot-Variante
+    gallery: appstore-iphone          # Lücken-Preset
+    store: { apple: { display_type: APP_IPHONE_67 } }   # gegen aktuelle API prüfen
+
+  - id: android-phone
+    strip: phone
+    size: [1080, 2160]                # ≤ 2:1, Anker passen Layout an
+    screenshots: android-phone
+    device_map: { iphone-island: android-punchhole }    # Gerätetausch
+    gallery: play-phone
+    store: { google: { image_type: phoneScreenshots } }
+
+  - id: ios-ipad-13-landscape
+    strip: phone
+    variant: tablet-landscape
+    group: 2                          # 2 Handy-Seiten → 1 Querformat-Bild
+    size: [2752, 2064]
+    screenshots: ios-tablet
+    device_map: { iphone-island: ipad-modern }
+    gallery: appstore-ipad
+    store: { apple: { display_type: APP_IPAD_PRO_3GEN_129 } }
+
+  - id: blog-header
+    kind: banner                      # ein durchgehendes Bild statt Einzelseiten
+    strip: phone
+    region: { pages: [0, 2] }         # Seiten 1–3; alternativ freies Rechteck
+    size: [2400, 1000]
+    fit: cover
+    gaps: none                        # lückenlos durchgehend
