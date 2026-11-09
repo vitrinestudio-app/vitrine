@@ -17,7 +17,11 @@
 //! The concrete libraries are decided by the Phase 0 spike (see
 //! `docs/adr/0001-render-pipeline.md`).
 
+pub mod blur;
+pub mod frames;
 pub mod geometry;
+pub mod paint;
+pub mod raster;
 
 /// Page width in lu as defined by `arrangia-core`.
 pub fn core_page_width_lu() -> f64 {
