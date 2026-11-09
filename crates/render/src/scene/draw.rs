@@ -337,12 +337,16 @@ impl Painter<'_> {
                 };
                 Item::Device { dev, geo, k }
             }
-            ResolvedKind::Text(t) => {
-                let layout = self.prepared.text_layout(index)?;
-                let (ox, oy) = super::text_origin(t, layout);
+            ResolvedKind::Text(_) => {
+                // Box origin relative to the element centre (the rotation
+                // pivot frame); group offsets moved both alike.
+                let placed = self.prepared.text(index)?;
                 Item::Text {
-                    paths: to_paths(layout, &self.ctx.fonts),
-                    origin: (ox as f32, oy as f32),
+                    paths: to_paths(&placed.layout, &self.ctx.fonts),
+                    origin: (
+                        (placed.origin.x - e.center.x) as f32,
+                        (placed.origin.y - e.center.y) as f32,
+                    ),
                 }
             }
         })

@@ -22,11 +22,11 @@ use std::sync::{Mutex, PoisonError};
 
 use arrangia_core::geometry::Viewport;
 use arrangia_core::layout::{
-    self, Fit, FontDirReport, FontLibrary, LayoutReport, TextDiagnostic, TextInput, TextLayout,
+    self, FontDirReport, FontLibrary, LayoutReport, PlacedText, TextDiagnostic, TextLayout,
     TextLayouter,
 };
-use arrangia_core::model::{ElementId, VAlign};
-use arrangia_core::resolve::{ResolvedKind, ResolvedScene, ResolvedText};
+use arrangia_core::model::ElementId;
+use arrangia_core::resolve::{ResolvedKind, ResolvedScene};
 use serde::Serialize;
 use tiny_skia::Pixmap;
 
@@ -176,15 +176,20 @@ pub struct Rendered {
 pub struct PreparedScene<'s> {
     pub scene: &'s ResolvedScene,
     /// Index-aligned with `scene.elements` (`Some` for texts with a string).
-    texts: Vec<Option<TextLayout>>,
+    texts: Vec<Option<PlacedText>>,
     /// Text layout diagnostics of all texts.
     pub issues: Vec<RenderIssue>,
 }
 
 impl PreparedScene<'_> {
+    /// Placed layout of the text element at `index` in `scene.elements`.
+    pub fn text(&self, index: usize) -> Option<&PlacedText> {
+        self.texts.get(index).and_then(Option::as_ref)
+    }
+
     /// Layout of the text element at `index` in `scene.elements`.
     pub fn text_layout(&self, index: usize) -> Option<&TextLayout> {
-        self.texts.get(index).and_then(Option::as_ref)
+        self.text(index).map(|p| &p.layout)
     }
 
     /// Layout reports of all texts, boxes in canvas lu.
@@ -193,44 +198,17 @@ impl PreparedScene<'_> {
             .elements
             .iter()
             .zip(&self.texts)
-            .filter_map(|(e, l)| {
-                let l = l.as_ref()?;
-                let ResolvedKind::Text(t) = &e.props else {
-                    return None;
-                };
-                let (ox, oy) = text_origin(t, l);
+            .filter_map(|(e, p)| {
+                let p = p.as_ref()?;
                 Some((
                     e.id.clone(),
-                    l.report()
-                        .translated((e.center.x + ox) as f32, (e.center.y + oy) as f32),
+                    p.layout
+                        .report()
+                        .translated(p.origin.x as f32, p.origin.y as f32),
                 ))
             })
             .collect()
     }
-}
-
-/// Top-left corner of the laid-out text box relative to the element centre.
-pub(crate) fn text_origin(t: &ResolvedText, layout: &TextLayout) -> (f64, f64) {
-    let rect = t.frame.rect;
-    let x = -rect.w / 2.0;
-    if layout_height(t).is_some() {
-        (x, -rect.h / 2.0)
-    } else {
-        // Free box without height: zero-high rect centred at `at`.
-        let f = match t.valign {
-            VAlign::Top => 0.0,
-            VAlign::Center => 0.5,
-            VAlign::Bottom => 1.0,
-        };
-        (x, -f64::from(layout.r#box.h) * f)
-    }
-}
-
-/// Box height passed to the layouter. Margin boxes always have one (with
-/// `auto_height`, the space down to the page bottom), free boxes only with
-/// an explicit `height`.
-fn layout_height(t: &ResolvedText) -> Option<f32> {
-    (t.frame.margins || !t.frame.auto_height).then_some(t.frame.rect.h as f32)
 }
 
 /// Shared rendering state: asset cache, fonts, text layouters. `Send +
@@ -296,24 +274,10 @@ impl RenderContext {
         r
     }
 
-    /// Lays out all texts of `scene`.
+    /// Lays out all texts of `scene` (via `core::layout::layout_text`, so
+    /// rendering and validation see the same lines).
     pub fn prepare<'s>(&self, scene: &'s ResolvedScene) -> PreparedScene<'s> {
-        let spans = scene
-            .spans
-            .iter()
-            .map(|(k, s)| {
-                (
-                    k.clone(),
-                    layout::ResolvedSpanStyle {
-                        font: s.font.clone(),
-                        weight: s.weight,
-                        italic: s.italic,
-                        color: s.color,
-                        background: s.background,
-                    },
-                )
-            })
-            .collect();
+        let spans = layout::span_styles(&scene.spans);
         let mut issues = Vec::new();
         let texts = self.with_layouter(|l| {
             scene
@@ -323,39 +287,15 @@ impl RenderContext {
                     let ResolvedKind::Text(t) = &e.props else {
                         return None;
                     };
-                    let markup = t.text.as_deref()?;
-                    let s = &t.style;
-                    let style = layout::ResolvedTextStyle {
-                        font: s.font.clone(),
-                        weight: s.weight,
-                        italic: s.italic,
-                        size: s.size as f32,
-                        line_height: s.line_height as f32,
-                        tracking: s.tracking as f32,
-                        color: s.color,
-                        transform: s.transform,
-                    };
-                    let out = l.layout(&TextInput {
-                        markup,
-                        style: &style,
-                        spans: Some(&spans),
-                        width: t.frame.rect.w as f32,
-                        height: layout_height(t),
-                        align: t.align,
-                        valign: t.valign,
-                        fit: Fit {
-                            shrink_to: t.shrink_to.map(|v| v as f32),
-                            max_lines: t.max_lines,
-                        },
-                    });
-                    issues.extend(out.diagnostics.iter().map(|d| RenderIssue {
+                    let placed = layout::layout_text(l, t, &spans)?;
+                    issues.extend(placed.layout.diagnostics.iter().map(|d| RenderIssue {
                         element: Some(e.id.clone()),
                         page: Some(e.page),
                         kind: IssueKind::Text {
                             diagnostic: d.clone(),
                         },
                     }));
-                    Some(out)
+                    Some(placed)
                 })
                 .collect()
         });
