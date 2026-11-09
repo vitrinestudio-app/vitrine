@@ -29,7 +29,10 @@ js/views/canvas.js    canvas: pixmaps, zoom/pan, hit test, gestures, previews
 js/views/overlay.js   SVG overlay drawing (pure function of a model)
 js/views/snap.js      snapping lines/box/angle
 js/views/{pages,gallery,languages}.js   other centre views
-js/panels/*.js        sidebar/inspector panels (see below)
+js/views/textedit.js  inline text editor of the canvas (double-click)
+js/panels/*.js        sidebar/inspector panels (see below); modal.js =
+                      confirm/prompt dialogs, importer.js = asset import
+                      dialog + drag & drop routing
 ```
 
 ## Conventions
@@ -80,6 +83,5 @@ the shell mounts the active tab's panel into the sidebar body and calls
 `unmount()` when switching. The inspector (`panels/inspector.js`) is
 mounted once into the right sidebar. Panels use the shared classes
 `section-title`, `list`/`list-item`, `props` (dl grid), `placeholder`,
-`btn`, `chip`. Current placeholders: layers (2.6), assets (2.8),
-translations (2.7); the inspector shows the selection and variant
-overrides until 2.6.
+`btn`, `chip`. Current placeholders: layers (2.6); the inspector shows
+the selection and variant overrides until 2.6.
