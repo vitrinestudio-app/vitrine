@@ -49,13 +49,14 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       Play Store app) on real devices and replace the placeholders
 
 ## 1.4 Resolve (`core::resolve`)
-- [ ] target × language → resolved scene: variant + overrides, content_scale,
+- [x] target × language → resolved scene: variant + overrides, content_scale,
       page height from target aspect, anchors, grouping (columns), gaps,
       device_map, style tokens, `visible_in`
-- [ ] i18n fallback chain (`de-AT` → `de` → default), screenshot lookup chain
+- [x] i18n fallback chain (`de-AT` → `de` → default), screenshot lookup chain
       (§5.2)
-- [ ] Geometry from the spike moves into `core` (page→canvas mapping)
-- [ ] proptest for anchor/coordinate mapping
+- [x] Geometry from the spike moves into `core` (page→canvas mapping,
+      `core::geometry`; the render crate switches to it in 1.6) — ADR 0004
+- [x] proptest for anchor/coordinate mapping
 
 ## 1.5 Text layout (`core::layout`)
 - [ ] Inline markup parser: `**bold**`, `_italic_`, `[span]…[/]`, `\n`,
