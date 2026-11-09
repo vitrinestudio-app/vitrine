@@ -17,7 +17,7 @@
 //!   previews, removing alpha, encoding PNG/JPEG.
 //!
 //! Libraries and pipeline: `docs/adr/0001-render-pipeline.md`,
-//! `docs/adr/0005-rasterize-and-export.md`.
+//! `docs/adr/0006-rasterize-and-export.md`.
 
 pub mod blur;
 pub mod export;

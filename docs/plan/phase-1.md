@@ -69,19 +69,25 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       (ADR 0003)
 
 ## 1.6 Render (`render`)
-- [ ] Rasterize resolved scene (backgrounds linear/radial/image, shapes, images
-      PNG/JPEG/SVG via resvg, devices, text with clip to page)
+- [x] Rasterize resolved scene (backgrounds linear/radial/image, shapes, images
+      PNG/JPEG/SVG via resvg, devices, text with clip to page) — ADR 0006;
+      devices currently via the spike-frame adapter `render::scene::device`
 - [ ] Parametric frames for all catalog models, styles `stylized` and
       `detailed`, colour variants, portrait/landscape; `chrome: browser` on
       laptop/desktop; browser frame with URL, tabs, light/dark
-- [ ] Screenshot fit cover/contain/stretch, placeholder when missing
+- [x] Screenshot fit cover/contain/stretch, placeholder when missing
 - [x] Remove cosmic-text; spike example reduced or removed (done in 1.5)
 
 ## 1.7 Export (`render::export`)
-- [ ] Page export (gap content omitted), grouped export, banner (region,
+- [x] Page export (gap content omitted), grouped export, banner (region,
       cover/contain, gaps none/as_store), gallery preview
-- [ ] PNG 24-bit no alpha + JPEG; naming `export/<target>/<lang>/<nn>_<page-id>.png`
-- [ ] Parallel with rayon
+- [x] PNG 24-bit no alpha + JPEG; naming `export/<target>/<lang>/<nn>_<page-id>.png`
+      (grouped: `<nn>_<id1>+<id2>.png`)
+- [x] Parallel with rayon; incremental via per-file hashes
+      (`export/.arrangia-export.json`)
+- [ ] Image shadows from the image alpha (currently the image rect);
+      SVG text needs a font database for usvg (text in SVG assets is
+      currently not rendered)
 
 ## 1.8 Validation (`core::validate`)
 - [x] Text in gap, text overflow per language/page, emergency word break

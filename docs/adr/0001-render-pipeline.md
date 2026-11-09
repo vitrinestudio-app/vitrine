@@ -23,7 +23,9 @@ is built on top of it. The spike renders a hard-coded scene (no YAML):
 Code: `crates/render/src/{geometry,paint,blur,frames,raster,text,spike}`,
 driver `cargo run -p arrangia-render --release --example spike`
 (`--engine cosmic|parley`, `--runs N`, `--regen-assets`). Images go to
-`docs/spike/`, generated screenshots to `assets/spike/`.
+`docs/spike/`, generated screenshots to `assets/spike/`. (Phase 1 removed
+the spike scene, composer and driver; the pipeline that replaced them is
+described in ADR 0006. `docs/spike/` and `assets/spike/` are kept.)
 
 ## Decision
 
