@@ -29,6 +29,15 @@ fn snake(v: impl Debug) -> String {
     out
 }
 
+/// A named frame colour of the catalog.
+#[derive(Debug, Clone, Serialize)]
+pub struct ColorSwatch {
+    pub name: String,
+    pub label: String,
+    /// Housing colour.
+    pub hex: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct DeviceInfo {
     pub id: String,
@@ -37,6 +46,8 @@ pub struct DeviceInfo {
     pub natural: Orientation,
     pub orientations: Vec<Orientation>,
     pub colors: Vec<String>,
+    /// Housing colour `#RRGGBB` and label of each colour variant in `colors`.
+    pub swatches: Vec<ColorSwatch>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_color: Option<String>,
     /// Display aspect `w:h` (natural orientation); `None` = free.
@@ -107,6 +118,18 @@ pub fn catalog_devices(_: &AppState, _: NoArgs) -> CmdResult<Vec<DeviceInfo>> {
             natural: d.natural,
             orientations: d.orientations.clone(),
             colors: d.colors.clone(),
+            swatches: d
+                .colors
+                .iter()
+                .filter_map(|name| {
+                    let v = catalog::catalog().devices.colors.get(name)?;
+                    Some(ColorSwatch {
+                        name: name.clone(),
+                        label: v.label.clone(),
+                        hex: format!("#{:02X}{:02X}{:02X}", v.body.r, v.body.g, v.body.b),
+                    })
+                })
+                .collect(),
             default_color: d.default_color.clone(),
             display_aspect: d.screenshot.aspect.map(|a| a.to_string()),
             screenshot_variant: d.screenshot.variant.clone(),

@@ -18,8 +18,10 @@
 
 mod assets;
 mod catalog;
+#[macro_use]
 mod edit;
 mod export;
+mod inspect;
 mod project;
 mod render;
 mod strings;
@@ -36,6 +38,7 @@ pub use assets::*;
 pub use catalog::*;
 pub use edit::*;
 pub use export::*;
+pub use inspect::*;
 pub use project::*;
 pub use render::*;
 pub use strings::*;
@@ -198,6 +201,8 @@ command_table! {
         edit_move, edit_move_by, edit_resize, edit_rotate, edit_set_page,
         edit_reorder, edit_duplicate, edit_remove, edit_group, edit_ungroup,
         edit_reset_override,
+        element_get, element_patch, edit_rename, edit_arrange,
+        strip_get, strip_patch, strip_variant,
         validate, export, export_cancel,
         strings_get, strings_missing,
         assets_list, assets_import, assets_remove,

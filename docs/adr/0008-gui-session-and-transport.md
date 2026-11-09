@@ -29,7 +29,13 @@ web view keeps `core:default`; bridge: fixed answers).
 
 Planned commands slot in the same way: `edit_*` (gesture intents from
 `core::edit`, answering with the `apply_ops` result) and `overlay`
-(hit-test/overlay data per target × language).
+(hit-test/overlay data per target × language). The inspector (task 2.6)
+adds `element_get` (base / override / effective values plus the text in
+the view language), `element_patch` (fields → base or variant override,
+decided in core; optional translations in the same step), `edit_rename`,
+`edit_arrange` (layer tree), `strip_get`, `strip_patch` (aspect, page
+count, page ids, backgrounds) and `strip_variant` (add / remove / rename
+/ content scale). The UI never builds override ops itself.
 
 ### Session
 

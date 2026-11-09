@@ -477,6 +477,81 @@ fn order_duplicate_remove() {
 }
 
 #[test]
+fn patch_writes_base_or_override() {
+    use arrangia_core::model::{ElementPatch, Point};
+    let mut p = sample();
+    let c = ctx("ios-phone-69");
+    let patch = ElementPatch {
+        opacity: Some(Some(0.5)),
+        at: Some(Some(Point::new(400.0, 1200.0))),
+        ..ElementPatch::default()
+    };
+    let ops = with_editor(&p, &c, |ed| ed.patch("hero-phone", &patch).unwrap());
+    assert!(matches!(ops.as_slice(), [Op::UpdateElement { .. }]));
+    apply(&mut p, ops);
+    let e = p.element("hero-phone").unwrap().1;
+    assert_eq!((e.opacity, e.at), (0.5, Point::new(400.0, 1200.0)));
+    // Unchanged values give no ops; invalid fields are refused.
+    assert!(with_editor(&p, &c, |ed| ed.patch("hero-phone", &patch).unwrap()).is_empty());
+    let bad = ElementPatch {
+        font_size: Some(Some(40.0)),
+        ..ElementPatch::default()
+    };
+    assert!(with_editor(&p, &c, |ed| ed.patch("hero-phone", &bad)).is_err());
+
+    // In a variant view the patch merges into the override.
+    let v = ctx("ios-phone-69").with_variant(VariantId::new("tablet-landscape"));
+    let ops = with_editor(&p, &v, |ed| ed.patch("hero-phone", &bad.only(&[])).unwrap());
+    assert!(ops.is_empty());
+    let z = ElementPatch {
+        z: Some(Some(3)),
+        ..ElementPatch::default()
+    };
+    let ops = with_editor(&p, &v, |ed| ed.patch("hero-phone", &z).unwrap());
+    apply(&mut p, ops);
+    let o = &p.strips[0].variants[&VariantId::new("tablet-landscape")].overrides["hero-phone"];
+    assert_eq!(o.z, Some(Some(3)));
+    assert_eq!(o.rotation, Some(Some(-4.0)));
+    assert_eq!(p.element("hero-phone").unwrap().1.z, 0);
+}
+
+#[test]
+fn arrange_moves_between_groups_in_place() {
+    let mut p = sample();
+    let c = ctx("android-phone");
+    // Rotate the group first so leaving it must compensate the angle.
+    let ops = with_editor(&p, &c, |ed| ed.rotate_to("badge-group", 20.0).unwrap());
+    apply(&mut p, ops);
+    let before = point(&p, &c, "badge");
+    let rot = resolved(&p, "android-phone", "badge").rotation;
+    let ops = with_editor(&p, &c, |ed| ed.arrange("badge", None, None).unwrap());
+    apply(&mut p, ops);
+    let s = &p.strips[0];
+    assert_eq!(s.elements.last().unwrap().id.as_str(), "badge");
+    assert!(close(point(&p, &c, "badge"), before));
+    assert!((resolved(&p, "android-phone", "badge").rotation - rot).abs() < 1e-9);
+    // ... and back into the group, at the bottom.
+    let ops = with_editor(&p, &c, |ed| {
+        ed.arrange("badge", Some("badge-group"), Some(0)).unwrap()
+    });
+    apply(&mut p, ops);
+    let (_, g) = p.element("badge-group").unwrap();
+    assert_eq!(g.children()[0].id.as_str(), "badge");
+    assert!(close(point(&p, &c, "badge"), before));
+    // Reordering within a list is a plain move; the same place is a no-op.
+    assert!(
+        with_editor(&p, &c, |ed| ed
+            .arrange("badge", Some("badge-group"), Some(0))
+            .unwrap())
+        .is_empty()
+    );
+    let ops = with_editor(&p, &c, |ed| ed.arrange("band", None, Some(0)).unwrap());
+    assert!(matches!(ops.as_slice(), [Op::MoveElementTo { .. }]));
+    // Not into a non-group.
+    assert!(with_editor(&p, &c, |ed| ed.arrange("band", Some("hero-phone"), None)).is_err());
+}
+
+#[test]
 fn group_and_ungroup_keep_positions() {
     let mut p = sample();
     let c = ctx("android-phone");

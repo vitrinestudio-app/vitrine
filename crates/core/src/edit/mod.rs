@@ -1277,6 +1277,93 @@ impl<'a> Editor<'a> {
         Ok(ops)
     }
 
+    /// Set fields of element `id` (inspector edits): written to the base,
+    /// or merged into the override of the edit variant. Fields are taken as
+    /// given (`at` in home-page lu, `rotation` of the element itself); a
+    /// patch that changes nothing gives no ops. The patched element must be
+    /// valid for its kind (e.g. no `model` on a text).
+    pub fn patch(&self, id: &str, patch: &ElementPatch) -> Result<Vec<Op>, EditError> {
+        let e = self.effective(id)?;
+        let (patched, _) = e
+            .patched(patch)
+            .map_err(|err| EditError::Invalid(format!("element `{id}`: {err}")))?;
+        if patched == e {
+            return Ok(Vec::new());
+        }
+        Ok(self.write(&e.id, patch.clone()))
+    }
+
+    /// Move element `id` to position `index` of group `parent`'s children
+    /// (`None` = top level of the strip; `index` counted after taking the
+    /// element out, default end = topmost). Always changes the base. When
+    /// the enclosing groups change, the element keeps its drawn position
+    /// and canvas angle in this view (their offsets and rotations are
+    /// compensated); within the same list it only changes painting order.
+    pub fn arrange(
+        &self,
+        id: &str,
+        parent: Option<&str>,
+        index: Option<usize>,
+    ) -> Result<Vec<Op>, EditError> {
+        let e = self.base_element(id)?;
+        let parent = match parent {
+            Some(p) => {
+                let pe = self.base_element(p)?;
+                if !Self::is_group(pe) {
+                    return Err(EditError::Invalid(format!("`{p}` is not a group")));
+                }
+                Some(pe.id.clone())
+            }
+            None => None,
+        };
+        let old_parent = parent_of(self.strip, id).map(|p| p.id.clone());
+        let siblings = siblings(self.strip, id);
+        let at = siblings.iter().position(|s| s.id == e.id);
+        let mv = Op::MoveElementTo {
+            id: e.id.clone(),
+            parent: parent.clone(),
+            index,
+        };
+        if parent == old_parent {
+            let len = siblings.len();
+            if index.unwrap_or(len - 1) == at.unwrap_or(usize::MAX) {
+                return Ok(Vec::new());
+            }
+            return Ok(vec![mv]);
+        }
+        if matches!(e.kind, ElementKind::Background(_)) {
+            return Ok(vec![mv]);
+        }
+        let before = self.current(&[], id, Probe::Move)?;
+        // Rotation of the new enclosing groups (the parent cannot lie inside
+        // the moved element, so its chain does not change).
+        let new_rot: f64 = parent.as_ref().map_or(0.0, |p| {
+            let own = self.strip.element(p.as_str()).map_or(0.0, |g| g.rotation);
+            own + ancestors(self.strip, p.as_str())
+                .iter()
+                .map(|g| g.rotation)
+                .sum::<f64>()
+        });
+        let old_rot: f64 = ancestors(self.strip, id).iter().map(|g| g.rotation).sum();
+        let mut fixed = ElementPatch::default();
+        let rot = clean(normalize_angle(e.rotation + old_rot - new_rot));
+        if (rot - e.rotation).abs() > 1e-12 {
+            fixed.rotation = Some((rot != 0.0).then_some(rot));
+        }
+        match self.solve(
+            vec![mv.clone()],
+            &e.id,
+            &fixed,
+            Probe::Move,
+            before,
+            &WriteTo::Base,
+        ) {
+            Ok(ops) => Ok(ops),
+            Err(EditError::Unsolvable(_) | EditError::NotOnCanvas(_)) => Ok(vec![mv]),
+            Err(err) => Err(err),
+        }
+    }
+
     /// Reset field `field` of the override of `id` in the edit variant (or
     /// the whole override). Empty without an edit variant or override.
     pub fn reset_override(&self, id: &str, field: Option<&str>) -> Result<Vec<Op>, EditError> {

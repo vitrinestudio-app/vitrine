@@ -28,7 +28,10 @@ single override field, languages).
   `move_to`/`move_by` (`MoveOptions { keep_page }`), `resize(id,
   ResizeSpec { width, height }, fixed: Handle)`, `rotate_to`,
   `set_pivot`, `set_home_page`, `reorder_z`, `duplicate`, `remove`,
-  `group`/`ungroup`, `reset_override`; plus `reference_point`,
+  `group`/`ungroup`, `reset_override`, `patch` (inspector field edits,
+  base or override), `arrange` (layer tree: move into/out of a group or
+  reorder, keeping the drawn position and canvas angle when the enclosing
+  groups change); plus `reference_point`,
   `overlay`, free functions `unique_id`, `reset_override`,
   `move_point`, `local_to_canvas` and `default_language_impact`.
 - Errors are `EditError` (unknown element/variant, element of another
@@ -90,6 +93,11 @@ single override field, languages).
   grouping, duplicate, remove, renames. They are not per format.
   `duplicate` copies the overrides of the element (and its children)
   under the new ids and offsets their position overrides too.
+- `patch(id, ElementPatch)` follows the same rule: the inspector sends
+  plain field values (`at` in home-page lu, the element's own
+  `rotation`), core decides between `UpdateElement` and a merged
+  `SetVariantOverride`; the GUI command `element_patch` wraps it and can
+  set translations in the same step. `arrange` always changes the base.
 - `reset_override(field)` → `Op::ResetOverrideField`; without a field the
   whole override is removed. The overlay lists overridden fields per
   element so the GUI can mark and reset them.

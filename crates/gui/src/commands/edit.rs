@@ -164,7 +164,7 @@ impl ViewContext {
 }
 
 /// Runs `f` with an editor on `project` for `ctx`.
-fn with_editor<R>(
+pub(super) fn with_editor<R>(
     session: &Session,
     project: &Project,
     ctx: &EditContext,
@@ -430,7 +430,7 @@ pub struct EditResult {
 }
 
 /// Plans with `f` on the current project and applies the ops as one step.
-fn edit(
+pub(super) fn edit(
     app: &AppState,
     view: &ViewContext,
     label: String,
