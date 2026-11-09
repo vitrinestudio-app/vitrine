@@ -7,6 +7,7 @@ import { actions } from './actions.js';
 import { api, listen } from './api.js';
 import { editor } from './editor.js';
 import { applyTranslations, initI18n } from './i18n.js';
+import { installDropImport } from './panels/importer.js';
 import { mountShell } from './shell.js';
 import { bindShortcuts } from './shortcuts.js';
 import { store } from './store.js';
@@ -36,6 +37,7 @@ async function showProject() {
       fit: () => shell.canvas?.fit(),
       zoomActual: () => shell.canvas?.zoomActual(),
     });
+    installDropImport(() => shell.canvas);
   }
 }
 
