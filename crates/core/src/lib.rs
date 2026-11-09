@@ -19,12 +19,13 @@
 //! - **Validation** and **catalogs** (devices, targets, gallery profiles),
 //!   the latter loaded from data files in `crates/core/data/`.
 //!
-//! Planned module layout (filled in during Phase 1):
+//! Module layout (`model`, `io`, `ops` exist; the rest follows in Phase 1).
+//! The file format is described in `docs/adr/0002-project-file-format.md`.
 //!
 //! ```text
 //! model/      project, strip, page, element, style, target, variant
-//! io/         YAML load/save, atomic writes, revision check
-//! ops/        Op, apply, inverse, transactions
+//! io          YAML load/save, atomic writes, revision check
+//! ops/        Op, apply, inverse, transactions, undo/redo history
 //! resolve/    anchors, page grouping, fallbacks, device_map
 //! layout/     text layout and auto-fit
 //! validate/   warnings and errors

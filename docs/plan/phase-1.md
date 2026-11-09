@@ -8,7 +8,7 @@ targets and the golden tests are green.
 Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## 1.1 Data model + YAML IO (`core`)
-- [ ] Types: `Project`, `Languages` (default, available, fallback), `Styles`
+- [x] Types: `Project`, `Languages` (default, available, fallback), `Styles`
       (colors, text styles, span styles, shadow presets), `Strip` (page aspect,
       count, backgrounds, elements, variants), `Element` (common props: id, kind,
       page, at, size, rotation, pivot, opacity, z, anchor_y, clip, visible_in) with
@@ -16,18 +16,18 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       (content_scale, overrides), `Target` (pages / banner; size, gallery,
       group, variant, device_map, screenshots, region, fit, gaps, store slot),
       `GalleryProfile`
-- [ ] Color references `@name`, lu units, sign conventions from ADR 0001
-- [ ] YAML load/save with `serde-saphyr`; stable field order; `format: arrangia/1`;
+- [x] Color references `@name`, lu units, sign conventions from ADR 0001
+- [x] YAML load/save with `serde-saphyr`; stable field order; `format: arrangia/1`;
       revision number; atomic save (temp file + rename)
-- [ ] i18n files `i18n/<lang>.yaml` (key → text)
-- [ ] Round-trip tests (load → save = identical), insta snapshots
+- [x] i18n files `i18n/<lang>.yaml` (key → text)
+- [x] Round-trip tests (load → save = identical), insta snapshots
 
 ## 1.2 Operations API (`core`)
-- [ ] `Op` enum (add/update/remove element, set string, add/update strip,
+- [x] `Op` enum (add/update/remove element, set string, add/update strip,
       add/update/remove target, set variant override, set styles, …), patch types
-- [ ] `Project::apply(op) -> Result<Inverse>`; validation before apply
-- [ ] Transactions (`apply_ops`) = one undo step; in-memory history
-- [ ] proptest: apply + inverse = original state
+- [x] `Project::apply(op) -> Result<Inverse>`; validation before apply
+- [x] Transactions (`apply_ops`) = one undo step; in-memory history
+- [x] proptest: apply + inverse = original state
 
 ## 1.3 Catalogs (`core/data/*.yaml`)
 - [ ] `targets.yaml`: Apple iPhone/iPad/Mac sizes and display types, Google Play
