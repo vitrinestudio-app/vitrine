@@ -173,7 +173,7 @@ export const editor = {
       const s = store.get();
       if (!currentTarget(s)) return;
       try {
-        const r = await api.validate(s.target, s.lang);
+        const r = await api.validate(s.target, s.lang, s.validationPreview !== false);
         store.set({ validation: { errors: r.errors, warnings: r.warnings, infos: r.infos } });
       } catch {
         store.set({ validation: null });

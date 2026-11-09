@@ -787,6 +787,15 @@ export function mountCanvas(root) {
     zoomIn: () => step(1),
     zoomOut: () => step(-1),
     zoomTo: (z) => zoomAround(z, centre()),
+    /** Fits the canvas rect `r` (lu) into the view (validation "go to page"). */
+    zoomToRect(r) {
+      const w = el.clientWidth - FIT_PADDING * 2;
+      const hh = el.clientHeight - FIT_PADDING * 2;
+      if (w <= 0 || hh <= 0) return;
+      const z = clamp(Math.min(w / r.w, hh / r.h), MIN_ZOOM, MAX_ZOOM);
+      setView(z, (el.clientWidth - r.w * z) / 2 - r.x * z, (el.clientHeight - r.h * z) / 2 - r.y * z);
+      fitPending = false;
+    },
     /** 100 % = one export pixel per screen pixel. */
     zoomActual: () => zoomAround(exportScale(), centre()),
     percent: () => Math.round((view().zoom / exportScale()) * 100),

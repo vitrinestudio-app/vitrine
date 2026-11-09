@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="styles/controls.css" />
     <link rel="stylesheet" href="styles/shell.css" />
     <link rel="stylesheet" href="styles/canvas.css" />
+    <link rel="stylesheet" href="styles/dialogs.css" />
+    <link rel="stylesheet" href="styles/targets.css" />
+    <link rel="stylesheet" href="styles/start.css" />
+    <link rel="stylesheet" href="styles/settings.css" />
     <script type="module" src="js/main.js"></script>
   </head>
   <body>
@@ -20,13 +24,7 @@
       </main>
       <aside class="sidebar sidebar-right" id="inspector"></aside>
     </div>
-    <div id="welcome" class="welcome" hidden>
-      <h1 data-i18n="app.title">Arrangia</h1>
-      <p data-i18n="app.tagline"></p>
-      <p class="muted"><span data-i18n="project.none"></span></p>
-      <button id="open-project" class="btn btn-primary" type="button" data-i18n="project.open"></button>
-      <p class="muted small"><span data-i18n="app.version"></span> <span id="app-version">…</span></p>
-    </div>
+    <div id="welcome" class="welcome" hidden></div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

@@ -75,6 +75,9 @@ const ICONS = {
   shape: 'M3 3h10v10H3z',
   group: 'M2 2h5v5H2zM9 9h5v5H9zM7 4.5h2.5a1 1 0 0 1 1 1V9',
   background: 'M2 2.5h12v11H2zM2 9.5l12-5',
+  menu: 'M2.5 4h11M2.5 8h11M2.5 12h11',
+  export: 'M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 11v2.5h11V11',
+  targets: 'M2 3.5h5v9H2zM9 5.5h5v5H9zM11.5 2v2M11.5 12v2',
 };
 
 /** An inline SVG icon by name. */

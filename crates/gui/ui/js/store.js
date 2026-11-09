@@ -40,6 +40,8 @@ export const initialState = {
   history: { can_undo: false, can_redo: false, undo: [], redo: [] },
   /** `{ errors, warnings, infos }` of the current target × language, or null. */
   validation: null,
+  /** Validation in preview mode (missing screenshots are warnings). */
+  validationPreview: true,
   /** Left sidebar tab: `strips` | `layers` | `assets` | `translations`. */
   sidebarTab: 'strips',
   /** Short status line (bottom bar). */
