@@ -22,7 +22,7 @@ use arrangia_core::edit::{
 use arrangia_core::geometry::Vec2;
 use arrangia_core::model::{ElementId, VariantId};
 use arrangia_core::ops::Op;
-use arrangia_core::resolve::{FsAssets, ResolveOptions};
+use arrangia_core::resolve::FsAssets;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use super::project::check_target;
@@ -171,7 +171,8 @@ fn with_editor<R>(
     f: impl FnOnce(&Editor) -> Result<R, EditError>,
 ) -> CmdResult<R> {
     let fs = FsAssets::new(session.dir());
-    let editor = Editor::new(project, ctx, ResolveOptions::new(&fs))?;
+    let render = session.render_context();
+    let editor = Editor::new(project, ctx, render.resolve_options(&fs))?;
     Ok(f(&editor)?)
 }
 

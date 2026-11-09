@@ -239,6 +239,11 @@ pub struct ResolvedText {
     /// Auto-fit lower bound (lu); `None` = no shrinking.
     pub shrink_to: Option<f64>,
     pub max_lines: Option<u32>,
+    /// Default rotation pivot as offset from the element centre (the frame
+    /// centre): for auto-height boxes the centre of the laid-out content
+    /// (ADR 0004, *Texts*), else zero. [`ResolvedElement::pivot`] is this
+    /// plus the element's own `pivot` offset.
+    pub default_pivot: Vec2,
 }
 
 /// Text box on the canvas.

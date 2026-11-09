@@ -30,7 +30,7 @@ use std::time::Instant;
 use arrangia_core::Project;
 use arrangia_core::model::{ImageFormat, TargetKind};
 use arrangia_core::resolve::{
-    Diagnostic, FsAssets, ResolveOptions, ResolvedFill, ResolvedKind, ResolvedScene, resolve,
+    Diagnostic, FsAssets, ResolvedFill, ResolvedKind, ResolvedScene, resolve,
 };
 use rayon::prelude::*;
 use serde::Serialize;
@@ -362,7 +362,7 @@ fn job(
     target: &str,
     lang: &str,
 ) -> Result<Job, String> {
-    let scene = resolve(project, target, lang, &ResolveOptions::new(fs))
+    let scene = resolve(project, target, lang, &ctx.resolve_options(fs))
         .map_err(|e| format!("{target}/{lang}: {e}"))?;
     let tgt = project.target(target).expect("filtered");
     let format = tgt.format.unwrap_or(ImageFormat::Png);

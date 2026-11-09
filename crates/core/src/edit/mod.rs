@@ -958,11 +958,17 @@ impl<'a> Editor<'a> {
             ResolvedKind::Device(d) => d.content_scale,
             _ => 1.0,
         };
+        // The stored offset is relative to the default pivot (the content
+        // centre of auto-height texts, else the element centre).
+        let base = match &r.props {
+            ResolvedKind::Text(t) => t.default_pivot,
+            _ => Vec2::ZERO,
+        };
         // Drawn centre V = c + p − R·p; the new world pivot P = c' + p'
         // keeps V when p' = R⁻¹(P − V).
         let v = local_to_canvas(r, Vec2::ZERO);
         let new = pivot.map(|p| {
-            let local = (p - v).rotated_around(Vec2::ZERO, -r.rotation) * (1.0 / k);
+            let local = (p - v).rotated_around(Vec2::ZERO, -r.rotation) * (1.0 / k) - base;
             Point::new(clean(local.x), clean(local.y))
         });
         let new = new.filter(|p| !p.is_zero());

@@ -74,6 +74,22 @@ This ADR records how `core::geometry` and `core::resolve` answer them.
 - Free text boxes (no `box`): centred at `at`, `width` (default 840 lu,
   info), optional `height`; without height `auto_height` with a zero-high
   rect centred at `at`; default `valign: center`. Default `align: left`.
+- **Pivot of auto-height texts** (amended in task 2.6): the default
+  rotation pivot of an `auto_height` box (margin box without `bottom`,
+  free box without `height`) is the centre of its laid-out content
+  (`PlacedText::content_rect`), not the centre of the frame rect. The
+  frame of a margin box reaches to the page bottom, so a rotated title
+  used to swing around the middle of the page. `pivot` stays an offset,
+  now from that default point (`ResolvedText::default_pivot`;
+  `ResolvedElement::pivot` = default + offset). Fixed-height boxes keep
+  the box centre. Without text, margin boxes use the centre of the top
+  edge and free boxes `at`. Resolve needs layout for this, so
+  `ResolveOptions::text` takes a `TextMeasure` (the render context or a
+  `TextLayouter` with the project's fonts; without one, a per-thread
+  layouter with the bundled fonts). The pivot follows the content, so it
+  differs slightly per language; renderer, overlay and edit intents read
+  it from resolve and stay consistent. Group pivots still use the frame
+  centre of margin texts as reference point (see *Groups*).
 - `clip: page` → the home page rect (the column when grouped).
 - Page backgrounds (`kind: background` elements) fill their home page
   rect; canvas backgrounds cover the canvas rect (pages and gaps).

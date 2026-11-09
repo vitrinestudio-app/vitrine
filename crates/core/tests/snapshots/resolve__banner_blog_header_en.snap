@@ -1,5 +1,6 @@
 ---
 source: crates/core/tests/resolve.rs
+assertion_line: 183
 expression: snapshot_value(&s)
 ---
 backgrounds:
@@ -88,9 +89,12 @@ elements:
     page: 0
     pivot:
       x: 0
-      y: 0
+      y: -938.6036
     props:
       align: center
+      default_pivot:
+        x: 0
+        y: -938.6036
       frame:
         auto_height: true
         margins: true
@@ -134,9 +138,12 @@ elements:
     page: 0
     pivot:
       x: 0
-      y: 0
+      y: -852.6136
     props:
       align: center
+      default_pivot:
+        x: 0
+        y: -852.6136
       frame:
         auto_height: true
         margins: true

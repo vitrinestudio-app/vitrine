@@ -273,6 +273,16 @@ impl RenderContext {
         r
     }
 
+    /// Resolve options measuring texts with this context's fonts (the
+    /// default pivot of auto-height texts, ADR 0004), so pivots match the
+    /// rendered lines.
+    pub fn resolve_options<'a>(
+        &'a self,
+        assets: &'a dyn arrangia_core::resolve::AssetLookup,
+    ) -> arrangia_core::resolve::ResolveOptions<'a> {
+        arrangia_core::resolve::ResolveOptions::new(assets).with_text(self)
+    }
+
     /// Lays out all texts of `scene` (via `core::layout::layout_text`, so
     /// rendering and validation see the same lines).
     pub fn prepare<'s>(&self, scene: &'s ResolvedScene) -> PreparedScene<'s> {
@@ -374,6 +384,18 @@ pub fn render_canvas(ctx: &RenderContext, scene: &ResolvedScene, scale: f64) -> 
             ..CanvasOptions::default()
         },
     )
+}
+
+impl arrangia_core::resolve::TextMeasure for RenderContext {
+    fn content_rect(
+        &self,
+        text: &arrangia_core::resolve::ResolvedText,
+        spans: &std::collections::BTreeMap<String, arrangia_core::resolve::ResolvedSpanStyle>,
+    ) -> Option<arrangia_core::geometry::Rect> {
+        self.with_layouter(|l| {
+            layout::layout_text(l, text, &layout::span_styles(spans)).map(|p| p.content_rect())
+        })
+    }
 }
 
 #[cfg(test)]

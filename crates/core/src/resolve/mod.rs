@@ -43,6 +43,12 @@ pub struct ResolveOptions<'a> {
     pub catalog: &'a Catalog,
     /// Screenshot file existence.
     pub assets: &'a dyn AssetLookup,
+    /// Lays out auto-height texts to find their rotation pivot (the centre
+    /// of the laid-out content, ADR 0004). `None` = a per-thread layouter
+    /// with the bundled fonts only; pass the project's fonts (the render
+    /// context, a [`crate::layout::TextLayouter`]) so pivots match the
+    /// rendered lines.
+    pub text: Option<&'a dyn TextMeasure>,
 }
 
 impl<'a> ResolveOptions<'a> {
@@ -51,8 +57,31 @@ impl<'a> ResolveOptions<'a> {
         Self {
             catalog: crate::catalog::catalog(),
             assets,
+            text: None,
         }
     }
+
+    /// The same options measuring texts with `text`.
+    #[must_use]
+    pub fn with_text(mut self, text: &'a dyn TextMeasure) -> Self {
+        self.text = Some(text);
+        self
+    }
+}
+
+/// Measures laid-out text during resolve: the default rotation pivot of an
+/// auto-height text box is the centre of its laid-out content, which only
+/// layout knows (ADR 0004, *Texts*). Implemented by
+/// `RefCell`/`Mutex<TextLayouter>` and by the renderer's context.
+pub trait TextMeasure {
+    /// Canvas rect (unrotated) of the laid-out content of `text` placed in
+    /// its frame, as [`crate::layout::PlacedText::content_rect`]; `None`
+    /// when it has no text.
+    fn content_rect(
+        &self,
+        text: &ResolvedText,
+        spans: &std::collections::BTreeMap<String, ResolvedSpanStyle>,
+    ) -> Option<crate::geometry::Rect>;
 }
 
 impl std::fmt::Debug for ResolveOptions<'_> {
@@ -116,6 +145,7 @@ pub fn resolve(
             layout: frame.layout,
             options,
             styles,
+            spans: &spans,
         },
         &mut d,
     );

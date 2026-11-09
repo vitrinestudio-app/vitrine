@@ -6,7 +6,7 @@ use std::sync::Arc;
 use arrangia_core::Project;
 use arrangia_core::geometry::{Rect, Viewport};
 use arrangia_core::model::{TargetKind, VariantId};
-use arrangia_core::resolve::{FsAssets, ResolveOptions, ResolvedScene, resolve};
+use arrangia_core::resolve::{FsAssets, ResolvedScene, resolve};
 use arrangia_render::export::{gallery, scene_assets};
 use arrangia_render::scene::{CanvasOptions, Quality, RenderOptions, Scale};
 use serde::{Deserialize, Serialize};
@@ -199,7 +199,8 @@ fn scene(
     let project = with_variant(project, &target, variant)?;
     let lang = lang_or_default(session, lang);
     let fs = FsAssets::new(session.dir());
-    let scene = resolve(&project, &target, &lang, &ResolveOptions::new(&fs))?;
+    let render = session.render_context();
+    let scene = resolve(&project, &target, &lang, &render.resolve_options(&fs))?;
     Ok((target, lang, scene))
 }
 

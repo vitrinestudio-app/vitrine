@@ -345,7 +345,7 @@ impl Ctx {
 /// `options`).
 pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationReport {
     let mut out = Sink::default();
-    let mut layouter = TextLayouter::new(options.fonts.clone());
+    let layouter = std::cell::RefCell::new(TextLayouter::new(options.fonts.clone()));
     let root = Ctx::default();
     if let Some(filter) = &options.targets {
         for t in filter {
@@ -383,7 +383,7 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
         {
             continue;
         }
-        validate_target(project, target, options, &mut layouter, &mut out);
+        validate_target(project, target, options, &layouter, &mut out);
     }
     ValidationReport {
         findings: out.findings,
@@ -418,7 +418,7 @@ fn validate_target(
     project: &Project,
     target: &Target,
     options: &ValidateOptions<'_>,
-    layouter: &mut TextLayouter,
+    layouter: &std::cell::RefCell<TextLayouter>,
     out: &mut Sink,
 ) {
     let mut ctx = Ctx {
@@ -449,6 +449,7 @@ fn validate_target(
     let resolve_options = ResolveOptions {
         catalog: options.catalog,
         assets: options.assets,
+        text: Some(layouter),
     };
     let mut frame_checked = false;
     for lang in target_langs(project, target, options) {
@@ -473,6 +474,6 @@ fn validate_target(
             checks::frame_checks(&scope, &scene, &ctx, out);
             frame_checked = true;
         }
-        checks::scene_checks(&scope, &scene, layouter, &ctx, out);
+        checks::scene_checks(&scope, &scene, &mut layouter.borrow_mut(), &ctx, out);
     }
 }

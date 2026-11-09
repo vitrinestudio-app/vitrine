@@ -68,7 +68,10 @@ single override field, languages).
   backgrounds are not resizable.
 - **Rotation** is the canvas angle (enclosing groups included), stored
   normalised to `(-180, 180]`. `set_pivot` takes a canvas point and can
-  keep the drawn position (otherwise a rotated element jumps).
+  keep the drawn position (otherwise a rotated element jumps); for
+  auto-height texts the stored offset is relative to the content centre
+  (ADR 0004, amended in task 2.6), so rotating a title turns it in place
+  while its reference point (top-edge centre) moves.
 - **Painting order** (`reorder_z`) changes the list order among siblings;
   `z` stays an inspector field.
 - **Group/ungroup:** a new group has no offset or rotation, so nothing

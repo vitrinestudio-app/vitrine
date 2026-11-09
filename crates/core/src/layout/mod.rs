@@ -33,7 +33,7 @@ use serde::{Deserialize, Serialize};
 pub use engine::TextLayouter;
 pub use fonts::{FontDirReport, FontError, FontFace, FontId, FontLibrary, FontSource};
 pub use report::LayoutReport;
-pub use scene::{PlacedText, layout_text, span_styles};
+pub use scene::{PlacedText, layout_text, measure_with_bundled_fonts, span_styles};
 
 use crate::model::{Align, ColorRef, Rgba, SpanStyle, TextFit, TextStyle, TextTransform, VAlign};
 

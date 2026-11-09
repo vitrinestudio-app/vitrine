@@ -1,5 +1,6 @@
 ---
 source: crates/core/tests/edit.rs
+assertion_line: 676
 expression: v
 ---
 canvas:
@@ -178,7 +179,7 @@ elements:
     page: 0
     pivot:
       x: 500
-      y: 795
+      y: 167.76
     quad:
       - x: 70
         y: 90

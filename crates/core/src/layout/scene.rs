@@ -78,6 +78,56 @@ impl PlacedText {
     }
 }
 
+/// Content rect of `text` laid out with `layouter` (see
+/// [`resolve::TextMeasure`]).
+fn content_rect(
+    layouter: &mut TextLayouter,
+    text: &resolve::ResolvedText,
+    spans: &BTreeMap<String, resolve::ResolvedSpanStyle>,
+) -> Option<Rect> {
+    layout_text(layouter, text, &span_styles(spans)).map(|p| p.content_rect())
+}
+
+impl resolve::TextMeasure for std::cell::RefCell<TextLayouter> {
+    fn content_rect(
+        &self,
+        text: &resolve::ResolvedText,
+        spans: &BTreeMap<String, resolve::ResolvedSpanStyle>,
+    ) -> Option<Rect> {
+        content_rect(&mut self.borrow_mut(), text, spans)
+    }
+}
+
+impl resolve::TextMeasure for std::sync::Mutex<TextLayouter> {
+    fn content_rect(
+        &self,
+        text: &resolve::ResolvedText,
+        spans: &BTreeMap<String, resolve::ResolvedSpanStyle>,
+    ) -> Option<Rect> {
+        let mut l = self
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        content_rect(&mut l, text, spans)
+    }
+}
+
+thread_local! {
+    static BUNDLED: std::cell::RefCell<Option<TextLayouter>> = const { std::cell::RefCell::new(None) };
+}
+
+/// [`resolve::TextMeasure`] fallback of resolve without a measurer: a
+/// per-thread layouter with the bundled fonts only.
+pub fn measure_with_bundled_fonts(
+    text: &resolve::ResolvedText,
+    spans: &BTreeMap<String, resolve::ResolvedSpanStyle>,
+) -> Option<Rect> {
+    BUNDLED.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        let l = slot.get_or_insert_with(|| TextLayouter::new(super::FontLibrary::bundled()));
+        content_rect(l, text, spans)
+    })
+}
+
 /// Lay out a resolved text element; `None` if it has no text (key missing
 /// in every language of the chain).
 ///

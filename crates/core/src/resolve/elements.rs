@@ -9,7 +9,8 @@ use std::collections::BTreeMap;
 use super::lookup::{lookup_screenshot, lookup_text};
 use super::scene::{
     DeviceColor, DiagnosticCode, ResolvedDevice, ResolvedElement, ResolvedImage, ResolvedKind,
-    ResolvedShadowLayer, ResolvedShape, ResolvedText, ScreenshotSource, TextFrame,
+    ResolvedShadowLayer, ResolvedShape, ResolvedSpanStyle, ResolvedText, ScreenshotSource,
+    TextFrame,
 };
 use super::style::StyleResolver;
 use super::{Diags, ResolveOptions};
@@ -35,6 +36,7 @@ pub(super) struct Inputs<'a> {
     pub layout: CanvasLayout,
     pub options: &'a ResolveOptions<'a>,
     pub styles: StyleResolver<'a>,
+    pub spans: &'a BTreeMap<String, ResolvedSpanStyle>,
 }
 
 /// Transform of an enclosing group, applied on top of its children.
@@ -275,7 +277,12 @@ impl Walker<'_, '_> {
                 let (frame, valign) = self.text_frame(e, t, d);
                 r.center = frame.rect.center();
                 r.size = Vec2::new(frame.rect.w, frame.rect.h);
-                r.props = ResolvedKind::Text(Box::new(self.text(t, frame, valign, d)));
+                let mut text = self.text(t, frame, valign, d);
+                if frame.auto_height {
+                    text.default_pivot = self.text_pivot(&text, r.center);
+                }
+                r.pivot = r.pivot + text.default_pivot;
+                r.props = ResolvedKind::Text(Box::new(text));
             }
             ElementKind::Image(p) => {
                 let (img, size) = self.image(e, p, sy, d);
@@ -508,6 +515,22 @@ impl Walker<'_, '_> {
         }
     }
 
+    /// Default pivot of an auto-height text box as offset from `center`
+    /// (the frame centre): the centre of the laid-out content. Without
+    /// text, the centre of the top edge for margin boxes (where the text
+    /// would start), the frame centre (`at`) for free boxes.
+    fn text_pivot(&self, text: &ResolvedText, center: Vec2) -> Vec2 {
+        let measured = match self.inp.options.text {
+            Some(m) => m.content_rect(text, self.inp.spans),
+            None => crate::layout::measure_with_bundled_fonts(text, self.inp.spans),
+        };
+        match measured {
+            Some(rect) => rect.center() - center,
+            None if text.frame.margins => Vec2::new(0.0, -text.frame.rect.h / 2.0),
+            None => Vec2::ZERO,
+        }
+    }
+
     fn text(&self, t: &TextProps, frame: TextFrame, valign: VAlign, d: &mut Diags) -> ResolvedText {
         let key = t.text.as_str();
         let found = lookup_text(self.inp.project, &self.inp.chain, key);
@@ -536,6 +559,7 @@ impl Walker<'_, '_> {
             valign,
             shrink_to: t.fit.and_then(|f| f.shrink_to),
             max_lines: t.fit.and_then(|f| f.max_lines),
+            default_pivot: Vec2::ZERO,
         }
     }
 

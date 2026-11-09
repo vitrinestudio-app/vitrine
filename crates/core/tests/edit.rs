@@ -333,6 +333,61 @@ fn rotate_and_pivot() {
     assert!((r.rotation + 20.0).abs() < 1e-9);
 }
 
+/// Auto-height texts rotate around the centre of their laid-out content
+/// (ADR 0004), in resolve, edit intents and with an explicit pivot.
+#[test]
+fn auto_height_text_rotates_around_its_content() {
+    use arrangia_core::layout::{layout_text, span_styles};
+    use arrangia_core::resolve::ResolvedKind;
+    let mut p = sample();
+    let c = ctx("ios-phone-69");
+    let content_centre = |p: &Project| {
+        let files = files();
+        let scene = resolve(p, "ios-phone-69", "en", &ResolveOptions::new(&files)).unwrap();
+        let r = scene.element("title-1").unwrap().clone();
+        let ResolvedKind::Text(t) = &r.props else {
+            panic!()
+        };
+        let mut l = TextLayouter::new(FontLibrary::bundled());
+        let placed = layout_text(&mut l, t, &span_styles(&scene.spans)).unwrap();
+        (r, placed.content_rect().center())
+    };
+    let (r, centre) = content_centre(&p);
+    assert!(close(r.center + r.pivot, centre), "{r:?}");
+    // The content stays in place when rotated (the box top moves).
+    let before = point(&p, &c, "title-1");
+    let ops = with_editor(&p, &c, |ed| ed.rotate_to("title-1", 30.0).unwrap());
+    apply(&mut p, ops);
+    let (r, rotated) = content_centre(&p);
+    assert!(close(local_to_canvas(&r, centre - r.center), centre));
+    assert!(close(rotated, centre));
+    assert!(!close(point(&p, &c, "title-1"), before));
+    // Moving the rotated text keeps working (the solver sees the pivot).
+    let goal = point(&p, &c, "title-1") + Vec2::new(25.0, 40.0);
+    let ops = with_editor(&p, &c, |ed| {
+        ed.move_to("title-1", goal, MoveOptions::default()).unwrap()
+    });
+    apply(&mut p, ops);
+    assert!(close(point(&p, &c, "title-1"), goal));
+    // An explicit pivot is an offset from the content centre.
+    let (r, centre) = content_centre(&p);
+    let target = centre + Vec2::new(100.0, 0.0);
+    let ops = with_editor(&p, &c, |ed| {
+        ed.set_pivot(
+            "title-1",
+            Some(local_to_canvas(&r, target - r.center)),
+            false,
+        )
+        .unwrap()
+    });
+    apply(&mut p, ops);
+    let pivot = p.element("title-1").unwrap().1.pivot.unwrap();
+    assert!(
+        (pivot.x - 100.0).abs() < 1e-6 && pivot.y.abs() < 1e-6,
+        "{pivot:?}"
+    );
+}
+
 #[test]
 fn set_home_page_keeps_or_moves() {
     let mut p = sample();
