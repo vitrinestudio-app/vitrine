@@ -6,9 +6,11 @@
 //! a [`PreviewImage`] that each transport encodes itself (Tauri: header +
 //! data as `ArrayBuffer`; bridge: bare PNG/RGBA with `X-*` headers).
 //!
-//! Planned additions (Phase 2.4+): `edit_*` (gesture intents from
-//! `core::edit`, returning the same [`crate::session::ApplyResult`] as
-//! `apply_ops`) and `overlay` (hit-test/overlay data per target × lang).
+//! `overlay` (hit-test data per target × language × variant) and the
+//! `edit_*` gesture intents (`core::edit`, answering with the
+//! [`crate::session::ApplyResult`] of the step plus created ids) take the
+//! view context `{target, lang, variant}` (see [`ViewContext`]);
+//! `render_preview_edit` renders a gesture in progress without saving it.
 
 // Uniform signature `fn(&AppState, Args)` for the dispatch table and the
 // Tauri wrappers, whether or not a command consumes its arguments.
@@ -192,6 +194,10 @@ command_table! {
         project_new, project_open, project_close, project_summary, project_get,
         recent_projects, recent_remove,
         apply_ops, undo, redo, history_state,
+        overlay,
+        edit_move, edit_move_by, edit_resize, edit_rotate, edit_set_page,
+        edit_reorder, edit_duplicate, edit_remove, edit_group, edit_ungroup,
+        edit_reset_override,
         validate, export, export_cancel,
         strings_get, strings_missing,
         assets_list, assets_import, assets_remove,
@@ -200,7 +206,7 @@ command_table! {
         dialog_open_project, dialog_pick_files,
         preview_stats,
     ],
-    image: [render_image, render_canvas, render_gallery],
+    image: [render_image, render_canvas, render_gallery, render_preview_edit],
 }
 
 /// Default language of the open project when `lang` is `None`.

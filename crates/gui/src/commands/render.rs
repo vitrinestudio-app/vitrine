@@ -3,12 +3,15 @@
 
 use std::sync::Arc;
 
-use arrangia_core::model::TargetKind;
+use arrangia_core::Project;
+use arrangia_core::geometry::{Rect, Viewport};
+use arrangia_core::model::{TargetKind, VariantId};
 use arrangia_core::resolve::{FsAssets, ResolveOptions, ResolvedScene, resolve};
 use arrangia_render::export::{gallery, scene_assets};
 use arrangia_render::scene::{CanvasOptions, Quality, RenderOptions, Scale};
 use serde::{Deserialize, Serialize};
 
+use super::edit::{Gesture, ViewContext, double_option, preview_project};
 use super::project::check_target;
 use super::{AppState, NoArgs, lang_or_default};
 use crate::error::{CmdResult, CommandError};
@@ -48,6 +51,7 @@ impl PreviewQuality {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(clippy::option_option)]
 pub struct RenderImageArgs {
     /// Default: the first target.
     #[serde(default)]
@@ -55,6 +59,10 @@ pub struct RenderImageArgs {
     /// Default: the project's default language.
     #[serde(default)]
     pub lang: Option<String>,
+    /// Missing = the target's own variant, `null` = the base elements, a
+    /// name = that variant of the target's strip (variant view).
+    #[serde(default, deserialize_with = "double_option")]
+    pub variant: Option<Option<String>>,
     /// Output image index, 0-based (a page, a page group or the banner).
     #[serde(default)]
     pub image: u32,
@@ -77,11 +85,20 @@ pub struct RenderImageArgs {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(clippy::option_option)]
 pub struct RenderCanvasArgs {
     #[serde(default)]
     pub target: Option<String>,
     #[serde(default)]
     pub lang: Option<String>,
+    /// Missing = the target's own variant, `null` = the base elements, a
+    /// name = that variant of the target's strip (variant view).
+    #[serde(default, deserialize_with = "double_option")]
+    pub variant: Option<Option<String>>,
+    /// Only this canvas region (lu; e.g. a gap or a tile). Default: the
+    /// whole canvas.
+    #[serde(default)]
+    pub region: Option<Rect>,
     /// Pixels per lu (default 0.25); or `max_edge` for the longer side.
     #[serde(default)]
     pub scale: Option<f64>,
@@ -100,11 +117,16 @@ pub struct RenderCanvasArgs {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(clippy::option_option)]
 pub struct RenderGalleryArgs {
     #[serde(default)]
     pub target: Option<String>,
     #[serde(default)]
     pub lang: Option<String>,
+    /// Missing = the target's own variant, `null` = the base elements, a
+    /// name = that variant of the target's strip (variant view).
+    #[serde(default, deserialize_with = "double_option")]
+    pub variant: Option<Option<String>>,
     /// Image height in px (default 600, never above the target height).
     #[serde(default)]
     pub height: Option<u32>,
@@ -118,13 +140,51 @@ fn yes() -> bool {
     true
 }
 
-/// Resolved scene of the open project (on a snapshot, outside the lock).
+/// `project` with `target` showing `variant` (see [`ViewContext`]).
+#[allow(clippy::option_option)]
+fn with_variant(
+    mut project: Project,
+    target: &str,
+    variant: Option<&Option<String>>,
+) -> CmdResult<Project> {
+    let Some(variant) = variant else {
+        return Ok(project);
+    };
+    let variant = match variant {
+        None => None,
+        Some(v) => {
+            let id = VariantId::parse(v).map_err(CommandError::invalid)?;
+            let strip = project
+                .target(target)
+                .and_then(|t| project.strip(t.strip.as_str()));
+            if !strip.is_some_and(|s| s.variants.contains_key(&id)) {
+                return Err(CommandError::not_found(format!(
+                    "unknown variant `{v}` for target `{target}`"
+                )));
+            }
+            Some(id)
+        }
+    };
+    if let Some(t) = project.targets.iter_mut().find(|t| t.id.as_str() == target) {
+        t.variant = variant;
+    }
+    Ok(project)
+}
+
+/// Resolved scene of `project` (default: the session's current project)
+/// for the view; rendering happens on this snapshot, outside the lock.
+#[allow(clippy::option_option)]
 fn scene(
     session: &Session,
+    project: Option<&Project>,
     target: Option<String>,
     lang: Option<String>,
+    variant: Option<&Option<String>>,
 ) -> CmdResult<(String, String, ResolvedScene)> {
-    let project = session.snapshot();
+    let project = match project {
+        Some(p) => p.clone(),
+        None => session.snapshot(),
+    };
     let target = match target {
         Some(t) => {
             check_target(&project, &t)?;
@@ -136,6 +196,7 @@ fn scene(
             .map(|t| t.id.to_string())
             .ok_or_else(|| CommandError::not_found("the project has no targets"))?,
     };
+    let project = with_variant(project, &target, variant)?;
     let lang = lang_or_default(session, lang);
     let fs = FsAssets::new(session.dir());
     let scene = resolve(&project, &target, &lang, &ResolveOptions::new(&fs))?;
@@ -181,7 +242,26 @@ fn too_large(w: f64, h: f64) -> CmdResult<()> {
 /// One output image (page, page group or banner).
 pub fn render_image(app: &AppState, args: RenderImageArgs) -> CmdResult<Arc<PreviewImage>> {
     let session = app.session()?;
-    let (target, lang, scene) = scene(&session, args.target, args.lang)?;
+    let (target, lang, scene) = scene(
+        &session,
+        None,
+        args.target.clone(),
+        args.lang.clone(),
+        args.variant.as_ref(),
+    )?;
+    image_of(&session, &scene, &target, &lang, &args, true)
+}
+
+/// Renders output image `args.image` of `scene` (cached unless `cache` is
+/// false).
+fn image_of(
+    session: &Session,
+    scene: &ResolvedScene,
+    target: &str,
+    lang: &str,
+    args: &RenderImageArgs,
+    cache: bool,
+) -> CmdResult<Arc<PreviewImage>> {
     let Some(img) = scene.frame.images.get(args.image as usize) else {
         return Err(CommandError::not_found(format!(
             "image {} is out of range (target `{target}` has {} output images)",
@@ -208,17 +288,8 @@ pub fn render_image(app: &AppState, args: RenderImageArgs) -> CmdResult<Arc<Prev
     positive(factor, "size")?;
     too_large(w * factor, h * factor)?;
     let ctx = session.render_context();
-    let key = PreviewKey {
-        target,
-        lang,
-        view: View::Image(args.image),
-        size: format!("f{factor:.6}"),
-        quality: format!("{:?}", args.quality),
-        format: args.format,
-        scene_hash: scene_hash(&scene, &ctx),
-    };
-    cached(&session, key, &scene, || {
-        let prepared = ctx.prepare(&scene);
+    let render = || {
+        let prepared = ctx.prepare(scene);
         let r = ctx.rasterize_prepared(
             &prepared,
             args.image as usize,
@@ -228,14 +299,103 @@ pub fn render_image(app: &AppState, args: RenderImageArgs) -> CmdResult<Arc<Prev
             },
         );
         PreviewImage::encode(&r.pixmap, Some(&r.viewport), args.format)
-    })
+    };
+    if !cache {
+        return render().map(Arc::new);
+    }
+    let key = PreviewKey {
+        target: target.to_owned(),
+        lang: lang.to_owned(),
+        view: View::Image(args.image),
+        size: format!("f{factor:.6}"),
+        quality: format!("{:?}", args.quality),
+        format: args.format,
+        scene_hash: scene_hash(scene, &ctx),
+    };
+    cached(session, key, scene, render)
 }
 
-/// The whole canvas (pages and gaps), optionally with the debug overlay.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(clippy::option_option)]
+pub struct RenderPreviewEditArgs {
+    #[serde(default)]
+    pub target: Option<String>,
+    #[serde(default)]
+    pub lang: Option<String>,
+    #[serde(default, deserialize_with = "double_option")]
+    pub variant: Option<Option<String>>,
+    /// The gesture in progress (as the matching `edit_*` command takes it,
+    /// with `kind`: `move`, `move_by`, `resize`, `rotate`).
+    pub edit: Gesture,
+    /// Output image index and size as in `render_image`.
+    #[serde(default)]
+    pub image: u32,
+    #[serde(default)]
+    pub max_edge: Option<u32>,
+    #[serde(default)]
+    pub width: Option<u32>,
+    #[serde(default)]
+    pub scale: Option<f64>,
+    /// Default true: half size, as while dragging.
+    #[serde(default = "yes")]
+    pub interactive: bool,
+    #[serde(default)]
+    pub format: PixelFormat,
+}
+
+/// Live drag feedback: output image `image` as it would look after the
+/// gesture, rendered from a scratch copy of the project (nothing is saved
+/// or cached; the scratch copy is shared by the images of one frame).
+pub fn render_preview_edit(
+    app: &AppState,
+    args: RenderPreviewEditArgs,
+) -> CmdResult<Arc<PreviewImage>> {
+    let session = app.session()?;
+    let view = ViewContext {
+        target: args.target.clone(),
+        lang: args.lang.clone(),
+        variant: args.variant.clone(),
+    };
+    let project = preview_project(&session, &view, &args.edit)?;
+    let (target, lang, scene) = scene(
+        &session,
+        Some(&project),
+        args.target.clone(),
+        args.lang.clone(),
+        args.variant.as_ref(),
+    )?;
+    let image_args = RenderImageArgs {
+        target: None,
+        lang: None,
+        variant: None,
+        image: args.image,
+        max_edge: args.max_edge,
+        width: args.width,
+        scale: args.scale,
+        quality: PreviewQuality::Preview,
+        interactive: args.interactive,
+        format: args.format,
+    };
+    image_of(&session, &scene, &target, &lang, &image_args, false)
+}
+
+/// The whole canvas (pages and gaps) or a `region` of it, optionally with
+/// the debug overlay (whole canvas only).
 pub fn render_canvas(app: &AppState, args: RenderCanvasArgs) -> CmdResult<Arc<PreviewImage>> {
     let session = app.session()?;
-    let (target, lang, scene) = scene(&session, args.target, args.lang)?;
-    let canvas = scene.frame.canvas;
+    let (target, lang, scene) = scene(
+        &session,
+        None,
+        args.target,
+        args.lang,
+        args.variant.as_ref(),
+    )?;
+    let canvas = match args.region {
+        Some(r) if r.w > 0.0 && r.h > 0.0 && r.x.is_finite() && r.y.is_finite() => r,
+        Some(_) => return Err(CommandError::invalid("`region` must have a positive size")),
+        None => scene.frame.canvas,
+    };
     let mut scale = match (args.scale, args.max_edge) {
         (Some(s), None) => positive(s, "scale")?,
         (None, Some(m)) => f64::from(m) / canvas.w.max(canvas.h),
@@ -256,6 +416,9 @@ pub fn render_canvas(app: &AppState, args: RenderCanvasArgs) -> CmdResult<Arc<Pr
         lang,
         view: View::Canvas {
             overlay: args.overlay,
+            region: args
+                .region
+                .map(|r| format!("{},{},{},{}", r.x, r.y, r.w, r.h)),
         },
         size: format!("s{scale:.6}"),
         quality: format!("{:?}", args.quality),
@@ -264,14 +427,23 @@ pub fn render_canvas(app: &AppState, args: RenderCanvasArgs) -> CmdResult<Arc<Pr
     };
     cached(&session, key, &scene, || {
         let prepared = ctx.prepare(&scene);
-        let r = ctx.render_canvas(
-            &prepared,
-            &CanvasOptions {
-                scale,
-                quality: args.quality.render(),
-                overlay: args.overlay,
-            },
-        );
+        let r = if args.region.is_some() {
+            let width = (canvas.w * scale).round().max(1.0) as u32;
+            ctx.render_view(
+                &prepared,
+                &Viewport::fit_width(canvas, width),
+                args.quality.render(),
+            )
+        } else {
+            ctx.render_canvas(
+                &prepared,
+                &CanvasOptions {
+                    scale,
+                    quality: args.quality.render(),
+                    overlay: args.overlay,
+                },
+            )
+        };
         PreviewImage::encode(&r.pixmap, Some(&r.viewport), args.format)
     })
 }
@@ -279,7 +451,13 @@ pub fn render_canvas(app: &AppState, args: RenderCanvasArgs) -> CmdResult<Arc<Pr
 /// The store gallery preview (output images side by side with the store gaps).
 pub fn render_gallery(app: &AppState, args: RenderGalleryArgs) -> CmdResult<Arc<PreviewImage>> {
     let session = app.session()?;
-    let (target, lang, scene) = scene(&session, args.target, args.lang)?;
+    let (target, lang, scene) = scene(
+        &session,
+        None,
+        args.target,
+        args.lang,
+        args.variant.as_ref(),
+    )?;
     if scene.frame.kind == TargetKind::Banner {
         return Err(CommandError::invalid(format!(
             "target `{target}` has no store gallery (banner targets have none)"

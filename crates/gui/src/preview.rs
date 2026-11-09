@@ -182,7 +182,11 @@ pub fn encode_png(rgba: &[u8], width: u32, height: u32) -> Result<Vec<u8>, png::
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum View {
     Image(u32),
-    Canvas { overlay: bool },
+    Canvas {
+        overlay: bool,
+        /// Region `x,y,w,h` (lu) or the whole canvas.
+        region: Option<String>,
+    },
     Gallery,
 }
 

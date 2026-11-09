@@ -130,6 +130,18 @@ json_commands! {
     undo: commands::NoArgs,
     redo: commands::NoArgs,
     history_state: commands::NoArgs,
+    overlay: commands::OverlayArgs,
+    edit_move: commands::EditMoveArgs,
+    edit_move_by: commands::EditMoveByArgs,
+    edit_resize: commands::EditResizeArgs,
+    edit_rotate: commands::EditRotateArgs,
+    edit_set_page: commands::EditSetPageArgs,
+    edit_reorder: commands::EditReorderArgs,
+    edit_duplicate: commands::EditDuplicateArgs,
+    edit_remove: commands::EditIdsArgs,
+    edit_group: commands::EditGroupArgs,
+    edit_ungroup: commands::EditIdsArgs,
+    edit_reset_override: commands::EditResetOverrideArgs,
     validate: commands::ValidateArgs,
     export: commands::ExportArgs,
     export_cancel: commands::NoArgs,
@@ -153,6 +165,7 @@ image_commands! {
     render_image: commands::RenderImageArgs,
     render_canvas: commands::RenderCanvasArgs,
     render_gallery: commands::RenderGalleryArgs,
+    render_preview_edit: commands::RenderPreviewEditArgs,
 }
 
 fn main() {
@@ -183,6 +196,18 @@ fn main() {
             undo,
             redo,
             history_state,
+            overlay,
+            edit_move,
+            edit_move_by,
+            edit_resize,
+            edit_rotate,
+            edit_set_page,
+            edit_reorder,
+            edit_duplicate,
+            edit_remove,
+            edit_group,
+            edit_ungroup,
+            edit_reset_override,
             validate,
             export,
             export_cancel,
@@ -203,6 +228,7 @@ fn main() {
             render_image,
             render_canvas,
             render_gallery,
+            render_preview_edit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Arrangia");

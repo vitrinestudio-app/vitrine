@@ -194,6 +194,8 @@ pub struct Session {
     preview: PreviewCache,
     events: Arc<dyn EventSink>,
     watcher: Mutex<Option<Watcher>>,
+    /// Last scratch project of an edit preview (key, revision, project).
+    edit_preview: Mutex<Option<(String, u64, Arc<Project>)>>,
 }
 
 impl std::fmt::Debug for Session {
@@ -259,6 +261,7 @@ impl Session {
             preview: PreviewCache::default(),
             events,
             watcher: Mutex::new(None),
+            edit_preview: Mutex::new(None),
         }))
     }
 
@@ -312,6 +315,40 @@ impl Session {
 
     pub fn history_state(&self) -> HistoryState {
         lock(&self.inner).history_state()
+    }
+
+    /// Result of an edit that produced no ops (nothing applied or saved).
+    pub fn unchanged(&self) -> ApplyResult {
+        let inner = lock(&self.inner);
+        ApplyResult {
+            applied: false,
+            revision: inner.project.revision,
+            changes: Changes::default(),
+            history: inner.history_state(),
+        }
+    }
+
+    /// The scratch project of an edit preview (a gesture applied to a copy
+    /// of the current project, never saved). The last one is memoised by
+    /// `key` and revision, so the images of one drag frame share it.
+    pub fn edit_preview(
+        &self,
+        key: String,
+        make: impl FnOnce(&Project) -> CmdResult<Project>,
+    ) -> CmdResult<Arc<Project>> {
+        let (revision, project) = {
+            let inner = lock(&self.inner);
+            if let Some((k, rev, p)) = lock(&self.edit_preview).as_ref()
+                && *k == key
+                && *rev == inner.project.revision
+            {
+                return Ok(p.clone());
+            }
+            (inner.project.revision, inner.project.clone())
+        };
+        let scratch = Arc::new(make(&project)?);
+        *lock(&self.edit_preview) = Some((key, revision, scratch.clone()));
+        Ok(scratch)
     }
 
     /// Applies `ops` as one undo step and saves. `label` defaults to
