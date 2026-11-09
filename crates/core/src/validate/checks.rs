@@ -7,11 +7,11 @@
 use std::collections::BTreeSet;
 
 use super::{Ctx, FindingCode as C, Severity, Sink, ValidateMode, ValidateOptions};
-use crate::catalog::{PresetStatus, SizePolicy, TargetPreset};
+use crate::catalog::{DeviceClass, PresetStatus, SizePolicy, TargetPreset};
 use crate::geometry::{Rect, Vec2};
 use crate::layout::{TextDiagnostic, TextLayouter, layout_text, span_styles};
 use crate::model::{
-    ElementId, FitMode, ImageFormat, PixelSize, Project, Strip, Target, TargetKind,
+    Chrome, ElementId, FitMode, ImageFormat, PixelSize, Project, Strip, Target, TargetKind,
 };
 use crate::resolve::{
     DiagnosticCode, Frame, Level, ResolvedDevice, ResolvedElement, ResolvedKind, ResolvedScene,
@@ -486,8 +486,13 @@ fn screenshot_checks(
     // name the file and are recorded without language, so languages that
     // fall back to the same file share one finding.
     let file = shot.path.as_deref().unwrap_or_default();
+    let (dw_lu, dh_lu) = screen_lu(s, e, d);
     if !d.free_aspect {
-        let want = d.device.display_ratio(d.orientation);
+        let want = if dh_lu > 0.0 {
+            dw_lu / dh_lu
+        } else {
+            d.device.display_ratio(d.orientation)
+        };
         let dev = (sw / sh) / want - 1.0;
         if dev.abs() > th.screenshot_aspect {
             push(
@@ -506,8 +511,7 @@ fn screenshot_checks(
         }
     }
     let scale = image_scale(&scene.frame, e.page);
-    let (fx, fy) = d.device.display_fraction(d.orientation);
-    let (dw, dh) = (e.size.x * fx * scale, e.size.y * fy * scale);
+    let (dw, dh) = (dw_lu * scale, dh_lu * scale);
     let (kx, ky) = (dw / sw, dh / sh);
     let factor = match d.fit {
         FitMode::Contain => kx.min(ky),
@@ -524,6 +528,21 @@ fn screenshot_checks(
             ),
         );
     }
+}
+
+/// Size in lu of the area the screenshot fills: the display, minus the
+/// browser bars of `chrome: browser` on a laptop / desktop (as drawn by
+/// the renderer).
+fn screen_lu(s: &Scope<'_>, e: &ResolvedElement, d: &ResolvedDevice) -> (f64, f64) {
+    let (fx, fy) = d.device.display_fraction(d.orientation);
+    let (w, h) = (e.size.x * fx, e.size.y * fy);
+    if d.chrome == Some(Chrome::Browser)
+        && matches!(d.device.class, DeviceClass::Laptop | DeviceClass::Desktop)
+    {
+        let bars = s.options.catalog.devices.browser_chrome.in_display(w, h).1;
+        return (w, h - bars);
+    }
+    (w, h)
 }
 
 /// px per lu of the export image showing `page`.

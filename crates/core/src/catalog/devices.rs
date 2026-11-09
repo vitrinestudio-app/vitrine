@@ -48,10 +48,23 @@ pub struct BrowserChrome {
     pub themes: BTreeMap<String, BrowserTheme>,
 }
 
+/// Minimum lu per chrome px for `chrome: browser` on laptops / desktops:
+/// the chrome scales with the display width, with a floor so tab and URL
+/// text stay legible on small laptops / monitors.
+pub const MIN_CHROME_SCALE: f64 = 0.4;
+
 impl BrowserChrome {
     /// Total chrome height above the content.
     pub fn height(&self) -> f64 {
         self.tab_bar + self.toolbar
+    }
+
+    /// Scale (lu per chrome px) and height in lu of the browser bars drawn
+    /// into a laptop / desktop display of `display_w` × `display_h` lu
+    /// (`chrome: browser`). The screenshot gets the rest of the display.
+    pub fn in_display(&self, display_w: f64, display_h: f64) -> (f64, f64) {
+        let k = (display_w / self.reference_width).max(MIN_CHROME_SCALE);
+        (k, (self.height() * k).min(display_h * 0.5))
     }
 }
 

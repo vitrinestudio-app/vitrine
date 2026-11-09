@@ -15,7 +15,8 @@ use std::sync::LazyLock;
 
 pub use devices::{
     BrowserChrome, BrowserTheme, Button, ColorVariant, Cutout, CutoutKind, CutoutShape, Device,
-    DeviceClass, DevicesFile, Edge, Laptop, LaptopBase, Rect, Screenshot, Size, Stand, StandFoot,
+    DeviceClass, DevicesFile, Edge, Laptop, LaptopBase, MIN_CHROME_SCALE, Rect, Screenshot, Size,
+    Stand, StandFoot,
 };
 pub use galleries::{Basis, CornerRadius, GalleriesFile, GalleryProfile, Measured};
 pub use targets::{

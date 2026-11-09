@@ -441,6 +441,39 @@ fn free_aspect_device_has_no_aspect_warning() {
 }
 
 #[test]
+fn browser_chrome_on_laptop_shrinks_the_expected_aspect() {
+    let elements = "
+  - id: laptop
+    kind: device
+    page: 0
+    at: {x: 500, y: 1000}
+    width: 900
+    model: macbook
+    chrome: browser
+    screenshot: site";
+    let p = project(elements, "  screenshots: web\n");
+    // The 16:10 display minus the browser bars is about 16:9.
+    let wide = shots(&[
+        ("screenshots/en/web/site.png", (1600, 900)),
+        ("screenshots/de/web/site.png", (1600, 900)),
+    ]);
+    let r = run_with(&p, &wide);
+    assert!(!has(&r, FindingCode::ScreenshotAspect), "{:#?}", r.findings);
+    let full = shots(&[
+        ("screenshots/en/web/site.png", (1600, 1000)),
+        ("screenshots/de/web/site.png", (1600, 1000)),
+    ]);
+    assert!(has(&run_with(&p, &full), FindingCode::ScreenshotAspect));
+    // Without chrome the full 16:10 display is expected.
+    let p = project(
+        &elements.replace("    chrome: browser\n", ""),
+        "  screenshots: web\n",
+    );
+    assert!(has(&run_with(&p, &wide), FindingCode::ScreenshotAspect));
+    assert!(!has(&run_with(&p, &full), FindingCode::ScreenshotAspect));
+}
+
+#[test]
 fn store_size_and_count() {
     // 1000x2000 is not an App Store size.
     let p = project("[]", "  store: {apple: {display_type: APP_IPHONE_61}}\n");

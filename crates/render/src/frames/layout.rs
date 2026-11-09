@@ -62,9 +62,6 @@ pub struct Layout<'a> {
     pub screen_radii: Radii,
 }
 
-/// Minimum lu per chrome px for `chrome: browser` on laptops / desktops.
-const MIN_CHROME_K: f64 = 0.4;
-
 /// Desktop stand outlines and their bounding rects (device-local lu).
 #[derive(Debug, Clone)]
 pub struct Stand {
@@ -269,12 +266,10 @@ impl<'a> Layout<'a> {
                 let with_chrome = dev.chrome == Some(Chrome::Browser)
                     && matches!(kind, Kind::Laptop | Kind::Desktop);
                 let (chrome, screen, screen_radii) = if with_chrome {
-                    let bc = browser_chrome();
-                    // Scales with the display width, with a floor so tab and
-                    // URL text stay legible on small laptops / monitors
-                    // (URL text ≥ 5.6 lu ≈ 7 px on a 1320 px page).
-                    let k = (display.w / bc.reference_width).max(MIN_CHROME_K);
-                    let ch = (bc.height() * k).min(display.h * 0.5);
+                    // Scales with the display width, with a floor
+                    // (`catalog::MIN_CHROME_SCALE`: URL text ≥ 5.6 lu ≈ 7 px
+                    // on a 1320 px page).
+                    let (k, ch) = browser_chrome().in_display(display.w, display.h);
                     (
                         Some(ChromeArea {
                             rect: Rect::new(display.x, display.y, display.w, ch),
