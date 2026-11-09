@@ -85,7 +85,17 @@ device frames and browser chrome from the catalog; `text` – glyph outlines
 of `core::layout` results; `export` – page/banner files, gallery previews,
 incremental manifest; plus `paint`/`blur`/`raster` helpers.
 
-`cli` – `arrangia new|render|export|validate` on top of `core` + `render`.
+`cli` – `arrangia new|render|export|validate` on top of `core` + `render`
+(templates in `core::templates`).
+
+`gui` (Phase 2, ADR 0008) – library + Tauri binary: `commands` (plain
+functions `fn(&AppState, Args) -> Result<T, CommandError>`, `dispatch` by
+name; `main.rs` only wraps them as Tauri commands), `session` (open
+project, apply/undo/redo with atomic save per transaction, revision
+conflicts, live reload via `watch`), `preview` (binary preview payload +
+cache), `settings` (settings.yaml + recent projects in SQLite), `events`,
+`dialogs`, `bridge` (dev HTTP bridge, feature `devbridge`). UI transport
+shim: `ui/js/transport.js` (`invoke`/`listen` over Tauri or the bridge).
 
 ## Stack
 
@@ -129,6 +139,10 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all
 cargo run -p arrangia-cli -- --help          # CLI (binary `arrangia`)
 cargo run -p arrangia-gui                    # start the GUI
+# dev HTTP bridge: the UI + all GUI commands in a normal browser (prints the URL;
+# --port N, --copy = work on a temp copy, --app-dir, --pick-folder/--pick-file; ADR 0008)
+cargo run -p arrangia-gui --features devbridge --bin arrangia-devbridge -- --project tests/fixtures/example
+cargo run -p arrangia-gui --release --example preview_transport   # preview payload measurements
 ARRANGIA_UPDATE_GOLDEN=1 cargo test -p arrangia-render --test golden   # rewrite golden references (review the diff!)
 
 # CLI on the example project (release build: a full export takes ~2 s)

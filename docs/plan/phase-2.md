@@ -40,27 +40,28 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] Tests incl. proptest: move → resolve puts the element where it was dropped
 
 ## 2.2 Session + commands (`gui` lib)
-- [ ] `Session`: open/new/close project, op apply with history (undo/redo),
+- [x] `Session`: open/new/close project, op apply with history (undo/redo),
       atomic save per op, revision conflict → reload, file watcher (`notify`)
       with debounce and external-change events
-- [ ] Commands: project (open/new/summary/recent), apply_ops, undo/redo,
+- [x] Commands: project (open/new/summary/recent), apply_ops, undo/redo,
       render (image/tile/gallery, size, quality) as binary, overlay data,
       validate, export with progress events + cancel, strings get/set/missing,
       assets list/import/remove (copy into project, screenshot variants),
       catalog (devices, targets, galleries, fonts), settings
-- [ ] Preview cache keyed by (strip, target, lang, image, scale, scene hash);
+      (overlay data and `edit_*` intents follow with 2.1/2.4)
+- [x] Preview cache keyed by (strip, target, lang, image, scale, scene hash);
       invalidate on op/external change; drag mode = low-res renders
-- [ ] App settings (YAML in the platform config dir): default language for
+- [x] App settings (YAML in the platform config dir): default language for
       new projects, frame style default, UI language, recent projects
       (SQLite `rusqlite` bundled, as in the concept), window state
-- [ ] File dialogs via Rust (`tauri-plugin-dialog` used from Rust only;
+- [x] File dialogs via Rust (`tauri-plugin-dialog` used from Rust only;
       web view keeps `core:default`)
-- [ ] Unit tests for session/commands without Tauri
+- [x] Unit tests for session/commands without Tauri
 
 ## 2.3 Dev HTTP bridge
-- [ ] Dev-only binary serving `ui/` + `POST /cmd/<name>` → same command
+- [x] Dev-only binary serving `ui/` + `POST /cmd/<name>` → same command
       functions; events via SSE; JS transport shim chooses Tauri or HTTP
-- [ ] Documented in CLAUDE.md; never part of the release bundle
+- [x] Documented in CLAUDE.md; never part of the release bundle
 
 ## 2.4 App shell + canvas view
 - [ ] Layout per §9.1: top bar (project, strip, target, language, variant,
