@@ -9,7 +9,19 @@ use arrangia_core::io::{self, IoError};
 use arrangia_core::model::{ElementKind, Lang, StringKey};
 
 fn sample_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/sample")
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("data")
+        .join("sample")
+}
+
+/// Reads a checked-in text file with LF line endings. The repository
+/// forces LF (`.gitattributes`), but a checkout made with
+/// `core.autocrlf=true` before that (or by other tools) has CRLF, while
+/// the writer always emits LF; the byte-exact comparisons below are about
+/// the YAML content, not the checkout's line endings.
+fn read_lf(path: &Path) -> String {
+    fs::read_to_string(path).unwrap().replace("\r\n", "\n")
 }
 
 fn copy_dir(from: &Path, to: &Path) {
@@ -29,10 +41,10 @@ fn copy_dir(from: &Path, to: &Path) {
 fn canonical_file_is_reproduced_byte_for_byte() {
     let dir = sample_dir();
     let project = Project::load(&dir).unwrap();
-    let original = fs::read_to_string(dir.join("project.yaml")).unwrap();
+    let original = read_lf(&dir.join("project.yaml"));
     assert_eq!(project.to_yaml().unwrap(), original);
     for (lang, strings) in &project.strings {
-        let file = fs::read_to_string(dir.join(format!("i18n/{lang}.yaml"))).unwrap();
+        let file = read_lf(&dir.join("i18n").join(format!("{lang}.yaml")));
         assert_eq!(io::to_yaml(strings).unwrap(), file, "i18n/{lang}.yaml");
     }
 }
@@ -51,7 +63,7 @@ fn load_save_load_is_equal_and_bumps_revision() {
 
     // Only the revision line differs from the canonical sample.
     let saved = fs::read_to_string(tmp.path().join("project.yaml")).unwrap();
-    let original = fs::read_to_string(sample_dir().join("project.yaml")).unwrap();
+    let original = read_lf(&sample_dir().join("project.yaml"));
     assert_eq!(saved.replace("revision: 8", "revision: 7"), original);
 
     // No temp files are left behind.
