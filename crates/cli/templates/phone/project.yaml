@@ -1,0 +1,109 @@
+# Arrangia project (format: docs/KONZEPT.md §3, docs/adr/0002-project-file-format.md).
+#
+# One phone strip of three pages, rendered for the iPhone 6.9" App Store
+# set, the Google Play phone set and a blog banner. Put your screenshots in
+# screenshots/<lang>/<variant>/<name>.png (variant = the target's
+# `screenshots` folder, e.g. ios-phone) or screenshots/<lang>/<name>.png;
+# missing screenshots are drawn as placeholders.
+format: arrangia/1
+revision: 0
+name: __NAME__
+languages:
+  default: __DEFAULT_LANG__
+  available: __LANGS__
+styles:
+  colors:
+    accent: "#FF7A45"
+    text: "#14213D"
+  text:
+    headline: {font: Inter, weight: 800, size: 76, line_height: 1.08, color: "@text"}
+  spans:
+    accent: {color: "@accent"}
+  shadows:
+    soft:
+      layers:
+      - {color: "#00000055", blur: 48, y: 40}
+      - {color: "#00000033", blur: 10, y: 8}
+strips:
+- id: phone
+  page: {aspect: 1320:2868, count: 3, ids: [welcome, features, start]}
+  backgrounds:
+  - kind: linear-gradient
+    angle: 155
+    stops: [["#FDF0E6", 0], ["#F9C9A9", 0.55], ["#C9D7F8", 1]]
+  elements:
+  - id: title-1
+    kind: text
+    page: 0
+    anchor_y: top
+    text: welcome.title
+    style: headline
+    box: {top: 150, left: 80, right: 80}
+    align: center
+    fit: {shrink_to: 56, max_lines: 3}
+  - id: device-1
+    kind: device
+    page: 0
+    anchor_y: bottom
+    at: {x: 500, y: 1420}
+    width: 700
+    model: iphone-island
+    screenshot: welcome
+    shadow: soft
+  - id: title-2
+    kind: text
+    page: 1
+    anchor_y: top
+    text: features.title
+    style: headline
+    box: {top: 150, left: 80, right: 80}
+    align: center
+    fit: {shrink_to: 56, max_lines: 3}
+  - id: device-2
+    kind: device
+    page: 1
+    anchor_y: bottom
+    at: {x: 500, y: 1420}
+    width: 700
+    model: iphone-island
+    screenshot: features
+    shadow: soft
+  - id: title-3
+    kind: text
+    page: 2
+    anchor_y: top
+    text: start.title
+    style: headline
+    box: {top: 150, left: 80, right: 80}
+    align: center
+    fit: {shrink_to: 56, max_lines: 3}
+  - id: device-3
+    kind: device
+    page: 2
+    anchor_y: bottom
+    at: {x: 500, y: 1420}
+    width: 700
+    model: iphone-island
+    screenshot: start
+    shadow: soft
+targets:
+- id: ios-iphone-69
+  strip: phone
+  size: [1320, 2868]
+  screenshots: ios-phone
+  gallery: appstore-iphone
+  store: {apple: {display_type: APP_IPHONE_67}}
+- id: play-phone
+  strip: phone
+  size: [1080, 2160]
+  screenshots: android-phone
+  gallery: play-phone
+  device_map: {iphone-island: android-punchhole}
+  store: {google: {image_type: phoneScreenshots}}
+- id: blog-header
+  kind: banner
+  strip: phone
+  size: [2400, 1000]
+  fit: cover
+  gaps: none
+  format: jpeg
