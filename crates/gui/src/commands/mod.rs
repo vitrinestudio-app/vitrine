@@ -20,10 +20,13 @@ mod assets;
 mod catalog;
 mod edit;
 mod export;
+mod os;
 mod project;
+mod project_settings;
 mod render;
 mod strings;
 mod system;
+mod targets;
 
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -36,10 +39,13 @@ pub use assets::*;
 pub use catalog::*;
 pub use edit::*;
 pub use export::*;
+pub use os::*;
 pub use project::*;
+pub use project_settings::*;
 pub use render::*;
 pub use strings::*;
 pub use system::*;
+pub use targets::*;
 
 use crate::dialogs::Dialogs;
 use crate::error::{CmdResult, CommandError, ErrorCode};
@@ -205,6 +211,10 @@ command_table! {
         settings_get, settings_set,
         dialog_open_project, dialog_pick_files,
         preview_stats,
+        target_get, target_add_from_preset, target_patch, target_remove,
+        project_rename, language_add, language_remove, languages_set,
+        default_language_impact, default_language_set, styles_get, styles_patch,
+        dialog_pick_folder, reveal_path,
     ],
     image: [render_image, render_canvas, render_gallery, render_preview_edit],
 }
