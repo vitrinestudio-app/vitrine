@@ -416,6 +416,39 @@ macro_rules! element_fields {
                 out
             }
 
+            /// Names of all patchable fields (YAML names, file order).
+            pub fn field_names() -> Vec<&'static str> {
+                vec![$( field_name(stringify!($field)) ),*]
+            }
+
+            /// Is `name` a patchable field?
+            pub fn is_field_name(name: &str) -> bool {
+                Self::field_names().contains(&name)
+            }
+
+            /// Remove field `name` from the patch. Returns whether it was set
+            /// (`false` also for unknown names).
+            pub fn clear_field(&mut self, name: &str) -> bool {
+                $(
+                    if name == field_name(stringify!($field)) {
+                        return self.$field.take().is_some();
+                    }
+                )*
+                false
+            }
+
+            /// A patch with only the fields of `self` named in `names`.
+            #[must_use]
+            pub fn only(&self, names: &[&str]) -> ElementPatch {
+                ElementPatch {
+                    $( $field: if names.contains(&field_name(stringify!($field))) {
+                        self.$field.clone()
+                    } else {
+                        None
+                    }, )*
+                }
+            }
+
             /// Merge `other` on top of `self` (fields of `other` win).
             #[must_use]
             pub fn merged(&self, other: &ElementPatch) -> ElementPatch {

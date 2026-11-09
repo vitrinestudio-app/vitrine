@@ -19,14 +19,15 @@
 //! - **Validation** and **catalogs** (devices, targets, gallery profiles),
 //!   the latter loaded from data files in `crates/core/data/`.
 //!
-//! Module layout (`model`, `io`, `ops`, `catalog`, `geometry`, `resolve`,
-//! `layout`, `markup`, `validate`).
+//! Module layout (`model`, `io`, `ops`, `edit`, `catalog`, `geometry`,
+//! `resolve`, `layout`, `markup`, `validate`).
 //! The file format is described in `docs/adr/0002-project-file-format.md`.
 //!
 //! ```text
 //! model/      project, strip, page, element, style, target, variant
 //! io          YAML load/save, atomic writes, revision check
 //! ops/        Op, apply, inverse, transactions, undo/redo history
+//! edit/       edit intents (gestures → ops), overlay/hit-test data
 //! geometry    page → canvas mapping, gaps, grouping, anchors, viewports
 //! resolve/    anchors, page grouping, fallbacks, device_map
 //! layout/     text layout and auto-fit
@@ -36,6 +37,7 @@
 //! ```
 
 pub mod catalog;
+pub mod edit;
 pub mod geometry;
 pub mod io;
 pub mod layout;
