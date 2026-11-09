@@ -12,6 +12,22 @@
       <h1 data-i18n="app.title">Arrangia</h1>
       <p data-i18n="app.tagline"></p>
       <p class="version"><span data-i18n="app.version"></span> <span id="app-version">…</span></p>
+      <!-- Smoke screen for the backend pipeline (task 2.3); the real shell comes in 2.4. -->
+      <section id="project" class="project" hidden>
+        <h2 id="project-name"></h2>
+        <div class="controls">
+          <label><span data-i18n="preview.target"></span> <select id="target"></select></label>
+          <label><span data-i18n="preview.lang"></span> <select id="lang"></select></label>
+          <label><span data-i18n="preview.image"></span> <select id="image"></select></label>
+        </div>
+        <canvas id="preview" width="0" height="0"></canvas>
+        <p id="preview-info" class="version"></p>
+      </section>
+      <p id="no-project" class="version" hidden>
+        <span data-i18n="project.none"></span>
+        <button id="open" type="button" data-i18n="project.open"></button>
+      </p>
+      <p id="status" class="version"></p>
     </main>
   </body>
 </html>

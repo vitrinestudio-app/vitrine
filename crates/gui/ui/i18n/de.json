@@ -1,5 +1,11 @@
 {
   "app.title": "Arrangia",
   "app.tagline": "Store-Screenshots einmal gestalten, überall ausgeben.",
-  "app.version": "Version"
+  "app.version": "Version",
+  "preview.target": "Ziel",
+  "preview.lang": "Sprache",
+  "preview.image": "Bild",
+  "project.none": "Kein Projekt geöffnet.",
+  "project.open": "Projekt öffnen…",
+  "project.changed": "Projekt auf der Platte geändert"
 }

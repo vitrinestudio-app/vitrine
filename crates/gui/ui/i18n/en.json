@@ -1,5 +1,11 @@
 {
   "app.title": "Arrangia",
   "app.tagline": "Design store screenshots once, export them everywhere.",
-  "app.version": "Version"
+  "app.version": "Version",
+  "preview.target": "Target",
+  "preview.lang": "Language",
+  "preview.image": "Image",
+  "project.none": "No project open.",
+  "project.open": "Open project…",
+  "project.changed": "Project changed on disk"
 }
