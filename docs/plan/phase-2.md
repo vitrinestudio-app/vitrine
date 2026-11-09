@@ -29,15 +29,17 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   shipped.
 
 ## 2.1 Core edit intents + missing ops (`core`)
-- [ ] `core::edit`: move (canvas point → home page/at, honours anchors, gaps,
+- [x] `core::edit`: move (canvas point → home page/at, honours anchors, gaps,
       grouping and the active variant → override), resize, rotate, set pivot,
       reorder z, duplicate, set home page explicitly
-- [ ] Hit-test/overlay data: per element its canvas-lu quad (rotated box),
+- [x] Hit-test/overlay data: per element its canvas-lu quad (rotated box),
       handles, page/column rects, gap rects for a target × lang
-- [ ] Missing ops: rename ids, move element into/out of a group, reorder,
+- [x] Missing ops: rename ids, move element into/out of a group, reorder,
       reset variant override field, set default language (with "what loses
       its fallback" report, §5.0), add/remove language
-- [ ] Tests incl. proptest: move → resolve puts the element where it was dropped
+- [x] Tests incl. proptest: move → resolve puts the element where it was dropped
+- ADR 0007 (edit intents); open: group pivots on the canvas, ungroup
+  with variant overrides of the group
 
 ## 2.2 Session + commands (`gui` lib)
 - [ ] `Session`: open/new/close project, op apply with history (undo/redo),
