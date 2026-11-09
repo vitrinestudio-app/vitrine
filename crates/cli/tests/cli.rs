@@ -313,3 +313,51 @@ fn failures_exit_with_code_2() {
     let o = arrangia(&["validate", "--format", "xml"]);
     assert_eq!(code(&o), 2);
 }
+
+/// The example project (`tests/fixtures/example`) is clean (no errors or
+/// warnings) and exports. A full export (8 targets × 2 languages, 68 files)
+/// takes about two CPU minutes in a debug build, so this exports the web
+/// targets only (browser frame, notebook with browser chrome, JPEG,
+/// gallery preview); `crates/render/tests/golden.rs` renders every
+/// target at reduced scale.
+#[test]
+fn example_project_validates_and_exports() {
+    let root = repo_file("tests/fixtures/example");
+    let o = arrangia_in(&root, &["validate", "--strict"]);
+    assert_eq!(code(&o), 0, "{}\n{}", stdout(&o), stderr(&o));
+    assert!(
+        stdout(&o).contains("0 errors, 0 warnings"),
+        "{}",
+        stdout(&o)
+    );
+
+    let tmp = tempfile::tempdir().unwrap();
+    let out = tmp.path().join("export");
+    let o = arrangia_in(
+        &root,
+        &[
+            "export",
+            "--target",
+            "web-slides",
+            "--target",
+            "open-graph",
+            "--out",
+            out.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}\n{}", stdout(&o), stderr(&o));
+    assert!(stdout(&o).contains("8 files written"), "{}", stdout(&o));
+    for lang in ["en", "de"] {
+        let dir = out.join("web-slides").join(lang);
+        for file in ["01_plots.jpg", "02_seeds.jpg"] {
+            assert!(dir.join(file).is_file(), "{lang}/{file} missing");
+        }
+        assert!(png_size(&dir.join("_gallery.png")).1 > 0);
+        assert!(
+            out.join("open-graph")
+                .join(lang)
+                .join("banner.jpg")
+                .is_file()
+        );
+    }
+}
