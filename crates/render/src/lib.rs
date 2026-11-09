@@ -22,6 +22,7 @@ pub mod frames;
 pub mod geometry;
 pub mod paint;
 pub mod raster;
+pub mod spike;
 pub mod text;
 
 /// Page width in lu as defined by `arrangia-core`.
