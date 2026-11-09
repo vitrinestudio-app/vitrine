@@ -22,6 +22,7 @@
 mod engine;
 pub mod fonts;
 mod report;
+mod scene;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -32,6 +33,7 @@ use serde::{Deserialize, Serialize};
 pub use engine::TextLayouter;
 pub use fonts::{FontDirReport, FontError, FontFace, FontId, FontLibrary, FontSource};
 pub use report::LayoutReport;
+pub use scene::{PlacedText, layout_text, span_styles};
 
 use crate::model::{Align, ColorRef, Rgba, SpanStyle, TextFit, TextStyle, TextTransform, VAlign};
 
