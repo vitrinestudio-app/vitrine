@@ -22,7 +22,7 @@ use arrangia_core::model::{Align, Appearance, FrameStyle as ModelFrameStyle, Rgb
 use arrangia_core::resolve::{DeviceColor, ResolvedDevice};
 use tiny_skia::{FillRule, Path, PathBuilder, Pixmap, PixmapMut, PixmapPaint, Stroke, Transform};
 
-use crate::frames::{self as spike, Button, FrameColors, FrameStyle};
+use super::spike_frames::{self as spike, Button, FrameColors, FrameStyle};
 use crate::geometry::Rect;
 use crate::paint::{self, circle, round_rect, solid};
 
