@@ -9,6 +9,7 @@ import { api, listen } from './api.js';
 import { createAssistantIndicator, initAssistant } from './assistant.js';
 import { openAppSettings } from './dialogs/app-settings.js';
 import { openExport } from './dialogs/export.js';
+import { initUploadConfirm, openUpload } from './dialogs/upload.js';
 import { openScreenshotImport } from './dialogs/screenshot-import.js';
 import { openProjectSettings } from './dialogs/project-settings.js';
 import { openTargets } from './dialogs/targets.js';
@@ -38,6 +39,7 @@ const appActions = {
   projectSettings: () => openProjectSettings(),
   targets: () => openTargets().catch(report),
   exportDialog: () => openExport(),
+  uploadDialog: () => openUpload(),
   importScreenshots: () => openScreenshotImport().catch(report),
   appSettings: () => openAppSettings().catch(report),
   closeProject: () => closeProject().catch(report),
@@ -151,6 +153,8 @@ async function start() {
   // AI assistants over MCP (ADR 0015): their edits show live, projects they open
   // replace the start screen.
   await initAssistant({ onProjectOpened: projectOpened, onProjectClosed: projectClosed });
+  // Store uploads requested by an assistant need the user's click (ADR 0018).
+  await initUploadConfirm();
   bindAppShortcuts(appActions);
   await bindFolderDrop();
   await listen('project-changed', (change) => {

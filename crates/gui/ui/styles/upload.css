@@ -1,0 +1,191 @@
+/* Store upload dialog and the MCP upload confirmation (js/dialogs/upload.js). */
+
+.up-config {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.up-tabs {
+  padding: 0;
+  max-width: 360px;
+}
+
+.up-options {
+  gap: 16px;
+  align-items: center;
+}
+
+.up-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.up-store {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.up-store-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.up-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-small);
+}
+
+.up-table th,
+.up-table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.up-table th {
+  color: var(--fg-muted);
+  font-weight: 500;
+}
+
+.up-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.up-row.up-unchanged,
+.up-row.up-skip {
+  color: var(--fg-muted);
+}
+
+.up-action {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--radius);
+  background: var(--bg-active);
+  white-space: nowrap;
+}
+
+.up-action-new,
+.up-action-replace {
+  color: var(--accent);
+}
+
+.up-action-blocked {
+  color: var(--danger);
+}
+
+.up-problems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.up-problem {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.up-problem svg.icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
+
+.up-problem.bad,
+.up-problem.error {
+  color: var(--danger);
+}
+
+.up-problem.warn {
+  color: var(--warning);
+}
+
+.up-problem.info {
+  color: var(--fg-muted);
+}
+
+.up-warn {
+  color: var(--warning);
+}
+
+.up-totals {
+  font-weight: 500;
+}
+
+.up-empty {
+  padding: 20px 0;
+}
+
+.up-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.up-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.up-status-done {
+  color: var(--success);
+}
+
+.up-status-failed {
+  color: var(--danger);
+}
+
+.up-status-paused,
+.up-status-cancelled {
+  color: var(--warning);
+}
+
+.up-status-pending,
+.up-status-skipped {
+  color: var(--fg-muted);
+}
+
+.up-error {
+  color: var(--danger);
+}
+
+.up-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.up-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 50vh;
+  overflow: auto;
+}
+
+.up-mcp-intro {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: var(--warning);
+  font-weight: 500;
+}
+
+.up-mcp-intro svg.icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}

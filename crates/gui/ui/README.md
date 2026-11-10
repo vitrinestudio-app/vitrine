@@ -46,10 +46,13 @@ js/dialogs/modal.js   <dialog> helper (openModal, choiceDialog, confirmDialog,
                       promptDialog) + form controls (row, input, select…)
 js/dialogs/*.js       targets editor, validation popover, export, project
                       and app settings; stores.js = store accounts (app
-                      settings) + store mapping tab (project settings)
+                      settings) + store mapping tab (project settings);
+                      upload.js = "Upload to stores…" (plan table → confirm →
+                      progress → result/log) + MCP upload confirmation dialog
 styles/{dialogs,targets,start,settings}.css   styles of the above
 styles/{textedit,translations,assets}.css      text editor, translations, assets
 styles/assistant.css  indicator, activity popover, toasts, glow, settings section
+styles/upload.css     upload dialog, plan table, MCP upload confirmation
 ```
 
 Dialogs use `openModal({ title, body, footer, size })` from

@@ -80,6 +80,17 @@ export const api = {
   stylesPatch: (patch) => invoke('styles_patch', patch),
   export: (args) => invoke('export', args),
   exportCancel: () => invoke('export_cancel'),
+  // ----- store upload (Phase 5.5, ADR 0018) -----
+  /** Dry run `{store?, targets?, langs?, remote?, force?}` → plan with `confirm_token`. */
+  uploadPlan: (args) => invoke('upload_plan', args),
+  /** Starts the run of a planned upload (returns at once; progress via `upload-progress`). */
+  uploadExecute: (token, opts = {}) => invoke('upload_execute', { token, ...opts }),
+  /** `{run, pending_confirmations}`. */
+  uploadStatus: () => invoke('upload_status'),
+  uploadCancel: () => invoke('upload_cancel'),
+  uploadLog: (args = {}) => invoke('upload_log', args),
+  /** The user's answer to an assistant's upload request. */
+  uploadConfirm: (id, approved) => invoke('upload_confirm', { id, approved }),
 
   /** Overlay (hit-test) data of the view. */
   overlay: (view) => invoke('overlay', view),

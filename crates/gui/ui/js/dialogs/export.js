@@ -9,6 +9,7 @@ import { h, icon } from '../dom.js';
 import { t } from '../i18n.js';
 import { store } from '../store.js';
 import { checkbox, errorLine, input, openModal, row } from './modal.js';
+import { openUpload } from './upload.js';
 
 const revealLabel = () => (/Mac/.test(navigator.platform) ? t('export.reveal.mac') : /Win/.test(navigator.platform) ? t('export.reveal.win') : t('export.reveal'));
 
@@ -91,7 +92,27 @@ export function openExport() {
     cls: 'dlg-export',
     dismissable: true,
     body: [err.el, config, progress, summary],
-    footer: [h('span', { class: 'count muted small' }), h('span', { class: 'spacer' }), closeBtn, cancelBtn, startBtn],
+    footer: [
+      h('span', { class: 'count muted small' }),
+      h(
+        'button',
+        {
+          class: 'btn btn-small',
+          type: 'button',
+          title: t('upload.link.hint'),
+          onclick: () => {
+            m.close();
+            openUpload();
+          },
+        },
+        icon('upload'),
+        t('upload.link'),
+      ),
+      h('span', { class: 'spacer' }),
+      closeBtn,
+      cancelBtn,
+      startBtn,
+    ],
     onClose: () => {
       if (running) api.exportCancel().catch(() => {});
     },
