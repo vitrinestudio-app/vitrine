@@ -1,5 +1,6 @@
 // Export dialog (task 2.9): targets × languages matrix, output folder,
-// force re-render, gallery previews; progress from `export-progress`
+// layout (standard | fastlane), force re-render, gallery previews,
+// index.html overview; progress from `export-progress`
 // events, cancel, summary with written/skipped counts and issues, "Show in
 // Finder/Explorer". Cells with the same language set are exported in one
 // `export` call (targets × langs is a cross product in the backend).
@@ -8,7 +9,7 @@ import { api, listen } from '../api.js';
 import { h, icon } from '../dom.js';
 import { t } from '../i18n.js';
 import { store } from '../store.js';
-import { checkbox, errorLine, input, openModal, row } from './modal.js';
+import { checkbox, errorLine, input, openModal, row, segmented } from './modal.js';
 import { openUpload } from './upload.js';
 
 const revealLabel = () => (/Mac/.test(navigator.platform) ? t('export.reveal.mac') : /Win/.test(navigator.platform) ? t('export.reveal.win') : t('export.reveal'));
@@ -28,12 +29,22 @@ export function openExport() {
   let outDir = null;
   let force = false;
   let gallery = true;
+  let layout = 'standard';
+  let html = true;
   let running = false;
   let cancelled = false;
 
   const err = errorLine();
   const matrix = h('div', { class: 'ex-matrix-wrap' });
   const outInput = input({ value: '', placeholder: `${s.dir}/export`, cls: 'grow', onchange: (v) => (outDir = v.trim() || null) });
+  const galleryBox = checkbox({ label: t('export.gallery'), checked: gallery, onchange: (v) => (gallery = v) });
+  const setLayout = (v) => {
+    layout = v;
+    outInput.placeholder = v === 'fastlane' ? `${s.dir}/export/fastlane` : `${s.dir}/export`;
+    const box = galleryBox.querySelector('input');
+    box.disabled = v === 'fastlane';
+    galleryBox.title = v === 'fastlane' ? t('export.gallery.fastlane') : '';
+  };
   const progress = h('div', { class: 'ex-progress', hidden: true });
   const summary = h('div', { class: 'ex-summary', hidden: true });
   const startBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => start() }, t('export.start'));
@@ -75,12 +86,25 @@ export function openExport() {
         t('export.folder.hint'),
       ),
       row(
+        t('export.layout'),
+        segmented({
+          options: [
+            { value: 'standard', label: t('export.layout.standard') },
+            { value: 'fastlane', label: t('export.layout.fastlane') },
+          ],
+          value: layout,
+          onchange: setLayout,
+        }),
+        t('export.layout.hint'),
+      ),
+      row(
         t('export.options'),
         h(
           'div',
           { class: 'inline wrap' },
           checkbox({ label: t('export.force'), checked: force, onchange: (v) => (force = v) }),
-          checkbox({ label: t('export.gallery'), checked: gallery, onchange: (v) => (gallery = v) }),
+          galleryBox,
+          checkbox({ label: t('export.html'), checked: html, title: t('export.html.hint'), onchange: (v) => (html = v) }),
         ),
       ),
     ),
@@ -210,7 +234,7 @@ export function openExport() {
       });
       for (job = 0; job < list.length && !cancelled; job++) {
         step.textContent = t('export.preparing');
-        reports.push(await api.export({ ...list[job], force, gallery, ...(outDir ? { out_dir: outDir } : {}) }));
+        reports.push(await api.export({ ...list[job], force, gallery, layout, html, ...(outDir ? { out_dir: outDir } : {}) }));
         if (reports.at(-1).cancelled) cancelled = true;
       }
     } catch (e) {
@@ -233,6 +257,9 @@ export function openExport() {
     const skipped = files.length - written;
     const errors = reports.flatMap((r) => r.errors);
     const issues = reports.flatMap((r) => r.issues ?? []);
+    const notes = reports.flatMap((r) => r.notes ?? []).filter((n) => n.level !== 'error');
+    const removed = reports.flatMap((r) => r.removed ?? []);
+    const index = reports.map((r) => r.index).find(Boolean);
     const dir = reports[0]?.out_dir;
     summary.hidden = false;
     const parts = [
@@ -251,10 +278,22 @@ export function openExport() {
         h('dd', {}, String(skipped)),
         h('dt', {}, t('export.issues_label')),
         h('dd', {}, String(issues.length)),
+        removed.length ? h('dt', {}, t('export.removed')) : null,
+        removed.length ? h('dd', { title: removed.join('\n') }, String(removed.length)) : null,
         h('dt', {}, t('export.folder')),
         h('dd', { class: 'mono small', title: dir ?? '' }, dir ?? '–'),
+        index ? h('dt', {}, t('export.html.file')) : null,
+        index ? h('dd', { class: 'mono small' }, index) : null,
       ),
       errors.length ? h('ul', { class: 'ex-errors' }, errors.map((e) => h('li', {}, e))) : null,
+      notes.length
+        ? h(
+            'details',
+            { class: 'ex-issues', open: true },
+            h('summary', {}, `${notes.length} ${t('export.notes')}`),
+            h('ul', {}, notes.slice(0, 200).map((n) => h('li', { class: 'small' }, `${n.target}${n.lang ? ` ${n.lang}` : ''}: ${n.message}`))),
+          )
+        : null,
       issues.length
         ? h(
             'details',

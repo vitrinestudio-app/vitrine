@@ -3,8 +3,9 @@
 
 use std::path::PathBuf;
 
+use arrangia_core::fastlane::NoteLevel;
 use arrangia_core::resolve::Level;
-use arrangia_render::export::{ExportOptions, ExportReport, IssueSource, export};
+use arrangia_render::export::{ExportLayout, ExportOptions, ExportReport, IssueSource, export};
 use clap::Args;
 
 use crate::term::{Style, plural};
@@ -18,9 +19,18 @@ pub struct ExportArgs {
     /// Only this language; repeat for more (default: each target's languages).
     #[arg(long = "lang", value_name = "LANG")]
     pub langs: Vec<String>,
-    /// Export folder (default: `<project>/export`).
+    /// Export folder (default: `<project>/export`, with `--layout fastlane`
+    /// `<project>/export/fastlane`).
     #[arg(long, value_name = "DIR")]
     pub out: Option<PathBuf>,
+    /// Folder structure: `standard` (`<target>/<lang>/…`) or `fastlane`
+    /// (`screenshots/<locale>/…` for deliver, `metadata/android/<locale>/
+    /// images/<type>/…` for supply; no gallery previews).
+    #[arg(long, value_name = "LAYOUT", default_value = "standard")]
+    pub layout: ExportLayout,
+    /// Do not write the `index.html` overview of the exported files.
+    #[arg(long)]
+    pub no_html: bool,
     /// Do not write `_gallery.png` store gallery previews.
     #[arg(long)]
     pub no_gallery: bool,
@@ -48,6 +58,8 @@ pub fn run(args: &ExportArgs, global: &Global) -> anyhow::Result<u8> {
         &ctx,
         &ExportOptions {
             out_dir: args.out.clone(),
+            layout: args.layout,
+            html: !args.no_html,
             targets: args.targets.clone(),
             langs: args.langs.clone(),
             gallery: !args.no_gallery,
@@ -158,6 +170,23 @@ fn print_text(report: &ExportReport, global: &Global) {
             );
         }
     }
+    if !global.quiet {
+        for n in report.notes.iter().filter(|n| n.level != NoteLevel::Error) {
+            let level = match n.level {
+                NoteLevel::Info => style.info("info "),
+                _ => style.warn("warn "),
+            };
+            let scope = match &n.lang {
+                Some(l) => format!("[{}/{l}]", n.target),
+                None if n.target.is_empty() => "[fastlane]".to_owned(),
+                None => format!("[{}]", n.target),
+            };
+            println!("{level} {} {}", style.dim(&scope), n.message);
+        }
+        for r in &report.removed {
+            println!("{} {r}", style.dim("removed stale"));
+        }
+    }
     for e in &report.errors {
         println!("{} {e}", style.error("error"));
     }
@@ -171,6 +200,10 @@ fn print_text(report: &ExportReport, global: &Global) {
             report.out_dir.display(),
             report.total_ms
         );
+        let summary = match &report.index {
+            Some(i) => format!("{summary}; overview {}", report.out_dir.join(i).display()),
+            None => summary,
+        };
         if report.errors.is_empty() {
             println!("{} {summary}", style.ok("Exported:"));
         } else {

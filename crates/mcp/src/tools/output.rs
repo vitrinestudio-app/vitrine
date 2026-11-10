@@ -110,9 +110,26 @@ pub struct ExportParams {
     /// Export folder (default `<project>/export`).
     #[serde(default)]
     pub out_dir: Option<PathBuf>,
-    /// Also write `_gallery.png` previews (default true).
+    /// Also write `_gallery.png` previews (default true; never in the
+    /// fastlane layout).
     #[serde(default)]
     pub gallery: Option<bool>,
+    /// Folder structure (default `standard`: `<target>/<lang>/…`).
+    /// `fastlane`: folders `fastlane deliver` / `supply` upload as they are
+    /// (default folder `<project>/export/fastlane`).
+    #[serde(default)]
+    pub layout: Option<ExportLayout>,
+    /// Write the `index.html` overview of all exported files (default true).
+    #[serde(default)]
+    pub html: Option<bool>,
+}
+
+/// Export folder structure.
+#[derive(Debug, Clone, Copy, Deserialize, serde::Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ExportLayout {
+    Standard,
+    Fastlane,
 }
 
 /// Target and language of a preview (defaults filled in).
@@ -449,7 +466,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Export the store files (pages, page groups, banners, gallery previews) for targets × languages into <project>/export (incremental: unchanged files are skipped). Sends progress notifications when the client asks for them. Returns the folder, counts, every file (path, size, skipped) and issues. Example: {\"targets\": [\"ios-iphone-69\"], \"langs\": [\"en\", \"de\"]}."
+        description = "Export the store files (pages, page groups, banners, gallery previews) for targets × languages into <project>/export (incremental: unchanged files are skipped; files of the same targets × languages it no longer produces are removed; writes an index.html overview unless html: false). layout: \"fastlane\" writes fastlane-ready folders instead (<project>/export/fastlane: screenshots/<asc-locale>/ for deliver, metadata/android/<play-locale>/images/<type>/ for supply; targets without a store slot are left out, upload-set conflicts are errors, see `notes`). Sends progress notifications when the client asks for them. Returns the folder, counts, every file (path, size, skipped) and issues. Example: {\"targets\": [\"ios-iphone-69\"], \"langs\": [\"en\", \"de\"]}."
     )]
     async fn export(
         &self,
@@ -508,6 +525,12 @@ impl ArrangiaMcp {
                 if let Some(g) = p.gallery {
                     args["gallery"] = json!(g);
                 }
+                if let Some(l) = p.layout {
+                    args["layout"] = json!(l);
+                }
+                if let Some(h) = p.html {
+                    args["html"] = json!(h);
+                }
                 let r = cmd(app, "export", args)?;
                 let files: Vec<Value> = r["files"]
                     .as_array()
@@ -534,7 +557,8 @@ impl ArrangiaMcp {
                     json!({
                         "out_dir": r["out_dir"], "files": files, "written": written,
                         "issues": r["issues"], "errors": r["errors"], "cancelled": r["cancelled"],
-                        "total_ms": r["total_ms"],
+                        "total_ms": r["total_ms"], "layout": r["layout"], "notes": r["notes"],
+                        "removed": r["removed"], "index": r["index"],
                     }),
                 ))
             })
