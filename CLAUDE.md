@@ -161,9 +161,9 @@ the log), `log` (`<project>/.cache/uploads.sqlite`: plans, runs, sets,
 files, redacted events), `remote` (clients from account + keychain,
 `AppleUploadFlow` trait, flow selection `store.apple.upload_flow`
 auto|asset_library|screenshot_sets via `open_apple`/`route`), `library`
-(`AssetLibraryFlow`, the default, ADR 0019: placement groups resolved at
-runtime from the ref data with `core/data/asset-library.yaml`, content
-marker in `referenceName`; `ScreenshotSetFlow` is the fallback), `exec` (run thread: Apple per set,
+(`AssetLibraryFlow`, ADR 0019: placement groups resolved at runtime from
+the ref data with `core/data/asset-library.yaml`, content marker in
+`referenceName`; `auto` = sets + Duo/creative via the library), `exec` (run thread: Apple per set,
 Google one edit, progress events `upload-progress`/`upload-finished`,
 cancel, rate-limit pauses; resume = new plan, done sets are unchanged),
 `policy` (MCP rule table: GUI-hosted needs the user's "Confirm upload"

@@ -55,7 +55,8 @@ replaces it) – open question in ADR 0017.
 - [~] Rate limits / retries / resume after abort; log every step – client
       side done (retry/backoff/Retry-After, cancel, observer hook, progress
       events, idempotent deletes); resume + upload log belong to 5.5
-- [x] App Asset Library backend (ADR 0019, 2026-11-10; default flow):
+- [x] App Asset Library backend (ADR 0019, 2026-11-10; `auto` uses it
+      only for Duo/creative slots, `upload_flow: asset_library` for all):
       library, ref data, images (commit without checksum), placements,
       ordering requests; `store.apple.upload_flow` auto/asset_library/
       screenshot_sets; header/search results placements

@@ -1052,8 +1052,8 @@
   "upload.asset_types.raw_groups": "Alle Platzierungsgruppen ({n})",
   "upload.asset_types.raw_types": "Alle Platzierungstypen ({n})",
   "stores.apple.upload_flow": "Upload-Verfahren",
-  "stores.apple.upload_flow.auto": "Automatisch (App Asset Library, sonst Screenshot-Sets)",
+  "stores.apple.upload_flow.auto": "Automatisch (Screenshot-Sets; iPhone Duo, Kopfzeile und Suchergebnisse über die App Asset Library)",
   "stores.apple.upload_flow.asset_library": "Nur App Asset Library",
   "stores.apple.upload_flow.screenshot_sets": "Nur Screenshot-Sets (ältere API)",
-  "stores.apple.upload_flow.hint": "Die App Asset Library ist Apples aktuelle API; iPhone Duo, Kopfzeilen- und Suchergebnis-Assets brauchen sie."
+  "stores.apple.upload_flow.hint": "Screenshot-Sets sind das geprüfte Verfahren. Die App Asset Library ist Apples neuere API (noch nicht im echten Upload erprobt); iPhone Duo, Kopfzeilen- und Suchergebnis-Assets brauchen sie."
 }

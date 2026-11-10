@@ -1,7 +1,9 @@
 # 0019 – App Store Connect App Asset Library upload flow
 
-- Status: accepted (user decision 2026-11-10: the asset library is the
-  default; real run with a key pending)
+- Status: accepted (library built 2026-11-10; untested against the real
+  API. Default `auto` = screenshot sets + library-only slots via the
+  library; making the library the default after a verified real run is an
+  open question for the user)
 - Date: 2026-11-10
 - Amends: ADR 0017 ("Deprecation"), ADR 0018 ("Apple flow abstraction")
 
@@ -103,26 +105,29 @@ Slots with `placement` and `APP_IPHONE_DUO` never go into the set-based
 flow.
 
 **Flow selection** – `store.apple.upload_flow` in `project.yaml`
-(project store settings → "Upload method"): `auto` (default, not written),
-`asset_library`, `screenshot_sets`.
+(project store settings → "Upload method"). Conservative default (the
+set flow is the one verified in a real upload; the library is not yet):
 
-- Local plan: `flow` = `asset_library` unless `screenshot_sets`; each set
-  shows its placement (`APP_SCREENSHOT · IPHONE_DUO`); a slot without
-  mapping falls back to sets under `auto` (info `no_placement_mapping`), is
-  blocking otherwise. Duo and creative slots never go into a screenshot
-  set: with `screenshot_sets` they are **skipped** (action `skip`, warning
-  `needs_asset_library`, not rendered) and the other sets still upload.
-- Remote plan / run (`remote::open_apple`): app + editable version, then
-  the library and the ref data. `auto` falls back to the set API for the
-  whole store when the library is not available (403, 404, 400/409/422);
-  the plan shows `flow: screenshot_sets` + `flow_note`, and its Duo /
-  creative sets are skipped (`needs_asset_library`; a run marks such a set
-  `skipped`). Forced
-  `asset_library` → blocking `asset_library_unavailable`. Per set
-  (`remote::route`): groups resolved → `placement: "APP_SCREENSHOT →
-  IPHONE_…_PROFILE"`; no group → under `auto` the set uses the set API
-  (`set.flow`, info `flow_fallback`) unless it is library-only (blocking
-  `no_placement_group`).
+| setting | screenshot slots the set API supports | Duo, creative placements |
+|---|---|---|
+| `auto` (default, not written) | screenshot sets | asset library; skipped if unavailable |
+| `asset_library` (opt-in, testing) | asset library (no group → set API, info `flow_fallback`) | asset library |
+| `screenshot_sets` | screenshot sets | skipped (`needs_asset_library`) |
+
+- The store's `flow` is the base flow (`auto` → `screenshot_sets`); a set
+  going another way carries `set.flow` (`auto`: `asset_library` on Duo /
+  creative sets). Library sets show their placement (locally
+  `APP_SCREENSHOT · IPHONE_DUO`, after the remote check `APP_SCREENSHOT →
+  IPHONE_…_PROFILE`).
+- Skipped library-only sets: action `skip`, warning `needs_asset_library`,
+  not rendered; the other sets still upload; a run marks such a set
+  `skipped`. They never go into a screenshot set.
+- Remote plan / run (`remote::open_apple`): app + editable version; the
+  library and the ref data only when a set needs them (`wants_library`).
+  `auto` without access (403, 404, 400/409/422) → `flow_note`, its
+  library-only sets skipped; `asset_library` without access → blocking
+  `asset_library_unavailable`. A library-only slot without a group in the
+  ref data → blocking `no_placement_group` (`remote::route`, `NoRoute`).
 
 **Asset library flow** (`app::upload::library::AssetLibraryFlow`, second
 `AppleUploadFlow`), per set (locale × slot):
@@ -160,8 +165,10 @@ its candidate groups with image sizes. Only GETs.
 
 ## Consequences
 
-- Duo and header/search assets can be uploaded; screenshots no longer use
-  deprecated endpoints when the library is available.
+- Duo and header/search assets can be uploaded. Screenshots still use the
+  deprecated set endpoints under `auto` until the user decides to switch
+  the default after a verified real run (`upload_flow: asset_library`
+  tries it per project).
 - The mapping file and the size-based group choice are assumptions until
   the user runs `arrangia upload refdata` with the real key (display
   classes of the 6.5"/5.5" classes, header/search group ids, Duo groups).

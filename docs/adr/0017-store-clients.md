@@ -222,8 +222,10 @@ question is listed in `docs/plan/STATUS.md` → "Open questions for the user".
 
 ## Amendment 2026-11-10 (b) – App Asset Library
 
-The open question above is decided (user, 2026-11-10): the **App Asset
-Library is the default** Apple flow, the set-based flow stays as fallback.
+The App Asset Library flow is built (2026-11-10). Default (`auto`): the
+set-based flow for everything it supports, the library only for iPhone
+Duo and the creative assets; `asset_library` opts in per project. Making
+the library the default is still open (after a verified real run).
 Its verified endpoints, enums and the client calls
 (`arrangia_publish::apple::library`) are in **ADR 0019**. The part upload
 is shared (`Client::transfer_parts`); asset-library commits send

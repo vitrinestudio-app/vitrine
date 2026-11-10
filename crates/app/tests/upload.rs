@@ -1082,13 +1082,10 @@ async fn plan_local_then_remote() {
     assert_eq!(s["action"], "new");
     assert_eq!(s["images"].as_array().unwrap().len(), 2);
     assert_eq!(s["images"][0]["index"], 1);
-    // `auto` starts with the asset library …
-    assert_eq!(p["stores"][0]["flow"], "asset_library");
+    // `auto`: screenshot sets for everything the set API supports.
+    assert_eq!(p["stores"][0]["flow"], "screenshot_sets");
     assert_eq!(p["stores"][0]["flow_setting"], "auto");
-    assert_eq!(
-        s["placement"],
-        "APP_SCREENSHOT · IPHONE_DYNAMIC_ISLAND_LARGE_DISPLAY"
-    );
+    assert!(s.get("placement").is_none() && s.get("flow").is_none());
     assert_eq!(p["stores"][1]["flow"], "edit");
     assert!(p["stores"][0].get("remote").is_none());
     assert!(
@@ -1102,15 +1099,16 @@ async fn plan_local_then_remote() {
         r["stores"][0]["remote"]["version"],
         "1.0 PREPARE_FOR_SUBMISSION"
     );
-    // … and falls back to the set API: this fake store has no asset library.
+    // No library-only set: the library is not even asked.
     assert_eq!(r["stores"][0]["flow"], "screenshot_sets");
+    assert!(r["stores"][0].get("flow_note").is_none());
     assert!(
-        r["stores"][0]["flow_note"]
-            .as_str()
+        !e.asc
+            .lock()
             .unwrap()
-            .contains("App Asset Library is not available"),
-        "{:#}",
-        r["stores"][0]
+            .seen
+            .iter()
+            .any(|x| x.contains("assetLibrary") || x.contains("RefData"))
     );
     let en = set(&r, "iphone", "en");
     assert_eq!(en["action"], "replace");
@@ -1988,6 +1986,14 @@ fn lib_project(flow: &str) -> String {
     LIB_PROJECT.replace("FLOW", flow)
 }
 
+/// `PROJECT` with `upload_flow: asset_library` (everything via the library).
+fn library_project() -> String {
+    PROJECT.replace(
+        r#"app_id: "1234567890"}"#,
+        r#"app_id: "1234567890", upload_flow: asset_library}"#,
+    )
+}
+
 /// `<file stem> [<sha256[..12]>]` of a plan set's images, in order.
 fn references(plan: &Value, target: &str, lang: &str) -> Vec<String> {
     set(plan, target, lang)["images"]
@@ -2011,7 +2017,7 @@ fn library_uploads(asc: &Asc) -> usize {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn asset_library_uploads_places_and_orders() {
-    let e = env_with(&lib_project("")).await;
+    let e = env_with(&lib_project(", upload_flow: asset_library")).await;
     e.asc.lock().unwrap().library = true;
     let args = json!({ "store": "apple", "langs": ["en"], "remote": true });
     let r = plan(&e.app, args.clone());
@@ -2088,7 +2094,7 @@ async fn asset_library_uploads_places_and_orders() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn asset_library_reuses_assets_and_deletes_old_ones() {
-    let e = env().await;
+    let e = env_with(&library_project()).await;
     e.asc.lock().unwrap().library = true;
     let local = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
     let refs = references(&local, "iphone", "en");
@@ -2141,7 +2147,7 @@ async fn asset_library_reuses_assets_and_deletes_old_ones() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn asset_library_failed_processing_changes_no_placement() {
-    let e = env().await;
+    let e = env_with(&library_project()).await;
     e.asc.lock().unwrap().library = true;
     let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
     let names = plan_images(&p, "iphone", "en", "file_name");
@@ -2221,8 +2227,8 @@ async fn forced_asset_library_without_access_blocks() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn auto_uses_the_set_api_for_a_slot_without_group() {
-    let project = PROJECT
+async fn asset_library_uses_the_set_api_for_a_slot_without_group() {
+    let project = library_project()
         .replace("size: [1320, 2868]", "size: [1242, 2688]")
         .replace("APP_IPHONE_67", "APP_IPHONE_65");
     let e = env_with(&project).await;
@@ -2297,13 +2303,6 @@ async fn refdata_is_read_only_and_resolves_the_mapping() {
     let r = call(&e.app, "upload_refdata", json!({ "app": "1234567890" }));
     assert!(r["app"].get("library_id").is_none());
     assert!(r["app"]["library_error"].is_string());
-    // `auto` falls back to the set API on 403 too.
-    let p = plan(
-        &e.app,
-        json!({ "store": "apple", "langs": ["en"], "remote": true }),
-    );
-    assert_eq!(p["stores"][0]["flow"], "screenshot_sets");
-    assert!(p["stores"][0]["flow_note"].is_string());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -2361,5 +2360,49 @@ async fn auto_fallback_skips_duo_and_creative_sets() {
         asc.sets.iter().all(|(_, _, d)| d == "APP_IPHONE_67"),
         "nothing else went into a screenshot set: {:?}",
         asc.sets
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn auto_sends_only_library_only_sets_through_the_library() {
+    let e = env_with(&lib_project("")).await;
+    e.asc.lock().unwrap().library = true;
+    let local = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
+    assert_eq!(local["stores"][0]["flow"], "screenshot_sets");
+    assert!(set(&local, "iphone", "en").get("flow").is_none());
+    for t in ["duo", "header"] {
+        assert_eq!(set(&local, t, "en")["flow"], "asset_library", "{t}");
+    }
+    let r = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    assert_eq!(r["blocked"], false, "{r:#}");
+    assert_eq!(r["stores"][0]["flow"], "screenshot_sets");
+    assert!(set(&r, "iphone", "en").get("placement").is_none());
+    assert_eq!(
+        set(&r, "duo", "en")["placement"],
+        "APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE"
+    );
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    let asc = e.asc.lock().unwrap();
+    // iPhone via the screenshot set, Duo and header via the library.
+    assert_eq!(
+        asc.checksums("en-US", "APP_IPHONE_67"),
+        plan_images(&r, "iphone", "en", "md5")
+    );
+    assert!(asc.sets.iter().all(|(_, _, d)| d == "APP_IPHONE_67"));
+    assert_eq!(
+        asc.placed("en-US", "IPHONE_DUO_OUTER_PROFILE"),
+        references(&r, "duo", "en")
+    );
+    assert_eq!(
+        asc.placed("en-US", "IPHONE_HEADER_PROFILE"),
+        references(&r, "header", "en")
+    );
+    assert!(
+        asc.placed("en-US", "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE")
+            .is_empty()
     );
 }

@@ -58,7 +58,8 @@ use serde_json::json;
 use super::library::AssetLibraryFlow;
 use super::log::UploadLog;
 use super::remote::{
-    self, AppleUploadFlow as _, ReplaceOptions, Route, ScreenshotSetFlow, SetHooks, UploadFile,
+    self, AppleUploadFlow as _, NoRoute, ReplaceOptions, Route, ScreenshotSetFlow, SetHooks,
+    UploadFile,
 };
 use super::{
     PlanSet, StorePlan, UPLOAD_FINISHED, UPLOAD_PROGRESS, UploadConfig, UploadPlan, now_secs,
@@ -187,6 +188,9 @@ pub struct RunHandle {
     stalled: AtomicBool,
     /// The final report is written (by the executor or the watchdog).
     finalized: AtomicBool,
+    /// `upload-finished` was emitted: [`RunHandle::wait`] returns only
+    /// then, so a waiter never sees a finished run without its event.
+    delivered: AtomicBool,
 }
 
 impl RunHandle {
@@ -238,6 +242,7 @@ impl RunHandle {
             activity: Mutex::new(Instant::now()),
             stalled: AtomicBool::new(false),
             finalized: AtomicBool::new(false),
+            delivered: AtomicBool::new(false),
         }
     }
 
@@ -262,7 +267,7 @@ impl RunHandle {
     pub fn wait(&self, timeout: Option<Duration>) -> RunState {
         let mut g = self.lock();
         let deadline = timeout.map(|t| Instant::now() + t);
-        while !g.is_finished() {
+        while !(g.is_finished() && self.delivered.load(Ordering::SeqCst)) {
             match deadline {
                 None => {
                     g = self
@@ -288,6 +293,13 @@ impl RunHandle {
 
     fn set_mut<R>(&self, key: &str, f: impl FnOnce(&mut SetRun) -> R) -> Option<R> {
         self.lock().sets.iter_mut().find(|s| s.key == key).map(f)
+    }
+
+    /// The final event is out: wakes [`RunHandle::wait`].
+    fn mark_delivered(&self) {
+        let _state = self.lock();
+        self.delivered.store(true, Ordering::SeqCst);
+        self.finished.notify_all();
     }
 
     /// Records progress (watchdog).
@@ -578,7 +590,18 @@ impl Runner<'_> {
                 Err(e) => return self.store_failed(sp, &sets, failure("credentials", &e), None),
             };
         self.emit("prepare", None, Some(json!({ "store": "apple" })));
-        let session = match remote::open_apple(&client, &job.app, job.platform, job.flow).await {
+        let needs_library = sets
+            .iter()
+            .any(|s| remote::wants_library(job.flow, &s.slot));
+        let session = match remote::open_apple(
+            &client,
+            &job.app,
+            job.platform,
+            job.flow,
+            needs_library,
+        )
+        .await
+        {
             Ok(s) => s,
             Err(Error::Cancelled) => return self.cancel_rest(sp),
             Err(e) => {
@@ -635,12 +658,12 @@ impl Runner<'_> {
             };
             let route = match remote::route(&session, &set.slot, &set.images) {
                 Ok(r) => r,
-                Err(why) if session.kind == remote::AppleFlowKind::ScreenshotSets => {
+                Err(NoRoute::NeedsLibrary(why)) => {
                     // Never into a screenshot set (Duo, creative assets).
                     self.finish_set(row, &set.key, SetRunStatus::Skipped, Some(why));
                     continue;
                 }
-                Err(why) => {
+                Err(NoRoute::NoGroup(why)) => {
                     self.finish_set(row, &set.key, SetRunStatus::Failed, Some(why));
                     continue;
                 }
@@ -1303,11 +1326,11 @@ fn end_without_executor(
             &serde_json::to_string(&report).unwrap_or_default(),
         );
     }
-    handle.finished.notify_all();
     events.emit(
         UPLOAD_FINISHED,
         serde_json::to_value(&report).unwrap_or_default(),
     );
+    handle.mark_delivered();
 }
 
 /// Runs the job to the end (blocking; called on the run's thread).
@@ -1406,11 +1429,11 @@ pub(crate) fn run(job: &Job) -> RunReport {
             &serde_json::to_string(&report).unwrap_or_default(),
         );
     }
-    job.handle.finished.notify_all();
     job.events.emit(
         UPLOAD_FINISHED,
         serde_json::to_value(&report).unwrap_or_default(),
     );
+    job.handle.mark_delivered();
     report
 }
 

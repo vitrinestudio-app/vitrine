@@ -613,14 +613,26 @@ pub(crate) fn flow_setting(project: &Project) -> AppleUploadFlowSetting {
         .unwrap_or_default()
 }
 
-/// The flow a store starts with (before the store is asked): `auto` and
-/// `asset_library` → the asset library.
+/// The base flow of a store: `asset_library` → the library, `auto` and
+/// `screenshot_sets` → the set API (`auto` sends only library-only sets
+/// through the library, see [`wants_library`]).
 pub(crate) fn preferred_flow(setting: AppleUploadFlowSetting) -> AppleFlowKind {
     match setting {
-        AppleUploadFlowSetting::ScreenshotSets => AppleFlowKind::ScreenshotSets,
-        AppleUploadFlowSetting::Auto | AppleUploadFlowSetting::AssetLibrary => {
-            AppleFlowKind::AssetLibrary
+        AppleUploadFlowSetting::Auto | AppleUploadFlowSetting::ScreenshotSets => {
+            AppleFlowKind::ScreenshotSets
         }
+        AppleUploadFlowSetting::AssetLibrary => AppleFlowKind::AssetLibrary,
+    }
+}
+
+/// Whether a set of `slot` goes through the asset library under `setting`
+/// (before the store is asked): `auto` only for the slots the set API
+/// cannot take (Duo, creative assets), `asset_library` always.
+pub(crate) fn wants_library(setting: AppleUploadFlowSetting, slot: &str) -> bool {
+    match setting {
+        AppleUploadFlowSetting::AssetLibrary => true,
+        AppleUploadFlowSetting::ScreenshotSets => false,
+        AppleUploadFlowSetting::Auto => super::library::asset_library_only(slot),
     }
 }
 
@@ -628,50 +640,47 @@ pub(crate) fn preferred_flow(setting: AppleUploadFlowSetting) -> AppleFlowKind {
 #[derive(Debug)]
 pub(crate) struct AppleSession {
     pub target: AppleTarget,
+    /// The store's base flow (`auto`: screenshot sets).
     pub kind: AppleFlowKind,
     pub setting: AppleUploadFlowSetting,
-    /// Why `auto` fell back to the set-based API.
+    /// Why the asset library cannot be used (`auto`: its sets are skipped).
     pub fallback: Option<String>,
 }
 
-/// Opens the app + editable version and, unless the setting forbids it,
-/// the App Asset Library. `auto` falls back to the set-based API when the
-/// library is not available for this app/key (403/404/400).
+/// Opens the app + editable version and, when a set needs it
+/// (`needs_library`), the App Asset Library. `auto` uses the screenshot
+/// set API for everything it supports; when the library is not available
+/// (403/404/400) the library-only sets are skipped (`fallback` says why).
+/// `asset_library` fails without the library.
 pub(crate) async fn open_apple(
     client: &apple::Client,
     app: &AppRef,
     platform: Platform,
     setting: AppleUploadFlowSetting,
+    needs_library: bool,
 ) -> Result<AppleSession> {
     let mut target = ScreenshotSetFlow.open(client, app, platform).await?;
-    if setting == AppleUploadFlowSetting::ScreenshotSets {
-        return Ok(AppleSession {
-            target,
-            kind: AppleFlowKind::ScreenshotSets,
-            setting,
-            fallback: None,
-        });
+    let kind = preferred_flow(setting);
+    let session = |target, fallback| AppleSession {
+        target,
+        kind,
+        setting,
+        fallback,
+    };
+    if !needs_library || setting == AppleUploadFlowSetting::ScreenshotSets {
+        return Ok(session(target, None));
     }
     match AssetLibraryFlow::attach(client, &target.app.id).await {
         Ok(ctx) => {
             target.library = Some(ctx);
-            Ok(AppleSession {
-                target,
-                kind: AppleFlowKind::AssetLibrary,
-                setting,
-                fallback: None,
-            })
+            Ok(session(target, None))
         }
         Err(e) if setting == AppleUploadFlowSetting::Auto && super::library::unavailable(&e) => {
-            Ok(AppleSession {
-                target,
-                kind: AppleFlowKind::ScreenshotSets,
-                setting,
-                fallback: Some(format!(
-                    "the App Asset Library is not available for this app or key ({}) – using the screenshot set API",
-                    store_message(StoreKind::Apple, &e)
-                )),
-            })
+            let why = format!(
+                "the App Asset Library is not available for this app or key ({}) – iPhone Duo, header and search results sets are skipped",
+                store_message(StoreKind::Apple, &e)
+            );
+            Ok(session(target, Some(why)))
         }
         Err(e) => Err(e),
     }
@@ -680,23 +689,45 @@ pub(crate) async fn open_apple(
 /// How one set gets into the store.
 #[derive(Debug, Clone)]
 pub(crate) enum Route {
-    /// The set-based API (`note`: why, when `auto` fell back for this set).
+    /// The set-based API (`note`: why, when `asset_library` fell back for
+    /// this set because the ref data has no group for it).
     Sets { note: Option<String> },
     /// The asset library with these placements.
     Library(Vec<super::library::PlacementRoute>),
 }
 
-/// The route of one set: the store's flow, per-set fallback of `auto` to
-/// the set-based API when the ref data lacks a group, or a blocking reason.
+/// Why a set has no route.
+#[derive(Debug, Clone)]
+pub(crate) enum NoRoute {
+    /// Only the asset library can take it and it is not used / available:
+    /// the set is skipped (`needs_asset_library`).
+    NeedsLibrary(String),
+    /// The ref data has no placement group for it (blocking / failed).
+    NoGroup(String),
+}
+
+/// The route of one set (see [`wants_library`]).
 pub(crate) fn route(
     session: &AppleSession,
     slot: &str,
     images: &[PlanImage],
-) -> std::result::Result<Route, String> {
+) -> std::result::Result<Route, NoRoute> {
     let library_only = super::library::asset_library_only(slot);
+    if !wants_library(session.setting, slot) {
+        if library_only {
+            return Err(NoRoute::NeedsLibrary(needs_library_message(
+                slot,
+                session.setting,
+            )));
+        }
+        return Ok(Route::Sets { note: None });
+    }
     let Some(ctx) = session.target.library.as_ref() else {
         if library_only {
-            return Err(needs_library_message(slot, session.setting));
+            return Err(NoRoute::NeedsLibrary(needs_library_message(
+                slot,
+                session.setting,
+            )));
         }
         return Ok(Route::Sets { note: None });
     };
@@ -706,12 +737,10 @@ pub(crate) fn route(
         images.first().map(|i| (i.width, i.height)),
     ) {
         Ok(routes) => Ok(Route::Library(routes)),
-        Err(why) if session.setting == AppleUploadFlowSetting::Auto && !library_only => {
-            Ok(Route::Sets {
-                note: Some(format!("{why}; uploaded with the screenshot set API")),
-            })
-        }
-        Err(why) => Err(why),
+        Err(why) if !library_only => Ok(Route::Sets {
+            note: Some(format!("{why}; uploaded with the screenshot set API")),
+        }),
+        Err(why) => Err(NoRoute::NoGroup(why)),
     }
 }
 

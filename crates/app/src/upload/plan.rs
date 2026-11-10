@@ -598,17 +598,21 @@ pub(crate) fn skip_library_only(set: &mut PlanSet, setting: AppleUploadFlowSetti
     set.reason = Some(msg);
 }
 
-/// Local (no network) flow checks of an Apple set (ADR 0019): a slot only
-/// the asset library can upload is blocked when the project forces the
-/// set-based API; the placement is described from the mapping; an
-/// unmapped display type falls back to the set-based API under `auto`.
+/// Local (no network) flow checks of an Apple set going through the asset
+/// library (ADR 0019; `auto`: only library-only slots): the flow and the
+/// placement from the mapping; an unmapped display type falls back to the
+/// set-based API, an unmapped library-only slot is blocking.
 fn apple_flow_checks(set: &mut PlanSet, setting: AppleUploadFlowSetting) {
-    if setting == AppleUploadFlowSetting::ScreenshotSets {
+    if !remote::wants_library(setting, &set.slot) {
         return;
+    }
+    if setting == AppleUploadFlowSetting::Auto {
+        // Library-only slot under `auto` (the store's base flow is sets).
+        set.flow = Some(AppleFlowKind::AssetLibrary.as_str().to_owned());
     }
     match lib::local_label(&set.slot) {
         Some(label) => set.placement = Some(label),
-        None if setting == AppleUploadFlowSetting::Auto => {
+        None if !lib::asset_library_only(&set.slot) => {
             set.flow = Some(AppleFlowKind::ScreenshotSets.as_str().to_owned());
             set.problems.push(Problem::info(
                 "no_placement_mapping",
@@ -833,28 +837,33 @@ async fn check_apple(
             .map(|a| a.platform)
             .unwrap_or_default(),
     );
-    let session = match remote::open_apple(&client, &app_ref, platform, setting).await {
-        Ok(s) => s,
-        Err(e) => {
-            if let Some(p) = no_editable_version_problem(&e, sp.app.as_deref()) {
-                let info = RemoteInfo {
-                    ok: false,
-                    error: Some(p.message.clone()),
-                    ..RemoteInfo::default()
+    let needs_library = sp.sets.iter().any(|s| {
+        (s.action.uploads() || s.action == SetAction::Unchanged)
+            && remote::wants_library(setting, &s.slot)
+    });
+    let session =
+        match remote::open_apple(&client, &app_ref, platform, setting, needs_library).await {
+            Ok(s) => s,
+            Err(e) => {
+                if let Some(p) = no_editable_version_problem(&e, sp.app.as_deref()) {
+                    let info = RemoteInfo {
+                        ok: false,
+                        error: Some(p.message.clone()),
+                        ..RemoteInfo::default()
+                    };
+                    sp.problems.push(p);
+                    return info;
+                }
+                let code = if e.kind() == arrangia_publish::ErrorKind::Conflict {
+                    "no_editable_version"
+                } else if setting == AppleUploadFlowSetting::AssetLibrary && lib::unavailable(&e) {
+                    "asset_library_unavailable"
+                } else {
+                    "app_not_reachable"
                 };
-                sp.problems.push(p);
-                return info;
+                return fail(sp, code, &e);
             }
-            let code = if e.kind() == arrangia_publish::ErrorKind::Conflict {
-                "no_editable_version"
-            } else if setting == AppleUploadFlowSetting::AssetLibrary && lib::unavailable(&e) {
-                "asset_library_unavailable"
-            } else {
-                "app_not_reachable"
-            };
-            return fail(sp, code, &e);
-        }
-    };
+        };
     session.kind.as_str().clone_into(&mut sp.flow);
     sp.flow_note.clone_from(&session.fallback);
     let target = &session.target;
@@ -869,12 +878,12 @@ async fn check_apple(
         set.flow = None;
         set.problems.retain(|p| p.code != "no_placement_mapping");
         let inspected = match remote::route(&session, &set.slot, &set.images) {
-            Err(_) if session.kind == AppleFlowKind::ScreenshotSets => {
-                // `auto` fell back: Duo / creative assets cannot go along.
+            Err(remote::NoRoute::NeedsLibrary(_)) => {
+                // No library: Duo / creative assets cannot go along.
                 skip_library_only(set, session.setting);
                 continue;
             }
-            Err(why) => {
+            Err(remote::NoRoute::NoGroup(why)) => {
                 set.problems
                     .push(Problem::blocking("no_placement_group", why));
                 set.action = SetAction::Blocked;
@@ -882,8 +891,10 @@ async fn check_apple(
             }
             Ok(remote::Route::Sets { note }) => {
                 set.placement = None;
-                if let Some(note) = note {
+                if session.kind != AppleFlowKind::ScreenshotSets {
                     set.flow = Some(AppleFlowKind::ScreenshotSets.as_str().to_owned());
+                }
+                if let Some(note) = note {
                     set.problems.push(Problem::info("flow_fallback", note));
                 }
                 ScreenshotSetFlow
@@ -891,6 +902,9 @@ async fn check_apple(
                     .await
             }
             Ok(remote::Route::Library(routes)) => {
+                if session.kind != AppleFlowKind::AssetLibrary {
+                    set.flow = Some(AppleFlowKind::AssetLibrary.as_str().to_owned());
+                }
                 set.placement = Some(
                     routes
                         .iter()
