@@ -1,14 +1,17 @@
-//! Image IO: screenshot decoding and Lanczos3 resampling, PNG export
-//! (24-bit RGB, no alpha, sRGB chunk).
+//! Image IO: screenshot decoding (converted to sRGB, ADR 0021) and
+//! Lanczos3 resampling, PNG export (24-bit RGB, no alpha, sRGB chunk) and
+//! JPEG export (untagged = sRGB).
 
 use std::io::Write;
 use std::path::Path as FsPath;
 
+use arrangia_core::colorspace::{ToSrgb, sniff_bytes};
 use fast_image_resize::images::Image;
 use fast_image_resize::{FilterType, PixelType, ResizeAlg, ResizeOptions, Resizer};
+use image::DynamicImage;
 use tiny_skia::{IntSize, Pixmap};
 
-/// A decoded screenshot (straight RGBA8; screenshots are opaque).
+/// A decoded raster image: straight RGBA8 in sRGB.
 #[derive(Debug, Clone)]
 pub struct SourceImage {
     pub width: u32,
@@ -17,12 +20,24 @@ pub struct SourceImage {
 }
 
 impl SourceImage {
+    /// Reads and decodes a file (see [`SourceImage::decode`]).
     pub fn load(path: &FsPath) -> anyhow::Result<Self> {
-        let img = image::open(path)?.to_rgba8();
+        Self::decode(&std::fs::read(path)?)
+    }
+
+    /// Decodes PNG/JPEG bytes to straight RGBA8 and converts embedded
+    /// colour profiles (Display P3 …) to sRGB once
+    /// (`arrangia_core::colorspace`). Untagged and sRGB images are not
+    /// touched; unusable profiles are ignored (validation reports them).
+    pub fn decode(bytes: &[u8]) -> anyhow::Result<Self> {
+        let img = image::ImageReader::new(std::io::Cursor::new(bytes))
+            .with_guessed_format()?
+            .decode()?;
+        let to_srgb = ToSrgb::new(&sniff_bytes(bytes));
         Ok(Self {
             width: img.width(),
             height: img.height(),
-            rgba: img.into_raw(),
+            rgba: rgba_srgb(&img, &to_srgb),
         })
     }
 
@@ -69,6 +84,35 @@ impl SourceImage {
         )
         .ok_or_else(|| anyhow::anyhow!("pixmap"))
     }
+}
+
+/// The pixels of `img` as straight RGBA8 in sRGB. 16-bit images are
+/// converted at 16 bit and rounded afterwards; a profile that does not fit
+/// the pixel data (gray profile on colour pixels) leaves them unchanged.
+fn rgba_srgb(img: &DynamicImage, t: &ToSrgb) -> Vec<u8> {
+    use DynamicImage as D;
+    if t.is_identity() {
+        return img.to_rgba8().into_raw();
+    }
+    let gray = matches!(
+        img,
+        D::ImageLuma8(_) | D::ImageLumaA8(_) | D::ImageLuma16(_) | D::ImageLumaA16(_)
+    );
+    let deep = matches!(
+        img,
+        D::ImageLuma16(_) | D::ImageLumaA16(_) | D::ImageRgb16(_) | D::ImageRgba16(_)
+    );
+    let converted = match (t.is_gray(), gray, deep) {
+        (true, true, false) => t.gray_alpha8_to_rgba8(img.to_luma_alpha8().as_raw()),
+        (true, true, true) => t.gray_alpha16_to_rgba8(img.to_luma_alpha16().as_raw()),
+        (true, false, _) => Err("gray profile on a colour image".to_owned()),
+        (false, _, true) => t.rgba16_to_rgba8(img.to_rgba16().as_raw()),
+        (false, _, false) => {
+            let mut data = img.to_rgba8().into_raw();
+            t.rgba8(&mut data).map(|()| data)
+        }
+    };
+    converted.unwrap_or_else(|_| img.to_rgba8().into_raw())
 }
 
 /// Resampling filter: `Bilinear` (a proper convolution, cheap; previews)
@@ -211,6 +255,150 @@ mod tests {
             (10, 10, 10, 3)
         );
         assert_eq!(a.pixel(5, 5).unwrap().blue(), 255);
+    }
+
+    fn p3_icc() -> Vec<u8> {
+        moxcms::ColorProfile::new_display_p3().encode().unwrap()
+    }
+
+    /// A PNG of the given colour type/depth and raw samples, optionally
+    /// with an ICC profile.
+    fn png_bytes(
+        (w, h): (u32, u32),
+        color: png::ColorType,
+        depth: png::BitDepth,
+        data: &[u8],
+        icc: Option<Vec<u8>>,
+    ) -> Vec<u8> {
+        let mut info = png::Info::with_size(w, h);
+        info.color_type = color;
+        info.bit_depth = depth;
+        info.icc_profile = icc.map(std::borrow::Cow::Owned);
+        let mut out = Vec::new();
+        {
+            let mut wr = png::Encoder::with_info(&mut out, info)
+                .unwrap()
+                .write_header()
+                .unwrap();
+            wr.write_image_data(data).unwrap();
+            wr.finish().unwrap();
+        }
+        out
+    }
+
+    fn near(a: &[u8], b: &[u8], tol: u8) -> bool {
+        a.iter().zip(b).all(|(x, y)| x.abs_diff(*y) <= tol)
+    }
+
+    #[test]
+    fn decode_converts_p3_png() {
+        let px = [255, 0, 0, 255, 128, 128, 128, 255, 200, 100, 50, 77];
+        let tagged = png_bytes(
+            (3, 1),
+            png::ColorType::Rgba,
+            png::BitDepth::Eight,
+            &px,
+            Some(p3_icc()),
+        );
+        let img = SourceImage::decode(&tagged).unwrap();
+        assert!(
+            near(&img.rgba[0..4], &[255, 0, 0, 255], 1),
+            "{:?}",
+            img.rgba
+        );
+        assert!(near(&img.rgba[4..8], &[128, 128, 128, 255], 1));
+        // Reference from the P3 → sRGB matrix: (215, 93, 31).
+        assert!(near(&img.rgba[8..11], &[215, 93, 31], 2), "{:?}", img.rgba);
+        assert_eq!(img.rgba[11], 77);
+        // Untagged: unchanged.
+        let plain = png_bytes(
+            (3, 1),
+            png::ColorType::Rgba,
+            png::BitDepth::Eight,
+            &px,
+            None,
+        );
+        assert_eq!(SourceImage::decode(&plain).unwrap().rgba, px);
+    }
+
+    #[test]
+    fn decode_converts_p3_sixteen_bit_png() {
+        // 200·257, 100·257, 50·257 as big-endian RGB16.
+        let data: Vec<u8> = [51400u16, 25700, 12850]
+            .iter()
+            .flat_map(|v| v.to_be_bytes())
+            .collect();
+        let tagged = png_bytes(
+            (1, 1),
+            png::ColorType::Rgb,
+            png::BitDepth::Sixteen,
+            &data,
+            Some(p3_icc()),
+        );
+        let img = SourceImage::decode(&tagged).unwrap();
+        assert!(near(&img.rgba, &[215, 93, 31, 255], 2), "{:?}", img.rgba);
+    }
+
+    #[test]
+    fn decode_converts_p3_jpeg() {
+        use image::ImageEncoder;
+        let rgb: Vec<u8> = [200u8, 100, 50].repeat(64);
+        let encode = |icc: Option<Vec<u8>>| {
+            let mut out = Vec::new();
+            let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 100);
+            if let Some(icc) = icc {
+                enc.set_icc_profile(icc).unwrap();
+            }
+            enc.write_image(&rgb, 8, 8, image::ExtendedColorType::Rgb8)
+                .unwrap();
+            out
+        };
+        let plain = SourceImage::decode(&encode(None)).unwrap();
+        let tagged = SourceImage::decode(&encode(Some(p3_icc()))).unwrap();
+        // JPEG is lossy: compare the tagged result with the matrix
+        // reference shifted by the codec error of the untagged one.
+        let err: Vec<i16> = plain.rgba[0..3]
+            .iter()
+            .zip([200i16, 100, 50])
+            .map(|(&a, b)| i16::from(a) - b)
+            .collect();
+        for ((&got, want), e) in tagged.rgba[0..3].iter().zip([215i16, 93, 31]).zip(err) {
+            assert!(
+                (i16::from(got) - want - e).abs() <= 4,
+                "{:?}",
+                &tagged.rgba[0..4]
+            );
+        }
+    }
+
+    #[test]
+    fn decode_converts_gray_profile() {
+        let icc = moxcms::ColorProfile::new_gray_with_gamma(1.0)
+            .encode()
+            .unwrap();
+        // Linear gray 0.5 → sRGB ≈ 188.
+        let tagged = png_bytes(
+            (1, 1),
+            png::ColorType::Grayscale,
+            png::BitDepth::Eight,
+            &[128],
+            Some(icc),
+        );
+        let img = SourceImage::decode(&tagged).unwrap();
+        assert!(near(&img.rgba, &[188, 188, 188, 255], 2), "{:?}", img.rgba);
+    }
+
+    #[test]
+    fn decode_ignores_unusable_profiles() {
+        let tagged = png_bytes(
+            (1, 1),
+            png::ColorType::Rgb,
+            png::BitDepth::Eight,
+            &[200, 100, 50],
+            Some(b"not a profile".to_vec()),
+        );
+        let img = SourceImage::decode(&tagged).unwrap();
+        assert_eq!(img.rgba, [200, 100, 50, 255]);
     }
 
     #[test]

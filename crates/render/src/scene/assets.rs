@@ -1,4 +1,5 @@
-//! Asset cache: decoded images (PNG/JPEG via `image`, SVG via `usvg`) and
+//! Asset cache: decoded images (PNG/JPEG via `image`, converted to sRGB
+//! once at decode – ADR 0021; SVG via `usvg`) and
 //! pixmaps resampled to exact pixel sizes, keyed by (path, mtime, size,
 //! mode). Shared between threads (`Mutex`-guarded maps, `Arc` values), so
 //! export workers and repeated previews decode and resample each asset once.
@@ -246,18 +247,10 @@ fn decode(path: &Path, rel: &str) -> Result<Decoded, AssetError> {
             .map_err(|e| dec_err(e.to_string()))?;
         Ok(Decoded::Svg(Box::new(tree)))
     } else {
-        let img = image::ImageReader::open(path)
-            .map_err(read_err)?
-            .with_guessed_format()
-            .map_err(read_err)?
-            .decode()
-            .map_err(|e| dec_err(e.to_string()))?
-            .to_rgba8();
-        Ok(Decoded::Raster(SourceImage {
-            width: img.width(),
-            height: img.height(),
-            rgba: img.into_raw(),
-        }))
+        let bytes = std::fs::read(path).map_err(read_err)?;
+        SourceImage::decode(&bytes)
+            .map(Decoded::Raster)
+            .map_err(|e| dec_err(e.to_string()))
     }
 }
 
