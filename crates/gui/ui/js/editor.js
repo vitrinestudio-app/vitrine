@@ -8,6 +8,8 @@
 //   reset       {}                                    – view context changed
 //                                                      (target/variant/lang/strip):
 //                                                      rebuild everything
+//   highlight   { ids }                               – briefly outline these
+//                                                      elements (Claude's edits)
 
 import { api } from './api.js';
 import { bounds, inflate, union } from './geometry.js';
@@ -155,6 +157,30 @@ export const editor = {
 
   redo() {
     return this.apply(api.redo());
+  },
+
+  /**
+   * Shows a step made by someone else through the backend session
+   * (`project-edited` with actor Claude, ADR 0015): same refresh as
+   * `apply`, or a full reload when targets, strips or languages changed.
+   */
+  async remoteEdit(ev) {
+    const c = ev.changes ?? {};
+    const summary = store.get().summary;
+    if (!summary) return null;
+    const newStrip = (c.strips ?? []).some((id) => !summary.strips.some((x) => x.id === id));
+    if (c.targets?.length || c.languages || newStrip) {
+      await this.load();
+      return null;
+    }
+    const history = await api.historyState();
+    const changes = { elements: [], strings: [], targets: [], strips: [], ...c };
+    return this.apply(Promise.resolve({ applied: true, revision: ev.revision, history, changes }));
+  },
+
+  /** Briefly outlines `ids` on the canvas. */
+  highlight(ids) {
+    if (ids?.length) emit('highlight', { ids });
   },
 
   /** Reacts to `project-changed` from the backend (external edit, conflict, assets). */

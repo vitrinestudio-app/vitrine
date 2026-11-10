@@ -749,6 +749,30 @@ export function mountCanvas(root) {
 
   // ----- drawing ---------------------------------------------------------------------
 
+  // Outline of the elements Claude just changed: full for 60 %, then fades.
+  const GLOW_MS = 1500;
+  let glow = null;
+  function glowModel() {
+    if (!glow) return null;
+    const t = performance.now() - glow.start;
+    if (t > GLOW_MS) {
+      glow = null;
+      return null;
+    }
+    const fade = GLOW_MS * 0.4;
+    return { ids: glow.ids, alpha: t < GLOW_MS - fade ? 1 : 1 - (t - (GLOW_MS - fade)) / fade };
+  }
+  function startGlow(ids) {
+    const running = Boolean(glow);
+    glow = { ids, start: performance.now() };
+    if (running) return;
+    const tick = () => {
+      redraw();
+      if (glow) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
   let frame = 0;
   function redraw() {
     if (frame) return;
@@ -765,6 +789,7 @@ export function mountCanvas(root) {
         variantActive: effectiveVariant(st) != null,
         drag,
         showHandles: true,
+        highlight: glowModel(),
       });
     });
   }
@@ -791,6 +816,7 @@ export function mountCanvas(root) {
     }),
     store.select((st) => [st.selection, st.hover], redraw),
     editor.on('invalidate', (p) => invalidate(p)),
+    editor.on('highlight', ({ ids }) => startGlow(ids)),
     // View context changed (target, variant, language, reload): every
     // pixmap is stale; the overlay subscription already rebuilt the slots
     // if the geometry changed.

@@ -1,0 +1,293 @@
+/* Claude / MCP (ADR 0015): top-bar indicator, activity popover, toasts,
+   canvas glow of Claude's edits, the settings section. */
+
+/* ----- top-bar indicator ----- */
+.claude-ind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 7px;
+  margin-right: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-faint);
+  font: inherit;
+  font-size: var(--fs-small);
+  cursor: pointer;
+}
+
+.claude-ind:hover {
+  background: var(--bg-hover);
+}
+
+.claude-ind[data-state="ready"] {
+  color: var(--fg-muted);
+}
+
+.claude-ind[data-state="connected"] {
+  color: var(--claude);
+  background: var(--claude-soft);
+  border-color: color-mix(in srgb, var(--claude) 35%, transparent);
+}
+
+.claude-ind[data-state="error"] {
+  color: var(--danger);
+}
+
+.claude-ind-label {
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----- activity popover ----- */
+.claude-activity {
+  width: 380px;
+  max-height: min(480px, 70vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.claude-activity .vp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.claude-activity .vp-head > .icon {
+  color: var(--claude);
+}
+
+.ca-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  color: var(--fg-muted);
+  font-size: var(--fs-small);
+  border-bottom: 1px solid var(--border);
+}
+
+.ca-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fg-faint);
+}
+
+.ca-dot.ready {
+  background: var(--success);
+}
+
+.ca-dot.connected {
+  background: var(--claude);
+}
+
+.ca-dot.error {
+  background: var(--danger);
+}
+
+.ca-list {
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.ca-list .placeholder {
+  margin: 12px;
+}
+
+.ca-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px;
+}
+
+.ca-item:hover {
+  background: var(--bg-hover);
+}
+
+.ca-time {
+  color: var(--fg-faint);
+  flex: none;
+}
+
+.ca-label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* ----- toasts ----- */
+.claude-toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  z-index: 101;
+  pointer-events: none;
+}
+
+.claude-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(420px, 60vw);
+  padding: 7px 12px;
+  border: 0;
+  border-left: 3px solid var(--claude);
+  border-radius: 8px;
+  background: var(--bg-chrome);
+  color: var(--fg);
+  box-shadow: var(--shadow-pop);
+  font: inherit;
+  font-size: var(--fs);
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.claude-toast.in {
+  opacity: 1;
+  transform: none;
+}
+
+.claude-toast > .icon {
+  color: var(--claude);
+  flex: none;
+}
+
+.claude-toast-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----- canvas glow (overlay.js) ----- */
+.ov-claude-glow {
+  fill: var(--claude-soft);
+  stroke: var(--claude);
+  stroke-opacity: 0.35;
+  stroke-width: 8;
+  stroke-linejoin: round;
+}
+
+.ov-claude {
+  fill: none;
+  stroke: var(--claude);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* ----- app settings ----- */
+.form-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.form-section > .icon {
+  color: var(--claude);
+}
+
+.claude-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.claude-status {
+  color: var(--fg-muted);
+}
+
+.claude-status[data-state="on"] {
+  color: var(--success);
+}
+
+.claude-code {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.claude-code-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.claude-copy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.claude-cmd {
+  flex: 1;
+  min-width: 0;
+}
+
+.claude-copy .icon-btn.done {
+  color: var(--success);
+}
+
+.form-hint.warn {
+  color: var(--warning);
+}
+
+.claude-json {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-small);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.claude-state.missing {
+  color: var(--fg-muted);
+}
+
+.claude-state.same {
+  color: var(--success);
+}
+
+.claude-state.different,
+.claude-state.invalid {
+  color: var(--warning);
+}
+
+.dlg-text.strong {
+  font-weight: 600;
+}
