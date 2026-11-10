@@ -12,6 +12,8 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use arrangia_app::CommandError;
+
 use super::project::NoParams;
 use crate::output::ToolOutput;
 use crate::server::{ArrangiaMcp, cmd};
@@ -20,20 +22,61 @@ use crate::server::{ArrangiaMcp, cmd};
 #[derive(Debug, Clone, Copy, Deserialize, serde::Serialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AssetKind {
-    /// App screenshot → screenshots/<lang>/[<variant>/]<key>.png.
+    /// App screenshot shown in device elements →
+    /// screenshots/<lang>/[<variant>/]<key>.png.
     Screenshot,
-    /// Image/SVG for image elements and backgrounds → assets/.
+    /// Any image (PNG, JPEG, SVG …) for image elements and image
+    /// backgrounds/fills → assets/<name>.<ext>. Alias: `image`.
+    #[serde(alias = "image")]
     Asset,
     /// TTF/OTF font → fonts/.
     Font,
 }
 
+/// One file of a mapping-list import (`files`).
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ImportFile {
+    /// Absolute source file the user named.
+    pub path: PathBuf,
+    /// Default: the call's `kind`.
+    #[serde(default)]
+    pub kind: Option<AssetKind>,
+    /// Screenshots: key (file name without extension in the project).
+    #[serde(default)]
+    pub key: Option<String>,
+    /// Assets/fonts: file name without extension in the project (same as
+    /// `key`).
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Screenshots: language folder (default: the call's, else the default
+    /// language).
+    #[serde(default)]
+    pub lang: Option<String>,
+    /// Screenshots: variant folder (default: the call's, else detected
+    /// from the pixel size; `""` = directly in the language folder).
+    #[serde(default)]
+    pub variant: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AssetsImportParams {
-    /// Absolute source files the user named.
+    /// Absolute source files the user named (all with the same kind, lang,
+    /// variant). For per-file keys/names use `files`.
+    #[serde(default)]
     pub paths: Vec<PathBuf>,
-    pub kind: AssetKind,
+    /// `screenshot`, `asset` (any image; alias `image`) or `font`. Default
+    /// for the entries of `files`.
+    #[serde(default)]
+    pub kind: Option<AssetKind>,
+    /// Mapping list: one entry per file with its own kind, key/name, lang,
+    /// variant, e.g. `[{"path": "/Users/me/shots/a.png", "kind":
+    /// "screenshot", "key": "home", "lang": "de"}, {"path":
+    /// "/Users/me/bg.jpg", "kind": "asset", "name": "hero-bg"}]`. Each file
+    /// gets its own result (a failing file does not stop the others).
+    #[serde(default)]
+    pub files: Vec<ImportFile>,
     /// Screenshots: language folder (default: the default language).
     #[serde(default)]
     pub lang: Option<String>,
@@ -49,6 +92,9 @@ pub struct AssetsImportParams {
     /// Replace an existing file with the same name (default: add `-2`).
     #[serde(default)]
     pub replace: bool,
+    /// Only report where each file would go; copy nothing.
+    #[serde(default)]
+    pub dry_run: bool,
 }
 
 /// Source folder layout of a screenshot import.
@@ -101,6 +147,35 @@ pub struct ScreenshotsImportParams {
     pub save_mapping: bool,
 }
 
+/// One entry of a mapping-list import (the call's settings as defaults).
+fn import_one(
+    app: &arrangia_app::commands::AppState,
+    p: &AssetsImportParams,
+    f: &ImportFile,
+) -> Result<Value, CommandError> {
+    let kind = f.kind.or(p.kind).ok_or_else(|| {
+        CommandError::invalid("`kind` missing (screenshot, asset or font) for this file")
+    })?;
+    let key = match (&f.key, &f.name) {
+        (Some(_), Some(_)) => {
+            return Err(CommandError::invalid("give `key` or `name`, not both"));
+        }
+        (Some(k), None) | (None, Some(k)) => Some(k.clone()),
+        (None, None) => None,
+    };
+    let mut args = json!({
+        "paths": [f.path], "kind": kind, "replace": p.replace, "dry_run": p.dry_run,
+    });
+    let lang = f.lang.clone().or_else(|| p.lang.clone());
+    let variant = f.variant.clone().or_else(|| p.variant.clone());
+    for (k, v) in [("lang", lang), ("variant", variant), ("key", key)] {
+        if let Some(v) = v {
+            args[k] = json!(v);
+        }
+    }
+    cmd(app, "assets_import", args)
+}
+
 #[tool_router(router = asset_tools, vis = "pub(crate)")]
 impl ArrangiaMcp {
     #[tool(
@@ -129,7 +204,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Copy files the user named into the project: screenshots (language/variant/key), image assets or fonts. Example: {\"paths\": [\"/Users/me/Desktop/home.png\"], \"kind\": \"screenshot\", \"lang\": \"en\", \"key\": \"home\"}."
+        description = "Copy files the user named into the project: screenshots (screenshots/<lang>/[<variant>/]<key>.png, shown by device elements with that `screenshot` key), assets (kind `asset` = any image for image elements and image fills, alias `image` → assets/) or fonts (→ fonts/). Several files with their own key/name/lang/variant in ONE call: `files` (mapping list, per-file results, `dry_run` to preview). A whole folder of screenshots (fastlane, language folders): screenshots_import. Examples: {\"paths\": [\"/Users/me/Desktop/home.png\"], \"kind\": \"screenshot\", \"lang\": \"en\", \"key\": \"home\"}; {\"files\": [{\"path\": \"/Users/me/de/1.png\", \"kind\": \"screenshot\", \"lang\": \"de\", \"key\": \"home\"}, {\"path\": \"/Users/me/leaf.svg\", \"kind\": \"asset\", \"name\": \"leaf\"}], \"dry_run\": true}."
     )]
     async fn assets_import(
         &self,
@@ -137,24 +212,65 @@ impl ArrangiaMcp {
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
-            let mut args = json!({ "paths": p.paths, "kind": p.kind, "replace": p.replace });
-            for (k, v) in [("lang", p.lang), ("variant", p.variant), ("key", p.key)] {
-                if let Some(v) = v {
-                    args[k] = json!(v);
+            if p.paths.is_empty() == p.files.is_empty() {
+                return Err(CommandError::invalid(
+                    "give either `paths` (with `kind`) or `files` [{path, kind?, key?, name?, lang?, variant?}]",
+                ));
+            }
+            if !p.paths.is_empty() {
+                let kind = p.kind.ok_or_else(|| {
+                    CommandError::invalid("`kind` is required: screenshot, asset (any image) or font")
+                })?;
+                let mut args = json!({
+                    "paths": p.paths, "kind": kind, "replace": p.replace, "dry_run": p.dry_run,
+                });
+                for (k, v) in [("lang", p.lang), ("variant", p.variant), ("key", p.key)] {
+                    if let Some(v) = v {
+                        args[k] = json!(v);
+                    }
+                }
+                let v = cmd(app, "assets_import", args)?;
+                let n = v.as_array().map_or(0, Vec::len);
+                let verb = if p.dry_run { "would import" } else { "imported" };
+                return Ok(ToolOutput::new(
+                    format!("{verb} {n} file(s)"),
+                    json!({ "files": v, "dry_run": p.dry_run }),
+                ));
+            }
+            let mut results = Vec::new();
+            let mut ok = 0;
+            for f in &p.files {
+                let r = import_one(app, &p, f);
+                match r {
+                    Ok(v) => {
+                        ok += 1;
+                        let mut item = v.as_array().and_then(|a| a.first()).cloned().unwrap_or_default();
+                        item["ok"] = json!(true);
+                        results.push(item);
+                    }
+                    Err(e) => results.push(json!({
+                        "source": f.path, "ok": false,
+                        "error": {"code": crate::output::code_name(e.code), "message": e.message},
+                    })),
                 }
             }
-            let v = cmd(app, "assets_import", args)?;
-            let n = v.as_array().map_or(0, Vec::len);
+            let failed = results.len() - ok;
+            let verb = if p.dry_run { "would import" } else { "imported" };
+            let summary = if failed > 0 {
+                format!("{verb} {ok} file(s), {failed} failed")
+            } else {
+                format!("{verb} {ok} file(s)")
+            };
             Ok(ToolOutput::new(
-                format!("imported {n} file(s)"),
-                json!({ "files": v }),
+                summary,
+                json!({ "files": results, "dry_run": p.dry_run }),
             ))
         })
         .await
     }
 
     #[tool(
-        description = "Import a folder of app screenshots (fastlane output, language folders or flat) into screenshots/<lang>/<variant>/<key>.png: plans the mapping (device → variant, locale → language, screen → key) and copies unless dry_run. Run with dry_run first and show the user what would happen. Example: {\"dir\": \"/Users/me/app/fastlane/screenshots\", \"dry_run\": true}."
+        description = "Import a folder of app screenshots (fastlane output, language folders or flat) into screenshots/<lang>/<variant>/<key>.png: plans the mapping (device → variant, locale → language, screen → key; extra names via `mapping`) and copies unless dry_run. Run with dry_run first and show the user what would happen. Single files with their own key: assets_import {files: [...]}. Example: {\"dir\": \"/Users/me/app/fastlane/screenshots\", \"dry_run\": true}."
     )]
     async fn screenshots_import(
         &self,

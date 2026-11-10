@@ -31,8 +31,13 @@ pub const FONT_EXTENSIONS: [&str; 3] = ["ttf", "otf", "ttc"];
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AssetKind {
+    /// App screenshot → `screenshots/<lang>/[<variant>/]<key>.<ext>`.
     Screenshot,
+    /// Any image for image elements and image fills → `assets/` (alias
+    /// `image`).
+    #[serde(alias = "image")]
     Asset,
+    /// TTF/OTF font → `fonts/`.
     Font,
 }
 
@@ -104,6 +109,9 @@ pub struct AssetsImportArgs {
     /// Replace an existing file with the same name instead of adding `-2`.
     #[serde(default)]
     pub replace: bool,
+    /// Only report where the files would go; copy nothing.
+    #[serde(default)]
+    pub dry_run: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -319,6 +327,20 @@ fn destination(dir: &Path, stem: &str, ext: &str, replace: bool) -> PathBuf {
     }
 }
 
+/// Copies `src` to `dest` in `dir` (created when missing).
+fn copy_file(src: &Path, dir: &Path, dest: &Path) -> CmdResult<()> {
+    std::fs::create_dir_all(dir)
+        .map_err(|e| CommandError::io(format!("{}: {e}", dir.display())))?;
+    std::fs::copy(src, dest).map_err(|e| {
+        CommandError::io(format!(
+            "cannot copy `{}` to `{}`: {e}",
+            src.display(),
+            dest.display()
+        ))
+    })?;
+    Ok(())
+}
+
 pub fn assets_import(app: &AppState, args: AssetsImportArgs) -> CmdResult<Vec<ImportedFile>> {
     let session = app.session()?;
     let root = session.dir().to_owned();
@@ -398,16 +420,10 @@ pub fn assets_import(app: &AppState, args: AssetsImportArgs) -> CmdResult<Vec<Im
             AssetKind::Asset => (root.join("assets"), None, false, Vec::new()),
             AssetKind::Font => (root.join("fonts"), None, false, Vec::new()),
         };
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| CommandError::io(format!("{}: {e}", dir.display())))?;
         let dest = destination(&dir, &stem, &ext, args.replace);
-        std::fs::copy(src, &dest).map_err(|e| {
-            CommandError::io(format!(
-                "cannot copy `{}` to `{}`: {e}",
-                src.display(),
-                dest.display()
-            ))
-        })?;
+        if !args.dry_run {
+            copy_file(src, &dir, &dest)?;
+        }
         out.push(ImportedFile {
             source: src.clone(),
             path: rel(&root, &dest).unwrap_or_default(),
@@ -595,6 +611,7 @@ pub fn assets_upload(app: &AppState, args: AssetsUploadArgs) -> CmdResult<Vec<Im
                     variant: args.variant,
                     key: args.key,
                     replace: args.replace,
+                    dry_run: false,
                 },
             )
         });
