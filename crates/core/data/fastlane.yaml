@@ -1,0 +1,174 @@
+# fastlane folder conventions (snapshot, frameit, deliver, screengrab,
+# supply). Loaded by `arrangia_core::catalog::fastlane` (embedded at build
+# time). Used by the screenshot import (`--format fastlane`) and the
+# `fastlane` export layout. Research notes:
+# docs/research/2026-11-10-fastlane-conventions.md
+#
+# All values were read from fastlane `master` on 2026-11-10 (mirror
+# cdn.jsdelivr.net/gh/fastlane/fastlane@master, byte-identical to the GitHub
+# raw files below; no commit SHA pinned).
+#
+# Field reference
+#   checked       date all values were last verified (YYYY-MM-DD)
+#   sources       key → {url, kind, note}
+#   deliver       iOS upload (`fastlane deliver` / upload_to_app_store)
+#     screenshots_dir   folder below `fastlane/` with one folder per locale
+#     extensions        image extensions deliver globs (case-insensitive)
+#     max_per_set       images per display type and locale deliver uploads
+#     imessage_dir      sub-folder for iMessage screenshots (iMessage/<locale>/)
+#     special_dirs      folder names that are not locales
+#     framed_suffix     frameit output suffix; when a locale folder has any
+#                       `*_framed.*` file, deliver skips every file whose path
+#                       does not contain `framed` or `watch`
+#     display_types     pixel size → display type, in deliver's lookup order
+#                       (first hit wins, except `ambiguous`)
+#     imessage_types    display types that have an `IMESSAGE_` twin
+#     ambiguous         sizes shared by several display types: `default`
+#                       unless the lowercased file path contains all words of
+#                       one of the `markers` lists
+#     locales           locale folder names deliver accepts (App Store
+#                       Connect locale codes; matched case-insensitively)
+#   supply        Android upload (`fastlane supply` / upload_to_play_store)
+#     metadata_dir      folder below `fastlane/` with one folder per locale
+#     images_dir        sub-folder of a locale folder
+#     extensions        image extensions supply globs (case-insensitive)
+#     screenshot_types  folder name → screenshot variant used by the import
+#                       (null = by pixel size); files are uploaded in plain
+#                       byte order of their names
+#     image_types       single images `images/<type>.<ext>` supply uploads
+#     docs_only_image_types  listed in the docs but not uploaded by the code
+#     max_per_type      Play Console limit (not enforced by supply)
+#   snapshot      iOS capture: `<locale>/<Device Name>-<screen>.png`
+#   screengrab    Android capture: `<name>_<epoch millis>.png`
+#   frameit       framing tool (replaced by Arrangia)
+
+checked: 2026-11-10
+
+sources:
+  DL:
+    url: https://raw.githubusercontent.com/fastlane/fastlane/master/deliver/lib/deliver/loader.rb
+    kind: secondary
+    note: Locale folders, iMessage/appleTV/default, extensions, framed handling.
+  DS:
+    url: https://raw.githubusercontent.com/fastlane/fastlane/master/deliver/lib/deliver/app_screenshot.rb
+    kind: secondary
+    note: DEVICE_RESOLUTIONS, DEVICE_RESOLUTIONS_MESSAGES, CONFLICTING_RESOLUTIONS.
+  DU:
+    url: https://raw.githubusercontent.com/fastlane/fastlane/master/deliver/lib/deliver/upload_screenshots.rb
+    kind: secondary
+    note: 10 images per set, natural sort by file name (`Naturally.sort`).
+  FL:
+    url: https://raw.githubusercontent.com/fastlane/fastlane/master/fastlane_core/lib/fastlane_core/languages.rb
+    kind: secondary
+    note: ALL_LANGUAGES (deliver's locale folder names).
+  DD:
+    url: https://docs.fastlane.tools/actions/deliver/
+    kind: secondary
+    note: 12.9" iPad rule since fastlane 2.230.0 (3rd gen by default).
+  SU:
+    url: https://raw.githubusercontent.com/fastlane/fastlane/master/supply/lib/supply.rb
+    kind: secondary
+    note: IMAGES_TYPES, SCREENSHOT_TYPES, IMAGE_FILE_EXTENSIONS.
+  SL:
+    url: https://raw.githubusercontent.com/fastlane/fastlane/master/supply/lib/supply/uploader.rb
+    kind: secondary
+    note: Glob `<locale>/images/<type>/*.{png,jpg,jpeg}`, sorted.
+  SD:
+    url: https://docs.fastlane.tools/actions/supply/
+    kind: secondary
+    note: '"screenshots will appear in the Play Store in alphanumerical filename order"; lists promoGraphic.'
+  SN:
+    url: https://raw.githubusercontent.com/fastlane/fastlane/master/snapshot/lib/assets/SnapshotHelper.swift
+    kind: secondary
+    note: File name `<simulator>-<name>.png`; report `screenshots.html` (reports_generator.rb).
+  SG:
+    url: https://raw.githubusercontent.com/fastlane/fastlane/master/screengrab/lib/screengrab/runner.rb
+    kind: secondary
+    note: >-
+      `<output>/<locale>/images/<device_type>Screenshots/`; file name
+      `<name>_<System.currentTimeMillis()>.png` (FileWritingScreenshotCallback.java).
+  FR:
+    url: https://raw.githubusercontent.com/fastlane/fastlane/master/frameit/lib/frameit/runner.rb
+    kind: secondary
+    note: Output `<name>_framed.png`; Framefile.json, title.strings, keyword.strings (editor.rb).
+
+deliver:
+  screenshots_dir: screenshots
+  extensions: [png, jpg, jpeg]
+  max_per_set: 10
+  imessage_dir: iMessage
+  special_dirs: [iMessage, appleTV, default]
+  framed_suffix: _framed
+  display_types:
+    - {type: APP_IPHONE_67, sizes: [[1260, 2736], [2736, 1260], [1290, 2796], [2796, 1290], [1320, 2868], [2868, 1320]]}
+    - {type: APP_IPHONE_65, sizes: [[1242, 2688], [2688, 1242], [1284, 2778], [2778, 1284]]}
+    - {type: APP_IPHONE_61, sizes: [[1179, 2556], [2556, 1179], [1206, 2622], [2622, 1206]]}
+    - {type: APP_IPHONE_58, sizes: [[1170, 2532], [2532, 1170], [1125, 2436], [2436, 1125], [1080, 2340], [2340, 1080]]}
+    - {type: APP_IPHONE_55, sizes: [[1242, 2208], [2208, 1242]]}
+    - {type: APP_IPHONE_47, sizes: [[750, 1334], [1334, 750]]}
+    - {type: APP_IPHONE_40, sizes: [[640, 1096], [640, 1136], [1136, 600], [1136, 640]]}
+    - {type: APP_IPHONE_35, sizes: [[640, 920], [640, 960], [960, 600], [960, 640]]}
+    - {type: APP_IPHONE_DUO, sizes: [[1398, 2034], [2034, 1398], [2007, 2853], [2853, 2007]]}
+    - {type: APP_IPAD_97, sizes: [[1024, 748], [1024, 768], [2048, 1496], [2048, 1536], [768, 1004], [768, 1024], [1536, 2008], [1536, 2048]]}
+    - {type: APP_IPAD_105, sizes: [[1668, 2224], [2224, 1668]]}
+    - {type: APP_IPAD_PRO_3GEN_11, sizes: [[1488, 2266], [2266, 1488], [1668, 2420], [2420, 1668], [1668, 2388], [2388, 1668], [1640, 2360], [2360, 1640]]}
+    - {type: APP_IPAD_PRO_129, sizes: [[2048, 2732], [2732, 2048]]}
+    - {type: APP_IPAD_PRO_3GEN_129, sizes: [[2048, 2732], [2732, 2048], [2064, 2752], [2752, 2064]]}
+    - {type: APP_DESKTOP, sizes: [[1280, 800], [1440, 900], [2560, 1600], [2880, 1800]]}
+    - {type: APP_WATCH_SERIES_3, sizes: [[312, 390]]}
+    - {type: APP_WATCH_SERIES_4, sizes: [[368, 448]]}
+    - {type: APP_WATCH_SERIES_7, sizes: [[396, 484]]}
+    - {type: APP_WATCH_SERIES_10, sizes: [[416, 496]]}
+    - {type: APP_WATCH_ULTRA, sizes: [[410, 502], [422, 514]]}
+    - {type: APP_APPLE_TV, sizes: [[1920, 1080], [3840, 2160]]}
+    - {type: APP_APPLE_VISION_PRO, sizes: [[3840, 2160]]}
+  imessage_types: [
+    APP_IPHONE_40, APP_IPHONE_47, APP_IPHONE_55, APP_IPHONE_58, APP_IPHONE_61,
+    APP_IPHONE_65, APP_IPHONE_67, APP_IPAD_97, APP_IPAD_105, APP_IPAD_PRO_3GEN_11,
+    APP_IPAD_PRO_129, APP_IPAD_PRO_3GEN_129,
+  ]
+  ambiguous:
+    - sizes: [[2048, 2732], [2732, 2048]]
+      default: APP_IPAD_PRO_3GEN_129
+      markers:
+        APP_IPAD_PRO_129: [[app_ipad_pro_129], ["12.9", 2nd generation]]
+    - sizes: [[3840, 2160]]
+      default: APP_APPLE_TV
+      markers:
+        APP_APPLE_VISION_PRO: [[vision]]
+  locales: [
+    ar-SA, bn-BD, ca, cs, da, de-DE, el, en-AU, en-CA, en-GB, en-US, es-ES, es-MX,
+    fi, fr-CA, fr-FR, gu-IN, he, hi, hr, hu, id, it, ja, kn-IN, ko, ml-IN, mr-IN,
+    ms, nl-NL, "no", or-IN, pa-IN, pl, pt-BR, pt-PT, ro, ru, sk, sl-SI, sv, ta-IN,
+    te-IN, th, tr, uk, ur-PK, vi, zh-Hans, zh-Hant,
+  ]
+  sources: [DL, DS, DU, FL, DD]
+
+supply:
+  metadata_dir: metadata/android
+  images_dir: images
+  extensions: [png, jpg, jpeg]
+  screenshot_types:
+    phoneScreenshots: android-phone
+    sevenInchScreenshots: android-tablet
+    tenInchScreenshots: android-tablet
+    tvScreenshots: null
+    wearScreenshots: wear
+  image_types: [featureGraphic, icon, tvBanner]
+  docs_only_image_types: [promoGraphic]
+  max_per_type: 8
+  sources: [SU, SL, SD]
+
+snapshot:
+  report: screenshots.html
+  sources: [SN]
+
+screengrab:
+  # `_` + System.currentTimeMillis() (13 digits since 2001).
+  timestamp_min_digits: 10
+  sources: [SG]
+
+frameit:
+  framed_suffix: _framed
+  config_files: [Framefile.json, title.strings, keyword.strings]
+  sources: [FR]

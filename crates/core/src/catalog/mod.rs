@@ -8,6 +8,7 @@
 //! edit fails `cargo test`).
 
 mod devices;
+mod fastlane;
 mod galleries;
 mod store_locales;
 mod targets;
@@ -18,6 +19,10 @@ pub use devices::{
     BrowserChrome, BrowserTheme, Button, ButtonStyle, ColorVariant, Cutout, CutoutKind,
     CutoutShape, Device, DeviceClass, DevicesFile, Edge, FoldLink, Hinge, HingeAt, Laptop,
     LaptopBase, MIN_CHROME_SCALE, Rect, Screenshot, Size, Stand, StandFoot,
+};
+pub use fastlane::{
+    Ambiguous, Deliver, DisplayTypeSizes, FastlaneFile, Frameit, Screengrab, Snapshot, Supply,
+    fastlane,
 };
 pub use galleries::{Basis, CornerRadius, GalleriesFile, GalleryProfile, Measured};
 pub use store_locales::{LocaleSource, StoreLocale, StoreLocales, StoreLocalesFile, store_locales};

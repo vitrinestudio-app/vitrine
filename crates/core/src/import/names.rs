@@ -31,8 +31,10 @@ pub fn slugify(name: &str) -> String {
     }
 }
 
-/// `01_home` → `home`, `3-settings` → `settings`, `home` → `home`. A name
-/// that is only digits is kept.
+/// `01_home` → `home`, `3-settings` → `settings`, `home` → `home`; the
+/// fastlane snapshot habit `01Home` / `02MapView` (digits directly before
+/// an uppercase letter) → `Home` / `MapView`. A name that is only digits is
+/// kept, so is `2fa` or `3D`.
 pub fn strip_numeric_prefix(name: &str) -> &str {
     let digits = name.len() - name.trim_start_matches(|c: char| c.is_ascii_digit()).len();
     if digits == 0 {
@@ -40,9 +42,21 @@ pub fn strip_numeric_prefix(name: &str) -> &str {
     }
     let rest = &name[digits..];
     let trimmed = rest.trim_start_matches(['_', '-', ' ', '.']);
-    if trimmed.len() == rest.len() || trimmed.is_empty() {
-        // `2fa` or `01`: not a numbering prefix.
+    if trimmed.is_empty() {
         return name;
+    }
+    if trimmed.len() == rest.len() {
+        // `01Home`: a zero-padded or multi-digit number glued to a
+        // capitalised word that goes on in lowercase (not `3D`, `2fa`).
+        let mut chars = rest.chars();
+        let upper = chars.next().is_some_and(|c| c.is_ascii_uppercase());
+        let lower_next = chars.next().is_some_and(|c| c.is_ascii_lowercase());
+        let numbering = digits >= 2 || name.starts_with('0');
+        return if upper && lower_next && numbering {
+            rest
+        } else {
+            name
+        };
     }
     trimmed
 }
@@ -229,6 +243,11 @@ mod tests {
         assert_eq!(strip_numeric_prefix("2fa"), "2fa");
         assert_eq!(strip_numeric_prefix("01"), "01");
         assert_eq!(strip_numeric_prefix("01_"), "01_");
+        assert_eq!(strip_numeric_prefix("01Home"), "Home");
+        assert_eq!(strip_numeric_prefix("12MapView"), "MapView");
+        assert_eq!(strip_numeric_prefix("3D"), "3D");
+        assert_eq!(strip_numeric_prefix("3Dview"), "3Dview");
+        assert_eq!(strip_numeric_prefix("4Kids"), "4Kids");
     }
 
     #[test]

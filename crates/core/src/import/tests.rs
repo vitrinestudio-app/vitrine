@@ -535,3 +535,211 @@ fn import_settings_round_trip_and_op() {
         .insert("x".into(), "not a variant".into());
     assert!(p.apply(Op::SetImport { import: bad }).is_err());
 }
+
+/// [`project`] plus Google Play phone and tablet targets and Hebrew.
+fn project_with_android() -> Project {
+    let mut p = project();
+    let yaml = p.to_yaml().unwrap().replace(
+        "targets:\n",
+        "targets:\n- {id: play, strip: s, size: [1080, 2160], screenshots: android-phone}\n- {id: play-tab, strip: s, size: [1600, 2560], screenshots: android-tablet}\n",
+    );
+    p = crate::io::project_from_yaml(&yaml).unwrap_or_else(|e| panic!("{e}"));
+    p.languages.available.push(Lang::new("he"));
+    p
+}
+
+#[test]
+fn whole_fastlane_folder_snapshot_and_screengrab() {
+    let d = dirs();
+    let p = project_with_android();
+    let s = d.source.join("fastlane");
+    let shots = s.join("screenshots");
+    fs::create_dir_all(&shots).unwrap();
+    fs::write(
+        shots.join("Framefile.json"),
+        r##"{"default": {"background": "./background.jpg", "title": {"color": "#ffffff"}}, "data": [{"filter": "01Home", "background": "../bg/home.png"}]}"##,
+    )
+    .unwrap();
+    png(&shots.join("background.jpg"), 1320, 2868, "bg");
+    png(&s.join("bg/home.png"), 1320, 2868, "bg2");
+    fs::write(shots.join("screenshots.html"), "<html></html>").unwrap();
+    png(
+        &shots.join("en-US/iPhone 15 Pro Max-01Home.png"),
+        1290,
+        2796,
+        "a",
+    );
+    png(
+        &shots.join("en-US/iPhone 15 Pro Max-01Home_framed.png"),
+        1500,
+        3000,
+        "f",
+    );
+    fs::write(
+        shots.join("en-US/title.strings"),
+        "\n\"01Home\" = \"Plan\";\n",
+    )
+    .unwrap();
+    png(
+        &shots.join("de-DE/iPad Pro 13-inch (M4)-02Planner.png"),
+        2064,
+        2752,
+        "b",
+    );
+    fs::write(shots.join("de-DE/keyword.strings"), "\n").unwrap();
+    png(
+        &shots.join("iMessage/en-US/iPhone 15 Pro Max-01Home.png"),
+        1290,
+        2796,
+        "c",
+    );
+    fs::create_dir_all(s.join("metadata/en-US")).unwrap();
+    fs::write(s.join("metadata/en-US/description.txt"), "x").unwrap();
+    png(&s.join("metadata/app_icon.png"), 1024, 1024, "icon");
+    let android = s.join("metadata/android");
+    fs::create_dir_all(android.join("en-US")).unwrap();
+    fs::write(android.join("en-US/title.txt"), "x").unwrap();
+    png(
+        &android.join("en-US/images/featureGraphic.png"),
+        1024,
+        500,
+        "fg",
+    );
+    png(
+        &android.join("en-US/images/phoneScreenshots/home_1731234567890.png"),
+        1080,
+        2160,
+        "d",
+    );
+    png(
+        &android.join("de-DE/images/tenInchScreenshots/garden_plan_1731234567891.png"),
+        1600,
+        2560,
+        "e",
+    );
+    png(
+        &android.join("iw-IL/images/phoneScreenshots/planner.png"),
+        1080,
+        2160,
+        "h",
+    );
+
+    let plan = plan(&d, &p, &ImportRules::default());
+    assert_eq!(plan.format, SourceFormat::Fastlane);
+    let it = item(&plan, "en-US/iPhone 15 Pro Max-01Home.png");
+    assert_eq!(
+        it.dest.as_deref(),
+        Some("screenshots/en/ios-phone/home.png"),
+        "{it:#?}"
+    );
+    assert_eq!(it.device.as_deref(), Some("iPhone 15 Pro Max"));
+    let it = item(&plan, "de-DE/iPad Pro 13-inch (M4)-02Planner.png");
+    assert_eq!(
+        it.dest.as_deref(),
+        Some("screenshots/de/ios-tablet/planner.png"),
+        "{it:#?}"
+    );
+    let it = item(
+        &plan,
+        "metadata/android/en-US/images/phoneScreenshots/home_1731234567890.png",
+    );
+    assert_eq!(
+        it.dest.as_deref(),
+        Some("screenshots/en/android-phone/home.png"),
+        "{it:#?}"
+    );
+    assert_eq!(it.confidence, Confidence::High, "{it:#?}");
+    let it = item(
+        &plan,
+        "metadata/android/de-DE/images/tenInchScreenshots/garden_plan_1731234567891.png",
+    );
+    assert_eq!(
+        it.dest.as_deref(),
+        Some("screenshots/de/android-tablet/garden-plan.png"),
+        "{it:#?}"
+    );
+    // Play's legacy Hebrew code → project language `he` (store locale map).
+    let it = item(
+        &plan,
+        "metadata/android/iw-IL/images/phoneScreenshots/planner.png",
+    );
+    assert_eq!(
+        it.dest.as_deref(),
+        Some("screenshots/he/android-phone/planner.png"),
+        "{it:#?}"
+    );
+
+    let reason = |src: &str| skipped(&plan, src).reason.clone();
+    assert_eq!(reason("screenshots.html"), "fastlane report");
+    assert_eq!(reason("Framefile.json"), "frameit configuration");
+    assert!(reason("background.jpg").contains("frameit background"));
+    assert!(reason("bg/home.png").contains("frameit background"));
+    assert_eq!(reason("en-US/title.strings"), "frameit configuration");
+    assert_eq!(reason("de-DE/keyword.strings"), "frameit configuration");
+    assert!(reason("en-US/iPhone 15 Pro Max-01Home_framed.png").contains("framed"));
+    assert!(reason("iMessage/en-US/iPhone 15 Pro Max-01Home.png").contains("iMessage"));
+    assert!(reason("metadata/en-US/description.txt").contains("metadata"));
+    assert!(reason("metadata/app_icon.png").contains("metadata"));
+    assert!(reason("metadata/android/en-US/title.txt").contains("metadata"));
+    assert!(reason("metadata/android/en-US/images/featureGraphic.png").contains("featureGraphic"));
+    assert_eq!(plan.count(Action::Unresolved), 0, "{:#?}", plan.items);
+}
+
+#[test]
+fn screengrab_folder_picked_directly() {
+    let d = dirs();
+    let p = project_with_android();
+    // The user picks fastlane/metadata/android.
+    png(
+        &d.source
+            .join("en-US/images/phoneScreenshots/01_home_1731234567890.png"),
+        1080,
+        2160,
+        "a",
+    );
+    png(
+        &d.source
+            .join("de-DE/images/sevenInchScreenshots/planner.png"),
+        1200,
+        1920,
+        "b",
+    );
+    let plan1 = plan(&d, &p, &ImportRules::default());
+    assert_eq!(plan1.format, SourceFormat::Fastlane);
+    assert_eq!(
+        item(
+            &plan1,
+            "en-US/images/phoneScreenshots/01_home_1731234567890.png"
+        )
+        .dest
+        .as_deref(),
+        Some("screenshots/en/android-phone/home.png")
+    );
+    assert_eq!(
+        item(&plan1, "de-DE/images/sevenInchScreenshots/planner.png")
+            .dest
+            .as_deref(),
+        Some("screenshots/de/android-tablet/planner.png")
+    );
+    // A device map entry for the folder name wins over the built-in one.
+    let mut rules = ImportRules::default();
+    rules
+        .mapping
+        .devices
+        .insert("sevenInchScreenshots".into(), "android-phone".into());
+    let plan2 = plan(&d, &p, &rules);
+    assert_eq!(
+        item(&plan2, "de-DE/images/sevenInchScreenshots/planner.png")
+            .dest
+            .as_deref(),
+        Some("screenshots/de/android-phone/planner.png")
+    );
+}
+
+#[test]
+fn screengrab_timestamps() {
+    assert_eq!(strip_timestamp("home_1731234567890", 10), "home");
+    assert_eq!(strip_timestamp("home_12", 10), "home_12");
+    assert_eq!(strip_timestamp("_1731234567890", 10), "_1731234567890");
+    assert_eq!(strip_timestamp("home", 10), "home");
+}
