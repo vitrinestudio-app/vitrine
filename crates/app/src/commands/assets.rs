@@ -900,7 +900,7 @@ mod tests {
         assert_eq!(s["en"].fallback_for, ["fr", "nl"]);
         // en itself borrows `list` from de.
         assert_eq!(s["de"].fallback_for, ["en", "fr", "nl", "de-AT"]);
-        assert!(s["de"].borrowed.is_empty());
+        assert_eq!(s["de"].borrowed.len(), 0);
         // Prefix chain de-AT → de (the default).
         assert_eq!(s["de-AT"].source.as_deref(), Some("de"));
         assert!(s["de-AT"].source_is_default);
@@ -908,7 +908,7 @@ mod tests {
         let s = screenshot_sources(&p, &files[..2], &keys, &variants);
         assert_eq!(s["fr"].source.as_deref(), Some("de"));
         assert!(s["fr"].source_is_default);
-        assert!(s["en"].fallback_for.is_empty());
+        assert_eq!(s["en"].fallback_for, Vec::<String>::new());
         assert!(
             screenshot_sources(&p, &[], &keys, &[])["fr"]
                 .source
