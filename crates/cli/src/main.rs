@@ -5,7 +5,8 @@
 //! export|import` (translation exchange), `import screenshots`
 //! (fastlane / Arrangia / flat folders → `screenshots/`), `frames`
 //! (import/list/remove vendor device frames, app-wide) and `mcp` (MCP
-//! server over stdio for AI assistants; `arrangia-mcp`). The CLI only
+//! server over stdio for AI assistants; `arrangia-mcp`) and `upload`
+//! (store upload: plan → confirm token → execute; `arrangia-app`). The CLI only
 //! formats what `arrangia-core` and `arrangia-render` compute; it never
 //! edits project fields directly.
 //!
@@ -26,6 +27,7 @@ mod project;
 mod render;
 mod strings;
 mod term;
+mod upload;
 mod validate;
 
 use std::path::PathBuf;
@@ -102,6 +104,9 @@ enum Command {
     Frames(frames::FramesArgs),
     /// Run the MCP server over stdio (for Claude Code / Claude Desktop).
     Mcp(mcp::McpArgs),
+    /// Upload to App Store Connect / Google Play: `plan` (dry run + confirm
+    /// token), `execute --confirm <token>`, `log`.
+    Upload(upload::UploadArgs),
 }
 
 impl Command {
@@ -116,6 +121,7 @@ impl Command {
             Self::Import(_) => "import",
             Self::Frames(_) => "frames",
             Self::Mcp(_) => "mcp",
+            Self::Upload(_) => "upload",
         }
     }
 }
@@ -131,6 +137,7 @@ fn main() -> ExitCode {
         Command::Import(cmd) => import::run(cmd, &cli.global),
         Command::Frames(args) => frames::run(args, &cli.global),
         Command::Mcp(args) => mcp::run(args, &cli.global),
+        Command::Upload(args) => upload::run(args, &cli.global),
     };
     match result {
         Ok(code) => ExitCode::from(code),
