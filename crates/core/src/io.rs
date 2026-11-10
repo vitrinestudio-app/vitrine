@@ -72,8 +72,9 @@ pub fn from_yaml<T: serde::de::DeserializeOwned>(yaml: &str) -> Result<T, String
 
 /// Parse `project.yaml` content (without strings) and check its structure.
 pub fn project_from_yaml(yaml: &str) -> Result<Project, String> {
-    let project: Project = from_yaml(yaml)?;
+    let mut project: Project = from_yaml(yaml)?;
     project.check_structure()?;
+    project.dropped_override_nulls = project.drop_override_nulls();
     Ok(project)
 }
 
@@ -144,6 +145,7 @@ impl Project {
                 path: path.clone(),
                 message,
             })?;
+        project.dropped_override_nulls = project.drop_override_nulls();
 
         let i18n = dir.join(I18N_DIR);
         if i18n.is_dir() {
@@ -238,6 +240,9 @@ impl Project {
             to_yaml(self).and_then(|text| write_atomic(&dir.join(PROJECT_FILE), text.as_bytes()));
         if result.is_err() {
             self.revision -= 1;
+        } else {
+            // The file no longer has them.
+            self.dropped_override_nulls.clear();
         }
         result
     }

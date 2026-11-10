@@ -577,6 +577,28 @@ macro_rules! element_fields {
                 }
             }
 
+            /// Names of the fields set to `null` (reset).
+            pub fn null_fields(&self) -> Vec<&'static str> {
+                let mut out = Vec::new();
+                $( if matches!(self.$field, Some(None)) { out.push(field_name(stringify!($field))); } )*
+                out
+            }
+
+            /// Remove the fields set to `null`; returns their names. In an
+            /// override a `null` would mean "reset to the kind's default",
+            /// which is never what an override is for: overrides only set
+            /// values (ADR 0009 amendment, 2026-11-10).
+            pub fn drop_nulls(&mut self) -> Vec<&'static str> {
+                let mut out = Vec::new();
+                $(
+                    if matches!(self.$field, Some(None)) {
+                        self.$field = None;
+                        out.push(field_name(stringify!($field)));
+                    }
+                )*
+                out
+            }
+
             /// Merge `other` on top of `self` (fields of `other` win).
             #[must_use]
             pub fn merged(&self, other: &ElementPatch) -> ElementPatch {
@@ -1026,6 +1048,28 @@ impl Element {
         let mut w = ElementWire::from(self.clone());
         let inverse = patch.apply_to_wire(&mut w);
         Ok((Element::try_from(w)?, inverse))
+    }
+
+    /// Removes `null` fields from the language overrides of this element
+    /// and its children (empty overrides are removed); returns where they
+    /// were.
+    pub fn drop_lang_override_nulls(&mut self) -> Vec<String> {
+        let mut out = Vec::new();
+        if let ElementKind::Text(t) = &mut self.kind {
+            let id = &self.id;
+            t.langs.retain(|lang, p| {
+                for f in p.drop_nulls() {
+                    out.push(format!("element `{id}`, langs.{lang}: {f}"));
+                }
+                !p.is_empty()
+            });
+        }
+        if let Some(children) = self.children_mut() {
+            for c in children {
+                out.extend(c.drop_lang_override_nulls());
+            }
+        }
+        out
     }
 
     /// Direct children (groups only).

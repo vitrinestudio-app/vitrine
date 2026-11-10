@@ -771,6 +771,72 @@ fn language_scope_writes_language_overrides() {
 }
 
 #[test]
+fn null_in_an_override_scope_resets_the_field() {
+    let mut p = sample();
+    let es = EditContext::new("ios-phone-69", "es").unwrap().lang_only();
+    let ops = with_editor(&p, &es, |ed| {
+        ed.patch(
+            "title-1",
+            &io::from_yaml("{font_size: 50, box: {top: 100, left: 40, right: 40}}").unwrap(),
+        )
+        .unwrap()
+    });
+    apply(&mut p, ops);
+    // `null` removes the field from the override, never stores `null`.
+    let ops = with_editor(&p, &es, |ed| {
+        ed.patch("title-1", &io::from_yaml("{font_size: null}").unwrap())
+            .unwrap()
+    });
+    let [Op::SetLangOverride { patch: Some(o), .. }] = &ops[..] else {
+        panic!("{ops:?}")
+    };
+    assert_eq!(o.fields(), ["box"]);
+    assert!(o.null_fields().is_empty());
+    apply(&mut p, ops);
+    // Resetting a field the override does not set changes nothing.
+    let ops = with_editor(&p, &es, |ed| {
+        ed.patch("title-1", &io::from_yaml("{font_size: null}").unwrap())
+            .unwrap()
+    });
+    assert!(ops.is_empty(), "{ops:?}");
+    // The last field: the override goes away.
+    let ops = with_editor(&p, &es, |ed| {
+        ed.patch("title-1", &io::from_yaml("{box: null}").unwrap())
+            .unwrap()
+    });
+    assert!(
+        matches!(&ops[..], [Op::SetLangOverride { patch: None, .. }]),
+        "{ops:?}"
+    );
+    apply(&mut p, ops);
+    let (_, e) = p.element("title-1").unwrap();
+    assert!(!e.text_props().unwrap().langs.contains_key("es"));
+    // Variant scope: the same for variant overrides; values and resets mix.
+    let v = ctx("ios-ipad-13-landscape");
+    let ops = with_editor(&p, &v, |ed| {
+        ed.patch(
+            "hero-phone",
+            &io::from_yaml("{rotation: null, width: 600}").unwrap(),
+        )
+        .unwrap()
+    });
+    let [Op::SetVariantOverride { patch: Some(o), .. }] = &ops[..] else {
+        panic!("{ops:?}")
+    };
+    assert_eq!(o.fields(), ["at", "width"]);
+    apply(&mut p, ops);
+    // Base scope: `null` still resets the base field to its default.
+    let ops = with_editor(&p, &ctx("ios-phone-69"), |ed| {
+        ed.patch("hero-phone", &io::from_yaml("{shadow: null}").unwrap())
+            .unwrap()
+    });
+    let [Op::UpdateElement { patch, .. }] = &ops[..] else {
+        panic!("{ops:?}")
+    };
+    assert_eq!(patch.null_fields(), ["shadow"]);
+}
+
+#[test]
 fn edit_context_json() {
     let c: EditContext = serde_json::from_str(r#"{"target": "t", "lang": "en"}"#).unwrap();
     assert_eq!(c.variant, None);

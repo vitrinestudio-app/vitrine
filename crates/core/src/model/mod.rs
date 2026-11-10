@@ -69,6 +69,11 @@ pub struct Project {
     /// Translations, stored in `i18n/<lang>.yaml`, not in `project.yaml`.
     #[serde(skip)]
     pub strings: Strings,
+    /// Override fields that were `null` in the loaded file and were
+    /// dropped (see [`Project::drop_override_nulls`]); reported by
+    /// `core::validate` as info until the next save.
+    #[serde(skip)]
+    pub dropped_override_nulls: Vec<String>,
 }
 
 /// Project languages (§5).
@@ -136,7 +141,20 @@ impl Project {
             targets: Vec::new(),
             import: ImportSettings::default(),
             strings: Strings::new(),
+            dropped_override_nulls: Vec::new(),
         }
+    }
+
+    /// Removes `null` fields from every variant and language override
+    /// (an override only sets values; "back to the base" is the absence
+    /// of the field). Returns where they were, e.g. `element `title`,
+    /// langs.en: at`.
+    pub fn drop_override_nulls(&mut self) -> Vec<String> {
+        let mut out = Vec::new();
+        for s in &mut self.strips {
+            out.extend(s.drop_override_nulls());
+        }
+        out
     }
 
     pub fn strip(&self, id: &str) -> Option<&Strip> {

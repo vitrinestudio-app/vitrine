@@ -49,6 +49,28 @@ impl Strip {
         }
     }
 
+    /// Removes `null` fields from the variant overrides and the language
+    /// overrides of the strip's elements (see
+    /// [`super::Project::drop_override_nulls`]); returns where they were.
+    pub fn drop_override_nulls(&mut self) -> Vec<String> {
+        let mut out = Vec::new();
+        for e in &mut self.elements {
+            out.extend(e.drop_lang_override_nulls());
+        }
+        for (vid, v) in &mut self.variants {
+            v.overrides.retain(|id, p| {
+                for f in p.drop_nulls() {
+                    out.push(format!(
+                        "strip `{}`, variant `{vid}`, element `{id}`: {f}",
+                        self.id
+                    ));
+                }
+                !p.is_empty()
+            });
+        }
+        out
+    }
+
     /// Find an element (also inside groups).
     pub fn element(&self, id: &str) -> Option<&Element> {
         let mut found = None;
