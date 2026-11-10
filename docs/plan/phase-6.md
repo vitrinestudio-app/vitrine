@@ -51,12 +51,12 @@ and downloadable from a gallery.
 - [ ] Web gallery on arrangia.app (see 6.6): browse, preview, download;
       upload flow. User 2026-11-10: **own backend** (e.g. `api.arrangia.app`
       on the user's Docker server; user also runs PHP and Node.js
-      elsewhere). Stack recommendation (pending user OK): Rust (axum) in
+      elsewhere). Stack (user OK 2026-11-10): Rust (axum) in
       this workspace (`crates/gallery-server`), Docker image, SQLite, files
       on disk, behind the user's reverse proxy – reuses `core` validation and
       `render` to build trusted preview images server-side. Uploader login
       via GitHub OAuth (no passwords), moderation queue, licence per
-      template, size limits, safe zip handling, rate limits, abuse report,
+      template fixed to **CC0** (user 2026-11-10: no licence choice; attribution/NC make no sense for store screenshots) – uploader confirms own rights + CC0 grant in the upload terms; fonts keep their own licence (OFL only, licence file required in the package, checked on upload); size limits, safe zip handling, rate limits, abuse report,
       GDPR/Impressum; downloads without an account; in-app "browse gallery" opens the site or
       fetches an index (network → `publish`-like crate, not core)
 - [ ] Licence/attribution per template; checks on import (size limits, no
