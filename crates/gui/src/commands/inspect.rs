@@ -173,7 +173,11 @@ pub struct StringEdit {
 
 view_args! {
     pub struct ElementPatchArgs {
-        pub id: String,
+        /// The element (or use `ids` to patch several in one step).
+        #[serde(default)]
+        pub id: Option<String>,
+        #[serde(default)]
+        pub ids: Vec<String>,
         /// Fields to set (YAML names; `null` = reset to the default). In a
         /// variant view they go into the variant's override.
         #[serde(default)]
@@ -200,25 +204,36 @@ fn string_ops(project: &Project, edits: &[StringEdit]) -> CmdResult<Vec<Op>> {
 }
 
 pub fn element_patch(app: &AppState, args: ElementPatchArgs) -> CmdResult<EditResult> {
+    let mut ids: Vec<String> = args.id.iter().chain(&args.ids).cloned().collect();
+    ids.dedup();
+    if ids.is_empty() {
+        return Err(CommandError::invalid("no element id given"));
+    }
     let mut what: Vec<&str> = args.patch.fields();
     if !args.strings.is_empty() && !what.contains(&"text") {
         what.push("text");
     }
-    let label = if what.is_empty() {
-        format!("Edit {}", args.id)
+    let subject = if ids.len() == 1 {
+        ids[0].clone()
     } else {
-        format!("Edit {} of {}", what.join(", "), args.id)
+        format!("{} elements", ids.len())
+    };
+    let label = if what.is_empty() {
+        format!("Edit {subject}")
+    } else {
+        format!("Edit {} of {subject}", what.join(", "))
     };
     edit(app, &args.view(), label, |s, p, c| {
         // Strings first so a new key exists when the element points to it.
         let mut ops = string_ops(p, &args.strings)?;
-        if !args.patch.is_empty() {
-            ops.extend(with_editor(s, p, c, |ed| ed.patch(&args.id, &args.patch))?);
-        } else if p.element(&args.id).is_none() {
-            return Err(CommandError::not_found(format!(
-                "unknown element `{}`",
-                args.id
-            )));
+        for id in &ids {
+            if p.element(id).is_none() {
+                return Err(CommandError::not_found(format!("unknown element `{id}`")));
+            }
+            if !args.patch.is_empty() {
+                // Each id has its own element and override: independent ops.
+                ops.extend(with_editor(s, p, c, |ed| ed.patch(id, &args.patch))?);
+            }
         }
         Ok(Plan {
             ops,
@@ -682,6 +697,13 @@ mod tests {
         );
         assert_eq!(e["text"]["key"], "plan.title-new");
         assert_eq!(e["text"]["value"], "Neu");
+        // Several elements in one step.
+        let r = call(
+            &app,
+            "element_patch",
+            json!({"target": "ios-iphone-69", "ids": ["phone-plan", "phone-beds"], "patch": {"z": 4}}),
+        );
+        assert_eq!(last_undo(&r), "Edit z of 2 elements");
         // Invalid fields for the kind are refused.
         let err = dispatch(
             &app,
@@ -690,6 +712,7 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(err.code, ErrorCode::InvalidArgs);
+        call(&app, "undo", Value::Null);
         call(&app, "undo", Value::Null);
         let e = call(
             &app,
