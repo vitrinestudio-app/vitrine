@@ -7,6 +7,7 @@
 //! check date. [`check`] cross-checks the three files (unit-tested, so a bad
 //! edit fails `cargo test`).
 
+mod asset_library;
 mod devices;
 mod galleries;
 mod store_locales;
@@ -14,6 +15,9 @@ mod targets;
 
 use std::sync::LazyLock;
 
+pub use asset_library::{
+    AssetLibraryFile, CreativeMapping, ScreenshotPlacement, SlotPlacements, asset_library,
+};
 pub use devices::{
     BrowserChrome, BrowserTheme, Button, ButtonStyle, ColorVariant, Cutout, CutoutKind,
     CutoutShape, Device, DeviceClass, DevicesFile, Edge, FoldLink, Hinge, HingeAt, Laptop,

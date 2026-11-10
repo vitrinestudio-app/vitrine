@@ -33,7 +33,8 @@ pub use fill::{Fill, GradientStop, ImageFillMode};
 pub use ids::{ElementId, Lang, StringKey, StripId, TargetId, VariantId, is_valid_id};
 pub use import::{ImportMapping, ImportSettings};
 pub use store::{
-    ApplePlatform, AppleStore, GoogleStore, StoreKind, StoreLocaleMaps, StoreSettings,
+    ApplePlatform, AppleStore, AppleUploadFlowSetting, GoogleStore, StoreKind, StoreLocaleMaps,
+    StoreSettings,
 };
 pub use strip::{PageSpec, Strip, Variant};
 pub use style::{

@@ -416,7 +416,14 @@ pub struct StoreSlot {
 flow_style!(StoreSlot);
 
 /// App Store Connect screenshot set, or a creative asset placement.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+///
+/// ```yaml
+/// store: {apple: {display_type: APP_IPHONE_67}}
+/// store: {apple: {display_type: PRODUCT_PAGE_HEADER_ASSET, placement: header}}
+/// store: {apple: {display_type: APP_STORE_SEARCH_RESULTS_ASSET, placement: search_results}}
+/// store: {apple: {display_type: PRODUCT_PAGE_HEADER_ASSET, placement: universal}}
+/// ```
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AppleSlot {
     /// `screenshotDisplayType`, e.g. `APP_IPHONE_67`; for creative assets
@@ -430,6 +437,39 @@ pub struct AppleSlot {
     pub placement: Option<CreativePlacement>,
 }
 
+impl AppleSlot {
+    /// Screenshot slot of a display type.
+    pub fn screenshots(display_type: impl Into<String>) -> Self {
+        Self {
+            display_type: display_type.into(),
+            placement: None,
+        }
+    }
+
+    /// Creative asset slot (`display_type` = its placement type).
+    pub fn creative(placement: CreativePlacement) -> Self {
+        Self {
+            display_type: placement.display_type().to_owned(),
+            placement: Some(placement),
+        }
+    }
+
+    /// A creative asset (header / search results), not screenshots.
+    pub fn is_creative(&self) -> bool {
+        self.placement.is_some()
+    }
+
+    /// The slot value used for keys, logs and duplicate checks: the display
+    /// type for screenshots, Apple's placement type(s) for creative assets
+    /// (the universal asset: both, `+`-joined; ADR 0019).
+    pub fn key(&self) -> &str {
+        match self.placement {
+            None => &self.display_type,
+            Some(p) => p.api_name(),
+        }
+    }
+}
+
 /// Where an App Store creative asset is shown.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -440,6 +480,41 @@ pub enum CreativePlacement {
     SearchResults,
     /// One 16:9 asset used for both placements.
     Universal,
+}
+
+impl CreativePlacement {
+    pub const ALL: [Self; 3] = [Self::Header, Self::SearchResults, Self::Universal];
+
+    /// Name in project files (`header`, `search_results`, `universal`).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Header => "header",
+            Self::SearchResults => "search_results",
+            Self::Universal => "universal",
+        }
+    }
+
+    /// The `display_type` the slot carries.
+    pub fn display_type(self) -> &'static str {
+        match self {
+            Self::Header | Self::Universal => "PRODUCT_PAGE_HEADER_ASSET",
+            Self::SearchResults => "APP_STORE_SEARCH_RESULTS_ASSET",
+        }
+    }
+
+    /// Apple's placement type(s), `+`-joined (slot key of creative assets).
+    pub fn api_name(self) -> &'static str {
+        match self {
+            Self::Header => "PRODUCT_PAGE_HEADER_ASSET",
+            Self::SearchResults => "APP_STORE_SEARCH_RESULTS_ASSET",
+            Self::Universal => "PRODUCT_PAGE_HEADER_ASSET+APP_STORE_SEARCH_RESULTS_ASSET",
+        }
+    }
+
+    /// The creative placement behind a slot key (inverse of [`Self::api_name`]).
+    pub fn from_key(key: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|p| p.api_name() == key)
+    }
 }
 
 /// Google Play image type.

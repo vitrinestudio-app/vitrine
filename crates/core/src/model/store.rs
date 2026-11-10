@@ -102,8 +102,43 @@ pub struct AppleStore {
     pub bundle_id: Option<String>,
     #[serde(default, skip_serializing_if = "ApplePlatform::is_ios")]
     pub platform: ApplePlatform,
+    /// How screenshots get into App Store Connect (ADR 0019): `auto`
+    /// (default: App Asset Library, set-based API as fallback),
+    /// `asset_library` or `screenshot_sets`.
+    #[serde(default, skip_serializing_if = "AppleUploadFlowSetting::is_auto")]
+    pub upload_flow: AppleUploadFlowSetting,
 }
 flow_style!(AppleStore);
+
+/// `store.apple.upload_flow` (ADR 0019).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AppleUploadFlowSetting {
+    /// App Asset Library; the set-based API when the library is not
+    /// available for the app or lacks a needed placement group.
+    #[default]
+    Auto,
+    /// Only the App Asset Library (ASC API 4.5.1).
+    AssetLibrary,
+    /// Only the deprecated `appScreenshotSets` API (no Duo, no creative
+    /// assets).
+    ScreenshotSets,
+}
+
+impl AppleUploadFlowSetting {
+    #[allow(clippy::trivially_copy_pass_by_ref)] // serde passes references
+    pub fn is_auto(&self) -> bool {
+        *self == Self::Auto
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::AssetLibrary => "asset_library",
+            Self::ScreenshotSets => "screenshot_sets",
+        }
+    }
+}
 
 /// Google Play app.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
