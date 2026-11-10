@@ -7,8 +7,11 @@
 //! → [`Client::reorder`].
 //!
 //! Note: Apple marked the set-based screenshot resources deprecated in API
-//! 4.5.1 in favour of the App Asset Library (ADR 0017, "Deprecation").
+//! 4.5.1 in favour of the App Asset Library (ADR 0017, "Deprecation"). Its
+//! calls live in [`library`] (ADR 0019): asset library, reference data,
+//! images, placements, ordering requests.
 
+pub mod library;
 mod model;
 
 use std::fmt;
@@ -25,6 +28,10 @@ use tokio::task::JoinSet;
 use tokio::time::Instant;
 use zeroize::Zeroizing;
 
+pub use library::{
+    AssetLibrary, LibraryImage, LibraryUpload, Placement, RefData, RefDataFilter, RefGroup,
+    RefSpec, is_asset_has_placements,
+};
 pub use model::{
     App, AppRef, AppScreenshot, AppStoreVersion, AppSummary, AppsOverview, DeliveryState,
     HttpHeader, Localization, Platform, ScreenshotSet, UploadOperation,
@@ -692,7 +699,43 @@ impl Client {
         p: &mut Progress,
         progress: ProgressFn<'_>,
     ) -> Result<Option<AppScreenshot>> {
-        let ops = &reserved.upload_operations;
+        self.transfer_parts(&reserved.upload_operations, bytes, p, progress)
+            .await?;
+
+        // Commit.
+        let body = json!({
+            "data": {
+                "type": "appScreenshots",
+                "id": reserved.id,
+                "attributes": { "uploaded": true, "sourceFileChecksum": checksum }
+            }
+        });
+        let reply = self
+            .api(
+                Method::PATCH,
+                self.url(&["v1", "appScreenshots", &reserved.id])?,
+                Some(body),
+                Retry::Idempotent,
+            )
+            .await?;
+        p.step = UploadStep::Commit;
+        progress(p);
+        // The commit answers with the resource; tolerate an empty body.
+        Ok(parse_json::<Document<Resource<ScreenshotAttrs>>>(&reply)
+            .ok()
+            .map(|d| d.data.into()))
+    }
+
+    /// Sends every part of a reservation to Apple's pre-signed URLs
+    /// (concurrently and in any order, as Apple allows), reporting progress
+    /// per part. Shared by screenshots and asset library images.
+    async fn transfer_parts(
+        &self,
+        ops: &[UploadOperation],
+        bytes: &Bytes,
+        p: &mut Progress,
+        progress: ProgressFn<'_>,
+    ) -> Result<()> {
         let total = bytes.len() as u64;
         if ops.is_empty() {
             return Err(Error::Validation {
@@ -752,30 +795,7 @@ impl Client {
         if let Some(e) = first_error {
             return Err(e);
         }
-        self.http.check_cancelled()?;
-
-        // Commit.
-        let body = json!({
-            "data": {
-                "type": "appScreenshots",
-                "id": reserved.id,
-                "attributes": { "uploaded": true, "sourceFileChecksum": checksum }
-            }
-        });
-        let reply = self
-            .api(
-                Method::PATCH,
-                self.url(&["v1", "appScreenshots", &reserved.id])?,
-                Some(body),
-                Retry::Idempotent,
-            )
-            .await?;
-        p.step = UploadStep::Commit;
-        progress(p);
-        // The commit answers with the resource; tolerate an empty body.
-        Ok(parse_json::<Document<Resource<ScreenshotAttrs>>>(&reply)
-            .ok()
-            .map(|d| d.data.into()))
+        self.http.check_cancelled()
     }
 
     async fn wait_processed(

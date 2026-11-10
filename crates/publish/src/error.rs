@@ -9,7 +9,7 @@ use std::time::Duration;
 
 /// One error entry as reported by a store API (JSON:API `errors[]` for App
 /// Store Connect, `error.errors[]`/`error` for Google APIs).
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize)]
 pub struct ApiErrorDetail {
     /// Machine-readable code (`ENTITY_ERROR.ATTRIBUTE.INVALID`,
     /// `STATE_ERROR`, Google `status`/`reason`, …).
