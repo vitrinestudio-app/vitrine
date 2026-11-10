@@ -41,7 +41,25 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - iPad 13" 2064×2752 / 2048×2732 → `APP_IPAD_PRO_3GEN_129` (required if the app runs on iPad).
 - Mac: 16:10 only (1280×800, 1440×900, 2560×1600, 2880×1800).
 - Google Play: long side ≤ 2× short side, 320–3840 px, 2–8 per device type, ≥ 4 at ≥ 1080 px for recommendations.
-- iPhone Duo exists in ASC behind a feature flag; sizes not public yet.
+- iPhone Duo (2026-11-10): outer 1398×2034 / 2034×1398, inner 2007×2853 / 2853×2007 (larger than the 1878×2670 panel, same aspect). Presets `ios-iphone-duo-outer` / `-inner`; upload only through the App Asset Library (display class `IPHONE_DUO`, not in the screenshot-set API). Required from April 2027 for apps built with the iOS 27.1 SDK.
+- Apple Watch: ONE watch size for all localizations is enough: `watch-ultra` 422×514 / 410×502, `watch-series` 416×496 (Series 10+), legacy `watch-series-7` 396×484, `watch-series-4` 368×448, `watch-series-3` 312×390.
+- Wear OS (`play-wear`): 1:1, 384–3840 px, app UI only (no frames, texts, backgrounds) → info `store_decorations` when a non-screenshot-only target has any.
+
+### Creative assets (App Store header / search results, iOS 27+)
+- Optional, one image per localization, rendered like a banner from a region of a strip: `ios-header` (21:9, 3840×1646 exact), `ios-search-results` (3:2, any size 1920×1280 … 3840×2560; default region pages 1–3, which is about 3:2 for portrait pages), `ios-creative-universal` (16:9 PNG 5244×2950, serves both placements; default region pages 1–4).
+- Store slot `{apple: {display_type: PRODUCT_PAGE_HEADER_ASSET|APP_STORE_SEARCH_RESULTS_ASSET, placement: header|search_results|universal}}`; uploaded only through the App Asset Library, never into a screenshot set.
+- Rules (Apple): short phrase that enhances the visual, localized; no prices, URLs, ©, unverifiable awards, other platforms, Apple awards; suitable for 4+.
+- Safe area: Apple defines it only in its design templates (Figma/Photoshop/Pixelmator/Sketch), no numbers published → presets have none. Set `safe_area: {top, right, bottom, left}` (insets in % of the image) on the target (Targets dialog → Safe area): the canvas shows it as a dashed rectangle per output image and validation warns `text_outside_safe_area`.
+
+### Watch and Wear OS: screenshot only
+- Target option `screenshot_only: true` (Targets dialog → "Screenshot only"; default for all watch presets and `play-wear`): every page exports the screenshot of its largest device alone, filling the image (square corners, no frame, background, text, shadow or rotation). Use the target's screenshot variant (`watch`, `wear`) so the watch captures are picked by key.
+- A page without a device stays empty (warning `screenshot_only_empty`).
+- Parametric watch frames `watch-ultra` (rugged, crown guard, action button) and `watch` (rounded, crown + side button) exist for marketing layouts; Apple draws its own watch mask in the store, so exports stay unframed.
+
+### Foldables (iPhone Duo)
+- Two catalog models, one per fold state: `iphone-duo` (open, inner display, landscape natural: the hinge is vertical; portrait = rotated, hinge horizontal) and `iphone-duo-folded` (closed, outer display, portrait natural, hinge spine on the left, punch-hole camera top right – position approximated).
+- Device field `fold: open|folded` (inspector → Fold) switches between them; it also works after `device_map` (map a phone to `iphone-duo` and fold it per element).
+- Drawing: faint crease line over the inner display and hinge seams in the bezel; the inner camera is under the display and not drawn.
 
 ### Screenshots import
 - Supports Arrangia folder layout, fastlane snapshot output (`de-DE/iPhone 17 Pro Max-01_home.png`), flat folders.
@@ -70,6 +88,8 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - iPhone 18 package (verified 2026-11-10): models Pro and Pro Max; colours Black, Burgundy, Glacier, Silver; screen exactly 1320×2868 (Pro Max) / 1206×2622 (Pro).
 - Frames are stored app-wide (app data dir), never in the project; projects only say `frame: imported:apple`. Missing on another machine → parametric frame + info.
 - CLI: `arrangia frames import <path> [--dry-run -v]`, `frames list`, `frames remove`.
+- iPhone Duo package `Bezel-iPhone-Duo.dmg` (verified 2026-11-10): `iPhone Duo - <Night Sky|Star White> - <Inner Open|Outer Closed> <Portrait|Landscape>.png` → `iphone-duo` (open, screen 2007×2853) / `iphone-duo-folded` (closed, 1398×2034). `… - Outer Open.png` (back + outer display, open flat) is skipped as a marketing composite (listed as ignored with the reason; rule files support `skip:` patterns).
+- Apple Watch Ultra package `Bezel-Apple-Watch-Ultra-4-2026.dmg` (verified 2026-11-10): `AW Ultra 4 - <Case> + <Band>.png` (620×940, case with band, screen 422×514) → `watch-ultra`; the colour key is case + band (`natural-trail-loop-sand`), so all six combinations are installed side by side. `AW Series <n> - …` → `watch` is a guess (unverified).
 - Both Pro and Pro Max bezels are kept; the bezel is picked per target size (else screenshot size), or pinned per device ("Bezel" in the inspector: "Auto · 18 Pro Max").
 - Use them for the whole project: Project settings → General → Frame style → "Apple (imported)" (`styles.frame: imported:apple`); a hint shows when no Apple frames are installed. Per device: inspector → Frame.
 - Colours come from the package (Black, Burgundy, Glacier, Silver for iPhone 18), not from Arrangia's palette. With an Apple frame the inspector shows only the installed colours, as swatches in the real housing colour (measured from each bezel at import: outer metal rim, black glass border excluded; stored as `swatch` in the store's `index.yaml`, filled in for older imports the first time the frame list is shown).

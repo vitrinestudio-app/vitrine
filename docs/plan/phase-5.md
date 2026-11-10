@@ -57,6 +57,13 @@ replaces it) – open question in ADR 0017.
       events, idempotent deletes); resume + upload log belong to 5.5
 - [ ] Optional: App Asset Library backend (`appAssetLibraryImages` +
       placements + ordering requests; needed for `IPHONE_DUO`)
+      – catalog side ready 2026-11-10: creative-asset presets (`ios-header`,
+      `ios-search-results`, `ios-creative-universal`, slot `placement:
+      header|search_results|universal`, display_type = placement type
+      `PRODUCT_PAGE_HEADER_ASSET` / `APP_STORE_SEARCH_RESULTS_ASSET`), Duo
+      presets with devices; watch presets (`APP_WATCH_*`) and Wear OS
+      (`wearScreenshots`) export `screenshot_only`. The set-based flow
+      must not send `placement` slots or `APP_IPHONE_DUO`.
 
 ## 5.4 Google Play client
 Client part done 2026-11-10 (`arrangia_publish::google`, ADR 0017).
