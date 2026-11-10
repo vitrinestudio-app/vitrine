@@ -49,8 +49,15 @@ and downloadable from a gallery.
       template (built-in + local + downloaded), insert canvas from template
 - [ ] App-wide template store (`<app data>/templates/`), list/remove
 - [ ] Web gallery on arrangia.app (see 6.6): browse, preview, download;
-      upload flow (moderation? GitHub-PR based repo vs. own backend – ADR,
-      open question for the user); in-app "browse gallery" opens the site or
+      upload flow. User 2026-11-10: **own backend** (e.g. `api.arrangia.app`
+      on the user's Docker server; user also runs PHP and Node.js
+      elsewhere). Stack recommendation (pending user OK): Rust (axum) in
+      this workspace (`crates/gallery-server`), Docker image, SQLite, files
+      on disk, behind the user's reverse proxy – reuses `core` validation and
+      `render` to build trusted preview images server-side. Uploader login
+      via GitHub OAuth (no passwords), moderation queue, licence per
+      template, size limits, safe zip handling, rate limits, abuse report,
+      GDPR/Impressum; downloads without an account; in-app "browse gallery" opens the site or
       fetches an index (network → `publish`-like crate, not core)
 - [ ] Licence/attribution per template; checks on import (size limits, no
       executable content, path traversal)
@@ -66,6 +73,8 @@ project's `frames/` or app-wide. Arrangia ships no vendor images.
 - [ ] Sources: project `frames/` (travels with the project, Git) and
       app-wide; `frame: pack:<name>` (or `imported:<vendor>`) resolution
 - [ ] SVG frames via `resvg`
+- [x] User 2026-11-10: agreed as described (PNG/SVG + `frame.yaml`, project
+      `frames/` or app-wide, reuse of the bezel import machinery)
 - [ ] Use cases: vendor kits the user downloads (Samsung, Google Pixel,
       Figma exports), clay/flat mockups, branded frames; could later be
       shared through the same web gallery as templates
