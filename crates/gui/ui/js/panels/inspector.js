@@ -667,6 +667,13 @@ export function mount(el, ctx) {
   const unsubs = [
     store.select((s) => [s.selection, s.overlay, s.variant, s.lang, s.target, s.strip, s.summary], () => refresh()),
     editor.on('reset', () => cache.invalidate()),
+    // Full invalidations (asset imports, external edits): asset lists and
+    // translation keys may have changed.
+    editor.on('invalidate', (p) => {
+      if (!p?.all) return;
+      cache.invalidate();
+      refresh();
+    }),
   ];
   refresh();
   return {

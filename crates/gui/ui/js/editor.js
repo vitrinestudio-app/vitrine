@@ -161,6 +161,7 @@ export const editor = {
   async externalChange(change) {
     if (change.reason === 'assets') {
       emit('invalidate', { all: true });
+      this.scheduleValidation();
       return;
     }
     await this.load();

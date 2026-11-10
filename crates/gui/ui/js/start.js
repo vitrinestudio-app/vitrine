@@ -60,6 +60,7 @@ export async function openNewProject() {
   }
   function update() {
     target.textContent = dir() || t('start.location.missing');
+    target.classList.toggle('mono', Boolean(dir()));
     createBtn.disabled = !dir();
   }
   async function create() {
