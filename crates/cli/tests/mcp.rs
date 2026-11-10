@@ -407,7 +407,7 @@ fn mcp_overrides_batches_docs_and_asset_mapping() {
             {"id": "title-plan", "scope": "lang", "lang": "fr", "patch": {"font_size": 62}},
         ]}),
     );
-    assert_eq!(r["step"], "Claude: Edit font_size of title-plan", "{r}");
+    assert_eq!(r["step"], "Arrangia Test: Edit font_size of title-plan", "{r}");
     let de = c.call("element_get", json!({"id": "title-plan", "lang": "de"}));
     assert_eq!(de["lang_override"]["font_size"], 60);
     c.call("history_undo", json!({}));
