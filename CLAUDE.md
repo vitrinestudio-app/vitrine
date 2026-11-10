@@ -229,8 +229,8 @@ targets macOS, Windows, Linux.
   variant, import or helper used only inside a `#[cfg(target_os = "macos")]`
   (or `unix`) branch is gated the same way, otherwise it is dead code
   elsewhere and `-D warnings` fails. Check other targets from the Mac with
-  the Windows cross-clippy command under Commands when touching `cfg`
-  code (Linux only via CI).
+  the cross-clippy commands under Commands when touching `cfg` code
+  (Linux without the GUI; CI covers the rest).
 - No `unsafe` (workspace lint `unsafe_code = "forbid"`).
 - Golden-image tests use only the bundled OFL fonts, never system fonts.
 - No vendor graphics (Apple/Google device images etc.) in the repo. Built-in
@@ -258,8 +258,9 @@ cargo fmt --all
 # cross-clippy for Windows from the Mac (one-time: brew install mingw-w64,
 # rustup target add x86_64-pc-windows-gnu); verified 2026-11-10
 CARGO_TARGET_DIR=target/cross cargo clippy --target x86_64-pc-windows-gnu --workspace --all-targets --all-features -- -D warnings
-# Linux: no working local cross-clippy (cargo-zigbuild has no clippy subcommand;
-# zig as CC fails on aws-lc-sys assembly) – rely on CI and check its per-OS results
+# Linux (one-time: brew install messense/macos-cross-toolchains/x86_64-unknown-linux-gnu,
+# rustup target add x86_64-unknown-linux-gnu); excludes the GUI (needs GTK); verified 2026-11-10
+CARGO_TARGET_DIR=target/cross cargo clippy --target x86_64-unknown-linux-gnu --workspace --exclude arrangia-gui --all-targets --all-features -- -D warnings
 cargo run -p arrangia-cli -- --help          # CLI (binary `arrangia`)
 cargo run -p arrangia-gui                    # start the GUI (start screen)
 cargo run -p arrangia-gui -- <project-dir>   # … opening a project
