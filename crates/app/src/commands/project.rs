@@ -294,11 +294,22 @@ pub fn project_new(app: &AppState, args: ProjectNewArgs) -> CmdResult<ProjectSum
 /// Opens a project folder (closing the current one).
 pub fn project_open(app: &AppState, args: ProjectOpenArgs) -> CmdResult<ProjectSummary> {
     let session = app.open_project(&absolute(&args.dir)?)?;
-    Ok(session.with_project(|p| summarize(p, session.dir().to_owned())))
+    let summary = session.with_project(|p| summarize(p, session.dir().to_owned()));
+    app.events().emit(
+        crate::events::PROJECT_OPENED,
+        serde_json::json!({
+            "dir": summary.dir, "name": summary.name, "actor": crate::Actor::current(),
+        }),
+    );
+    Ok(summary)
 }
 
 pub fn project_close(app: &AppState, _: NoArgs) -> CmdResult<()> {
     app.close_project();
+    app.events().emit(
+        crate::events::PROJECT_CLOSED,
+        serde_json::json!({ "actor": crate::Actor::current() }),
+    );
     Ok(())
 }
 

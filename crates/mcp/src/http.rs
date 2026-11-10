@@ -1,10 +1,11 @@
-//! Streamable HTTP for the GUI-hosted server (feature `http`, Phase 4.3b).
+//! Streamable HTTP for the GUI-hosted server (feature `http`, ADR 0015).
 //!
 //! The GUI builds one [`ArrangiaMcp`] over its live `AppState` (with
 //! `Host::Gui` and a [`crate::ProgressRelay`] wrapping its Tauri event
 //! sink) and serves [`service`] on `127.0.0.1` behind its own bearer-token
-//! check. Every MCP session gets a clone of the server: all share the one
-//! session the user sees.
+//! check ([`crate::host`]). Every MCP session gets a clone of the server
+//! ([`ArrangiaMcp::for_session`]): all share the one session the user
+//! sees.
 
 use std::sync::Arc;
 
@@ -21,7 +22,7 @@ pub fn service(
     config: StreamableHttpServerConfig,
 ) -> StreamableHttpService<ArrangiaMcp, LocalSessionManager> {
     StreamableHttpService::new(
-        move || Ok(server.clone()),
+        move || Ok(server.for_session()),
         Arc::new(LocalSessionManager::default()),
         config.with_allowed_hosts(["localhost", "127.0.0.1", "::1"]),
     )

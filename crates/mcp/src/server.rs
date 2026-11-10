@@ -22,8 +22,9 @@ use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::tool::ToolCallContext;
 use rmcp::model::{
     CallToolRequestParams, CallToolResponse, CallToolResult, Implementation,
-    ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, PaginatedRequestParams,
-    ReadResourceRequestParams, ReadResourceResponse, ServerCapabilities, ServerConfig,
+    InitializeRequestParams, InitializeResult, ListResourceTemplatesResult, ListResourcesResult,
+    ListToolsResult, PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResponse,
+    ServerCapabilities, ServerConfig,
 };
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer, ServerHandler};
@@ -36,12 +37,14 @@ use crate::resources;
 /// Guide for the model, sent as the server `instructions`.
 pub const INSTRUCTIONS: &str = include_str!("instructions.md");
 
-/// Who hosts the server: decides only how `view_get` describes the view.
+/// Who hosts the server.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Host {
     /// `arrangia mcp --headless`: own session, no GUI.
     Headless,
-    /// The GUI's live session (Phase 4.3b).
+    /// The GUI's live session (ADR 0015): omitted targets/languages
+    /// default to the GUI's view; sessions and tool calls are reported in
+    /// the app's MCP status.
     Gui,
 }
 
@@ -52,6 +55,43 @@ pub struct ArrangiaMcp {
     progress: Option<Arc<ProgressRelay>>,
     host: Host,
     tool_router: ToolRouter<Self>,
+    /// One MCP session of a GUI-hosted server (see [`Self::for_session`]).
+    session: Option<Arc<SessionGuard>>,
+}
+
+/// Counts an MCP session in the app's MCP status while it lives: the
+/// client name is set on `initialize`; dropping the last clone of the
+/// session's server (session closed or expired) counts it out.
+struct SessionGuard {
+    app: Arc<AppState>,
+    client: std::sync::Mutex<Option<String>>,
+}
+
+impl SessionGuard {
+    fn opened(&self, name: &str) {
+        let mut client = self
+            .client
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if client.is_none() {
+            *client = Some(name.to_owned());
+            drop(client);
+            self.app.update_mcp_status(|s| s.session_opened(name));
+        }
+    }
+}
+
+impl Drop for SessionGuard {
+    fn drop(&mut self) {
+        let name = self
+            .client
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take();
+        if let Some(name) = name {
+            self.app.update_mcp_status(|s| s.session_closed(&name));
+        }
+    }
 }
 
 impl std::fmt::Debug for ArrangiaMcp {
@@ -88,7 +128,22 @@ impl ArrangiaMcp {
             progress,
             host,
             tool_router,
+            session: None,
         }
+    }
+
+    /// A clone for a new MCP session: a GUI-hosted server counts its
+    /// sessions per client in the app's MCP status (`mcp-status`).
+    #[must_use]
+    pub fn for_session(&self) -> Self {
+        let mut s = self.clone();
+        if self.host == Host::Gui {
+            s.session = Some(Arc::new(SessionGuard {
+                app: self.app.clone(),
+                client: std::sync::Mutex::new(None),
+            }));
+        }
+        s
     }
 
     pub fn app(&self) -> &Arc<AppState> {
@@ -143,12 +198,16 @@ impl ArrangiaMcp {
             client: client_name(ctx),
         };
         let app = self.app.clone();
+        let gui = self.host == Host::Gui;
         let joined = tokio::task::spawn_blocking(move || {
             actor.scope(|| {
                 if sync {
                     sync_with_disk(&app)?;
                 }
-                f(&app)
+                // GUI-hosted: omitted targets/languages default to what
+                // the user looks at.
+                let view = gui.then(|| app.session().ok().map(|s| s.view())).flatten();
+                crate::params::with_gui_view(view, || f(&app))
             })
         })
         .await;
@@ -242,6 +301,11 @@ impl ServerHandler for ArrangiaMcp {
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, ErrorData> {
         let name = request.name.clone();
+        if self.host == Host::Gui {
+            let client = client_name(&context);
+            self.app
+                .update_mcp_status(|s| s.tool_called(&client, &name));
+        }
         let tcc = ToolCallContext::new(self, request, context);
         let response = self.tool_router.call(tcc).await;
         // Wrong arguments: rmcp answers with a plain-text tool error (or a
@@ -267,6 +331,20 @@ impl ServerHandler for ArrangiaMcp {
             }
             other => other,
         }
+    }
+
+    #[allow(clippy::unused_async_trait_impl)] // the trait wants a future
+    async fn initialize(
+        &self,
+        request: InitializeRequestParams,
+        context: RequestContext<RoleServer>,
+    ) -> Result<InitializeResult, ErrorData> {
+        if let Some(guard) = &self.session {
+            let name = request.client_info.name.trim();
+            guard.opened(if name.is_empty() { "mcp" } else { name });
+        }
+        context.peer.set_peer_info(request.clone());
+        self.negotiate_initialize(&request)
     }
 
     #[allow(clippy::unused_async_trait_impl)] // the trait wants a future

@@ -2,8 +2,10 @@
 //!
 //! MCP clients (Claude Code, Claude Desktop) start this command themselves
 //! and speak JSON-RPC over stdin/stdout, so nothing else may be printed to
-//! stdout. Until the GUI hosts the server (Phase 4.3b) it always runs
-//! headless with its own session; `--headless` already forces that.
+//! stdout. With a running Arrangia app it forwards everything to the app's
+//! in-app endpoint (Claude edits what the user sees, ADR 0015); without one
+//! it starts the app (setting `mcp_autostart_gui`, default on) or works
+//! headless with its own session. `--headless` forces the latter.
 
 use std::path::PathBuf;
 
@@ -19,9 +21,9 @@ pub struct McpArgs {
     /// frames). Default: `$ARRANGIA_APP_DIR` or the platform folder.
     #[arg(long, value_name = "DIR")]
     pub app_dir: Option<PathBuf>,
-    /// Work on the project folder directly, never through a running
-    /// Arrangia GUI (the GUI connection comes later; until then every run
-    /// is headless).
+    /// Work on the project folder directly with an own session, never
+    /// through (or starting) the Arrangia app. Default: connect to the
+    /// running app, start it if needed, else headless.
     #[arg(long)]
     pub headless: bool,
 }

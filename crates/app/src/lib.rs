@@ -17,15 +17,19 @@
 //! watch     debounced file watcher of the project folder
 //! events    EventSink (Tauri `emit` / bridge SSE) and event names
 //! dialogs   Dialogs trait (Tauri dialog plugin / fixed answers)
+//! mcp       status of the GUI-hosted MCP endpoint (+ McpControl hook)
+//! claude_desktop  "Add to Claude Desktop" (config merge with backup)
 //! ```
 //!
 //! All model changes go through the core Operations API.
 
 pub mod actor;
+pub mod claude_desktop;
 pub mod commands;
 pub mod dialogs;
 pub mod error;
 pub mod events;
+pub mod mcp;
 pub mod preview;
 pub mod session;
 pub mod settings;

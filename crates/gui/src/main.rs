@@ -9,6 +9,12 @@
 //! Usage: `arrangia-gui [PROJECT_DIR]` opens that project at start (else
 //! the start screen).
 //!
+//! The app hosts the MCP endpoint for Claude (ADR 0015,
+//! `arrangia_mcp::host`): on `127.0.0.1`, against this app's live state,
+//! with the discovery file `<app data>/mcp.json` for `arrangia mcp`
+//! (removed again on exit). The setting "Allow Claude to connect" switches
+//! it.
+//!
 //! JS calls them as `invoke(name, { args: {...} })` (see `ui/js/transport.js`);
 //! image commands answer with an `ArrayBuffer` (header + PNG/RGBA, see
 //! `arrangia_gui::preview::PreviewImage::to_tauri_bytes`).
@@ -23,7 +29,9 @@ use arrangia_gui::commands::{self, AppState};
 use arrangia_gui::dialogs::{Dialogs, FileFilter};
 use arrangia_gui::settings::AppPaths;
 use arrangia_gui::{CommandError, EventSink};
-use tauri::{AppHandle, Emitter};
+use arrangia_mcp::ProgressRelay;
+use arrangia_mcp::host::{HostOptions, McpHost};
+use tauri::{AppHandle, Emitter, RunEvent};
 use tauri_plugin_dialog::DialogExt;
 
 type Shared = Arc<AppState>;
@@ -219,6 +227,10 @@ json_commands! {
     frames_remove: commands::FramesRemoveArgs,
     view_get: commands::NoArgs,
     view_set: arrangia_gui::ViewState,
+    mcp_status: commands::NoArgs,
+    mcp_set_enabled: commands::McpSetEnabledArgs,
+    claude_desktop_plan: commands::NoArgs,
+    claude_desktop_install: commands::ClaudeDesktopInstallArgs,
 }
 
 image_commands! {
@@ -245,9 +257,14 @@ fn main() {
     let dialogs = Arc::new(TauriDialogs::default());
     let paths = AppPaths::platform()
         .unwrap_or_else(|| AppPaths::in_dir(&std::env::temp_dir().join("arrangia")));
-    let state: Shared = Arc::new(AppState::new(paths, events.clone(), dialogs.clone()));
+    // Export progress of MCP calls is tapped from the app's event stream.
+    let relay = Arc::new(ProgressRelay::new(events.clone()));
+    let discovery = arrangia_mcp::discovery::path(&paths);
+    let state: Shared = Arc::new(AppState::new(paths, relay.clone(), dialogs.clone()));
     let open_at_start = project_arg();
     let startup = state.clone();
+    let mcp_host: Arc<OnceLock<Arc<McpHost>>> = Arc::default();
+    let mcp_setup = mcp_host.clone();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -261,6 +278,15 @@ fn main() {
             {
                 eprintln!("cannot open {}: {}", dir.display(), e.message);
             }
+            let host = McpHost::install(
+                &startup,
+                Some(relay.clone()),
+                HostOptions {
+                    port: None,
+                    discovery: Some(discovery.clone()),
+                },
+            );
+            let _ = mcp_setup.set(host);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -350,9 +376,21 @@ fn main() {
             frames_thumbnail,
             view_get,
             view_set,
+            mcp_status,
+            mcp_set_enabled,
+            claude_desktop_plan,
+            claude_desktop_install,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Arrangia");
+        .build(tauri::generate_context!())
+        .expect("error while building Arrangia")
+        .run(move |_, event| {
+            // Clean exit: stop the endpoint, remove the discovery file.
+            if let RunEvent::Exit = event
+                && let Some(host) = mcp_host.get()
+            {
+                host.stop();
+            }
+        });
 }
 
 #[cfg(test)]

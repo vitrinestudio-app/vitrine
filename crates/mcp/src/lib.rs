@@ -25,15 +25,24 @@
 //! output     tool results / tool errors
 //! progress   export progress → MCP progress notifications
 //! resources  project.yaml, i18n/<lang>.yaml, catalogs, op reference
-//! stdio      `arrangia mcp`: GUI discovery seam + headless stdio server
+//! stdio      `arrangia mcp`: proxy to a running GUI, GUI autostart, headless
+//! discovery  `<app data>/mcp.json`: port + token of a running GUI
+//! proxy      (feature `proxy`) stdio ↔ Streamable HTTP forwarder
 //! http       (feature `http`) Streamable HTTP service for the GUI
+//! host       (feature `http`) the GUI's endpoint: hyper on 127.0.0.1, token,
+//!            Host/Origin checks, discovery file, McpControl
 //! ```
 
+pub mod discovery;
+#[cfg(feature = "http")]
+pub mod host;
 #[cfg(feature = "http")]
 pub mod http;
 pub mod output;
 pub mod params;
 pub mod progress;
+#[cfg(feature = "proxy")]
+pub mod proxy;
 pub mod resources;
 pub mod server;
 pub mod stdio;

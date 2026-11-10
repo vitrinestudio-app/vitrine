@@ -25,6 +25,7 @@ mod exchange;
 mod export;
 mod frames;
 mod inspect;
+mod mcp;
 mod os;
 mod project;
 mod project_settings;
@@ -38,7 +39,7 @@ mod view;
 
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex, PoisonError, RwLock};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError, RwLock};
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -51,6 +52,7 @@ pub use exchange::*;
 pub use export::*;
 pub use frames::*;
 pub use inspect::*;
+pub use mcp::*;
 pub use os::*;
 pub use project::*;
 pub use project_settings::*;
@@ -65,6 +67,7 @@ pub use view::*;
 use crate::dialogs::Dialogs;
 use crate::error::{CmdResult, CommandError, ErrorCode};
 use crate::events::EventSink;
+use crate::mcp::{McpControl, McpStatus};
 use crate::preview::PreviewImage;
 use crate::session::Session;
 use crate::settings::{AppPaths, RecentStore, SettingsStore};
@@ -84,6 +87,12 @@ pub struct AppState {
     recent: RecentStore,
     export_cancel: Mutex<Option<Arc<AtomicBool>>>,
     watch: bool,
+    /// The GUI-hosted MCP endpoint (ADR 0015).
+    mcp: Mutex<McpStatus>,
+    mcp_token: Mutex<Option<String>>,
+    mcp_control: OnceLock<Arc<dyn McpControl>>,
+    /// Claude Desktop config file override (dev bridge, tests).
+    claude_config: Option<PathBuf>,
 }
 
 impl std::fmt::Debug for AppState {
@@ -107,7 +116,77 @@ impl AppState {
             paths,
             export_cancel: Mutex::new(None),
             watch: true,
+            mcp: Mutex::new(McpStatus::default()),
+            mcp_token: Mutex::new(None),
+            mcp_control: OnceLock::new(),
+            claude_config: None,
         }
+    }
+
+    /// Uses `path` as Claude Desktop's config file instead of the real one
+    /// (dev bridge, tests).
+    #[must_use]
+    pub fn with_claude_desktop_config(mut self, path: PathBuf) -> Self {
+        self.claude_config = Some(path);
+        self
+    }
+
+    /// Claude Desktop's config file (override, `ARRANGIA_CLAUDE_DESKTOP_CONFIG`
+    /// or the platform path).
+    pub fn claude_desktop_config(&self) -> CmdResult<PathBuf> {
+        self.claude_config
+            .clone()
+            .or_else(crate::claude_desktop::default_config_path)
+            .ok_or_else(|| CommandError::io("no home folder for Claude Desktop's config"))
+    }
+
+    /// Status of the MCP endpoint (`connected` recomputed for now).
+    pub fn mcp_status(&self) -> McpStatus {
+        let mut s = self
+            .mcp
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        s.refresh(crate::mcp::now_ms());
+        s
+    }
+
+    /// Changes the MCP status and emits `mcp-status` with the result.
+    pub fn update_mcp_status(&self, f: impl FnOnce(&mut McpStatus)) {
+        {
+            let mut s = self.mcp.lock().unwrap_or_else(PoisonError::into_inner);
+            f(&mut s);
+        }
+        let status = self.mcp_status();
+        self.events.emit(
+            crate::events::MCP_STATUS,
+            serde_json::to_value(status).unwrap_or_default(),
+        );
+    }
+
+    /// The bearer token of the running endpoint (only `mcp_status` hands
+    /// it out, never events).
+    pub fn set_mcp_token(&self, token: Option<String>) {
+        *self
+            .mcp_token
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = token;
+    }
+
+    pub fn mcp_token(&self) -> Option<String> {
+        self.mcp_token
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
+    /// Registers the host that starts/stops the endpoint (once).
+    pub fn set_mcp_control(&self, control: Arc<dyn McpControl>) {
+        let _ = self.mcp_control.set(control);
+    }
+
+    pub fn mcp_control(&self) -> Option<&Arc<dyn McpControl>> {
+        self.mcp_control.get()
     }
 
     /// Disables the file watcher (tests that drive changes by hand).
@@ -241,6 +320,7 @@ command_table! {
         import_plan, import_apply,
         frames_import_plan, frames_import_apply, frames_list, frames_remove,
         view_get, view_set,
+        mcp_status, mcp_set_enabled, claude_desktop_plan, claude_desktop_install,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,

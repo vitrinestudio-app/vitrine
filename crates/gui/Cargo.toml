@@ -32,6 +32,8 @@ tauri-build.workspace = true
 
 [dependencies]
 arrangia-app.workspace = true
+# The GUI hosts the MCP endpoint (ADR 0015).
+arrangia-mcp = { workspace = true, features = ["http"] }
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true
 serde.workspace = true

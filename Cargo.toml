@@ -70,6 +70,15 @@ rmcp = { version = "=3.9.0", default-features = false, features = ["server", "ma
 # JSON schemas of the MCP tool arguments (same major version as rmcp uses).
 schemars = "1.2.3"
 base64 = "0.23.0"
+# GUI-hosted MCP endpoint (arrangia-mcp feature `http`, ADR 0015): hyper 1 serves
+# rmcp's tower service on 127.0.0.1; the bearer token comes from getrandom.
+hyper = { version = "1.12.0", features = ["server", "http1"] }
+hyper-util = { version = "0.1.21", features = ["tokio"] }
+http-body-util = "0.1.5"
+bytes = "1.12.1"
+tower-service = "0.3.3"
+tokio-util = "0.7.20"
+getrandom = "0.3.4"
 tauri = { version = "2.12.5", features = [] }
 tauri-build = { version = "2.7.4", features = [] }
 # File dialogs, used from Rust only (the web view keeps `core:default`).

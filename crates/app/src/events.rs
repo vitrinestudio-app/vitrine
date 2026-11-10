@@ -8,6 +8,9 @@
 //! | `project-error` | `{message}`: the folder changed but does not load |
 //! | `export-progress` | `{file, done, total}` per exported file |
 //! | `export-finished` | `{cancelled, written, errors}` |
+//! | `project-opened` | `{dir, name, actor}`: a project was opened (also by Claude over MCP) |
+//! | `project-closed` | `{actor}` |
+//! | `mcp-status` | [`crate::mcp::McpStatus`] of the GUI-hosted MCP endpoint |
 
 use std::sync::{Mutex, PoisonError};
 
@@ -18,6 +21,9 @@ pub const PROJECT_ERROR: &str = "project-error";
 pub const PROJECT_EDITED: &str = "project-edited";
 pub const EXPORT_PROGRESS: &str = "export-progress";
 pub const EXPORT_FINISHED: &str = "export-finished";
+pub const PROJECT_OPENED: &str = "project-opened";
+pub const PROJECT_CLOSED: &str = "project-closed";
+pub const MCP_STATUS: &str = "mcp-status";
 
 /// Receives backend events. Must be cheap and non-blocking; called from
 /// worker threads (watcher, export).

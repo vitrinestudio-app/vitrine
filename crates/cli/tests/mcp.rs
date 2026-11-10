@@ -10,147 +10,13 @@
     clippy::needless_pass_by_value
 )]
 
-use std::io::{BufRead, BufReader, Write};
+mod common;
+
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::mpsc::{Receiver, RecvTimeoutError, channel};
-use std::time::Duration;
 
 use base64::Engine;
+use common::{Client, path_str, png_size};
 use serde_json::{Value, json};
-
-/// Generous: debug builds render and export slowly.
-const TIMEOUT: Duration = Duration::from_secs(240);
-
-/// A minimal MCP client over the child's stdio.
-struct Client {
-    child: Child,
-    stdin: ChildStdin,
-    rx: Receiver<Value>,
-    next_id: u64,
-    /// Notifications received while waiting for responses.
-    notifications: Vec<Value>,
-}
-
-impl Client {
-    fn start(args: &[&str], app_dir: &Path, cwd: &Path) -> Client {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_arrangia"))
-            .args(args)
-            .env("ARRANGIA_APP_DIR", app_dir)
-            .env("NO_COLOR", "1")
-            .current_dir(cwd)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .expect("start arrangia mcp");
-        let stdin = child.stdin.take().expect("stdin");
-        let stdout = child.stdout.take().expect("stdout");
-        let (tx, rx) = channel();
-        std::thread::spawn(move || {
-            for line in BufReader::new(stdout).lines() {
-                let Ok(line) = line else { break };
-                if line.trim().is_empty() {
-                    continue;
-                }
-                let v: Value = serde_json::from_str(&line)
-                    .unwrap_or_else(|e| panic!("stdout is not JSON-RPC ({e}): {line}"));
-                if tx.send(v).is_err() {
-                    break;
-                }
-            }
-        });
-        let mut c = Client {
-            child,
-            stdin,
-            rx,
-            next_id: 1,
-            notifications: Vec::new(),
-        };
-        let init = c.request(
-            "initialize",
-            json!({
-                "protocolVersion": "2025-11-25",
-                "capabilities": {},
-                "clientInfo": {"name": "test-client", "version": "1.0"},
-            }),
-        );
-        assert_eq!(init["serverInfo"]["name"], "arrangia", "{init}");
-        assert!(
-            init["instructions"]
-                .as_str()
-                .unwrap()
-                .contains("render_preview")
-        );
-        assert!(init["capabilities"]["tools"].is_object());
-        assert!(init["capabilities"]["resources"].is_object());
-        c.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
-        c
-    }
-
-    fn send(&mut self, msg: &Value) {
-        writeln!(self.stdin, "{msg}").expect("write to server");
-        self.stdin.flush().expect("flush");
-    }
-
-    /// Sends a request and waits for its response; returns `result`.
-    fn request(&mut self, method: &str, params: Value) -> Value {
-        let id = self.next_id;
-        self.next_id += 1;
-        self.send(&json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}));
-        loop {
-            let msg = match self.rx.recv_timeout(TIMEOUT) {
-                Ok(m) => m,
-                Err(RecvTimeoutError::Timeout) => panic!("no answer to {method}"),
-                Err(RecvTimeoutError::Disconnected) => panic!("server exited during {method}"),
-            };
-            if msg["id"] == json!(id) {
-                assert!(msg.get("error").is_none(), "{method}: {msg}");
-                return msg["result"].clone();
-            }
-            self.notifications.push(msg);
-        }
-    }
-
-    /// Calls a tool; returns the whole `CallToolResult`.
-    fn call_raw(&mut self, name: &str, args: Value) -> Value {
-        self.request("tools/call", json!({"name": name, "arguments": args}))
-    }
-
-    /// Calls a tool that must succeed; returns its structured content.
-    fn call(&mut self, name: &str, args: Value) -> Value {
-        let r = self.call_raw(name, args.clone());
-        assert_eq!(r["isError"], false, "{name} {args}: {r}");
-        let text = r["content"][0]["text"].as_str().expect("text block");
-        assert_ne!(text, "");
-        r["structuredContent"].clone()
-    }
-
-    /// Calls a tool that must fail; returns its error object.
-    fn call_err(&mut self, name: &str, args: Value) -> Value {
-        let r = self.call_raw(name, args.clone());
-        assert_eq!(r["isError"], true, "{name} {args} should fail: {r}");
-        r["structuredContent"]["error"].clone()
-    }
-}
-
-impl Drop for Client {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-    }
-}
-
-/// Width and height of PNG bytes (IHDR).
-fn png_size(bytes: &[u8]) -> (u32, u32) {
-    assert_eq!(&bytes[..8], b"\x89PNG\r\n\x1a\n", "not a PNG");
-    let be = |i: usize| u32::from_be_bytes(bytes[i..i + 4].try_into().unwrap());
-    (be(16), be(20))
-}
-
-fn path_str(p: &Path) -> &str {
-    p.to_str().expect("utf-8 path")
-}
 
 #[test]
 fn mcp_session_creates_designs_translates_and_exports() {
@@ -403,6 +269,7 @@ fn mcp_reloads_external_edits_and_reports_broken_files() {
     let mut c = Client::start(
         &[
             "mcp",
+            "--headless",
             "--project",
             path_str(&dir),
             "--app-dir",

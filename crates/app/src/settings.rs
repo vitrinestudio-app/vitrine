@@ -92,6 +92,23 @@ pub struct Settings {
     /// fonts). Off by default; never used by tests, CLI or CI.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub system_font_fallback: bool,
+    /// The GUI serves MCP on 127.0.0.1 so Claude can connect (ADR 0015).
+    /// On by default.
+    #[serde(skip_serializing_if = "is_true")]
+    pub mcp_enabled: bool,
+    /// Preferred port of the GUI's MCP endpoint (`None` or taken: a free
+    /// port).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mcp_port: Option<u16>,
+    /// `arrangia mcp` starts the GUI when none is running (otherwise it
+    /// works headless). On by default.
+    #[serde(skip_serializing_if = "is_true")]
+    pub mcp_autostart_gui: bool,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde's skip_serializing_if signature
+fn is_true(v: &bool) -> bool {
+    *v
 }
 
 impl Default for Settings {
@@ -102,6 +119,9 @@ impl Default for Settings {
             default_frame_style: "detailed".to_owned(),
             window: None,
             system_font_fallback: false,
+            mcp_enabled: true,
+            mcp_port: None,
+            mcp_autostart_gui: true,
         }
     }
 }
@@ -309,11 +329,20 @@ mod tests {
                 maximized: false,
             }),
             system_font_fallback: true,
+            mcp_enabled: false,
+            mcp_port: Some(4100),
+            mcp_autostart_gui: true,
         };
         store.save(&s).unwrap();
         assert_eq!(store.load().unwrap(), s);
         let yaml = std::fs::read_to_string(paths.settings_file()).unwrap();
         assert!(yaml.contains("ui_language: de"), "{yaml}");
+        assert!(yaml.contains("mcp_enabled: false"), "{yaml}");
+        assert!(
+            !yaml.contains("mcp_autostart_gui"),
+            "defaults stay out: {yaml}"
+        );
+        assert!(Settings::default().mcp_enabled && Settings::default().mcp_autostart_gui);
 
         let updated = store
             .update(&serde_json::json!({"ui_language": null, "default_frame_style": "stylized"}))

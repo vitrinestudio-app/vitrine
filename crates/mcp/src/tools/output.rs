@@ -40,10 +40,11 @@ fn default_max_edge() -> u32 {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RenderPreviewParams {
-    /// Target (default: the first target).
+    /// Target (default: the one the user looks at in the GUI, else the
+    /// first target).
     #[serde(default)]
     pub target: Option<String>,
-    /// Language (default: the default language).
+    /// Language (default: the GUI's language, else the default language).
     #[serde(default)]
     pub lang: Option<String>,
     /// `image` (default), `canvas` or `gallery`.
@@ -68,10 +69,11 @@ pub struct RenderPreviewParams {
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct LayoutReportParams {
-    /// Target (default: the first target).
+    /// Target (default: the one the user looks at in the GUI, else the
+    /// first target).
     #[serde(default)]
     pub target: Option<String>,
-    /// Language (default: the default language).
+    /// Language (default: the GUI's language, else the default language).
     #[serde(default)]
     pub lang: Option<String>,
     /// Only elements with this home page (0-based).
@@ -128,11 +130,15 @@ fn view_of(
                 }
                 t
             }
-            None => p.targets.first().map(|t| t.id.to_string()).ok_or_else(|| {
-                CommandError::invalid("the project has no targets; add one with target_add")
-            })?,
+            None => crate::params::gui_target(p, None)
+                .or_else(|| p.targets.first().map(|t| t.id.to_string()))
+                .ok_or_else(|| {
+                    CommandError::invalid("the project has no targets; add one with target_add")
+                })?,
         };
-        let lang = lang.unwrap_or_else(|| p.languages.default.to_string());
+        let lang = lang
+            .or_else(|| crate::params::gui_lang(p))
+            .unwrap_or_else(|| p.languages.default.to_string());
         Ok((target, lang))
     })
 }

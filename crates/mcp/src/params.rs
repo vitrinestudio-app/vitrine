@@ -33,8 +33,9 @@ macro_rules! edit_params {
         pub struct $name {
             $($body)*
             /// Target whose page geometry is used (page heights, gaps,
-            /// grouping). Default: the first target showing the element's
-            /// strip.
+            /// grouping). Default: the target the user looks at in the GUI
+            /// (when it shows the element's strip), else the first target
+            /// showing the strip.
             #[serde(default)]
             pub target: Option<String>,
             /// Where the change goes: `base` (default; all targets and
@@ -48,7 +49,8 @@ macro_rules! edit_params {
             #[serde(default)]
             pub variant: Option<String>,
             /// Language: required for `scope: lang`; otherwise the language
-            /// whose text layout is used (default: the default language).
+            /// whose text layout is used (default: the GUI's language, else
+            /// the default language).
             #[serde(default)]
             pub lang: Option<String>,
         }
@@ -78,6 +80,48 @@ pub struct EditCtx {
     pub lang: Option<String>,
 }
 
+thread_local! {
+    /// The GUI's view while a tool of a GUI-hosted server runs (see
+    /// [`with_gui_view`]).
+    static GUI_VIEW: std::cell::RefCell<Option<arrangia_app::ViewState>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Runs `f` with `view` as the GUI's view: tools of a GUI-hosted server
+/// default to the target and language the user looks at when the caller
+/// omits them (ADR 0015). Headless servers never set it.
+pub fn with_gui_view<R>(view: Option<arrangia_app::ViewState>, f: impl FnOnce() -> R) -> R {
+    let prev = GUI_VIEW.with(|v| std::mem::replace(&mut *v.borrow_mut(), view));
+    let _restore = RestoreView(prev);
+    f()
+}
+
+/// Puts the previous GUI view back (also on panic).
+struct RestoreView(Option<arrangia_app::ViewState>);
+
+impl Drop for RestoreView {
+    fn drop(&mut self) {
+        let prev = self.0.take();
+        GUI_VIEW.with(|v| *v.borrow_mut() = prev);
+    }
+}
+
+/// The GUI's current target, when it exists in `project` and shows
+/// `strip` (any strip when `None`).
+pub fn gui_target(project: &Project, strip: Option<&str>) -> Option<String> {
+    let t = GUI_VIEW.with(|v| v.borrow().as_ref().and_then(|v| v.target.clone()))?;
+    project
+        .target(&t)
+        .filter(|tg| strip.is_none_or(|s| tg.strip.as_str() == s))
+        .map(|_| t)
+}
+
+/// The GUI's current language, when `project` has it.
+pub fn gui_lang(project: &Project) -> Option<String> {
+    let l = GUI_VIEW.with(|v| v.borrow().as_ref().and_then(|v| v.lang.clone()))?;
+    project.languages.is_available(&l).then_some(l)
+}
+
 /// Strip holding element `id`.
 pub fn strip_of_element(project: &Project, id: &str) -> Option<String> {
     project.strips.iter().find_map(|s| {
@@ -87,7 +131,8 @@ pub fn strip_of_element(project: &Project, id: &str) -> Option<String> {
     })
 }
 
-/// The target for an edit on `strip`: `given`, else the first target
+/// The target for an edit on `strip`: `given`, else (GUI-hosted) the
+/// target the user looks at when it shows the strip, else the first target
 /// showing the strip.
 pub fn target_for(
     project: &Project,
@@ -99,6 +144,9 @@ pub fn target_for(
             return Err(CommandError::not_found(format!("unknown target `{t}`")));
         }
         return Ok(t.to_owned());
+    }
+    if let Some(t) = gui_target(project, strip) {
+        return Ok(t);
     }
     let pick = match strip {
         Some(s) => project.targets.iter().find(|t| t.strip.as_str() == s),
@@ -134,7 +182,7 @@ impl EditCtx {
         let target = target_for(&project, self.target.as_deref(), strip.as_deref())?;
         let mut v = Map::new();
         v.insert("target".into(), json!(target));
-        if let Some(lang) = &self.lang {
+        if let Some(lang) = self.lang.clone().or_else(|| gui_lang(&project)) {
             v.insert("lang".into(), json!(lang));
         }
         match self.scope {
