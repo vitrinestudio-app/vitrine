@@ -109,3 +109,104 @@ fn image_shadow_follows_the_alpha_channel() {
     assert!(luma(&r, 500, 705) < 225, "{}", luma(&r, 500, 705));
     assert!(luma(&r, 500, 500) < 100);
 }
+
+const TEXTS: &str = r##"
+format: arrangia/1
+name: fx-text
+languages: {default: en, available: [en]}
+styles:
+  colors:
+    ring: "#FF0000"
+  text:
+    big: {weight: 900, size: 400, color: "#000000"}
+    outlined: {weight: 900, size: 400, color: "#000000", stroke: {color: "@ring", width: 10}}
+  spans:
+    plain: {stroke: {color: "#000000", width: 0}}
+strips:
+- id: s
+  page: {aspect: 1:1, count: 4}
+  backgrounds: ["#FFFFFF"]
+  elements:
+  - {id: a, kind: text, page: 0, at: {x: 500, y: 500}, width: 900, text: h, style: outlined, align: center, valign: center}
+  - {id: b, kind: text, page: 1, at: {x: 500, y: 500}, width: 900, text: h, style: big, align: center, valign: center}
+  - {id: c, kind: text, page: 2, at: {x: 500, y: 500}, width: 900, text: h, style: big, align: center, valign: center, glow: {color: "#0000FF", radius: 20}}
+  - {id: d, kind: text, page: 3, at: {x: 500, y: 500}, width: 900, text: hs, style: outlined, align: center, valign: center, rotation: 20}
+targets:
+- {id: t, strip: s, size: [1000, 1000]}
+"##;
+
+fn rgb(r: &Rendered, x: u32, y: u32) -> [u8; 3] {
+    let c = r.pixmap.pixel(x, y).unwrap().demultiply();
+    let a = f32::from(c.alpha()) / 255.0;
+    let over = |v: u8| (f32::from(v) * a + 255.0 * (1.0 - a)) as u8;
+    [over(c.red()), over(c.green()), over(c.blue())]
+}
+
+fn all_pixels(r: &Rendered) -> impl Iterator<Item = (u32, u32, [u8; 3])> + '_ {
+    let (w, h) = (r.pixmap.width(), r.pixmap.height());
+    (0..h).flat_map(move |y| (0..w).map(move |x| (x, y, rgb(r, x, y))))
+}
+
+#[test]
+fn text_outline_sits_outside_the_fill_and_glow_fades() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut p = project_from_yaml(TEXTS).unwrap();
+    let en = p
+        .strings
+        .entry(arrangia_core::model::Lang::new("en"))
+        .or_default();
+    en.insert(arrangia_core::model::StringKey::new("h"), "H".into());
+    en.insert(
+        arrangia_core::model::StringKey::new("hs"),
+        "H[plain]H[/]".into(),
+    );
+    let s = resolve(
+        &p,
+        "t",
+        "en",
+        &ResolveOptions::new(&FsAssets::new(dir.path())),
+    )
+    .unwrap();
+    let ctx = RenderContext::with_fonts(dir.path(), FontLibrary::bundled());
+    let prepared = ctx.prepare(&s);
+    let r: Vec<Rendered> = (0..4)
+        .map(|i| ctx.rasterize_prepared(&prepared, i, &RenderOptions::export()))
+        .collect();
+    for (i, x) in r.iter().enumerate() {
+        debug(x, &format!("text_fx_{i}.png"));
+    }
+    let red = |c: [u8; 3]| c[0] > 200 && c[1] < 60 && c[2] < 60;
+    let black = |c: [u8; 3]| c[0] < 40 && c[1] < 40 && c[2] < 40;
+    // Outline pixels exist and lie outside the glyph fill of the plain text.
+    let outline: Vec<(u32, u32)> = all_pixels(&r[0])
+        .filter(|(_, _, c)| red(*c))
+        .map(|(x, y, _)| (x, y))
+        .collect();
+    assert!(outline.len() > 3000, "{}", outline.len());
+    assert!(outline.iter().all(|&(x, y)| rgb(&r[1], x, y)[0] > 200));
+    // The fill keeps its shape (outside outline drawn below it).
+    let fill = |x: &Rendered| all_pixels(x).filter(|(_, _, c)| black(*c)).count();
+    let (fa, fb) = (fill(&r[0]) as f64, fill(&r[1]) as f64);
+    assert!((fa / fb - 1.0).abs() < 0.02, "{fa} vs {fb}");
+
+    // Glow: blue around the glyph, fading with distance. Left stem of the
+    // H: scan the middle row from the left to the first black pixel.
+    let y = 500;
+    let edge = (0..1000).find(|&x| black(rgb(&r[2], x, y))).unwrap();
+    let blue_at = |d: u32| 255 - rgb(&r[2], edge - d, y)[0];
+    let (b4, b20, b45, b90) = (blue_at(4), blue_at(20), blue_at(45), blue_at(90));
+    assert!(b4 > b20 && b20 > b45 && b45 > b90, "{b4} {b20} {b45} {b90}");
+    assert!(b4 > 60, "{b4}");
+    assert!(b90 < 3, "{b90}");
+    assert!(rgb(&r[2], edge - 10, y)[2] > 240, "it is blue");
+
+    // A span switches the outline off: the second H has none.
+    let reds = all_pixels(&r[3]).filter(|(_, _, c)| red(*c));
+    let (left, right) = reds.fold(
+        (0, 0),
+        |(l, rr), (x, _, _)| {
+            if x < 545 { (l + 1, rr) } else { (l, rr + 1) }
+        },
+    );
+    assert!(left > 1500 && right == 0, "{left} {right}");
+}

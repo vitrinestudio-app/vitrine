@@ -4,10 +4,10 @@
 //! only the element's pixel bounds.
 
 use arrangia_core::geometry::{Rect, Vec2, Viewport};
-use arrangia_core::model::{FitMode, ImageFillMode, Rgba, ShapeKind};
+use arrangia_core::model::{FitMode, ImageFillMode, Rgba, ShapeKind, StrokeJoin};
 use arrangia_core::resolve::{
     ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedKind, ResolvedShadowLayer,
-    ResolvedShape, ResolvedStop,
+    ResolvedShape, ResolvedStop, TextEffects,
 };
 use tiny_skia::{
     FillRule, FilterQuality, Mask, Path, PathBuilder, Pattern, Pixmap, PixmapPaint, Shader,
@@ -21,7 +21,7 @@ use crate::frames;
 use crate::geometry::view_transform;
 use crate::paint::{css_gradient_line, linear, radial, round_rect, shader_paint, solid};
 use crate::raster::Filter;
-use crate::text::{TextPaths, draw_text, to_paths};
+use crate::text::{TextPaths, draw_text_with_effects, to_paths};
 
 /// Shown where an image asset is missing or broken.
 const MISSING_ASSET: [u8; 4] = [0xFF, 0x00, 0xFF, 0x60];
@@ -371,7 +371,7 @@ impl Painter<'_> {
                 tsr(Rect::new(o.x - m, o.y - m, o.w + 2.0 * m, o.h + 2.0 * m))
             }
             Item::Text { paths, origin } => {
-                let b = paths.bounds()?;
+                let b = paths.visual_bounds()?;
                 tiny_skia::Rect::from_ltrb(
                     b.left() + origin.0 - 1.0,
                     b.top() + origin.1 - 1.0,
@@ -405,10 +405,22 @@ impl Painter<'_> {
         // Cheap cull before preparing (text paths, geometry): a circle around
         // the element.
         let vis = self.view.visible();
-        let shadow_lu = Self::shadows(e)
+        let mut shadow_lu = Self::shadows(e)
             .iter()
-            .map(|l| 3.0 * l.blur + l.x.abs().max(l.y.abs()))
+            .map(ResolvedShadowLayer::outset)
             .fold(0.0, f64::max);
+        if let ResolvedKind::Text(t) = &e.props {
+            // Outline/glow of the style or of any span style it may use.
+            let spans = self.prepared.scene.spans.values().map(|s| {
+                let fx = TextEffects {
+                    stroke: s.stroke,
+                    glow: s.glow,
+                    shadow: s.shadow.clone().unwrap_or_default(),
+                };
+                fx.visual_outset()
+            });
+            shadow_lu = spans.fold(t.style.effects().visual_outset(), f64::max);
+        }
         let r =
             (e.size.x.hypot(e.size.y) / 2.0 + e.pivot.x.hypot(e.pivot.y)) * 1.1 + shadow_lu + 2.0;
         let auto_h = matches!(&e.props, ResolvedKind::Text(t) if t.frame.auto_height)
@@ -547,6 +559,11 @@ impl Painter<'_> {
                         solid(rgba(s.color)),
                         Stroke {
                             width: s.width as f32,
+                            line_join: match s.join {
+                                StrokeJoin::Round => tiny_skia::LineJoin::Round,
+                                StrokeJoin::Miter => tiny_skia::LineJoin::Miter,
+                                StrokeJoin::Bevel => tiny_skia::LineJoin::Bevel,
+                            },
                             ..Stroke::default()
                         },
                     )
@@ -668,19 +685,7 @@ impl Painter<'_> {
             }
             Item::Text { paths, origin } => {
                 let ts = lt.pre_translate(origin.0, origin.1);
-                if !shadows.is_empty() {
-                    let mut pb = PathBuilder::new();
-                    for (p, _) in &paths.highlights {
-                        pb.push_path(p);
-                    }
-                    for g in &paths.glyphs {
-                        pb.push_path(&g.path);
-                    }
-                    if let Some(sil) = pb.finish() {
-                        self.shadow(pm, &sil, ts, shadows);
-                    }
-                }
-                draw_text(pm, paths, ts, None);
+                draw_text_with_effects(pm, paths, ts, self.view.scale);
             }
         }
     }

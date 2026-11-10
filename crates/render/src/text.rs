@@ -5,13 +5,15 @@
 //! Layout is in **lu** and unhinted, so rotation and scaling (lu → px) are
 //! just the transform passed to [`draw_text`]; no glyph cache is needed.
 
-use arrangia_core::layout::{FontLibrary, GlyphRun, TextLayout};
+use arrangia_core::layout::{FontLibrary, GlyphRun, ResolvedGlow, TextEffects, TextLayout};
+use arrangia_core::model::{StrokeJoin, StrokePosition};
 use skrifa::instance::{LocationRef, Size};
 use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::raw::types::F2Dot14;
 use skrifa::{FontRef, GlyphId, MetadataProvider};
-use tiny_skia::{FillRule, Mask, Path, PathBuilder, Pixmap, Stroke, Transform};
+use tiny_skia::{FillRule, LineJoin, Mask, Path, PathBuilder, Pixmap, Stroke, Transform};
 
+use crate::blur::{ShadowPx, draw_blurred};
 use crate::paint::{Rgba, solid};
 
 struct PathPen<'a> {
@@ -60,32 +62,65 @@ pub struct GlyphPath {
     pub color: Rgba,
     /// Additional stroke width in lu (synthetic bold), if any.
     pub stroke: Option<f32>,
+    /// Index into [`TextPaths::effects`].
+    pub effects: u16,
+}
+
+/// A span highlight (background box).
+#[derive(Debug, Clone)]
+pub struct HighlightPath {
+    pub path: Path,
+    pub color: Rgba,
+    /// Index into [`TextPaths::effects`]; only the shadow applies.
+    pub effects: u16,
 }
 
 /// A text layout as paths in lu, relative to the text box origin.
 #[derive(Debug, Clone, Default)]
 pub struct TextPaths {
     /// Span highlights, drawn first.
-    pub highlights: Vec<(Path, Rgba)>,
+    pub highlights: Vec<HighlightPath>,
     pub glyphs: Vec<GlyphPath>,
+    /// Outline / glow / shadow sets of the layout ([`TextLayout::effects`]).
+    pub effects: Vec<TextEffects>,
+}
+
+fn union(a: tiny_skia::Rect, b: tiny_skia::Rect) -> tiny_skia::Rect {
+    tiny_skia::Rect::from_ltrb(
+        a.left().min(b.left()),
+        a.top().min(b.top()),
+        a.right().max(b.right()),
+        a.bottom().max(b.bottom()),
+    )
+    .unwrap_or(a)
+}
+
+fn outset(r: tiny_skia::Rect, m: f32) -> tiny_skia::Rect {
+    if m > 0.0 {
+        r.outset(m, m).unwrap_or(r)
+    } else {
+        r
+    }
 }
 
 impl TextPaths {
-    /// Bounds of all paths (lu), `None` if nothing is drawn.
+    /// Bounds of all fill paths (lu), `None` if nothing is drawn.
     pub fn bounds(&self) -> Option<tiny_skia::Rect> {
         self.highlights
             .iter()
-            .map(|(p, _)| p.bounds())
+            .map(|h| h.path.bounds())
             .chain(self.glyphs.iter().map(|g| g.path.bounds()))
-            .reduce(|a, b| {
-                tiny_skia::Rect::from_ltrb(
-                    a.left().min(b.left()),
-                    a.top().min(b.top()),
-                    a.right().max(b.right()),
-                    a.bottom().max(b.bottom()),
-                )
-                .unwrap_or(a)
-            })
+            .reduce(union)
+    }
+
+    /// Bounds including outline, glow and shadow extents (lu).
+    pub fn visual_bounds(&self) -> Option<tiny_skia::Rect> {
+        let m = self
+            .effects
+            .iter()
+            .map(TextEffects::visual_outset)
+            .fold(0.0, f64::max) as f32;
+        self.bounds().map(|b| outset(b, m))
     }
 }
 
@@ -123,12 +158,13 @@ fn draw_run(run: &GlyphRun, fonts: &FontLibrary, pb: &mut PathBuilder) {
 }
 
 /// Converts a layout into paths: one path per paint (colour + synthetic
-/// bold), plus one per highlight.
+/// bold + effect set), plus one per highlight.
 pub fn to_paths(layout: &TextLayout, fonts: &FontLibrary) -> TextPaths {
-    let mut builders: Vec<((Rgba, Option<u32>), PathBuilder)> = Vec::new();
+    type Key = (Rgba, Option<u32>, u16);
+    let mut builders: Vec<(Key, PathBuilder)> = Vec::new();
     for run in &layout.runs {
         let stroke = run.embolden.then(|| embolden_width(run.size));
-        let key = (rgba(run.color), stroke.map(f32::to_bits));
+        let key = (rgba(run.color), stroke.map(f32::to_bits), run.effects);
         let idx = if let Some(i) = builders.iter().position(|(k, _)| *k == key) {
             i
         } else {
@@ -143,28 +179,40 @@ pub fn to_paths(layout: &TextLayout, fonts: &FontLibrary) -> TextPaths {
             .iter()
             .filter_map(|h| {
                 let r = tiny_skia::Rect::from_xywh(h.rect.x, h.rect.y, h.rect.w, h.rect.h)?;
-                Some((PathBuilder::from_rect(r), rgba(h.color)))
+                Some(HighlightPath {
+                    path: PathBuilder::from_rect(r),
+                    color: rgba(h.color),
+                    effects: h.effects,
+                })
             })
             .collect(),
         glyphs: builders
             .into_iter()
-            .filter_map(|((color, stroke), pb)| {
+            .filter_map(|((color, stroke, effects), pb)| {
                 pb.finish().map(|path| GlyphPath {
                     path,
                     color,
                     stroke: stroke.map(f32::from_bits),
+                    effects,
                 })
             })
             .collect(),
+        effects: layout.effects.clone(),
     }
 }
 
-/// Draws text paths with `transform` (text box origin → pixels, including
-/// rotation and the lu → px scale) and an optional clip mask.
+/// Draws the fills of text paths (highlights, then glyphs) with
+/// `transform` (text box origin → pixels, including rotation and the
+/// lu → px scale) and an optional clip mask. No outline, glow or shadow:
+/// see [`draw_text_with_effects`].
 pub fn draw_text(pm: &mut Pixmap, paths: &TextPaths, transform: Transform, mask: Option<&Mask>) {
-    for (p, c) in &paths.highlights {
-        pm.fill_path(p, &solid(*c), FillRule::Winding, transform, mask);
+    for h in &paths.highlights {
+        pm.fill_path(&h.path, &solid(h.color), FillRule::Winding, transform, mask);
     }
+    draw_glyph_fills(pm, paths, transform, mask);
+}
+
+fn draw_glyph_fills(pm: &mut Pixmap, paths: &TextPaths, transform: Transform, mask: Option<&Mask>) {
     for g in &paths.glyphs {
         let paint = solid(g.color);
         pm.fill_path(&g.path, &paint, FillRule::Winding, transform, mask);
@@ -176,6 +224,173 @@ pub fn draw_text(pm: &mut Pixmap, paths: &TextPaths, transform: Transform, mask:
             pm.stroke_path(&g.path, &paint, &stroke, transform, mask);
         }
     }
+}
+
+fn line_join(j: StrokeJoin) -> LineJoin {
+    match j {
+        StrokeJoin::Round => LineJoin::Round,
+        StrokeJoin::Miter => LineJoin::Miter,
+        StrokeJoin::Bevel => LineJoin::Bevel,
+    }
+}
+
+/// The silhouette of effect set `fx` (glyphs, optionally highlights)
+/// dilated by `grow` lu, painted into a blur mask.
+struct Silhouette<'a> {
+    paths: &'a TextPaths,
+    fx: u16,
+    grow: f32,
+    highlights: bool,
+}
+
+impl Silhouette<'_> {
+    fn bounds(&self) -> Option<tiny_skia::Rect> {
+        let glyphs = self
+            .paths
+            .glyphs
+            .iter()
+            .filter(|g| g.effects == self.fx)
+            .map(|g| outset(g.path.bounds(), self.grow + g.stroke.unwrap_or(0.0) / 2.0));
+        let hl = self
+            .paths
+            .highlights
+            .iter()
+            .filter(|h| self.highlights && h.effects == self.fx)
+            .map(|h| outset(h.path.bounds(), self.grow));
+        glyphs.chain(hl).reduce(union)
+    }
+
+    fn paint(&self, mask: &mut Pixmap, ts: Transform) {
+        let mut paint = tiny_skia::Paint::default();
+        paint.set_color_rgba8(0, 0, 0, 255);
+        paint.anti_alias = true;
+        if self.highlights {
+            for h in self
+                .paths
+                .highlights
+                .iter()
+                .filter(|h| h.effects == self.fx)
+            {
+                mask.fill_path(&h.path, &paint, FillRule::Winding, ts, None);
+            }
+        }
+        for g in self.paths.glyphs.iter().filter(|g| g.effects == self.fx) {
+            mask.fill_path(&g.path, &paint, FillRule::Winding, ts, None);
+            let width = 2.0 * self.grow + g.stroke.unwrap_or(0.0);
+            if width > 0.0 {
+                let st = Stroke {
+                    width,
+                    line_join: LineJoin::Round,
+                    ..Stroke::default()
+                };
+                mask.stroke_path(&g.path, &paint, &st, ts, None);
+            }
+        }
+    }
+
+    /// Blurred, tinted copy (shadow or glow).
+    fn draw(&self, pm: &mut Pixmap, transform: Transform, shadow: ShadowPx) {
+        let Some(b) = self.bounds().and_then(|b| b.transform(transform)) else {
+            return;
+        };
+        draw_blurred(pm, b, shadow, |mask, to_mask| {
+            self.paint(mask, transform.post_concat(to_mask));
+        });
+    }
+}
+
+/// Draws text with its effects, in this order: shadows (of glyphs, their
+/// outlines and highlights), highlights, glows, outside outlines, glyph
+/// fills, centred outlines. Each pass covers all effect sets, so a span's
+/// glow never covers a neighbouring span's glyphs. `px_per_lu` scales blur
+/// radii and shadow offsets (which stay in canvas space, unrotated).
+pub fn draw_text_with_effects(
+    pm: &mut Pixmap,
+    paths: &TextPaths,
+    transform: Transform,
+    px_per_lu: f64,
+) {
+    let sets: Vec<(u16, &TextEffects)> = paths
+        .effects
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| !e.is_empty())
+        .map(|(i, e)| (u16::try_from(i).unwrap_or(u16::MAX), e))
+        .collect();
+    let stroke_grow = |e: &TextEffects| e.ink_outset() as f32;
+    for &(fx, e) in &sets {
+        let sil = Silhouette {
+            paths,
+            fx,
+            grow: stroke_grow(e),
+            highlights: true,
+        };
+        for l in &e.shadow {
+            sil.draw(
+                pm,
+                transform,
+                ShadowPx {
+                    sigma: l.blur * px_per_lu,
+                    dx: l.x * px_per_lu,
+                    dy: l.y * px_per_lu,
+                    color: rgba(l.color),
+                },
+            );
+        }
+    }
+    for h in &paths.highlights {
+        pm.fill_path(&h.path, &solid(h.color), FillRule::Winding, transform, None);
+    }
+    for &(fx, e) in &sets {
+        if let Some(g) = e.glow.filter(ResolvedGlow::is_visible) {
+            let sil = Silhouette {
+                paths,
+                fx,
+                grow: stroke_grow(e) + g.spread as f32,
+                highlights: false,
+            };
+            let [r, gr, b, a] = rgba(g.color);
+            let alpha = (f64::from(a) * g.opacity).round().clamp(0.0, 255.0) as u8;
+            sil.draw(
+                pm,
+                transform,
+                ShadowPx {
+                    sigma: g.radius * px_per_lu,
+                    dx: 0.0,
+                    dy: 0.0,
+                    color: [r, gr, b, alpha],
+                },
+            );
+        }
+    }
+    let outline = |pm: &mut Pixmap, position: StrokePosition| {
+        for &(fx, e) in &sets {
+            let Some(s) = e
+                .stroke
+                .filter(|s| s.is_visible() && s.position == position)
+            else {
+                continue;
+            };
+            let paint = solid(rgba(s.color));
+            for g in paths.glyphs.iter().filter(|g| g.effects == fx) {
+                let k = if position == StrokePosition::Outside {
+                    2.0
+                } else {
+                    1.0
+                };
+                let st = Stroke {
+                    width: k * s.width as f32 + g.stroke.unwrap_or(0.0),
+                    line_join: line_join(s.join),
+                    miter_limit: 4.0,
+                    ..Stroke::default()
+                };
+                pm.stroke_path(&g.path, &paint, &st, transform, None);
+            }
+        }
+    };
+    outline(pm, StrokePosition::Outside);
+    draw_glyph_fills(pm, paths, transform, None);
+    outline(pm, StrokePosition::Center);
 }
 
 /// Convenience: [`to_paths`] + [`draw_text`].
@@ -251,6 +466,6 @@ mod tests {
         });
         let paths = to_paths(&layout, l.fonts());
         assert_eq!(paths.highlights.len(), 1);
-        assert_eq!(paths.highlights[0].1, [255, 0, 0, 255]);
+        assert_eq!(paths.highlights[0].color, [255, 0, 0, 255]);
     }
 }

@@ -111,6 +111,78 @@ ascent to descent and are merged across adjacent runs.
   than 200 above the best face) is drawn as an extra outline stroke of
   `size / 32`.
 
+### Text effects: outline, glow, shadow
+
+Amended 2026-11-10 (user request: outlines and glow for texts).
+
+Model (YAML, defaults omitted):
+
+```yaml
+styles:
+  text:
+    headline: {weight: 900, size: 104, color: "#FFFFFF",
+               stroke: {color: "@ink", width: 6},
+               glow: {color: "@accent", radius: 18, opacity: 0.7, spread: 2},
+               shadow: soft}
+  spans:
+    accent: {color: "@accent", stroke: {color: "#FFFFFF", width: 3, position: center}}
+# element-level overrides on text elements:
+- {id: title, kind: text, text: hero.title, style: headline,
+   stroke: {color: "@ink", width: 0}, glow: {color: "#FFFFFF", radius: 8}, shadow: none}
+```
+
+- `stroke` (`Stroke`, shared with shapes): `color` (`#…`/`@name`),
+  `width` lu, `position: outside | center` (default `outside`, text only —
+  shapes reject it), `join: round | miter | bevel` (default `round` for
+  text, `miter` for shapes). `width: 0` draws nothing.
+- `glow`: `color`, `radius` (Gaussian sigma, lu), `opacity` (0..1,
+  default 1, multiplied with the colour alpha), `spread` (dilation in lu,
+  default 0). `opacity: 0` draws nothing.
+- `shadow`: a shadow preset name, as for devices/images/shapes.
+- Cascade: defaults ← text style ← element override (`stroke`, `glow`,
+  `shadow` on the element) ← span style. A span style that sets any of
+  them gets its own effect set (missing ones inherited from the text);
+  the "nothing" values (`width: 0`, `opacity: 0`, `shadow: none`) switch
+  an inherited effect off.
+- Lengths are absolute lu: auto-fit shrinks the glyphs, not the outline.
+
+Layout: effects never change line breaking. The layout input style
+carries `TextEffects`; `prepare` builds a deduplicated effect table
+(`TextLayout::effects`, `[0]` = the text's own) and every `GlyphRun` and
+`Highlight` stores an index into it (part of the parley brush, so runs
+split at span boundaries). `TextLayout::effect_outsets()` gives the
+extents beyond the glyphs: *ink* (the hard-edged outline) and *visual*
+(outline, glow `spread + 3·radius`, shadow `3·blur + offset`).
+`PlacedText::ink_rect()` / `visual_rect()` grow the content rect by
+them; the overlay reports `visual`. The content rect is unchanged (box
+handles, alignment, auto-fit).
+
+- Validation (`text_clipped`, `text_in_gap`) uses the **ink rect**: an
+  outline cut at a page edge is a visible hard edge, while soft glows
+  and shadows fading out there are normal and would only be noise.
+- The renderer sizes cull circles and the element's offscreen layer
+  (opacity/clip) by the visual extent, so glows are not cut off by the
+  layer bounds.
+
+Render (`arrangia_render::text::draw_text_with_effects`), per pass over
+all effect sets so a span's glow never covers a neighbour's glyphs:
+
+1. **shadow** layers: silhouette = glyphs (+ outside outline width, +
+   synthetic bold) and highlights, blurred and offset (offsets in canvas
+   space, unrotated);
+2. span **highlights**;
+3. **glow**: glyph silhouette dilated by outline outset + `spread` (round
+   stroke of `2·d` in local lu), blurred with `radius`, tinted;
+4. **outside outline**: the glyph path stroked with `2·width` *below*
+   the fill, so the glyph shapes stay intact (CSS `paint-order: stroke`);
+5. glyph **fill**;
+6. **centre outline**: stroked with `width` over the fill.
+
+Shadow and glow use `blur::draw_blurred` (the shadow blur on a
+downsampled mask covering only the text's bounding region); outlines
+are tiny-skia strokes of the same unhinted lu outlines, so they stay
+crisp under rotation and any lu → px scale.
+
 ### Layout report
 
 `LayoutReport` (serde): box, content rect, chosen font size, line count,
@@ -126,7 +198,8 @@ element, language and target (MCP `layout_report`, validation).
   it may come back as a style option later.
 - Deferred to Phase 3 or later: pattern hyphenation (opt-in), line
   balancing, underline/strike-through markup, RTL/complex scripts
-  (parley `complex-scripts` is off), CJK fallback fonts, text shadows,
-  per-language font overrides.
+  (parley `complex-scripts` is off), CJK fallback fonts, per-language
+  font overrides. (Text shadows, outlines and glows exist since the
+  *Text effects* amendment.)
 - `docs/spike/text-layout.png` (spike example) shows auto-fit, soft
   hyphen, emergency break, overflow, italic and highlights.
