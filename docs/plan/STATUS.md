@@ -73,6 +73,7 @@ current: update after each phase/merge and whenever the user decides something.
 
 ## Backlog for later versions (noted, not scheduled)
 - 2026-11-10 (user): more devices – **iPhone Duo** (two screens; ASC display type `IPHONE_DUO` behind a feature flag, sizes not public yet; required from April 2027 for iOS 27.1 SDK apps) and **Apple Watch** (ASC types `APP_WATCH_ULTRA` 410×502/422×514, `SERIES_10` 416×496, `SERIES_7` 396×484, `SERIES_4` 368×448, `SERIES_3` 312×390; Play Wear OS 1:1 ≥ 384×384, no frames allowed). Needs: catalog entries + new frame shapes (dual screen / watch with crown & band) in both styles, target presets, Apple bezel import rules for Watch/Duo packages. How-to: `docs/dev/adding-devices.md`.
+- 2026-11-10 (user): build VMs – the user has a Proxmox server and offers Linux and Windows VMs where agents could build/test (reproduce CI failures, GUI lint on Linux, real Windows runs). Discuss later (access, SSH keys, what runs there).
 
 ## Known open items (cross-phase)
 - Native store app gallery gaps not measured (only web CSS).
