@@ -17,7 +17,7 @@ comments, commit messages and repo docs are in English.
 
 Status: pre-alpha. Phase 1 (core + CLI) and Phase 2 (GUI editor) are
 done and reviewed; Phase 3 (languages & import, `docs/plan/phase-3.md`)
-is nearly done. Current state and decisions: `docs/plan/STATUS.md`. See
+is nearly done; Phase 4 (MCP, `docs/plan/phase-4.md`) has started. Current state and decisions: `docs/plan/STATUS.md`. See
 the roadmap in KONZEPT.md §12.
 
 ## Core ideas
@@ -48,10 +48,12 @@ crates/
                               validation, catalogs (data in crates/core/data/*.yaml)
   render/   arrangia-render   rasterization, parametric frames, text, export encoding
   publish/  arrangia-publish  App Store Connect, Google Play, keychain
-  mcp/      arrangia-mcp      MCP server (rmcp) over core/render/publish
+  app/      arrangia-app      shared application layer (no Tauri): session, commands,
+                              preview cache, settings, watcher, events, view state
+  mcp/      arrangia-mcp      MCP server (rmcp) over app/core/render/publish
   cli/      arrangia-cli      binary `arrangia` (clap)
-  gui/      arrangia-gui      Tauri 2 app; frontend in gui/ui/ (vanilla ES modules,
-                              see gui/ui/README.md)
+  gui/      arrangia-gui      Tauri 2 app + dev bridge over `app`; frontend in gui/ui/
+                              (vanilla ES modules, see gui/ui/README.md)
 assets/fonts/           bundled OFL fonts (Inter 4.1, embedded by core::layout)
 assets/hyphenation/     hyph-utf8 hyphenation patterns (permissive licences only,
                         see LICENSES.md; embedded by core::layout::hyphen)
@@ -105,17 +107,25 @@ CLI), one bezel per vendor model (iPhone 18 Pro and Pro Max side by side);
 screenshot size, aspect, or pinned with `bezel:`) or falls back to the
 parametric frame (info `imported_frame_missing`).
 
-`gui` (Phase 2, ADR 0008) – library + Tauri binary: `commands` (plain
+`app` (ADR 0008, split out in Phase 4, ADR 0013) – the transport-agnostic
+application layer shared by GUI and MCP (no Tauri dependency): `commands` (plain
 functions `fn(&AppState, Args) -> Result<T, CommandError>`, `dispatch` by
 name, one module per area: project, edit, inspect, add, texts, strings,
 assets, targets, project_settings, render, export, catalog, os, system;
-a new command goes into the `command_table!` in `commands/mod.rs` *and*
-the `json_commands!`/`image_commands!` + `generate_handler!` lists in
-`main.rs`, which only wraps them as Tauri commands), `session` (open
-project, apply/undo/redo with atomic save per transaction, revision
-conflicts, live reload via `watch`), `preview` (binary preview payload +
-cache), `settings` (settings.yaml + recent projects in SQLite), `events`,
-`dialogs`, `bridge` (dev HTTP bridge, feature `devbridge`). UI transport
+a new command goes into the `command_table!` in
+`crates/app/src/commands/mod.rs` *and* the `json_commands!`/
+`image_commands!` + `generate_handler!` lists in `crates/gui/src/main.rs`,
+which only wraps them as Tauri commands), `session` (open project,
+apply/undo/redo with atomic save per transaction, revision conflicts, live
+reload via `watch`; every step emits `project-edited` with its `actor`),
+`actor` (`Actor::User | Claude {client}`: "Claude: " history labels, set
+per thread with `Actor::scope` / `dispatch_as`), `view` (`ViewState`:
+strip/target/lang/variant/selection pushed by the GUI via `view_set`,
+read via `view_get`), `preview` (binary preview payload + cache),
+`settings` (settings.yaml + recent projects in SQLite), `events`,
+`dialogs`. `gui` – Tauri binary (`main.rs`: wrappers, Tauri `EventSink`/
+`Dialogs`) and `bridge` (dev HTTP bridge, feature `devbridge`); its library
+re-exports the `app` modules (`arrangia_gui::commands` …). UI transport
 shim: `ui/js/transport.js` (`invoke`/`listen` over Tauri or the bridge).
 Edit gestures go through `overlay` + `edit_*` commands (view context
 `{target, lang, variant}`, one undo step each) and `render_preview_edit`

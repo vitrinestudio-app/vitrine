@@ -42,10 +42,14 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   paths the user names; nothing deletes outside the project folder.
 
 ## 4.1 Extract `arrangia-app`
-- [ ] Move session/commands/preview/settings/watch/events/dialog traits from
+- [x] Move session/commands/preview/settings/watch/events/dialog traits from
       `crates/gui` into `crates/app`; gui keeps Tauri wrappers, bridge, UI
-- [ ] No behaviour change; all tests green; CLI keeps its own direct paths or
-      uses app where it simplifies
+      (ADR 0013)
+- [x] No behaviour change; all tests green; CLI keeps its own direct paths or
+      uses app where it simplifies (CLI unchanged)
+- [x] Prepared for MCP: `Actor` (history label "Claude: …"), `project-edited`
+      event (action, actor, label, changed ids), `ViewState` with
+      `view_set` (GUI pushes, debounced) / `view_get`
 
 ## 4.2 MCP server skeleton
 - [ ] `crates/mcp` with rmcp: tool router usable over Streamable HTTP (hosted

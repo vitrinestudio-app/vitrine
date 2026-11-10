@@ -1,6 +1,6 @@
 # 0008 – GUI session, commands and preview transport
 
-- Status: accepted
+- Status: accepted (amended by ADR 0013: the library part moved to `arrangia-app`)
 - Date: 2026-11-09
 
 ## Context

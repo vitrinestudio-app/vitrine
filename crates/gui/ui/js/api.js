@@ -1,6 +1,6 @@
 // Typed wrappers over the transport (`invoke`). Every backend command the UI
 // uses goes through here, so argument shapes live in one place. JSDoc types
-// mirror the Rust serde types in crates/gui/src/commands.
+// mirror the Rust serde types in crates/app/src/commands.
 //
 // `view` is the view context `{ target, lang, variant? }` from
 // `viewArgs()` in store.js (variant omitted = the target's own variant,

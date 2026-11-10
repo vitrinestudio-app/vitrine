@@ -10,7 +10,10 @@ current: update after each phase/merge and whenever the user decides something.
   - Done: 3.5 follow-up (all bezel sizes kept, auto selection target → screenshot → aspect → largest, `bezel:` pin, SLA guidance, licence notice).
   - Open: user re-checks with the real `Bezel-iPhone-18` frames after the 2026-11-10 colour fixes (project default Apple, colour swatches measured from the real bezels, picking each colour, switching back to parametric) → then Phase 3 complete.
   - 3.7 done except the real-package bezel check: example has fr (+ fr-CA sparse), German override + hyphenation, fr goldens (iPhone 6.9", iPad), scenario test `crates/cli/tests/scenario.rs`, README/CLAUDE.md/NOTES updated.
-- Next phases per KONZEPT §12: 4 MCP, 5 store upload, 6 polish/website, 7 3D.
+- Phase 4 (MCP) started – see `docs/plan/phase-4.md`.
+  - Done: 4.1 `arrangia-app` extracted (shared session/commands layer, no Tauri; ADR 0013) + actor labels, `project-edited` event, `view_set`/`view_get`.
+  - Next: 4.2 MCP server skeleton on `arrangia-app`.
+- Next phases per KONZEPT §12: 5 store upload, 6 polish/website, 7 3D.
 
 ## How we work
 - Coordinator session plans and reviews (incl. looking at rendered images); subagents implement (worktrees for parallel work, merged with `--no-ff`).

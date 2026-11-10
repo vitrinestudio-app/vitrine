@@ -149,6 +149,7 @@ command could not run (usage error, project not loadable, IO error).
 | `crates/core` | `arrangia-core` | Project model, YAML IO, operations API, resolution, layout, validation, catalogs |
 | `crates/render` | `arrangia-render` | Rasterization, parametric device frames, text rendering, export |
 | `crates/publish` | `arrangia-publish` | App Store Connect and Google Play upload, keychain |
+| `crates/app` | `arrangia-app` | Shared application layer: session, commands, preview cache, settings (GUI and MCP) |
 | `crates/mcp` | `arrangia-mcp` | MCP server |
 | `crates/cli` | `arrangia-cli` | Command line interface, binary `arrangia` |
 | `crates/gui` | `arrangia-gui` | Tauri 2 desktop app, frontend in plain HTML/CSS/JS |
