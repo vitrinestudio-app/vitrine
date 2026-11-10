@@ -72,6 +72,32 @@ async function closeProject() {
   await showProject();
 }
 
+/** Debounce of `view_set` after context/selection changes (ms). */
+const VIEW_SYNC_MS = 250;
+
+/**
+ * Pushes the view context and selection to the backend (`view_set`), so
+ * other front ends (MCP `view_get`) know what the user is looking at.
+ */
+function syncView() {
+  let timer = null;
+  const push = () => {
+    timer = null;
+    const st = store.get();
+    if (!st.summary) return;
+    const view = { strip: st.strip, target: st.target, lang: st.lang, selection: st.selection };
+    if (st.variant !== undefined) view.variant = st.variant;
+    api.viewSet(view).catch((e) => console.warn('view_set', e));
+  };
+  store.select(
+    (st) => [st.summary, st.strip, st.target, st.lang, st.variant, st.selection],
+    () => {
+      clearTimeout(timer);
+      timer = setTimeout(push, VIEW_SYNC_MS);
+    },
+  );
+}
+
 function restoreContext() {
   try {
     const saved = JSON.parse(sessionStorage.getItem(CONTEXT_KEY) ?? 'null');
@@ -115,6 +141,7 @@ async function start() {
     else showProject().catch(report);
   });
   restoreContext();
+  syncView();
   await showProject();
 }
 

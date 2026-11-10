@@ -13,6 +13,7 @@
 //! session   the open project: model, history, atomic save, live reload
 //! preview   preview render cache and the binary image payload
 //! settings  app settings (YAML) and recent projects (SQLite)
+//! view      the GUI's view (strip/target/lang/variant/selection)
 //! watch     debounced file watcher of the project folder
 //! events    EventSink (Tauri `emit` / bridge SSE) and event names
 //! dialogs   Dialogs trait (Tauri dialog plugin / fixed answers)
@@ -28,6 +29,7 @@ pub mod events;
 pub mod preview;
 pub mod session;
 pub mod settings;
+pub mod view;
 pub mod watch;
 
 /// Helpers for tests (also used by the integration tests).
@@ -75,6 +77,7 @@ pub use commands::{AppState, Reply, dispatch, dispatch_as};
 pub use error::{CommandError, ErrorCode};
 pub use events::EventSink;
 pub use session::Session;
+pub use view::ViewState;
 
 /// Basic information about the running application.
 #[derive(Debug, Clone, serde::Serialize)]

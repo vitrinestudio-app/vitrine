@@ -804,3 +804,55 @@ fn element_add_builds_each_kind_with_defaults() {
         ErrorCode::InvalidArgs
     );
 }
+
+#[test]
+fn view_set_and_get() {
+    let f = fixture();
+    let e = dispatch(&f.app, "view_get", Value::Null).unwrap_err();
+    assert_eq!(e.code, ErrorCode::NoProject);
+    open(&f);
+    assert_eq!(
+        call(&f.app, "view_get", Value::Null),
+        json!({"strip": null, "target": null, "lang": null, "selection": []})
+    );
+    let view = json!({
+        "strip": "phone", "target": "ios-iphone-69", "lang": "de",
+        "variant": null, "selection": ["band"],
+    });
+    assert_eq!(call(&f.app, "view_set", view.clone()), view);
+    assert_eq!(call(&f.app, "view_get", Value::Null), view);
+    let e = dispatch(&f.app, "view_set", json!({"zoom": 2})).unwrap_err();
+    assert_eq!(e.code, ErrorCode::InvalidArgs);
+    // A newly opened project starts without a view.
+    open(&f);
+    assert_eq!(
+        call(&f.app, "view_get", Value::Null)["selection"],
+        json!([])
+    );
+}
+
+#[test]
+fn dispatch_as_labels_steps_by_claude() {
+    let f = fixture();
+    open(&f);
+    let claude = crate::Actor::Claude {
+        client: "test".into(),
+    };
+    let r = dispatch_as(
+        &f.app,
+        claude,
+        "apply_ops",
+        json!({"ops": [{"op": "set_name", "name": "Grove"}], "label": "Rename"}),
+    )
+    .unwrap();
+    let Reply::Json(r) = r else {
+        panic!("apply_ops returned an image")
+    };
+    assert_eq!(r["history"]["undo"][0], "Claude: Rename");
+    // Back to the user outside the scope.
+    let r = call(&f.app, "undo", Value::Null);
+    assert_eq!(r["history"]["redo"][0], "Claude: Rename");
+    let ev = f.sink.named(crate::events::PROJECT_EDITED);
+    assert_eq!(ev[0]["actor"]["kind"], "claude");
+    assert_eq!(ev[1]["actor"]["kind"], "user");
+}

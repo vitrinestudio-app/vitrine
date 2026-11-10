@@ -217,6 +217,8 @@ json_commands! {
     frames_import_apply: commands::FramesImportApplyArgs,
     frames_list: commands::NoArgs,
     frames_remove: commands::FramesRemoveArgs,
+    view_get: commands::NoArgs,
+    view_set: arrangia_gui::ViewState,
 }
 
 image_commands! {
@@ -346,6 +348,8 @@ fn main() {
             frames_list,
             frames_remove,
             frames_thumbnail,
+            view_get,
+            view_set,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Arrangia");

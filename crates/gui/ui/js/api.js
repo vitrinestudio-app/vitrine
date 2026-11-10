@@ -22,6 +22,8 @@ export const api = {
   summary: () => invoke('project_summary'),
   openDialog: () => invoke('dialog_open_project'),
   historyState: () => invoke('history_state'),
+  /** Tells the backend what the user looks at (`{strip, target, lang, variant?, selection}`; read by MCP `view_get`). */
+  viewSet: (view) => invoke('view_set', view),
   undo: () => invoke('undo'),
   redo: () => invoke('redo'),
   /** @returns {Promise<object>} validation counts + findings */

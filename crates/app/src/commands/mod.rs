@@ -34,6 +34,7 @@ mod strings;
 mod system;
 mod targets;
 mod texts;
+mod view;
 
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -59,6 +60,7 @@ pub use strings::*;
 pub use system::*;
 pub use targets::*;
 pub use texts::*;
+pub use view::*;
 
 use crate::dialogs::Dialogs;
 use crate::error::{CmdResult, CommandError, ErrorCode};
@@ -238,6 +240,7 @@ command_table! {
         dialog_save_file, strings_export, strings_import_plan, strings_import_apply,
         import_plan, import_apply,
         frames_import_plan, frames_import_apply, frames_list, frames_remove,
+        view_get, view_set,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,

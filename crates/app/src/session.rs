@@ -37,6 +37,7 @@ pub use crate::actor::Actor;
 use crate::error::{CmdResult, CommandError, ErrorCode};
 use crate::events::{EventSink, PROJECT_CHANGED, PROJECT_EDITED, PROJECT_ERROR};
 use crate::preview::PreviewCache;
+use crate::view::ViewState;
 use crate::watch::{self, FsChange, Watcher};
 use arrangia_core::frame_import::FrameIndex;
 
@@ -234,6 +235,8 @@ pub struct Session {
     edit_preview: Mutex<Option<(String, u64, Arc<Project>)>>,
     /// App setting `system_font_fallback`: system fonts as last resort.
     system_fonts: AtomicBool,
+    /// What the GUI shows (pushed by the GUI, read by MCP).
+    view: Mutex<ViewState>,
 }
 
 impl std::fmt::Debug for Session {
@@ -302,6 +305,7 @@ impl Session {
             watcher: Mutex::new(None),
             edit_preview: Mutex::new(None),
             system_fonts: AtomicBool::new(false),
+            view: Mutex::new(ViewState::default()),
         }))
     }
 
@@ -438,6 +442,16 @@ impl Session {
     fn rebuild_context(&self) {
         let project = self.snapshot();
         self.replace_context(self.context_for(&project));
+    }
+
+    /// The GUI's current view (see [`crate::view`]).
+    pub fn view(&self) -> ViewState {
+        lock(&self.view).clone()
+    }
+
+    /// Stores the GUI's current view.
+    pub fn set_view(&self, view: ViewState) {
+        *lock(&self.view) = view;
     }
 
     pub fn preview(&self) -> &PreviewCache {
