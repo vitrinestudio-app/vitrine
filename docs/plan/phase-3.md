@@ -1,0 +1,50 @@
+# Phase 3 – Languages & import: task list
+
+Scope: KONZEPT.md §4.2, §5 and §12, Phase 3. Done when 3 languages × 3 targets
+export correctly with fallbacks, overflows are reported, and Apple product
+bezels are imported and used.
+
+Already done in Phases 1/2: i18n files, fallback chains, auto-fit per
+language, screenshot variants + lookup chain, translations table, all-languages
+grid, live reload of screenshots.
+
+Status markers: `[ ]` open · `[~]` in progress · `[x]` done
+
+## 3.1 Per-language text overrides + font fallback (`core`, GUI)
+- [ ] Text elements: optional overrides per language (`langs: {fi: {font_size: 60, box: …, style: …}}`, §5.1), resolved after variant overrides; ops/patch, YAML, validation
+- [ ] Inspector: "only for <lang>" toggle that writes language overrides, marked like variant overrides
+- [ ] Per-family fallback list in project styles (`fonts: {Inter: {fallback: [Noto Sans JP, …]}}`); missing glyphs reported per language; optional app setting to use system fonts as a last resort (off in tests/CI)
+
+## 3.2 Automatic hyphenation (opt-in)
+- [ ] Pattern-based hyphenation per language (pure Rust, e.g. `hyphenation` crate or own Liang implementation), only languages whose pattern licence allows redistribution
+- [ ] Opt-in per text style / element (`hyphenate: true`), used only when auto-fit at `shrink_to` does not fit (decided with the user); soft hyphens keep priority; minimum word/fragment lengths
+- [ ] Inspector + style editor toggle; validation info when hyphenation was used
+
+## 3.3 Screenshot import
+- [ ] Import rules: Arrangia folder convention, fastlane snapshot output (`<locale>/<Device Name>-<name>.png`), configurable device-name → variant and locale → language maps (stored in project.yaml)
+- [ ] Dry-run report (what goes where, unknown files, overwrites), then apply
+- [ ] CLI `arrangia import screenshots <dir> [--fastlane] [--dry-run]`; GUI import dialog (folder pick, preview table, apply)
+
+## 3.4 Translation exchange
+- [ ] Export/import CSV (key, per-language columns, notes/context, max length hints) and XLIFF 1.2 + 2.0 (source = default language, target per language; markup kept as-is or mapped to inline tags — decide)
+- [ ] Import report: changed/new/unknown keys, markup diagnostics, overflow check per language after import
+- [ ] CLI `arrangia strings export|import`; GUI buttons in the translations panel
+
+## 3.5 Apple Design Resources import
+- [ ] Importer: DMG (macOS `hdiutil attach -readonly -nobrowse`), zip or extracted folder; recognise device/colour/orientation from file names via `crates/core/data/frame-import/apple.yaml` (data, not code)
+- [ ] Screen rect + corner mask detection (transparent interior via flood fill from the centre); manual assignment for unknown files
+- [ ] App-wide frame store (app data dir, never in project or repo); project stores only `frame: imported:apple` (+ model/colour); missing package → parametric frame + validation info
+- [ ] Renderer: draw imported PNG frames (screenshot under the frame through the detected mask), correct scaling per element width
+- [ ] GUI: app settings → frame packages (import, list, remove, unmatched files); inspector frame source picker
+- [ ] Tests with a synthetic bezel package (generated PNGs + names); real package verified by the user
+
+## 3.6 Follow-ups from Phase 2
+- [ ] Project settings: styles list must not collapse after each edit
+- [ ] Persist the home-page lock (model field) instead of UI-only state
+- [ ] New string key: optionally create in all languages
+- [ ] Renaming a used colour/style updates element references
+
+## 3.7 Verification + docs
+- [ ] Example project gets a third language (e.g. `fr` with partial translations + fallbacks), one per-language override, one hyphenated text; golden tests updated
+- [ ] "Done when" scenario: 3 languages × 3 targets exported, overflow reported; Apple bezels imported and used (with the user's real package)
+- [ ] ADRs (per-language overrides, hyphenation, import rules, frame packages); CLAUDE.md/README
