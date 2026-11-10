@@ -11,7 +11,7 @@ use std::path::Path;
 use arrangia_core::Project;
 use arrangia_core::catalog;
 use arrangia_core::edit::unique_id;
-use arrangia_core::model::{Element, ElementKind, Lang, StringKey, Target};
+use arrangia_core::model::{Element, ElementId, ElementKind, Lang, StringKey, Target};
 use arrangia_core::ops::Op;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -48,6 +48,19 @@ view_args! {
         /// Text: placeholder text (default `New text`).
         #[serde(default)]
         pub text: Option<String>,
+        /// Element id (default: a unique `<kind>`, `<kind>-2` …); must not
+        /// exist yet.
+        #[serde(default)]
+        pub id: Option<String>,
+        /// Text: translation key (default: a unique `text`, `text-2` …).
+        /// An existing key is reused as is (its translations are kept;
+        /// `text` then only fills a missing default-language string).
+        #[serde(default)]
+        pub key: Option<String>,
+        /// YAML fields merged over the defaults (`null` removes a default),
+        /// e.g. `{"at": {"x": 500, "y": 300}, "style": "sub"}` (MCP).
+        #[serde(default)]
+        pub fields: Option<serde_json::Map<String, Value>>,
     }
 }
 
@@ -164,12 +177,18 @@ fn build(
             })
         }
         AddKind::Text => {
-            let key = unique_key(p, "text");
-            ops.push(Op::SetString {
-                lang: Lang::parse(p.languages.default.as_str()).map_err(CommandError::invalid)?,
-                key: StringKey::parse(&key).map_err(CommandError::invalid)?,
-                value: Some(args.text.clone().unwrap_or_else(|| PLACEHOLDER.to_owned())),
-            });
+            let key = args.key.clone().unwrap_or_else(|| unique_key(p, "text"));
+            let default = p.languages.default.as_str();
+            let lang = Lang::parse(default).map_err(CommandError::invalid)?;
+            let key_id = StringKey::parse(&key).map_err(CommandError::invalid)?;
+            let existing = p.string(default, &key).is_some();
+            if !existing {
+                ops.push(Op::SetString {
+                    lang,
+                    key: key_id,
+                    value: Some(args.text.clone().unwrap_or_else(|| PLACEHOLDER.to_owned())),
+                });
+            }
             let style = if p.styles.text.contains_key("headline") {
                 Some("headline".to_owned())
             } else {
@@ -250,7 +269,17 @@ pub fn element_add(app: &AppState, args: ElementAddArgs) -> CmdResult<EditResult
                 args.page, strip.page.count
             )));
         }
-        let id = unique_id(p, label_kind);
+        let id = match &args.id {
+            Some(id) => {
+                if p.element(id).is_some() {
+                    return Err(CommandError::invalid(format!(
+                        "element `{id}` already exists"
+                    )));
+                }
+                ElementId::parse(id).map_err(CommandError::invalid)?
+            }
+            None => unique_id(p, label_kind),
+        };
         let placement = Placement {
             project: p,
             dir: s.dir(),
@@ -260,9 +289,24 @@ pub fn element_add(app: &AppState, args: ElementAddArgs) -> CmdResult<EditResult
             page: args.page,
             page_h: strip.page.aspect.page_height(),
         };
-        let (element, mut ops, index) = build(kind, &args, image_default.as_deref(), &placement)?;
-        let element: Element =
-            serde_json::from_value(element).map_err(|e| CommandError::internal(e.to_string()))?;
+        let (mut element, mut ops, index) =
+            build(kind, &args, image_default.as_deref(), &placement)?;
+        if let (Some(fields), Some(obj)) = (&args.fields, element.as_object_mut()) {
+            for (k, v) in fields {
+                if ["id", "kind", "page", "children"].contains(&k.as_str()) {
+                    return Err(CommandError::invalid(format!(
+                        "`{k}` cannot be set in `fields` (use the argument instead)"
+                    )));
+                }
+                if v.is_null() {
+                    obj.remove(k);
+                } else {
+                    obj.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        let element: Element = serde_json::from_value(element)
+            .map_err(|e| CommandError::invalid(format!("invalid element: {e}")))?;
         ops.push(Op::AddElement {
             strip: strip.id.clone(),
             parent: None,

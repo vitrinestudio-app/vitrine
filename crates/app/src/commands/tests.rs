@@ -806,6 +806,47 @@ fn element_add_builds_each_kind_with_defaults() {
 }
 
 #[test]
+fn element_add_with_id_key_and_fields() {
+    let f = fixture();
+    open(&f);
+    let r = call(
+        &f.app,
+        "element_add",
+        json!({
+            "target": "ios-iphone-69", "kind": "text", "page": 1,
+            "id": "promo", "key": "promo.title", "text": "Hello",
+            "fields": {"style": "sub", "at": {"x": 500, "y": 300}, "anchor_y": null},
+        }),
+    );
+    assert_eq!(r["created"][0], "promo");
+    let text = element_yaml(&f, "promo");
+    assert_eq!(text["text"], "promo.title");
+    assert_eq!(text["style"], "sub");
+    assert_eq!(text["at"]["y"], 300);
+    assert!(text.get("anchor_y").is_none());
+    let strings = call(&f.app, "project_get", Value::Null)["strings"].clone();
+    assert_eq!(strings["en"]["promo.title"], "Hello");
+    // An existing key keeps its translations.
+    call(
+        &f.app,
+        "element_add",
+        json!({"kind": "text", "id": "again", "key": "plan.title", "text": "ignored"}),
+    );
+    let strings = call(&f.app, "project_get", Value::Null)["strings"].clone();
+    assert_ne!(strings["en"]["plan.title"], "ignored");
+    for bad in [
+        json!({"kind": "text", "id": "promo"}),
+        json!({"kind": "shape", "fields": {"kind": "text"}}),
+        json!({"kind": "shape", "fields": {"radius": "round"}}),
+    ] {
+        assert_eq!(
+            dispatch(&f.app, "element_add", bad).unwrap_err().code,
+            ErrorCode::InvalidArgs
+        );
+    }
+}
+
+#[test]
 fn view_set_and_get() {
     let f = fixture();
     let e = dispatch(&f.app, "view_get", Value::Null).unwrap_err();
