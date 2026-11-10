@@ -7,7 +7,8 @@ current: update after each phase/merge and whenever the user decides something.
 - Phase 0 (spike), Phase 1 (core + CLI), Phase 2 (GUI editor) done and reviewed by the user.
 - Phase 3 (languages & import) in progress – see `docs/plan/phase-3.md`.
   - Done: 3.1 language overrides + font fallback, 3.2 hyphenation, 3.3 screenshot import, 3.4 CSV/XLIFF, 3.5 Apple bezel import (base), 3.6 Phase-2 follow-ups.
-  - In progress: 3.5 follow-up (keep all bezel sizes, auto selection, pinning, SLA/licence hints) after the user's real-package test.
+  - Done: 3.5 follow-up (all bezel sizes kept, auto selection target → screenshot → aspect → largest, `bezel:` pin, SLA guidance, licence notice).
+  - Open: user re-runs the real `Bezel-iPhone-18` package import (expect 16 frames, Pro for ios-iphone-63, Pro Max for ios-iphone-69) → then Phase 3 complete.
   - 3.7 done except the real-package bezel check: example has fr (+ fr-CA sparse), German override + hyphenation, fr goldens (iPhone 6.9", iPad), scenario test `crates/cli/tests/scenario.rs`, README/CLAUDE.md/NOTES updated.
 - Next phases per KONZEPT §12: 4 MCP, 5 store upload, 6 polish/website, 7 3D.
 
