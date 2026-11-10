@@ -13,6 +13,8 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
+  # Never touch a real OS keychain in CI (Linux runners have no secret service).
+  ARRANGIA_KEYRING: mock
 
 jobs:
   check:
