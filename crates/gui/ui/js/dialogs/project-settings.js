@@ -1,7 +1,8 @@
 // Project settings dialog (task 2.10): name, frame style, languages
 // (add/remove/reorder, fallback map, default language with the §5.0
 // impact warning), style tokens (colours, text styles, span styles, shadow
-// presets) and the fonts available to the project. Every change is one
+// presets), the fonts available to the project and the store mapping
+// (Phase 5.1, `stores.js`). Every change is one
 // backend command building the ops in Rust, applied via `editor.apply`.
 
 import { api } from '../api.js';
@@ -10,8 +11,9 @@ import { editor } from '../editor.js';
 import { t } from '../i18n.js';
 import { store } from '../store.js';
 import { checkbox, confirmDialog, errorLine, input, openModal, row, select } from './modal.js';
+import { storesPane } from './stores.js';
 
-const TABS = ['general', 'languages', 'styles', 'fonts'];
+const TABS = ['general', 'languages', 'styles', 'fonts', 'stores'];
 /** Frame styles of the project default; `imported:*` are Apple's bezels (ADR 0012). */
 const FRAMES = ['detailed', 'stylized', 'imported:apple'];
 const WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900];
@@ -92,6 +94,7 @@ export function openProjectSettings(tab = 'general') {
       pane.replaceChildren(general(s));
     }
     else if (current === 'languages') pane.replaceChildren(languages(s));
+    else if (current === 'stores') pane.replaceChildren(await storesPane(commit));
     else if (current === 'styles') {
       styles ??= await api.stylesGet();
       fonts ??= await api.catalogFonts();

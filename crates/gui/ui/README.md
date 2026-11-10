@@ -45,7 +45,8 @@ js/assistant.js       AI assistants over MCP (ADR 0015): status, top-bar indicat
 js/dialogs/modal.js   <dialog> helper (openModal, choiceDialog, confirmDialog,
                       promptDialog) + form controls (row, input, select…)
 js/dialogs/*.js       targets editor, validation popover, export, project
-                      and app settings
+                      and app settings; stores.js = store accounts (app
+                      settings) + store mapping tab (project settings)
 styles/{dialogs,targets,start,settings}.css   styles of the above
 styles/{textedit,translations,assets}.css      text editor, translations, assets
 styles/assistant.css  indicator, activity popover, toasts, glow, settings section

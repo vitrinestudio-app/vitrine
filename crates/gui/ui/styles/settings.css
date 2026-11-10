@@ -308,3 +308,124 @@
 .fp-root {
   margin-top: 10px;
 }
+
+/* ----- Stores (Phase 5.1): app settings accounts, project settings tab ----- */
+.store-accounts-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.store-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.store-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+}
+
+.store-account-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.store-account-main > .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.store-account-status:empty {
+  display: none;
+}
+
+.store-account-status[data-state='ok'] {
+  color: var(--success);
+}
+
+.store-account-status[data-state='warn'] {
+  color: var(--warning);
+}
+
+.store-account-status[data-state='error'] {
+  color: var(--danger);
+}
+
+.store-kind {
+  flex: none;
+  color: var(--fg-muted);
+  background: var(--bg-hover);
+}
+
+.store-accounts-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.store-import {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ps-stores .section-title {
+  margin-top: 14px;
+}
+
+.store-setup,
+.store-remove {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.store-remove {
+  justify-content: flex-end;
+}
+
+.store-locale-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.store-locale-head {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.store-locales {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.store-locale {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 80px;
+  align-items: center;
+  gap: 8px;
+}
+
+.store-locale select {
+  min-width: 0;
+}
+
+.store-locale[data-state='project'] > .mono {
+  color: var(--accent);
+}
+
+.store-locale[data-state='none'] > .small {
+  color: var(--warning);
+}

@@ -49,6 +49,17 @@ export const api = {
   /** Writes the entry (only after the user confirmed). */
   claudeDesktopInstall: () => invoke('claude_desktop_install', { confirm: true }),
   settingsSet: (settings) => invoke('settings_set', { settings }),
+  // ----- store accounts & project store mapping (Phase 5.1, ADR 0016) -----
+  /** `{accounts, keychain: {service, backend, error?}}` – never any key material. */
+  storeAccountsList: () => invoke('store_accounts_list'),
+  /** `{kind, path, label?, issuer_id?, key_id?}`: validates the key file, stores it in the keychain. */
+  storeAccountImport: (args) => invoke('store_account_import', args),
+  storeAccountRemove: (id) => invoke('store_account_remove', { id }),
+  storeAccountTest: (id) => invoke('store_account_test', { id }),
+  /** `{store, effective, locales, accounts, missing_accounts}`. */
+  projectStoreGet: () => invoke('project_store_get'),
+  /** `{apple?: obj|null, google?: obj|null, locales?: {apple?, google?}}` → one undo step. */
+  projectStorePatch: (patch) => invoke('project_store_patch', patch),
   catalogTargets: () => invoke('catalog_targets'),
   catalogGalleries: () => invoke('catalog_galleries'),
   catalogDevices: () => invoke('catalog_devices'),
