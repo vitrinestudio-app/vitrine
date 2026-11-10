@@ -94,6 +94,10 @@ docs/gui/               screenshots of the editor (README)
   setting) and per-language text overrides (`langs`, ADR 0009).
 - `validate` – findings per target × language (texts, screenshots, store
   rules; ADR 0005).
+- `colorspace` – image colour profiles (PNG `cICP`/`iCCP`/`sRGB`, JPEG
+  ICC) → sRGB with `moxcms` (ADR 0021); used once at decode by
+  `render::raster::SourceImage::decode` (asset cache, thumbnails) and
+  `frame_import`; unusable profiles → info `color_profile_unsupported`.
 
 `render` (tiny-skia, ADR 0006): `scene` – rasterize a resolved scene
 (`RenderContext`, asset cache, prepared scenes); `frames` – parametric

@@ -26,4 +26,5 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+moxcms.workspace = true
 tempfile.workspace = true

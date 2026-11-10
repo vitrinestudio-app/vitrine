@@ -59,6 +59,9 @@ tiny-skia = "0.12.0"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
 fast_image_resize = "6.1.0"
 png = "0.18.1"
+# Colour management (core::colorspace, ADR 0021): pure-Rust CMS, same version
+# the `image` crate already depends on (no second copy).
+moxcms = "0.8.1"
 # Image header parsing (dimensions only) for core::resolve / core::validate; pure Rust, no deps.
 imagesize = "0.14.0"
 # Frame package import (core::frame_import): zip archives with a pure-Rust

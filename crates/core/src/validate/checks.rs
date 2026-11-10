@@ -563,14 +563,17 @@ fn screenshot_checks(
         }
         ScreenshotSource::Lang | ScreenshotSource::LangVariant => {}
     }
+    // Aspect, upscale and colour profile depend on the file, not the
+    // language: findings name the file and are recorded without language,
+    // so languages that fall back to the same file share one finding.
+    let file = shot.path.as_deref().unwrap_or_default();
+    if let Some(message) = color_check(s, file) {
+        push(Severity::Info, C::ColorProfileUnsupported, false, message);
+    }
     let Some(size) = shot.size.filter(|p| p.w > 0 && p.h > 0) else {
         return;
     };
     let (sw, sh) = (f64::from(size.w), f64::from(size.h));
-    // Aspect and upscale depend on the file, not the language: findings
-    // name the file and are recorded without language, so languages that
-    // fall back to the same file share one finding.
-    let file = shot.path.as_deref().unwrap_or_default();
     let (dw_lu, dh_lu) = screen_lu(s, e, d);
     if !d.free_aspect {
         let want = if dh_lu > 0.0 {
@@ -613,6 +616,15 @@ fn screenshot_checks(
             ),
         );
     }
+}
+
+/// A screenshot whose colour profile cannot be used (drawn as sRGB).
+fn color_check(s: &Scope<'_>, file: &str) -> Option<String> {
+    if file.is_empty() {
+        return None;
+    }
+    let note = s.options.assets.color_note(file)?;
+    Some(format!("screenshot `{file}`: {note}"))
 }
 
 /// Size in lu of the area the screenshot fills: the display, minus the

@@ -92,11 +92,34 @@ pub fn decode_png(bytes: &[u8]) -> Result<RgbaImage, String> {
     if data.len() != n * 4 {
         return Err("unexpected PNG buffer size".into());
     }
+    let data = to_srgb(bytes, data);
     Ok(RgbaImage {
         width: w,
         height: h,
         data,
     })
+}
+
+/// Converts tagged bezels (Apple's are Display P3) to sRGB like the
+/// renderer does, so measured swatches match the drawn frame
+/// (`core::colorspace`, ADR 0021). Unusable profiles keep the pixels.
+fn to_srgb(bytes: &[u8], mut data: Vec<u8>) -> Vec<u8> {
+    let t = crate::colorspace::ToSrgb::new(&crate::colorspace::sniff_bytes(bytes));
+    if t.is_identity() {
+        return data;
+    }
+    if t.is_gray() {
+        let ga: Vec<u8> = data
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .flat_map(|p| [p[0], p[3]])
+            .collect();
+        return t.gray_alpha8_to_rgba8(&ga).unwrap_or(data);
+    }
+    // Errors come from building the transform, before any pixel is written.
+    let _ = t.rgba8(&mut data);
+    data
 }
 
 /// Encodes a one-byte-per-pixel mask as an 8-bit grayscale PNG.

@@ -73,6 +73,14 @@ pub trait AssetLookup {
         let _ = path;
         None
     }
+
+    /// Why the colour profile of the image at `path` cannot be used (it is
+    /// rendered as sRGB; `core::colorspace`, ADR 0021). `None` (the
+    /// default) for untagged, sRGB and convertible images and when unknown.
+    fn color_note(&self, path: &str) -> Option<String> {
+        let _ = path;
+        None
+    }
 }
 
 /// Looks files up below a project folder on disk.
@@ -96,6 +104,11 @@ impl AssetLookup for FsAssets {
     fn dimensions(&self, path: &str) -> Option<(u32, u32)> {
         let s = imagesize::size(self.root.join(path)).ok()?;
         Some((u32::try_from(s.width).ok()?, u32::try_from(s.height).ok()?))
+    }
+
+    /// Reads only the header and the embedded profile (cached per file).
+    fn color_note(&self, path: &str) -> Option<String> {
+        crate::colorspace::inspect_file(&self.root.join(path))
     }
 }
 
