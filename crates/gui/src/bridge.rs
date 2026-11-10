@@ -9,19 +9,23 @@
 //! | `GET /events` | server-sent events (`event: <name>`, `data: <json>`) |
 //!
 //! Errors answer with a non-2xx status and the JSON `CommandError`. The
-//! server binds `127.0.0.1` only and handles every request on its own
-//! thread (`tiny_http`).
+//! server binds `127.0.0.1` only. It is a minimal HTTP/1.1 server on
+//! `std::net`: one thread per connection and one request per connection
+//! (`Connection: close`). Keep-alive connections are deliberately not
+//! supported: with `tiny_http` a burst of new connections (page reload
+//! after a long export) could be queued behind pool threads blocked on idle
+//! keep-alive sockets and stall for minutes.
 
-use std::io::{Read, Write};
-use std::net::SocketAddr;
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use serde_json::Value;
-use tiny_http::{Header, Method, Request, Response, Server};
 
 use crate::commands::{AppState, Reply, dispatch};
 use crate::error::{CommandError, ErrorCode};
@@ -29,8 +33,13 @@ use crate::events::EventSink;
 
 /// Largest accepted request body.
 const MAX_BODY: u64 = 16 * 1024 * 1024;
-/// SSE keep-alive comment interval.
-const KEEPALIVE: Duration = Duration::from_secs(15);
+/// SSE keep-alive comment interval (also how fast a dead stream's thread
+/// notices the client is gone).
+const KEEPALIVE: Duration = Duration::from_secs(5);
+/// Longest wait for a client to send its request.
+const READ_TIMEOUT: Duration = Duration::from_secs(30);
+/// Longest request head (request line + headers).
+const MAX_HEAD: u64 = 64 * 1024;
 
 /// Fans events out to all connected `/events` clients.
 #[derive(Debug, Default)]
@@ -69,8 +78,8 @@ impl EventSink for SseHub {
 
 /// A running bridge.
 pub struct BridgeServer {
-    server: Arc<Server>,
     addr: SocketAddr,
+    stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
 }
 
@@ -101,7 +110,9 @@ impl BridgeServer {
 
     /// Stops accepting requests.
     pub fn shutdown(mut self) {
-        self.server.unblock();
+        self.stop.store(true, Ordering::SeqCst);
+        // Wake the accept loop.
+        let _ = TcpStream::connect(self.addr);
         if let Some(t) = self.thread.take() {
             let _ = t.join();
         }
@@ -117,32 +128,166 @@ pub fn serve(
     ui_dir: PathBuf,
     port: u16,
 ) -> std::io::Result<BridgeServer> {
-    let server = Server::http(("127.0.0.1", port)).map_err(std::io::Error::other)?;
-    let addr = server
-        .server_addr()
-        .to_ip()
-        .ok_or_else(|| std::io::Error::other("not an IP listener"))?;
-    let server = Arc::new(server);
-    let accept = server.clone();
+    let listener = TcpListener::bind(("127.0.0.1", port))?;
+    let addr = listener.local_addr()?;
+    let stop = Arc::new(AtomicBool::new(false));
+    let stopped = stop.clone();
     let thread = std::thread::Builder::new()
         .name("devbridge-accept".into())
         .spawn(move || {
-            while let Ok(request) = accept.recv() {
+            for stream in listener.incoming() {
+                if stopped.load(Ordering::SeqCst) {
+                    break;
+                }
+                let Ok(stream) = stream else { continue };
                 let (app, hub, ui) = (app.clone(), hub.clone(), ui_dir.clone());
                 let _ = std::thread::Builder::new()
-                    .name("devbridge-request".into())
-                    .spawn(move || handle(&app, &hub, &ui, request));
+                    .name("devbridge-conn".into())
+                    .spawn(move || connection(&app, &hub, &ui, stream));
             }
         })?;
     Ok(BridgeServer {
-        server,
         addr,
+        stop,
         thread: Some(thread),
     })
 }
 
-fn header(name: &str, value: &str) -> Header {
-    Header::from_bytes(name.as_bytes(), value.as_bytes()).expect("valid header")
+/// A parsed request.
+struct Request {
+    method: String,
+    url: String,
+    body: Vec<u8>,
+}
+
+/// An answer: status, headers, body.
+struct Response {
+    status: u16,
+    headers: Vec<(&'static str, String)>,
+    body: Vec<u8>,
+}
+
+impl Response {
+    fn new(status: u16, content_type: &str, body: Vec<u8>) -> Self {
+        Self {
+            status,
+            headers: vec![
+                ("Content-Type", content_type.to_owned()),
+                ("Cache-Control", "no-store".to_owned()),
+            ],
+            body,
+        }
+    }
+
+    fn text(status: u16, body: &str) -> Self {
+        Self::new(
+            status,
+            "text/plain; charset=utf-8",
+            body.as_bytes().to_vec(),
+        )
+    }
+
+    fn write(&self, w: &mut impl Write, head_only: bool) -> std::io::Result<()> {
+        let mut head = format!(
+            "HTTP/1.1 {} {}\r\nContent-Length: {}\r\nConnection: close\r\n",
+            self.status,
+            reason(self.status),
+            self.body.len()
+        );
+        for (k, v) in &self.headers {
+            head.push_str(k);
+            head.push_str(": ");
+            head.push_str(v);
+            head.push_str("\r\n");
+        }
+        head.push_str("\r\n");
+        w.write_all(head.as_bytes())?;
+        if !head_only {
+            w.write_all(&self.body)?;
+        }
+        w.flush()
+    }
+}
+
+fn reason(status: u16) -> &'static str {
+    match status {
+        200 => "OK",
+        400 => "Bad Request",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        409 => "Conflict",
+        413 => "Payload Too Large",
+        422 => "Unprocessable Entity",
+        499 => "Client Closed Request",
+        _ => "Error",
+    }
+}
+
+/// Reads one request (`Err(response)`: answer this and close).
+fn read_request(stream: &TcpStream) -> Result<Request, Option<Response>> {
+    let mut reader = BufReader::new(stream.take(MAX_HEAD + MAX_BODY));
+    let mut line = String::new();
+    match reader.read_line(&mut line) {
+        Ok(0) | Err(_) => return Err(None),
+        Ok(_) => {}
+    }
+    let mut parts = line.split_whitespace();
+    let (Some(method), Some(target)) = (parts.next(), parts.next()) else {
+        return Err(Some(Response::text(400, "bad request line")));
+    };
+    let (method, url) = (method.to_owned(), target.to_owned());
+    let mut length: u64 = 0;
+    let mut head_len = line.len() as u64;
+    loop {
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) | Err(_) => return Err(None),
+            Ok(n) => head_len += n as u64,
+        }
+        if head_len > MAX_HEAD {
+            return Err(Some(Response::text(400, "request head too large")));
+        }
+        let l = line.trim_end();
+        if l.is_empty() {
+            break;
+        }
+        if let Some((k, v)) = l.split_once(':')
+            && k.trim().eq_ignore_ascii_case("content-length")
+        {
+            length = v
+                .trim()
+                .parse()
+                .map_err(|_| Some(Response::text(400, "bad content-length")))?;
+        }
+    }
+    if length > MAX_BODY {
+        return Err(Some(Response::text(413, "request body too large")));
+    }
+    let mut body = vec![0; usize::try_from(length).unwrap_or(0)];
+    reader.read_exact(&mut body).map_err(|_| None)?;
+    Ok(Request { method, url, body })
+}
+
+fn connection(app: &AppState, hub: &SseHub, ui: &Path, mut stream: TcpStream) {
+    let _ = stream.set_read_timeout(Some(READ_TIMEOUT));
+    let _ = stream.set_nodelay(true);
+    let request = match read_request(&stream) {
+        Ok(r) => r,
+        Err(Some(resp)) => {
+            let _ = resp.write(&mut stream, false);
+            return;
+        }
+        Err(None) => return,
+    };
+    let path = request.url.split('?').next().unwrap_or("/").to_owned();
+    if request.method == "GET" && path == "/events" {
+        stream_events(hub, stream);
+        return;
+    }
+    let head_only = request.method == "HEAD";
+    let response = handle(app, ui, &request, &path);
+    let _ = response.write(&mut stream, head_only);
+    let _ = stream.shutdown(Shutdown::Both);
 }
 
 fn status_of(code: ErrorCode) -> u16 {
@@ -156,67 +301,45 @@ fn status_of(code: ErrorCode) -> u16 {
     }
 }
 
-fn json_response(status: u16, body: &impl serde::Serialize) -> Response<std::io::Cursor<Vec<u8>>> {
-    Response::from_data(serde_json::to_vec(body).unwrap_or_default())
-        .with_status_code(status)
-        .with_header(header("Content-Type", "application/json"))
-        .with_header(header("Cache-Control", "no-store"))
+fn json_response(status: u16, body: &impl serde::Serialize) -> Response {
+    Response::new(
+        status,
+        "application/json",
+        serde_json::to_vec(body).unwrap_or_default(),
+    )
 }
 
-fn handle(app: &AppState, hub: &SseHub, ui: &Path, mut request: Request) {
-    let url = request.url().split('?').next().unwrap_or("/").to_owned();
-    let method = request.method().clone();
-    if let (Method::Post, Some(name)) = (&method, url.strip_prefix("/cmd/")) {
-        let name = name.to_owned();
-        let mut body = Vec::new();
-        if let Err(e) = request.as_reader().take(MAX_BODY).read_to_end(&mut body) {
-            let _ = request.respond(json_response(
-                400,
-                &CommandError::invalid(format!("cannot read body: {e}")),
-            ));
-            return;
-        }
-        let args: Value = if body.iter().all(u8::is_ascii_whitespace) {
+fn handle(app: &AppState, ui: &Path, request: &Request, path: &str) -> Response {
+    if let ("POST", Some(name)) = (request.method.as_str(), path.strip_prefix("/cmd/")) {
+        let args: Value = if request.body.iter().all(u8::is_ascii_whitespace) {
             Value::Null
         } else {
-            match serde_json::from_slice(&body) {
+            match serde_json::from_slice(&request.body) {
                 Ok(v) => v,
-                Err(e) => {
-                    let _ = request.respond(json_response(400, &CommandError::from(e)));
-                    return;
-                }
+                Err(e) => return json_response(400, &CommandError::from(e)),
             }
         };
-        let _ = match dispatch(app, &name, args) {
-            Ok(Reply::Json(v)) => request.respond(json_response(200, &v)),
+        return match dispatch(app, name, args) {
+            Ok(Reply::Json(v)) => json_response(200, &v),
             Ok(Reply::Image(img)) => {
-                let mut r = Response::from_data(img.data.clone())
-                    .with_header(header("Content-Type", img.format.content_type()))
-                    .with_header(header("Cache-Control", "no-store"));
+                let mut r = Response::new(200, img.format.content_type(), img.data.clone());
                 for (k, v) in img.http_headers() {
-                    r = r.with_header(header(k, &v));
+                    r.headers.push((k, v));
                 }
-                request.respond(r)
+                r
             }
-            Err(e) => request.respond(json_response(status_of(e.code), &e)),
+            Err(e) => json_response(status_of(e.code), &e),
         };
-        return;
     }
-    if method == Method::Get && url == "/events" {
-        stream_events(hub, request);
-        return;
+    if request.method == "GET" || request.method == "HEAD" {
+        return serve_file(ui, path);
     }
-    if method == Method::Get || method == Method::Head {
-        let _ = serve_file(ui, &url, request);
-        return;
-    }
-    let _ = request.respond(Response::from_string("method not allowed").with_status_code(405));
+    Response::text(405, "method not allowed")
 }
 
 /// Writes the SSE stream until the client goes away.
-fn stream_events(hub: &SseHub, request: Request) {
+fn stream_events(hub: &SseHub, mut w: TcpStream) {
     let rx = hub.subscribe();
-    let mut w = request.into_writer();
     let head = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-store\r\nConnection: keep-alive\r\n\r\n: connected\n\n";
     if w.write_all(head.as_bytes())
         .and_then(|()| w.flush())
@@ -257,7 +380,7 @@ fn content_type(path: &Path) -> &'static str {
     }
 }
 
-fn serve_file(ui: &Path, url: &str, request: Request) -> std::io::Result<()> {
+fn serve_file(ui: &Path, url: &str) -> Response {
     let rel = url.trim_start_matches('/');
     let rel = if rel.is_empty() { "index.html" } else { rel };
     let rel_path = Path::new(rel);
@@ -265,15 +388,11 @@ fn serve_file(ui: &Path, url: &str, request: Request) -> std::io::Result<()> {
         .components()
         .all(|c| matches!(c, Component::Normal(_)))
     {
-        return request.respond(Response::from_string("bad path").with_status_code(400));
+        return Response::text(400, "bad path");
     }
     let path = ui.join(rel_path);
     match std::fs::read(&path) {
-        Ok(data) => request.respond(
-            Response::from_data(data)
-                .with_header(header("Content-Type", content_type(&path)))
-                .with_header(header("Cache-Control", "no-store")),
-        ),
-        Err(_) => request.respond(Response::from_string("not found").with_status_code(404)),
+        Ok(data) => Response::new(200, content_type(&path), data),
+        Err(_) => Response::text(404, "not found"),
     }
 }

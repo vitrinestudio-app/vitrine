@@ -98,8 +98,13 @@ followed by the data. The bridge sends the bare PNG/RGBA with
 ### Dev HTTP bridge
 
 `arrangia-devbridge` (feature `devbridge`, `required-features`, so neither
-built by default nor bundled) on `tiny_http`: the lightest blocking server,
-no async runtime needed; one thread per request (SSE streams block).
+built by default nor bundled) on a minimal blocking HTTP/1.1 server over
+`std::net`: no dependency, no async runtime; one thread per connection
+and one request per connection (`Connection: close`; SSE streams block
+their thread). Amended in 2.11: the first version used `tiny_http`,
+whose connection pool could leave new connections unserved behind
+threads blocked on idle keep-alive sockets (a page reload after a long
+export stalled for over a minute on a stylesheet).
 `GET /` serves `crates/gui/ui/`, `POST /cmd/<name>` → `dispatch`,
 `GET /events` → server-sent events. Binds `127.0.0.1` only, port 0 or
 `--port`; app data goes to a temp folder unless `--app-dir` is given;

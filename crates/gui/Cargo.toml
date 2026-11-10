@@ -25,7 +25,7 @@ path = "src/bin/arrangia-devbridge.rs"
 required-features = ["devbridge"]
 
 [features]
-devbridge = ["dep:tiny_http"]
+devbridge = []
 
 [build-dependencies]
 tauri-build.workspace = true
@@ -45,7 +45,6 @@ directories.workspace = true
 png.workspace = true
 tiny-skia.workspace = true
 imagesize.workspace = true
-tiny_http = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true
