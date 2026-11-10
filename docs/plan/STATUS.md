@@ -33,6 +33,9 @@ current: update after each phase/merge and whenever the user decides something.
 - App Store Connect (logged-in web app, 2026-11-09): display types ↔ sizes, see `crates/core/data/targets.yaml` and `docs/guide/NOTES.md`.
 - Apple bezel package `Bezel-iPhone-18.dmg` (user test 2026-11-10): file names `iPhone 18 Pro[ Max] - <Colour> - <Portrait|Landscape>.png`, + PSDs + License.rtf, DMG has an SLA.
 
+## Backlog for later versions (noted, not scheduled)
+- 2026-11-10 (user): more devices – **iPhone Duo** (two screens; ASC display type `IPHONE_DUO` behind a feature flag, sizes not public yet; required from April 2027 for iOS 27.1 SDK apps) and **Apple Watch** (ASC types `APP_WATCH_ULTRA` 410×502/422×514, `SERIES_10` 416×496, `SERIES_7` 396×484, `SERIES_4` 368×448, `SERIES_3` 312×390; Play Wear OS 1:1 ≥ 384×384, no frames allowed). Needs: catalog entries + new frame shapes (dual screen / watch with crown & band) in both styles, target presets, Apple bezel import rules for Watch/Duo packages. How-to: `docs/dev/adding-devices.md`.
+
 ## Known open items (cross-phase)
 - Native store app gallery gaps not measured (only web CSS).
 - Drag & drop of files in the real Tauri app not tested with a real drop.
