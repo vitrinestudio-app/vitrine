@@ -13,7 +13,7 @@ use std::time::SystemTime;
 
 use arrangia_core::Project;
 use arrangia_core::model::{ElementKind, Fill, Lang};
-use arrangia_core::resolve::SCREENSHOT_EXTENSIONS;
+use arrangia_core::resolve::{SCREENSHOT_EXTENSIONS, lang_chain};
 use arrangia_render::raster::{Filter, SourceImage};
 use arrangia_render::scene::Resample;
 use serde::{Deserialize, Serialize};
@@ -87,6 +87,26 @@ pub struct AssetsListing {
     pub asset_usage: BTreeMap<String, Vec<String>>,
     /// Screenshot variants named by targets (in target order, unique).
     pub variants: Vec<String>,
+    /// Per project language: which language folder its screenshots come
+    /// from (core fallback chain, as the renderer looks them up).
+    pub screenshot_langs: BTreeMap<String, ScreenshotLangSource>,
+}
+
+/// Where the screenshots of one language come from, folder level: the
+/// first language of the core fallback chain (`lang_chain`: the language,
+/// its prefixes, explicit `languages.fallback`, the default) that has any
+/// screenshot file. The renderer resolves each key separately, so a single
+/// key missing in `source` can still come from a later chain language.
+#[derive(Debug, Clone, Serialize)]
+pub struct ScreenshotLangSource {
+    /// The fallback chain, the language itself first.
+    pub chain: Vec<String>,
+    /// The language whose folder is used (the language itself when it has
+    /// screenshots); `None`: no language of the chain has any.
+    pub source: Option<String>,
+    /// `source` is the project's default language (reached as the last
+    /// resort of the chain, or because it is the language itself).
+    pub source_is_default: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -247,10 +267,12 @@ pub fn assets_list(app: &AppState, _: NoArgs) -> CmdResult<AssetsListing> {
             .collect()
     };
     let (screenshot_keys, asset_usage, variants) = session.with_project(usage);
+    let screenshot_langs = session.with_project(|p| screenshot_sources(p, &screenshots));
     Ok(AssetsListing {
         screenshot_keys,
         asset_usage,
         variants,
+        screenshot_langs,
         screenshots,
         assets: list("assets", &ASSET_EXTENSIONS),
         fonts: list("fonts", &FONT_EXTENSIONS)
@@ -262,6 +284,34 @@ pub fn assets_list(app: &AppState, _: NoArgs) -> CmdResult<AssetsListing> {
             })
             .collect(),
     })
+}
+
+/// [`ScreenshotLangSource`] of every project language.
+fn screenshot_sources(
+    p: &Project,
+    screenshots: &[ScreenshotFile],
+) -> BTreeMap<String, ScreenshotLangSource> {
+    let default = p.languages.default.as_str();
+    p.languages
+        .available
+        .iter()
+        .map(|lang| {
+            let chain = lang_chain(p, lang.as_str());
+            let source = chain
+                .iter()
+                .find(|l| screenshots.iter().any(|f| &f.lang == *l))
+                .cloned();
+            let source_is_default = source.as_deref() == Some(default);
+            (
+                lang.as_str().to_owned(),
+                ScreenshotLangSource {
+                    chain,
+                    source,
+                    source_is_default,
+                },
+            )
+        })
+        .collect()
 }
 
 type Usage = (
@@ -742,6 +792,45 @@ mod tests {
         assert_eq!(sanitize("Über_Uns"), "ber_uns");
         assert_eq!(sanitize("  "), "file");
         assert_eq!(sanitize("plan--v2"), "plan-v2");
+    }
+
+    #[test]
+    fn screenshot_sources_follow_the_fallback_chain() {
+        let mut p = Project::new("t", Lang::new("de"));
+        for l in ["en", "fr", "nl", "de-AT"] {
+            p.languages.available.push(Lang::new(l));
+        }
+        p.languages
+            .fallback
+            .insert(Lang::new("fr"), Lang::new("en"));
+        p.languages
+            .fallback
+            .insert(Lang::new("nl"), Lang::new("en"));
+        let shot = |lang: &str| ScreenshotFile {
+            path: format!("screenshots/{lang}/home.png"),
+            lang: lang.to_owned(),
+            variant: None,
+            key: "home".to_owned(),
+            width: None,
+            height: None,
+        };
+        let s = screenshot_sources(&p, &[shot("de"), shot("en")]);
+        assert_eq!(s["de"].source.as_deref(), Some("de"));
+        assert!(s["de"].source_is_default);
+        assert_eq!(s["en"].source.as_deref(), Some("en"));
+        // Explicit fallback wins over the default language.
+        assert_eq!(s["fr"].source.as_deref(), Some("en"));
+        assert!(!s["fr"].source_is_default);
+        assert_eq!(s["fr"].chain, ["fr", "en", "de"]);
+        assert_eq!(s["nl"].source.as_deref(), Some("en"));
+        // Prefix chain de-AT → de (the default).
+        assert_eq!(s["de-AT"].source.as_deref(), Some("de"));
+        assert!(s["de-AT"].source_is_default);
+        // Without the en folder fr falls through to the default.
+        let s = screenshot_sources(&p, &[shot("de")]);
+        assert_eq!(s["fr"].source.as_deref(), Some("de"));
+        assert!(s["fr"].source_is_default);
+        assert!(screenshot_sources(&p, &[])["fr"].source.is_none());
     }
 
     #[test]

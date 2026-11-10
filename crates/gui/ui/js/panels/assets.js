@@ -127,6 +127,16 @@ export function mount(el, { store, editor, api, t }) {
     return f.width ? `${f.width} × ${f.height}` : '';
   }
 
+  /** Where a language without own screenshots gets them from (core fallback chain). */
+  function emptyHint(src) {
+    const chain = src?.chain?.join(' → ') ?? '';
+    let text;
+    if (!src?.source) text = t('assets.lang_empty_none');
+    else if (src.source_is_default) text = t('assets.lang_empty_default').replace('{lang}', src.source);
+    else text = t('assets.lang_empty_fallback').replace('{lang}', src.source);
+    return h('p', { class: 'placeholder', title: chain ? `${t('assets.lang_chain')}: ${chain}` : '' }, text);
+  }
+
   function render() {
     const l = listing;
     const s = store.get().summary;
@@ -148,7 +158,7 @@ export function mount(el, { store, editor, api, t }) {
         'details',
         { class: 'as-lang', open: lang === store.get().lang },
         h('summary', {}, h('strong', {}, lang), lang === def ? h('span', { class: 'muted small' }, ` · ${t('assets.default_lang')}`) : null, h('span', { class: 'as-count' }, String(files.length))),
-        files.length ? null : h('p', { class: 'placeholder' }, t('assets.lang_empty')),
+        files.length ? null : emptyHint(l.screenshot_langs?.[lang]),
         ...variants.map((v) =>
           h(
             'div',
