@@ -359,6 +359,10 @@ body.scrubbing * {
 
 .insp-select {
   padding: 0 2px;
+  /* Long option labels must not widen the 288 px panel. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .insp-text:focus,

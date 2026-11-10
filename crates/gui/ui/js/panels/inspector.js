@@ -425,17 +425,19 @@ export function mount(el, ctx) {
     rows.push(row(t('inspector.model'), selectInput({ key: 'model', options: models, value: e.model, title: t('inspector.model'), onChange: (v) => set({ model: v }) }), { field: 'model', info }));
     const frameDefault = store.get().summary.styles.frame;
     const frameLabel = (f) => (f?.startsWith('imported:') ? t(`frames.source.${f.slice(9)}`) : t(`inspector.frame.${f}`));
-    // Imported frames (task 3.5): which colours are installed for this model.
+    // Short form for the 288 px panel ("Project (Apple)").
+    const frameShort = (f) => (f?.startsWith('imported:') ? t(`frames.source_short.${f.slice(9)}`) : t(`inspector.frame.${f}`));
+    // Imported frames (ADR 0012): the installed colours of this model, with
+    // the housing colour measured at import.
     const effFrame = e.frame ?? frameDefault;
-    const importedSrc = effFrame?.startsWith('imported:') ? extra.frames?.sources?.find((x) => x.source === effFrame.slice(9)) : null;
-    const importedFrames = (importedSrc?.frames ?? []).filter((f) => f.model === e.model);
-    const importedColors = [...new Map(importedFrames.map((f) => [f.color, f.color_label])).entries()];
+    const isImported = effFrame?.startsWith('imported:');
+    const importedSrc = isImported ? extra.frames?.sources?.find((x) => x.source === effFrame.slice(9)) : null;
+    const importedColors = isImported ? (extra.resolved?.element?.props?.imported?.colors ?? importedSrc?.colors?.[e.model] ?? []) : [];
     let frameHint = null;
-    if (effFrame?.startsWith('imported:')) {
+    if (isImported) {
       if (!importedSrc?.models?.includes(e.model)) frameHint = t('frames.inspector.no_model');
       else if (!importedColors.length) frameHint = t('frames.inspector.missing');
-      else if (e.color && !e.color.startsWith('#') && !importedColors.some(([c]) => c === e.color)) frameHint = t('frames.inspector.color_missing');
-      else frameHint = t('frames.inspector.available').replace('{colors}', importedColors.map(([, l]) => l).join(', '));
+      else if (e.color && !e.color.startsWith('#') && !importedColors.some((c) => c.id === e.color)) frameHint = t('frames.inspector.color_missing');
     }
     rows.push(
       row(
@@ -443,69 +445,61 @@ export function mount(el, ctx) {
         selectInput({
           key: 'frame',
           options: [
-            { value: '', label: `${t('inspector.project_default')} (${frameLabel(frameDefault)})` },
+            { value: '', label: t('inspector.frame.project').replace('{frame}', frameShort(frameDefault)), title: `${t('inspector.project_default')} (${frameLabel(frameDefault)})` },
             { value: 'stylized', label: t('inspector.frame.stylized') },
             { value: 'detailed', label: t('inspector.frame.detailed') },
             { value: 'imported:apple', label: t('frames.source.apple') },
           ],
           value: e.frame ?? '',
-          title: t('inspector.frame'),
+          title: e.frame ? t('inspector.frame') : `${t('inspector.project_default')} (${frameLabel(frameDefault)})`,
+          // The colour follows in the same undo step when the new source
+          // does not have it (mapped in Rust, `Editor::patch`).
           onChange: (v) => set({ frame: v || null }),
         }),
         { field: 'frame', info, hint: frameHint },
       ),
     );
     // Imported frames: which Apple model's bezel (several sizes per device,
-    // e.g. iPhone 18 Pro and Pro Max). Automatic = per target.
+    // e.g. iPhone 18 Pro and Pro Max). Automatic = per target. Short labels
+    // ("Auto · 18 Pro Max"), the full text is the tooltip.
     const imp = extra.resolved?.element?.props?.imported;
-    if (effFrame?.startsWith('imported:') && (imp?.bezels?.length > 1 || e.bezel)) {
+    if (isImported && (imp?.bezels?.length > 1 || e.bezel)) {
       const bezels = imp?.bezels ?? [];
+      const short = (b) => b.replace(/^(iPhone|iPad|Apple)\s+/i, '');
       const known = !e.bezel || bezels.some((b) => b.toLowerCase() === e.bezel.toLowerCase());
-      const options = [
-        { value: '', label: imp?.automatic ? t('frames.inspector.bezel.auto').replace('{bezel}', imp.automatic) : t('inspector.default') },
-        ...bezels.map((b) => ({ value: b, label: b })),
-      ];
+      const autoFull = imp?.automatic ? t('frames.inspector.bezel.auto').replace('{bezel}', imp.automatic) : t('inspector.default');
+      const options = [{ value: '', label: imp?.automatic ? t('frames.inspector.bezel.auto_short').replace('{bezel}', short(imp.automatic)) : t('inspector.default'), title: autoFull }, ...bezels.map((b) => ({ value: b, label: b }))];
       if (!known) options.push({ value: e.bezel, label: t('frames.inspector.bezel.not_installed').replace('{bezel}', e.bezel) });
       const current = e.bezel ? (bezels.find((b) => b.toLowerCase() === e.bezel.toLowerCase()) ?? e.bezel) : '';
-      rows.push(
-        row(
-          t('frames.inspector.bezel'),
-          selectInput({ key: 'bezel', options, value: current, title: t('frames.inspector.bezel.hint'), onChange: (v) => set({ bezel: v || null }) }),
-          { field: 'bezel', info, hint: known ? null : t('frames.inspector.bezel.unknown') },
-        ),
-      );
+      const sel = selectInput({ key: 'bezel', options, value: current, title: current ? current : autoFull, onChange: (v) => set({ bezel: v || null }) });
+      rows.push(row(t('frames.inspector.bezel'), sel, { field: 'bezel', info, hint: known ? null : t('frames.inspector.bezel.unknown') }));
     }
-    // Colour: catalog swatches + custom hex.
-    const swatches = dev?.swatches ?? [];
+    // Colour: one set of swatches. Imported frame with installed colours →
+    // those colours (measured swatch, vendor name); otherwise the catalog
+    // palette + a custom hex (parametric frames, also the fallback).
     const current = e.color ?? null;
-    const sw = h(
-      'div',
-      { class: 'insp-swatches' },
-      h('button', { type: 'button', class: `dev-swatch default${current == null ? ' current' : ''}`, title: `${t('inspector.default')}${dev?.default_color ? ` (${dev.default_color})` : ''}`, onclick: () => set({ color: null }) }, 'A'),
-      ...swatches.map((s) => {
-        const b = h('button', { type: 'button', class: `dev-swatch${current === s.name ? ' current' : ''}`, title: s.label, onclick: () => set({ color: s.name }) });
-        b.style.setProperty('--swatch', s.hex);
-        return b;
-      }),
-    );
-    // Colours of the installed imported frames (vendor names).
-    const importedChips = importedColors.length
-      ? h(
-          'div',
-          { class: 'insp-chips' },
-          ...importedColors.map(([c, label]) =>
-            h('button', { type: 'button', class: `toggle-chip${current === c ? ' on' : ''}`, 'aria-pressed': String(current === c), title: c, onclick: () => set({ color: c }) }, label),
-          ),
-        )
-      : null;
-    const custom = current && current.startsWith('#') ? current : '';
-    rows.push(
-      row(t('inspector.color'), [sw, importedChips, colorInput({ key: 'color', value: custom, palette: {}, swatches: [], optional: true, placeholder: t('inspector.color.custom'), t, onCommit: (v) => set({ color: v }) })], {
-        field: 'color',
-        info,
-        wide: true,
-      }),
-    );
+    const swatchButton = (name, label, hex) => {
+      const b = h('button', { type: 'button', class: `dev-swatch${current === name ? ' current' : ''}`, title: label, 'aria-label': label, 'aria-pressed': String(current === name), onclick: () => set({ color: name }) });
+      if (hex) b.style.setProperty('--swatch', hex);
+      return b;
+    };
+    const defaultButton = (label) => h('button', { type: 'button', class: `dev-swatch default${current == null ? ' current' : ''}`, title: label, 'aria-label': label, onclick: () => set({ color: null }) }, 'A');
+    let colorControls;
+    if (importedColors.length) {
+      const def = importedColors.find((c) => c.id === dev?.default_color) ?? importedColors[0];
+      colorControls = [
+        h('div', { class: 'insp-swatches' }, defaultButton(`${t('inspector.default')} (${def.label})`), ...importedColors.map((c) => swatchButton(c.id, c.label, c.swatch ?? '#8E8E93'))),
+      ];
+    } else {
+      const swatches = dev?.swatches ?? [];
+      const defLabel = swatches.find((s) => s.name === dev?.default_color)?.label ?? dev?.default_color;
+      const custom = current && current.startsWith('#') ? current : '';
+      colorControls = [
+        h('div', { class: 'insp-swatches' }, defaultButton(`${t('inspector.default')}${defLabel ? ` (${defLabel})` : ''}`), ...swatches.map((s) => swatchButton(s.name, s.label, s.hex))),
+        colorInput({ key: 'color', value: custom, palette: {}, swatches: [], optional: true, placeholder: t('inspector.color.custom'), t, onCommit: (v) => set({ color: v }) }),
+      ];
+    }
+    rows.push(row(t('inspector.color'), colorControls, { field: 'color', info, wide: true }));
     const orients = [{ value: '', label: `${t('inspector.default')}${dev ? ` (${t(`inspector.orientation.${dev.natural}`)})` : ''}` }, ...(dev?.orientations ?? ['portrait', 'landscape']).map((x) => ({ value: x, label: t(`inspector.orientation.${x}`) }))];
     rows.push(row(t('inspector.orientation'), selectInput({ key: 'orientation', options: orients, value: e.orientation ?? '', title: t('inspector.orientation'), onChange: (v) => set({ orientation: v || null }) }), { field: 'orientation', info }));
     const keys = [...new Set((extra.assets?.screenshots ?? []).map((s) => s.key))].sort();

@@ -12,7 +12,8 @@ import { store } from '../store.js';
 import { checkbox, confirmDialog, errorLine, input, openModal, row, select } from './modal.js';
 
 const TABS = ['general', 'languages', 'styles', 'fonts'];
-const FRAMES = ['detailed', 'stylized'];
+/** Frame styles of the project default; `imported:*` are Apple's bezels (ADR 0012). */
+const FRAMES = ['detailed', 'stylized', 'imported:apple'];
 const WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900];
 const BUILTIN_SHADOWS = ['soft', 'hard', 'none'];
 
@@ -23,6 +24,8 @@ export function openProjectSettings(tab = 'general') {
   let current = tab;
   let styles = null;
   let fonts = null;
+  /** Installed frame packages (for the "not installed" hint). */
+  let frames = null;
   /** Expanded style entries (`kind:name`), kept across re-renders after edits. */
   const openStyles = new Set();
 
@@ -84,7 +87,10 @@ export function openProjectSettings(tab = 'general') {
   }
 
   async function renderPane(s) {
-    if (current === 'general') pane.replaceChildren(general(s));
+    if (current === 'general') {
+      frames ??= await api.framesList().catch(() => ({ sources: [] }));
+      pane.replaceChildren(general(s));
+    }
     else if (current === 'languages') pane.replaceChildren(languages(s));
     else if (current === 'styles') {
       styles ??= await api.stylesGet();
@@ -113,12 +119,20 @@ export function openProjectSettings(tab = 'general') {
       { class: 'form' },
       row(t('project.name'), input({ value: s.name, onchange: (v) => commit(() => api.projectRename(v)) })),
       row(t('project.folder'), h('span', { class: 'mono small selectable' }, s.dir)),
-      row(
-        t('project.frame'),
-        select({ options: FRAMES.map((f) => ({ value: f, label: t(`settings.frame.${f}`) })).concat(FRAMES.includes(s.styles.frame) ? [] : [{ value: s.styles.frame, label: s.styles.frame }]), value: s.styles.frame, onchange: (v) => commit(() => api.stylesPatch({ frame: v })) }),
-        t('project.frame.hint'),
-      ),
+      frameRow(s.styles.frame),
     );
+  }
+
+  /** Default frame: built-in styles or Apple's imported bezels; switching
+   *  remaps device colours in Rust (`styles_patch`). */
+  function frameRow(value) {
+    const label = (f) => (f.startsWith('imported:') ? t(`frames.source.${f.slice(9)}`) : t(`settings.frame.${f}`));
+    const options = FRAMES.map((f) => ({ value: f, label: label(f) }));
+    if (value && !FRAMES.includes(value)) options.push({ value, label: value });
+    const src = value?.startsWith('imported:') ? value.slice(9) : null;
+    const installed = src && frames?.sources?.find((x) => x.source === src)?.frames?.length;
+    const hint = src && !installed ? h('span', {}, t('project.frame.hint'), h('br'), h('span', { class: 'hint-warn' }, t('project.frame.no_frames'))) : t('project.frame.hint');
+    return row(t('project.frame'), select({ options, value, onchange: (v) => commit(() => api.stylesPatch({ frame: v })) }), hint);
   }
 
   // ----- languages ------------------------------------------------------------------

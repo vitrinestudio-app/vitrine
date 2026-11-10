@@ -151,7 +151,7 @@ export function selectInput({ key, options, value, onChange, title }) {
   const groups = new Map();
   const nodes = [];
   for (const o of options) {
-    const opt = h('option', { value: o.value }, o.label);
+    const opt = h('option', { value: o.value, ...(o.title ? { title: o.title } : {}) }, o.label);
     if (o.group) {
       if (!groups.has(o.group)) {
         const g = h('optgroup', { label: o.group });
