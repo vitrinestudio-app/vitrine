@@ -144,3 +144,36 @@ the mapping in the GUI.
 - On macOS the keychain item belongs to the binary that created it; a
   rebuilt (differently signed) app may ask the user once to allow access.
 - Re-check `store-locales.yaml` when Apple or Google add languages.
+
+## Amendment 2026-11-10: store setup UX
+
+- **Help panels.** App settings → Stores and the import dialog show
+  collapsible "How do I get this?" steps for the App Store Connect team key
+  and the Google service account (texts in the GUI i18n files, summary in
+  NOTES). Links open in the system browser through the command
+  `open_url {url}`, which only accepts an exact allowlist of https URLs
+  (`commands::os::HELP_URLS`) and goes through the `Dialogs::open_url`
+  seam (Tauri: platform opener; dev bridge/tests: `FixedDialogs` records,
+  `NoDialogs` answers `not_implemented`).
+- **Apple app picker.** `store_apps_list {account, refresh?}` lists every
+  app the key can see (`apple::Client::list_apps`: `GET /v1/apps`,
+  `fields[apps]=name,bundleId,sku,primaryLocale`, `limit=200`, follows
+  `links.next` on the API host only), sorted by name, cached per account
+  for the app session (`refresh` asks again; removing the account drops
+  it). Errors are mapped like the connection test (`io` +
+  `details.reason`). The project settings fill Apple ID + bundle id from
+  the choice; manual entry stays. The apps resource has no platform
+  attribute, so the platform is not suggested.
+- **Google package check.** The Android Publisher API has no "list my
+  apps" call (checked against the v3 REST reference 2026-11-10), and its
+  edit-free reads (reviews, monetization, orders, …) need other Play
+  permissions than "Manage store presence". So the package name stays a
+  typed field, and `store_package_check {account, package_name}` runs
+  only on the user's "Check" click: `edits.insert` → `edits.details.get`
+  (+ the default listing's title) → `edits.delete` – never committed,
+  nothing changes in Play (`google::Client::check_package`). 404 →
+  `details.reason: not_found`, 403 → `no_permission`.
+- Endpoints for both come from `UploadConfig` (production; loopback
+  overrides via `ARRANGIA_ASC_BASE_URL`/`ARRANGIA_PLAY_*` in CLI/dev
+  bridge, set directly in tests). Tests: `crates/publish/tests/{apple,
+  google}.rs`, `crates/app/tests/store_setup.rs`.

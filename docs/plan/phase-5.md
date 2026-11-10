@@ -76,6 +76,19 @@ Client part done 2026-11-10 (`arrangia_publish::google`, ADR 0017).
       `mcp_allow_headless_upload` (recommended default implemented; user
       decision (b) still to confirm)
 
+## 5.5b Store setup UX (done 2026-11-10, user requests; ADR 0016/0018 amendments)
+- [x] "How do I get this?" help panels (Apple team key, Google service
+      account) in app settings → Stores and the import dialog; help links via
+      `open_url` (allowlist only)
+- [x] Upload dialog: setup checklist before the plan (`upload_readiness`,
+      `plan.readiness`, codes + `fix`), buttons open app settings → Stores /
+      project settings → Stores / targets and re-check; MCP hints
+- [x] App picker (App Store): `apple::Client::list_apps` (paginated) +
+      `store_apps_list` (session cache) → fills Apple ID + bundle id
+- [x] Google Play: no list endpoint (verified) → typed package name +
+      "Check" (`store_package_check`: temporary edit, deleted, explicit click)
+- [ ] Look at it in the real app (dev bridge checked with curl only)
+
 ## 5.6 Tests & real run
 - [~] wiremock tests for both clients (happy path, partial failure + resume,
       processing errors, rate limit) – client tests done

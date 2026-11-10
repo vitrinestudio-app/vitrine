@@ -172,3 +172,26 @@ uses the production endpoints. Tests set the config directly.
   app info localization note.
 - The plan renders full-size images into `.cache/upload/images` (disk
   space ≈ one export of the store targets).
+
+## Amendment 2026-11-10: readiness checklist
+
+`upload::readiness` computes, without rendering, keychain or network, what
+is missing before an upload, in the order to fix it, each step with
+`{code, store?, message, fix, blocking}` and `fix` ∈ `app_settings_stores`
+| `project_settings_stores` | `targets`:
+
+1. App settings: `no_account` (no account of that store on this machine),
+   `account_missing_for_project` (the project names an account id that is
+   not set up here);
+2. Project settings: `project_not_mapped` (no store mapped, or no account /
+   app identity chosen), `store_locale_unknown`, `store_locale_conflict`
+   (two languages → one store locale), `no_store_locale` (warning: skipped);
+3. Targets: `no_store_slots`, `store_slot_conflict`.
+
+The command `upload_readiness {store?}` returns it (the upload dialog shows
+it first, with a button per step that opens the right dialog and re-checks
+when it closes); `upload_plan` carries it as `readiness` (serde default,
+older stored plans still load) and the MCP `upload_plan` text lists the
+steps as numbered hints. The plan's own store problem for a missing
+account choice was renamed `no_account` → `account_not_selected` so
+`no_account` means only "nothing in the app settings".

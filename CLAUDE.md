@@ -136,7 +136,9 @@ event, `McpControl` hook), `claude_desktop` ("Add to Claude Desktop":
 order-keeping JSON merge with backup; `ARRANGIA_CLAUDE_DESKTOP_CONFIG`
 redirects it – never write the real config in tests), `stores` (app-wide
 store accounts in `settings.yaml`, `ConnectionTester` seam; commands
-`store_account_*`, `project_store_get/patch`, `store_config_get`; ADR
+`store_account_*`, `store_apps_list` (Apple app picker, session cache),
+`store_package_check` (Play: temporary edit, deleted), `open_url`
+(allow-listed help links), `project_store_get/patch`, `store_config_get`; ADR
 0016), `store_test` (`StoreClientTester`: read-only connection test with
 the store clients, installed by GUI + dev bridge only; dev bridge
 endpoint overrides `ARRANGIA_ASC_BASE_URL`/`ARRANGIA_PLAY_TOKEN_URL`,
@@ -162,7 +164,8 @@ Google one edit, progress events `upload-progress`/`upload-finished`,
 cancel, rate-limit pauses; resume = new plan, done sets are unchanged),
 `policy` (MCP rule table: GUI-hosted needs the user's "Confirm upload"
 click via `upload-confirm-requested` → `upload_confirm`, headless only with
-setting `mcp_allow_headless_upload`). Commands `upload_plan|execute|status|
+setting `mcp_allow_headless_upload`). `readiness` (setup checklist with `fix` place, also in every plan).
+Commands `upload_readiness|plan|execute|status|
 cancel|log|confirm`; `UploadConfig` on `AppState::upload()` (endpoints via
 `ARRANGIA_ASC_BASE_URL`… loopback only in CLI/dev bridge; tests set it). `mcp` (ADR 0014,
 0015) – `ArrangiaMcp` over an `Arc<AppState>` (headless: own state; GUI:
