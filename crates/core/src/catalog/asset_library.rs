@@ -205,7 +205,7 @@ mod tests {
                 "{t} is not mapped"
             );
         }
-        for p in crate::catalog::catalog().targets.presets.iter() {
+        for p in &crate::catalog::catalog().targets.presets {
             if let Some(a) = p.slot.as_ref().and_then(|s| s.apple.as_ref()) {
                 assert!(f.slot(a).is_some(), "preset {} is not mapped", p.id);
             }

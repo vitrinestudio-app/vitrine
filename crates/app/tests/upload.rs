@@ -1979,7 +1979,7 @@ targets:
   size: [3840, 1646]
   region: {pages: [0, 1]}
   fit: cover
-  store: {apple: {placement: header}}
+  store: {apple: {display_type: PRODUCT_PAGE_HEADER_ASSET, placement: header}}
 store:
   apple: {account: apple-team, app_id: "1234567890"FLOW}
 "##;
@@ -2177,12 +2177,14 @@ async fn asset_library_failed_processing_changes_no_placement() {
 async fn forced_screenshot_sets_block_library_only_slots() {
     let e = env_with(&lib_project(", upload_flow: screenshot_sets")).await;
     let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
-    assert_eq!(p["blocked"], true);
+    assert_eq!(p["blocked"], false, "the other sets still upload: {p:#}");
     assert_eq!(p["stores"][0]["flow"], "screenshot_sets");
     assert_eq!(p["stores"][0]["flow_setting"], "screenshot_sets");
+    assert_eq!(p["totals"]["upload_sets"], 1);
     for t in ["duo", "header"] {
         let s = set(&p, t, "en");
-        assert_eq!(s["action"], "blocked", "{t}");
+        assert_eq!(s["action"], "skip", "{t}");
+        assert!(s["images"].as_array().unwrap().is_empty(), "not rendered");
         assert!(
             s["problems"]
                 .as_array()
@@ -2282,10 +2284,7 @@ async fn refdata_is_read_only_and_resolves_the_mapping() {
     );
     assert_eq!(row("APP_IPHONE_DUO")["asset_library_only"], true);
     assert_eq!(row("APP_IPHONE_65")["groups"], json!([]));
-    assert_eq!(
-        row("universal")["groups"].as_array().unwrap().len(),
-        2
-    );
+    assert_eq!(row("universal")["groups"].as_array().unwrap().len(), 2);
     let asc = e.asc.lock().unwrap();
     assert!(
         asc.seen.iter().all(|s| s.starts_with("GET ")),
@@ -2327,4 +2326,40 @@ async fn upload_flow_is_a_project_store_setting() {
     call(&e.app, "project_store_patch", json!({ "apple": patched }));
     let yaml = std::fs::read_to_string(e.dir.join("project.yaml")).unwrap();
     assert!(!yaml.contains("upload_flow"), "{yaml}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn auto_fallback_skips_duo_and_creative_sets() {
+    // No asset library on this fake store: `auto` uses the set API, which
+    // cannot take the Duo or the header – they are skipped, not uploaded.
+    let e = env_with(&lib_project("")).await;
+    let r = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    assert_eq!(r["blocked"], false, "{r:#}");
+    assert_eq!(r["stores"][0]["flow"], "screenshot_sets");
+    for t in ["duo", "header"] {
+        let s = set(&r, t, "en");
+        assert_eq!(s["action"], "skip", "{t}: {s:#}");
+        assert!(
+            s["problems"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|x| x["code"] == "needs_asset_library")
+        );
+    }
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    let asc = e.asc.lock().unwrap();
+    assert_eq!(
+        asc.checksums("en-US", "APP_IPHONE_67"),
+        plan_images(&r, "iphone", "en", "md5")
+    );
+    assert!(
+        asc.sets.iter().all(|(_, _, d)| d == "APP_IPHONE_67"),
+        "nothing else went into a screenshot set: {:?}",
+        asc.sets
+    );
 }

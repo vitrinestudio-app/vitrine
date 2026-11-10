@@ -719,7 +719,8 @@ pub(crate) fn route(
 pub(crate) fn needs_library_message(slot: &str, setting: AppleUploadFlowSetting) -> String {
     let what = super::library::slot_from_key(slot);
     let name = if what.is_creative() {
-        format!("the {} asset", what.placement().as_str().replace('_', " "))
+        let p = what.placement.map_or("creative", |p| p.as_str());
+        format!("the {} asset", p.replace('_', " "))
     } else {
         format!("`{slot}`")
     };

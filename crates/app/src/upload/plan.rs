@@ -283,10 +283,15 @@ pub(crate) fn build_local(
         .unwrap_or_default();
     // Targets to render: a slot of a selected store (Apple: of the
     // project's platform; the others are listed as `skip`).
+    let flow_setting = remote::flow_setting(&project);
+    // (Apple: not the slots only the asset library can upload when the
+    // project forces the set-based API – they are skipped.)
     let renders = |t: &Target, s: StoreKind| {
         slot_of(t, s).is_some_and(|slot| {
             s != StoreKind::Apple
-                || is_mac_display_type(slot) == (apple_platform == ApplePlatform::Macos)
+                || (is_mac_display_type(slot) == (apple_platform == ApplePlatform::Macos)
+                    && !(flow_setting == AppleUploadFlowSetting::ScreenshotSets
+                        && lib::asset_library_only(slot)))
         })
     };
     let slotted: Vec<&Target> = project
@@ -330,7 +335,6 @@ pub(crate) fn build_local(
     let out_dir = images_dir(&dir);
     let log = UploadLog::open(&dir)?;
 
-    let flow_setting = remote::flow_setting(&project);
     for store in stores {
         let mut sp = StorePlan {
             store,
@@ -440,6 +444,14 @@ pub(crate) fn build_local(
                     ));
                 }
                 if store == StoreKind::Apple {
+                    // Creative assets and Duo never go into a screenshot set.
+                    if flow_setting == AppleUploadFlowSetting::ScreenshotSets
+                        && lib::asset_library_only(slot)
+                    {
+                        skip_library_only(&mut set, flow_setting);
+                        sp.sets.push(set);
+                        continue;
+                    }
                     apple_flow_checks(&mut set, flow_setting);
                 }
                 set.problems
@@ -573,18 +585,25 @@ fn default_steps(store: StoreKind, flow: &str, set_flow: Option<&str>, slot: &st
     .collect()
 }
 
+/// A slot only the App Asset Library can upload (creative `placement`,
+/// `APP_IPHONE_DUO`) while the set-based API is in use: skipped with a
+/// warning (`needs_asset_library`), the other sets still upload.
+pub(crate) fn skip_library_only(set: &mut PlanSet, setting: AppleUploadFlowSetting) {
+    let msg = remote::needs_library_message(&set.slot, setting);
+    set.action = SetAction::Skip;
+    set.flow = Some(AppleFlowKind::ScreenshotSets.as_str().to_owned());
+    set.placement = None;
+    set.problems
+        .push(Problem::warn("needs_asset_library", msg.clone()));
+    set.reason = Some(msg);
+}
+
 /// Local (no network) flow checks of an Apple set (ADR 0019): a slot only
 /// the asset library can upload is blocked when the project forces the
 /// set-based API; the placement is described from the mapping; an
 /// unmapped display type falls back to the set-based API under `auto`.
 fn apple_flow_checks(set: &mut PlanSet, setting: AppleUploadFlowSetting) {
     if setting == AppleUploadFlowSetting::ScreenshotSets {
-        if lib::asset_library_only(&set.slot) {
-            set.problems.push(Problem::blocking(
-                "needs_asset_library",
-                remote::needs_library_message(&set.slot, setting),
-            ));
-        }
         return;
     }
     match lib::local_label(&set.slot) {
@@ -850,13 +869,14 @@ async fn check_apple(
         set.flow = None;
         set.problems.retain(|p| p.code != "no_placement_mapping");
         let inspected = match remote::route(&session, &set.slot, &set.images) {
+            Err(_) if session.kind == AppleFlowKind::ScreenshotSets => {
+                // `auto` fell back: Duo / creative assets cannot go along.
+                skip_library_only(set, session.setting);
+                continue;
+            }
             Err(why) => {
-                let code = if session.kind == AppleFlowKind::ScreenshotSets {
-                    "needs_asset_library"
-                } else {
-                    "no_placement_group"
-                };
-                set.problems.push(Problem::blocking(code, why));
+                set.problems
+                    .push(Problem::blocking("no_placement_group", why));
                 set.action = SetAction::Blocked;
                 continue;
             }

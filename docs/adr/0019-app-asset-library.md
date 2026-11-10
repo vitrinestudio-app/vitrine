@@ -109,12 +109,15 @@ flow.
 - Local plan: `flow` = `asset_library` unless `screenshot_sets`; each set
   shows its placement (`APP_SCREENSHOT · IPHONE_DUO`); a slot without
   mapping falls back to sets under `auto` (info `no_placement_mapping`), is
-  blocking otherwise; Duo and creative slots are **blocking**
-  (`needs_asset_library`) when forced to `screenshot_sets`.
+  blocking otherwise. Duo and creative slots never go into a screenshot
+  set: with `screenshot_sets` they are **skipped** (action `skip`, warning
+  `needs_asset_library`, not rendered) and the other sets still upload.
 - Remote plan / run (`remote::open_apple`): app + editable version, then
   the library and the ref data. `auto` falls back to the set API for the
   whole store when the library is not available (403, 404, 400/409/422);
-  the plan shows `flow: screenshot_sets` + `flow_note`. Forced
+  the plan shows `flow: screenshot_sets` + `flow_note`, and its Duo /
+  creative sets are skipped (`needs_asset_library`; a run marks such a set
+  `skipped`). Forced
   `asset_library` → blocking `asset_library_unavailable`. Per set
   (`remote::route`): groups resolved → `placement: "APP_SCREENSHOT →
   IPHONE_…_PROFILE"`; no group → under `auto` the set uses the set API

@@ -31,7 +31,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use arrangia_core::catalog::asset_library;
-use arrangia_core::model::{ApplePlacement, AppleSlot};
+use arrangia_core::model::{AppleSlot, CreativePlacement};
 use arrangia_publish::apple::{
     self, AppRef, LibraryImage, LibraryUpload, Platform, RefData, RefDataFilter,
 };
@@ -117,19 +117,8 @@ impl PlacementRoute {
 /// The slot behind a plan slot key (`APP_IPHONE_67`,
 /// `PRODUCT_PAGE_HEADER_ASSET`, …).
 pub(crate) fn slot_from_key(key: &str) -> AppleSlot {
-    for p in [
-        ApplePlacement::Header,
-        ApplePlacement::SearchResults,
-        ApplePlacement::HeaderAndSearch,
-    ] {
-        if p.api_name() == key {
-            return AppleSlot {
-                placement: Some(p),
-                ..AppleSlot::default()
-            };
-        }
-    }
-    AppleSlot::screenshots(key)
+    CreativePlacement::from_key(key)
+        .map_or_else(|| AppleSlot::screenshots(key), AppleSlot::creative)
 }
 
 /// Only the asset library can upload this slot (Duo, creative assets).
@@ -727,7 +716,7 @@ mod tests {
             ]
         );
         // A universal asset is placed as header and search results asset.
-        let key = ApplePlacement::HeaderAndSearch.api_name();
+        let key = CreativePlacement::Universal.api_name();
         let r = resolve(&rd, key, Some((5244, 2950))).unwrap();
         assert_eq!(r.len(), 3);
         assert_eq!(

@@ -406,25 +406,15 @@ pub fn upload_refdata(app: &AppState, args: UploadRefdataArgs) -> CmdResult<Refd
 
 /// Arrangia's slots resolved against `rd` (all candidate groups).
 fn refdata_mapping(rd: &arrangia_publish::apple::RefData) -> Vec<RefdataMapping> {
-    use arrangia_core::model::{ApplePlacement, AppleSlot};
+    use arrangia_core::model::{AppleSlot, CreativePlacement};
     let lib = arrangia_core::catalog::asset_library();
     let mut slots: Vec<(String, AppleSlot)> = lib
         .screenshots
         .keys()
         .map(|k| (k.clone(), AppleSlot::screenshots(k.clone())))
         .collect();
-    for p in [
-        ApplePlacement::Header,
-        ApplePlacement::SearchResults,
-        ApplePlacement::HeaderAndSearch,
-    ] {
-        slots.push((
-            p.as_str().to_owned(),
-            AppleSlot {
-                placement: Some(p),
-                ..AppleSlot::default()
-            },
-        ));
+    for p in CreativePlacement::ALL {
+        slots.push((p.as_str().to_owned(), AppleSlot::creative(p)));
     }
     slots
         .into_iter()

@@ -635,6 +635,11 @@ impl Runner<'_> {
             };
             let route = match remote::route(&session, &set.slot, &set.images) {
                 Ok(r) => r,
+                Err(why) if session.kind == remote::AppleFlowKind::ScreenshotSets => {
+                    // Never into a screenshot set (Duo, creative assets).
+                    self.finish_set(row, &set.key, SetRunStatus::Skipped, Some(why));
+                    continue;
+                }
                 Err(why) => {
                     self.finish_set(row, &set.key, SetRunStatus::Failed, Some(why));
                     continue;
