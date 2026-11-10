@@ -159,6 +159,10 @@ targets macOS, Windows, Linux.
 - Architecture decisions go into `docs/adr/NNNN-title.md` (see ADR 0000).
 - No `license` field and `publish = false` in all manifests until the license
   is decided. Do not add LICENSE files.
+- **Document as you go.** Every user-facing feature or finding adds short
+  bullet notes to `docs/guide/NOTES.md` (English, notes only – the user guide
+  is written later). Decisions taken with the user and the current phase state
+  go into `docs/plan/STATUS.md`; read it first when resuming work.
 
 ## Commands
 
