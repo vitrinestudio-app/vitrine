@@ -158,6 +158,64 @@ fn proxy_forwards_to_the_hosted_session() {
     assert!(!discovery.exists(), "discovery file removed on stop");
 }
 
+/// Resources and the docs tool work through the proxy (feedback: the
+/// assistant in Claude Desktop could not read `arrangia://docs/ops`).
+#[test]
+fn proxy_forwards_resources_and_docs() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app_dir = tmp.path().join("appdata");
+    let discovery = arrangia_mcp::discovery::path(&AppPaths::in_dir(&app_dir));
+    let dir = tmp.path().join("p");
+    arrangia_app::testutil::copy_project(&arrangia_app::testutil::example_fixture(), &dir).unwrap();
+    let gui = start_gui(&app_dir, Some(discovery));
+    gui.app.open_project(&dir).unwrap();
+    let mut c = proxy_client(&app_dir, tmp.path(), "claude-ai", &[]);
+    let list = c.request("resources/list", json!({}));
+    let uris: Vec<&str> = list["resources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|r| r["uri"].as_str())
+        .collect();
+    for uri in [
+        "arrangia://project/project.yaml",
+        "arrangia://project/i18n/de.yaml",
+        "arrangia://docs/ops",
+        "arrangia://docs/elements",
+    ] {
+        assert!(uris.contains(&uri), "{uri} in {uris:?}");
+    }
+    let templates = c.request("resources/templates/list", json!({}));
+    assert_eq!(templates["resourceTemplates"].as_array().unwrap().len(), 1);
+    let ops = c.request("resources/read", json!({"uri": "arrangia://docs/ops"}));
+    assert!(
+        ops["contents"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("set_lang_override")
+    );
+    let project = c.request(
+        "resources/read",
+        json!({"uri": "arrangia://project/project.yaml"}),
+    );
+    assert!(
+        project["contents"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("format: arrangia/1")
+    );
+    // The same docs as a tool (clients that do not let the model read
+    // resources).
+    let r = c.call_raw("docs_get", json!({"topic": "elements"}));
+    assert_eq!(r["isError"], false, "{r}");
+    let text = r["content"][0]["text"].as_str().unwrap();
+    assert!(
+        text.contains("focus") && text.contains("kind: device"),
+        "{text}"
+    );
+    gui.host.stop();
+}
+
 #[test]
 fn proxy_survives_a_gui_restart() {
     let tmp = tempfile::tempdir().unwrap();

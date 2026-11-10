@@ -17,6 +17,9 @@ pub struct ToolOutput {
     pub data: Value,
     /// PNG images, shown after the text.
     pub images: Vec<Vec<u8>>,
+    /// The text block is `summary` alone (long markdown such as docs),
+    /// without the JSON copy of `data`.
+    pub text_only: bool,
 }
 
 impl ToolOutput {
@@ -26,7 +29,15 @@ impl ToolOutput {
             summary: summary.into(),
             data: serde_json::to_value(data).unwrap_or(Value::Null),
             images: Vec::new(),
+            text_only: false,
         }
+    }
+
+    /// The text block holds only the summary (see [`Self::text_only`]).
+    #[must_use]
+    pub fn text_only(mut self) -> Self {
+        self.text_only = true;
+        self
     }
 
     /// Appends a PNG image.
@@ -44,11 +55,12 @@ impl ToolOutput {
             // structuredContent must be an object.
             other => json!({ "result": other }),
         };
-        let mut content = vec![ContentBlock::text(format!(
-            "{}\n{}",
-            self.summary,
-            compact(&structured)
-        ))];
+        let text = if self.text_only {
+            self.summary
+        } else {
+            format!("{}\n{}", self.summary, compact(&structured))
+        };
+        let mut content = vec![ContentBlock::text(text)];
         for png in self.images {
             content.push(ContentBlock::image(
                 base64::engine::general_purpose::STANDARD.encode(png),

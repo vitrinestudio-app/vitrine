@@ -4,6 +4,7 @@
 
 pub mod assets;
 pub mod catalog;
+pub mod docs;
 pub mod elements;
 pub mod history;
 pub mod output;

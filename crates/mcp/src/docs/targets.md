@@ -1,0 +1,51 @@
+# Targets
+
+A target is one output: which strip, at which pixel size, for which store
+slot. Add them from presets (`catalog_targets` lists them; `target_add
+{preset, strip}`), change them with target_update.
+
+```yaml
+- id: ios-ipad-13-landscape
+  kind: pages             # pages (default; one image per page or page group) | banner
+  strip: phone            # the strip it shows
+  size: [2752, 2064]      # export size in px of ONE image
+  group: 2                # pages per image (2 portrait pages → one landscape image)
+  variant: tablet-landscape   # variant of the strip used for this target
+  screenshots: ios-tablet # screenshot variant folder: screenshots/<lang>/ios-tablet/<key>.png
+  gallery: appstore-ipad  # gallery profile (gaps, corner radius); or {preset, gap?, radius?}
+  device_map: {iphone-island: ipad-modern}   # swap device models for this target
+  langs: [en, de]         # languages to export (default: all available)
+  format: png             # png (default) | jpeg (+ quality 1..100)
+  store: {apple: {display_type: APP_IPAD_PRO_3GEN_129}}   # or {google: {image_type: phoneScreenshots}}
+  # banner only:
+  region: {pages: [0, 2]}  # or {rect: {page, x, y, width, height}} (default: whole strip)
+  fit: cover               # cover (crop) | contain (extend the background)
+  gaps: none               # none | as_store
+```
+
+## How sizes work
+- The design is in lu: a page is 1000 lu wide, its height follows the strip
+  aspect. The export scales a page (or a group of pages) to `size`.
+- When the target's page aspect differs from the strip's (e.g. a phone strip
+  exported for Google Play 1:2), the page height changes; elements keep their
+  distance to the edge named by their `anchor_y`. Large differences are
+  reported as `variant_suggested`: add a variant with overrides.
+- `group: 2` puts two pages into one image (iPad landscape from a portrait
+  phone strip); combine it with a variant to rearrange elements.
+
+## Gallery and gaps
+The store shows images with gaps and rounded corners (`gallery` profile,
+`catalog_galleries`). On the canvas the gap lies between pages; content in a
+gap is cut from page exports (layout_report flags `in_gap`). render_preview
+{view: "gallery"} shows the images as the store would.
+
+## Presets
+Each preset has a store, sizes (first = default; `orientation` picks
+portrait or landscape), a default device model, screenshot variant, gallery
+and store slot. Required sets (e.g. App Store iPhone 6.9″, iPad 13″) are
+marked in catalog_targets. `target_add {preset, strip, size?: "WxH",
+orientation?}`.
+
+## Banners
+`kind: banner` renders one image of a region of the strip (blog header, Open
+Graph, feature graphic) instead of one image per page.

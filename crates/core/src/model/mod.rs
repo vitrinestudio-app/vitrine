@@ -23,9 +23,10 @@ use serde::{Deserialize, Serialize};
 pub use color::{ColorRef, Rgba};
 pub use common::{AnchorY, Aspect, Clip, FitMode, PixelSize, Point, VisibleIn};
 pub use element::{
-    Align, Appearance, BackgroundProps, Chrome, DeviceProps, Element, ElementKind, ElementKindTag,
-    ElementPatch, ElementWire, FitValue, GroupProps, ImageProps, LANG_OVERRIDE_FIELDS, Orientation,
-    ShapeKind, ShapeProps, Stroke, StrokeJoin, StrokePosition, TextBox, TextFit, TextProps, VAlign,
+    Align, Appearance, BackgroundProps, COMMON_FIELDS, Chrome, DeviceProps, Element, ElementKind,
+    ElementKindTag, ElementPatch, ElementWire, FitValue, GroupProps, ImageProps,
+    LANG_OVERRIDE_FIELDS, Orientation, ShapeKind, ShapeProps, Stroke, StrokeJoin, StrokePosition,
+    TextBox, TextFit, TextProps, VAlign,
 };
 pub use fill::{Fill, GradientStop, ImageFillMode};
 pub use ids::{ElementId, Lang, StringKey, StripId, TargetId, VariantId, is_valid_id};

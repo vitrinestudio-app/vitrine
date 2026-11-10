@@ -7,7 +7,7 @@ Concepts
 - Gaps: between pages the store shows a gap (from the target's gallery profile); content inside a gap is cut from page exports (layout_report flags `in_gap`).
 - anchor_y (top | bottom | center | stretch) keeps the distance to that edge when a target's page height differs (titles: top, devices running off the bottom: bottom).
 - Targets come from presets (catalog_targets): export size, store slot, gallery gaps, `group` (2 = two portrait pages form one landscape image, e.g. iPad) and an optional variant.
-- Variants: per-strip overrides of position/size/rotation/page for one format (e.g. tablet-landscape). Language overrides (`langs.<lang>`) adjust a text element for one language (box, font size, fit …). Edit tools take `scope`: base (default, all targets and languages), variant, lang.
+- Variants: per-strip overrides of position/size/rotation/page for one format (e.g. tablet-landscape). Language overrides (`langs.<lang>`) adjust a text element for one language (box, font size, fit …). Edit tools take `scope`: base (default, all targets and languages), variant, lang. In scope variant/lang a `null` field removes it from the override; element_reset_override removes whole overrides; element_update `updates` puts several scoped patches (also of several strips) into one undo step.
 - Texts reference translation keys; strings live per language (strings_get/strings_set). Missing translations fall back (fr-CA → fr → default language).
 - Device elements show screenshots/<lang>/[<variant>/]<screenshot key>.png; a missing one is drawn as a placeholder.
 
@@ -20,10 +20,12 @@ Units and geometry
 - element_move/resize take page-relative lu (x, y of the element centre relative to the top-left of page `page`), or dx/dy deltas.
 - Colours `#RRGGBB[AA]` or `@name` (styles.colors). Text styles (styles.text) carry font, weight, size (lu), line height, colour.
 
+Reference: docs_get {topic} returns markdown for overview, elements (all fields, types, defaults), ops, project, markup, targets, scopes. Call it instead of guessing field names.
+
 Workflow
 1. project_open {dir} or project_create {dir, name, template: phone|minimal, langs: ["en", "de"]}.
 2. project_summary → strips, pages, element ids, targets, languages. Read view_get/selection_get when the user refers to "this" or "the selected element".
-3. Change things: element_add / element_update (patch with YAML field names) / element_move / element_resize / element_rotate, strings_set for texts, styles_update for colours and text styles, strip_update for pages/backgrounds, target_add for more store sizes. apply_ops for complex atomic edits (see resource arrangia://docs/ops).
+3. Change things: element_add / element_update (patch with YAML field names) / element_move / element_resize / element_rotate, strings_set for texts, styles_update for colours and text styles, strip_update for pages/backgrounds, target_add for more store sizes. apply_ops for complex atomic edits (docs_get {topic: "ops"}).
 4. After every visual change call render_preview and LOOK at the image (default: first target, default language). Check other targets/languages too (view: gallery shows all images of a target with store gaps).
 5. layout_report for exact boxes, chosen font sizes, overflows, hyphenation and overlaps; fix overflows by shortening text, `\-`, a larger box or a smaller `shrink_to`.
 6. validate (errors must be 0 before export; missing screenshots are warnings while editing with preview: true).

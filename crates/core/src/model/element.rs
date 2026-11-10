@@ -238,7 +238,7 @@ impl ElementKindTag {
     }
 
     /// Kind-specific fields allowed for this kind (besides the common ones).
-    fn fields(self) -> &'static [&'static str] {
+    pub fn fields(self) -> &'static [&'static str] {
         match self {
             Self::Background => &["fill"],
             Self::Device => &[
@@ -277,7 +277,7 @@ impl ElementKindTag {
 }
 
 /// Fields every element kind has.
-const COMMON_FIELDS: [&str; 13] = [
+pub const COMMON_FIELDS: [&str; 13] = [
     "page",
     "lock_page",
     "at",
