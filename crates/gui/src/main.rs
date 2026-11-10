@@ -6,6 +6,9 @@
 //! command is a thin wrapper around `arrangia_gui::commands` (the same
 //! functions the dev HTTP bridge serves), run on a blocking worker thread.
 //!
+//! Usage: `arrangia-gui [PROJECT_DIR]` opens that project at start (else
+//! the start screen).
+//!
 //! JS calls them as `invoke(name, { args: {...} })` (see `ui/js/transport.js`);
 //! image commands answer with an `ArrayBuffer` (header + PNG/RGBA, see
 //! `arrangia_gui::preview::PreviewImage::to_tauri_bytes`).
@@ -196,12 +199,22 @@ image_commands! {
     asset_thumbnail: commands::AssetThumbnailArgs,
 }
 
+/// `arrangia-gui [PROJECT_DIR]`: the project to open right away.
+fn project_arg() -> Option<PathBuf> {
+    std::env::args_os()
+        .skip(1)
+        .find(|a| !a.to_string_lossy().starts_with('-'))
+        .map(PathBuf::from)
+}
+
 fn main() {
     let events = Arc::new(TauriEvents::default());
     let dialogs = Arc::new(TauriDialogs::default());
     let paths = AppPaths::platform()
         .unwrap_or_else(|| AppPaths::in_dir(&std::env::temp_dir().join("arrangia")));
     let state: Shared = Arc::new(AppState::new(paths, events.clone(), dialogs.clone()));
+    let open_at_start = project_arg();
+    let startup = state.clone();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -209,6 +222,12 @@ fn main() {
         .setup(move |app| {
             let _ = events.0.set(app.handle().clone());
             let _ = dialogs.0.set(app.handle().clone());
+            if let Some(dir) = &open_at_start
+                && let Err(e) =
+                    commands::project_open(&startup, commands::ProjectOpenArgs { dir: dir.clone() })
+            {
+                eprintln!("cannot open {}: {}", dir.display(), e.message);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

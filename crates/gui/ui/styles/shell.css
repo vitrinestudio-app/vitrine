@@ -79,7 +79,7 @@
 
 .panel-body {
   flex: 1;
-  overflow: auto;
+  overflow: hidden auto;
   min-height: 0;
 }
 
