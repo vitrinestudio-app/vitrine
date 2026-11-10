@@ -22,9 +22,9 @@ import (fastlane and folder layouts), translation exchange via CSV and
 XLIFF, and imported Apple Product Bezels (still to be verified with the
 real package). Projects can be created, designed, translated, validated
 and exported in the desktop app, or headless with the `arrangia` command
-line tool; Claude can work on projects through the MCP server (headless
-for now; hosting inside the desktop app comes next); store upload is not
-built yet. The full
+line tool; Claude can work on projects through MCP – the desktop app hosts
+the server, so you watch Claude's edits live and can undo them; store
+upload is not built yet. The full
 concept (in German) is in [`docs/KONZEPT.md`](docs/KONZEPT.md), the task
 lists in [`docs/plan/`](docs/plan/) (`phase-1.md` … `phase-4.md`, with
 known gaps under "Follow-ups"), the current state in
@@ -144,36 +144,36 @@ command could not run (usage error, project not loadable, IO error).
 `<project>/.cache/render/`). Colours are used on a terminal unless
 `NO_COLOR` is set.
 
-## MCP server (Claude)
+## Claude (MCP)
 
-`arrangia mcp` is an [MCP](https://modelcontextprotocol.io) server over
-stdio: Claude can create a project, add devices and texts, translate,
-look at rendered previews (`render_preview` returns a PNG), check the
-layout, validate and export. Every change is one undo step labelled
-`Claude: …`; nothing goes over the network. For now it runs headless on
-a project folder; later the desktop app hosts it so you watch Claude's
-edits live (ADR 0014).
+Arrangia speaks [MCP](https://modelcontextprotocol.io): Claude can create
+a project, add devices and texts, translate, look at rendered previews
+(`render_preview` returns a PNG), check the layout, validate and export.
+The desktop app hosts the server: Claude works on the project you have
+open, every change appears live (briefly outlined, with a small "Claude:
+…" note), is one undo step labelled `Claude: …`, and you comment on it in
+Claude. Nothing goes over the network (ADR 0014, ADR 0015).
 
-Claude Code:
+**Claude Desktop** (no terminal needed):
+
+1. Start Arrangia.
+2. App settings → *Claude / MCP* → **Add to Claude Desktop…** (shows the
+   entry and the file, asks before writing, keeps a backup).
+3. Restart Claude Desktop and ask it to work on your screenshots.
+
+Claude Desktop then starts `arrangia mcp`, which connects to the running
+app (and starts it when it is closed; setting *Start on demand*).
+
+**Claude Code**: copy the command from the same settings section, e.g.
 
 ```sh
-cargo install --path crates/cli
-claude mcp add arrangia -- arrangia mcp --headless --project /path/to/my-app
-# without --project Claude opens or creates projects itself (project_open / project_create)
+claude mcp add arrangia -- /path/to/arrangia mcp      # recommended: always reaches the app
+# or, for this run of the app only (port and token change per start):
+claude mcp add --transport http arrangia http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <token>"
 ```
 
-Claude Desktop (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "arrangia": {
-      "command": "/Users/me/.cargo/bin/arrangia",
-      "args": ["mcp", "--headless", "--project", "/Users/me/Screenshots/MyApp"]
-    }
-  }
-}
-```
+Without the app (CI, scripts): `arrangia mcp --headless --project
+/path/to/my-app` works on the folder directly.
 
 Example prompts: "Create an Arrangia project in ~/Screens/Fernwood for a
 garden planner app in English and German with three iPhone pages, then

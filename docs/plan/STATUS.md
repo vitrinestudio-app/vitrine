@@ -13,7 +13,8 @@ current: update after each phase/merge and whenever the user decides something.
 - Phase 4 (MCP) started – see `docs/plan/phase-4.md`.
   - Done: 4.1 `arrangia-app` extracted (shared session/commands layer, no Tauri; ADR 0013) + actor labels, `project-edited` event, `view_set`/`view_get`.
   - Done: 4.2–4.4 headless MCP server (`arrangia-mcp`, rmcp =3.9.0, ADR 0014): ~50 tools, resources, instructions, `arrangia mcp [--project] [--app-dir] [--headless]`; stdio integration tests (`crates/cli/tests/mcp.rs`). `element_add` in `arrangia-app` gained `id`/`key`/`fields`.
-  - Next: 4.3b GUI hosting (in-app Streamable HTTP via `arrangia_mcp::http::service`, token + discovery file, stdio proxy in `stdio::discover_gui`, settings UI, live aids), then 4.5 real-world check with Claude.
+  - Done: 4.3b GUI hosting (ADR 0015): in-app Streamable HTTP endpoint (`arrangia_mcp::host`, 127.0.0.1, bearer token, Host/Origin checks, discovery file `<app data>/mcp.json`, on/off setting), `arrangia mcp` stdio proxy (GUI autostart, reconnect, headless fallback), app settings "Claude / MCP" (status, Add to Claude Desktop with confirm + backup, Claude Code commands), live aids (top-bar indicator + activity list, canvas glow, toasts, projects opened by Claude open in the GUI, tools default to the GUI's target/language); dev bridge `--mcp`; tests `crates/cli/tests/mcp_proxy.rs`.
+  - Next: 4.5 real-world check with Claude Desktop/Code (confirm Claude Desktop's clientInfo name, tool ergonomics).
 - Next phases per KONZEPT §12: 5 store upload, 6 polish/website, 7 3D.
 
 ## How we work

@@ -1,6 +1,6 @@
 # 0014 – MCP server design
 
-- Status: accepted
+- Status: accepted (GUI hosting, proxy and discovery: ADR 0015)
 - Date: 2026-11-10
 
 ## Context

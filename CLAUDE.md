@@ -17,8 +17,9 @@ comments, commit messages and repo docs are in English.
 
 Status: pre-alpha. Phase 1 (core + CLI) and Phase 2 (GUI editor) are
 done and reviewed; Phase 3 (languages & import, `docs/plan/phase-3.md`)
-is nearly done; Phase 4 (MCP, `docs/plan/phase-4.md`) is in progress (headless
-MCP server done, GUI hosting next). Current state and decisions: `docs/plan/STATUS.md`. See
+is nearly done; Phase 4 (MCP, `docs/plan/phase-4.md`) is in progress (MCP
+server, GUI hosting + Claude Desktop integration done; real-world check
+with Claude next). Current state and decisions: `docs/plan/STATUS.md`. See
 the roadmap in KONZEPT.md §12.
 
 ## Core ideas
@@ -51,7 +52,8 @@ crates/
   publish/  arrangia-publish  App Store Connect, Google Play, keychain
   app/      arrangia-app      shared application layer (no Tauri): session, commands,
                               preview cache, settings, watcher, events, view state
-  mcp/      arrangia-mcp      MCP server (rmcp 3.9, exact pin) over arrangia-app (ADR 0014)
+  mcp/      arrangia-mcp      MCP server (rmcp 3.9, exact pin) over arrangia-app (ADR 0014);
+                              GUI host + stdio proxy (ADR 0015)
   cli/      arrangia-cli      binary `arrangia` (clap)
   gui/      arrangia-gui      Tauri 2 app + dev bridge over `app`; frontend in gui/ui/
                               (vanilla ES modules, see gui/ui/README.md)
@@ -125,8 +127,18 @@ per thread with `Actor::scope` / `dispatch_as`), `view` (`ViewState`:
 strip/target/lang/variant/selection pushed by the GUI via `view_set`,
 read via `view_get`), `preview` (binary preview payload + cache),
 `settings` (settings.yaml + recent projects in SQLite), `events`,
-`dialogs`. `mcp` (ADR 0014) – `ArrangiaMcp` over an `Arc<AppState>` (headless: own
-state; GUI, 4.3b: the live one via feature `http` → `http::service`). Tools
+`dialogs`, `mcp` (`McpStatus` of the GUI-hosted endpoint, `mcp-status`
+event, `McpControl` hook), `claude_desktop` ("Add to Claude Desktop":
+order-keeping JSON merge with backup; `ARRANGIA_CLAUDE_DESKTOP_CONFIG`
+redirects it – never write the real config in tests). `mcp` (ADR 0014,
+0015) – `ArrangiaMcp` over an `Arc<AppState>` (headless: own state; GUI:
+the live one, `Host::Gui`: omitted target/lang default to the GUI's view,
+sessions/tool calls go into the MCP status). `host` (feature `http`):
+`McpHost` serves it on 127.0.0.1 (hyper, own tokio runtime, bearer
+token, Host/Origin checks, discovery file `<app data>/mcp.json`);
+`discovery`; `proxy` (feature `proxy`, CLI): `arrangia mcp` forwards
+stdio JSON-RPC to the GUI (GUI autostart, `ARRANGIA_GUI` overrides the
+binary), else headless. Tools
 live in `tools/<area>.rs`, one `#[tool_router(router = <area>_tools)]` impl
 block each (combined in `ArrangiaMcp::new`); arguments are
 `schemars::JsonSchema` structs (doc comments = schema descriptions,
@@ -214,9 +226,14 @@ cargo run -p arrangia-cli --release -- --project tests/fixtures/example validate
 cargo run -p arrangia-cli --release -- --project tests/fixtures/example export
 cargo run -p arrangia-cli --release -- --project tests/fixtures/example render --target ios-iphone-69 --gallery --max-edge 800 -o /path/to/gallery.png
 
-# MCP server over stdio (headless; for Claude Code: claude mcp add arrangia -- arrangia mcp --headless --project <dir>)
+# MCP: the GUI hosts it (ADR 0015); `arrangia mcp` proxies stdio to the running GUI
+# (or starts it), `--headless` works on the folder directly
 cargo run -p arrangia-cli -- mcp --headless --project tests/fixtures/example --app-dir /tmp/arrangia-mcp
 cargo test -p arrangia-cli --test mcp          # drives the binary over stdio (JSON-RPC)
+cargo test -p arrangia-cli --test mcp_proxy    # in-process GUI endpoint + `arrangia mcp` proxy
+# dev bridge hosting MCP too (discovery file in <app-dir>/data/mcp.json); drive it with
+# `arrangia mcp --app-dir <app-dir>` while the browser shows the edits live
+cargo run -p arrangia-gui --features devbridge --bin arrangia-devbridge -- --project tests/fixtures/example --copy --mcp --app-dir /tmp/ab
 
 # regenerate the example screenshots (deterministic fake app UI)
 cargo run -p arrangia-render --release --example screens -- tests/fixtures/example/screenshots
@@ -235,8 +252,9 @@ A=B] [--dry-run] [--save-mapping]`, `frames import <path> [--dry-run]`, `frames
 list`, `frames remove [--model] [--color] [--orientation] [--bezel] [--all]`
 (synthetic test package: `cargo run -p arrangia-core --example
 synthetic_bezels -- [--full-size] <dir|file.zip>`), `mcp [--app-dir DIR]
-[--headless]` (MCP over stdio; opens `--project` when it holds a
-`project.yaml`; never print to stdout there). Exit codes: 0 ok, 1 project
+[--headless]` (MCP over stdio: proxy to the running GUI, GUI autostart,
+else headless opening `--project` when it holds a `project.yaml`; never
+print to stdout there). Exit codes: 0 ok, 1 project
 problems, 2 could not run.
 
 Golden tests (`crates/render/tests/golden.rs`) render every output image

@@ -83,15 +83,20 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Exchange: `strings_export`/`strings_import` (CSV/XLIFF) optional
 - [x] Undo/redo tools (`history_undo`, `history_redo`) for the MCP session
 
-## 4.3b GUI hosting + Claude Desktop integration
-- [ ] In-app HTTP MCP endpoint bound to the GUI session; token, origin checks,
-      on/off setting; discovery file
-- [ ] `arrangia mcp` stdio proxy: discover GUI → forward; optional GUI auto-start;
-      headless fallback
-- [ ] App settings "Claude / MCP": status, add to Claude Desktop (confirm +
-      backup), Claude Code command
-- [ ] Live aids: "Claude:" history labels, canvas highlight of changed
-      elements, activity list, `selection_get`, `view_get`
+## 4.3b GUI hosting + Claude Desktop integration (ADR 0015)
+- [x] In-app HTTP MCP endpoint bound to the GUI session; token, origin checks,
+      on/off setting; discovery file (`arrangia_mcp::host`, also in the dev
+      bridge with `--mcp`)
+- [x] `arrangia mcp` stdio proxy: discover GUI → forward; optional GUI auto-start;
+      headless fallback (`arrangia_mcp::proxy`, reconnects after a GUI restart)
+- [x] App settings "Claude / MCP": status, add to Claude Desktop (confirm +
+      backup), Claude Code command (stdio + HTTP), fixed port, autostart
+- [x] Live aids: "Claude:" history labels, canvas highlight of changed
+      elements, toasts, activity list (top-bar indicator), `selection_get`,
+      `view_get`; GUI-hosted tools default to the GUI's target/language;
+      projects opened by Claude open in the GUI
+- Follow-ups: bundled-build CLI path (Phase 6); Claude Desktop's real
+  `clientInfo.name` to confirm in 4.5 (assumed `claude-ai`)
 
 ## 4.4 Tests
 - [x] Integration test: start `arrangia mcp` as a subprocess, speak MCP over
@@ -102,13 +107,13 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       handling (`crates/cli/tests/mcp.rs`, `crates/mcp/src/server.rs` tests)
 
 ## 4.5 Real-world check with Claude
-- [ ] Register the server in Claude Code (`claude mcp add arrangia -- arrangia mcp --project …`)
-      and in Claude Desktop config; GUI shows the config snippet to copy
-      (app settings → "MCP")
+- [ ] Register the server in Claude Code and Claude Desktop through the app
+      settings ("Add to Claude Desktop", copied `claude mcp add` command) and
+      check the live view with a real client
 - [ ] Scenario run by a Claude session: "Create screenshots for app X in en/de,
       iPhone + iPad, translate, export" – judge the rendered result; fix tool
       ergonomics (descriptions, defaults, error messages) based on what the
       model struggles with
 - [~] Docs: ADR (app crate + MCP design), CLAUDE.md, README, `docs/guide/NOTES.md`
-      (setup snippets, tool list, example prompts) – headless part done
-      (ADR 0013, 0014); GUI hosting docs follow with 4.3b
+      (setup snippets, tool list, example prompts) – done for the server
+      and GUI hosting (ADR 0013, 0014, 0015); real-world findings follow
