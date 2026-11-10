@@ -27,6 +27,7 @@ current: update after each phase/merge and whenever the user decides something.
 - 2026-11-10 Inspector hint "(Breite/Deckkraft 0 schaltet ab)" removed (too wide).
 - 2026-11-10 Bezel import: keep all sizes (6.3" Pro needed for the required ASC set), auto-select by size, manual pin, clear hint for DMGs with licence agreement, show Apple licence notice.
 - 2026-11-10 Documentation: user guide in **English**, start collecting notes now (not prose); document a lot (also to survive context compression).
+- 2026-11-10 MCP: the GUI hosts the MCP server; no terminal needed; Claude Desktop starts a stdio proxy that connects to the running GUI; changes visible live, undoable, commentable in Claude.
 - License of the project: still open (no LICENSE file, `publish = false`). Swedish hyphenation patterns (LPPL 1.2) wait for this decision.
 
 ## Verified external facts

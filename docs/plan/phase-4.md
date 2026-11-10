@@ -12,14 +12,31 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   Tauri dependency). `arrangia-gui` (Tauri + dev bridge) and `arrangia-mcp`
   both use it, so GUI and MCP share one behaviour: same ops, edit intents,
   validation, revision checks, atomic saves.
-- **MCP server:** `arrangia mcp [--project <dir>]` (CLI subcommand) starts a
-  stdio server using `rmcp` (official Rust SDK). Tools return structured JSON
-  (`structuredContent` + short text); `render_preview` returns an image content
-  block (PNG) so Claude sees the result.
-- **Concurrency with the GUI (§8.3):** disk is the source of truth; every op is
-  saved atomically with the revision check; the GUI's watcher already reloads
-  external edits live. MCP reloads before each tool call if the revision on
-  disk changed.
+- **GUI hosts the MCP server (user requirement 2026-11-10).** No terminal
+  needed: when the GUI runs, it serves MCP for the currently open project, and
+  Claude's edits run through the GUI's own session – the user sees every change
+  live, can undo it, and comments in Claude Desktop/Code.
+  - In-app server: MCP Streamable HTTP on `127.0.0.1` (random port), bearer
+    token, Origin/Host checks (DNS-rebinding protection). Can be switched
+    off in app settings. Usable directly by Claude Code
+    (`claude mcp add --transport http …`).
+  - `arrangia mcp` (stdio) is a thin proxy that Claude Desktop starts by itself
+    from its config: it discovers the running GUI (discovery file in the app
+    data dir with port + token) and forwards everything to it. Without a
+    running GUI it can start the GUI (setting) or work headless on
+    `--project <dir>` (CI, power users).
+  - GUI: app settings → "Claude / MCP": status (connected clients), a
+    one-click "Add to Claude Desktop" (writes the `mcpServers` entry into
+    Claude Desktop's config after confirmation, with backup) and the
+    `claude mcp add` command for Claude Code to copy.
+  - Live collaboration aids: changes by Claude are labelled in the undo
+    history ("Claude: move title-plan") and briefly highlighted on the canvas;
+    an activity list; `selection_get` tool so the user can select elements in
+    the GUI and say "make this bigger"; `view_get` (current strip/target/
+    language/variant) so Claude works on what the user is looking at.
+- **Tool results:** structured JSON (`structuredContent` + short text);
+  `render_preview` returns an image content block (PNG) so Claude sees the
+  result.
 - **Safety:** no network access in Phase 4 tools; upload tools come in Phase 5
   (`upload_plan`/`upload_execute` with confirm token). Asset import only from
   paths the user names; nothing deletes outside the project folder.
@@ -31,7 +48,9 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       uses app where it simplifies
 
 ## 4.2 MCP server skeleton
-- [ ] `crates/mcp` with rmcp (stdio), server info/instructions (short guide to
+- [ ] `crates/mcp` with rmcp: tool router usable over Streamable HTTP (hosted
+      by the GUI, against its live session) and stdio (proxy to the GUI, or
+      headless with its own session); server info/instructions (short guide to
       Arrangia concepts for the model: canvas, home page, lu, gaps, anchors,
       variants, targets, markup), `arrangia mcp` CLI subcommand
 - [ ] Project handling: `project_open`, `project_create` (templates),
@@ -57,6 +76,16 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       sizes, overflows, hyphenation as text/JSON); `validate`; `export`
 - [ ] Exchange: `strings_export`/`strings_import` (CSV/XLIFF) optional
 - [ ] Undo/redo tools (`history_undo`, `history_redo`) for the MCP session
+
+## 4.3b GUI hosting + Claude Desktop integration
+- [ ] In-app HTTP MCP endpoint bound to the GUI session; token, origin checks,
+      on/off setting; discovery file
+- [ ] `arrangia mcp` stdio proxy: discover GUI → forward; optional GUI auto-start;
+      headless fallback
+- [ ] App settings "Claude / MCP": status, add to Claude Desktop (confirm +
+      backup), Claude Code command
+- [ ] Live aids: "Claude:" history labels, canvas highlight of changed
+      elements, activity list, `selection_get`, `view_get`
 
 ## 4.4 Tests
 - [ ] Integration test: start `arrangia mcp` as a subprocess, speak MCP over
