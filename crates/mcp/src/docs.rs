@@ -149,6 +149,10 @@ const FIELD_DOCS: &[(&str, &str)] = &[
         "string – colour variant of the model (catalog_devices colors; imported frames: vendor colour names) or #RRGGBB",
     ),
     (
+        "fold",
+        "open | folded – foldables (e.g. iphone-duo): open = inner display, folded = outer display (default: the model's own state)",
+    ),
+    (
         "chrome",
         "none | browser – browser window around the screen (web/desktop) (default none)",
     ),

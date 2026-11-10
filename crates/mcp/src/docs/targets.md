@@ -17,6 +17,8 @@ slot. Add them from presets (`catalog_targets` lists them; `target_add
   langs: [en, de]         # languages to export (default: all available)
   format: png             # png (default) | jpeg (+ quality 1..100)
   store: {apple: {display_type: APP_IPAD_PRO_3GEN_129}}   # or {google: {image_type: phoneScreenshots}}
+  screenshot_only: true    # pages only: each page's largest device alone, no frame/background/text (watch, Wear OS)
+  safe_area: {top: 10, right: 5, bottom: 10, left: 5}   # insets in % of the image; texts outside → text_outside_safe_area
   # banner only:
   region: {pages: [0, 2]}  # or {rect: {page, x, y, width, height}} (default: whole strip)
   fit: cover               # cover (crop) | contain (extend the background)
@@ -49,3 +51,20 @@ orientation?}`.
 ## Banners
 `kind: banner` renders one image of a region of the strip (blog header, Open
 Graph, feature graphic) instead of one image per page.
+
+App Store creative assets (iOS 27+, optional, one per localization) are
+banner presets: `ios-header` (21:9, 3840×1646), `ios-search-results` (3:2,
+1920×1280 … 3840×2560, default region pages 0–2) and
+`ios-creative-universal` (16:9 PNG 5244×2950, serves both). Their slot has a
+`placement` (header | search_results | universal); they upload only through
+the App Asset Library. Apple's safe area is only in its design templates:
+set `safe_area` on the target when you know it.
+
+## Watch and foldables
+- Watch presets (`watch-ultra`, `watch-series`, `watch-series-7/-4/-3`) and
+  Wear OS (`play-wear`, 1:1) are `screenshot_only`: the export is the page's
+  screenshot (variant `watch` / `wear`) without frame or text. Wear OS rules
+  forbid frames, texts and backgrounds (`store_decorations` info otherwise).
+- iPhone Duo: `ios-iphone-duo-inner` (open, device `iphone-duo`) and
+  `ios-iphone-duo-outer` (folded, `iphone-duo-folded`); a device element's
+  `fold: open|folded` switches between the two models.

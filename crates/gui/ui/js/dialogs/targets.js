@@ -16,6 +16,7 @@ const HINT_CODES = new Set([
   'store_size', 'store_count', 'store_format', 'unknown_store_slot', 'unverified_store_slot', 'store_slot_duplicate',
   'unknown_gallery', 'no_gallery', 'unknown_screenshot_variant', 'unknown_mapped_device',
   'region_out_of_range', 'partial_image', 'variant_suggested', 'unknown_variant',
+  'store_decorations', 'screenshot_only_empty', 'text_outside_safe_area',
 ]);
 
 let catalogs = null;
@@ -30,11 +31,15 @@ async function loadCatalogs() {
 
 const sizeLabel = (s) => `${s[0] ?? s.w}×${s[1] ?? s.h}`;
 const asPair = (s) => (Array.isArray(s) ? s : [s.w, s.h]);
-const slotKey = (slot) => (slot?.apple ? `apple:${slot.apple.display_type}` : slot?.google ? `google:${slot.google.image_type}` : '');
+// Apple creative assets carry a placement: `apple:<display type>#<placement>`.
+const slotKey = (slot) =>
+  slot?.apple ? `apple:${slot.apple.display_type}${slot.apple.placement ? `#${slot.apple.placement}` : ''}` : slot?.google ? `google:${slot.google.image_type}` : '';
 function slotFromKey(key) {
   if (!key) return null;
   const [store, value] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
-  return store === 'apple' ? { apple: { display_type: value } } : { google: { image_type: value } };
+  if (store !== 'apple') return { google: { image_type: value } };
+  const [display_type, placement] = value.split('#');
+  return { apple: placement ? { display_type, placement } : { display_type } };
 }
 
 /** Opens the targets editor; `focus` = target id to select first. */
@@ -443,6 +448,19 @@ export async function openTargets(focus) {
         )
       : h('div', { class: 'tg-hints' }, h('div', { class: 'hint hint-ok' }, icon('check'), t('targets.hints.ok')));
 
+    // safe area (insets in % of the image)
+    const safe = tg.safe_area ?? null;
+    const safeCtl = safe
+      ? h(
+          'div',
+          { class: 'inline wrap' },
+          ['top', 'right', 'bottom', 'left'].map((k) =>
+            h('label', { class: 'mini' }, h('span', { class: 'muted small' }, t(`targets.safe_area.${k}`)), input({ type: 'number', value: safe[k] ?? 0, min: 0, max: 49, step: 0.5, cls: 'num', onchange: (v) => v != null && v >= 0 && v < 50 && patch({ safe_area: { ...safe, [k]: v } }) })),
+          ),
+          h('button', { class: 'btn btn-small', type: 'button', onclick: () => patch({ safe_area: null }) }, t('targets.safe_area.remove')),
+        )
+      : h('button', { class: 'btn btn-small', type: 'button', onclick: () => patch({ safe_area: { top: 0, right: 0, bottom: 0, left: 0 } }) }, t('targets.safe_area.add'));
+
     const format = tg.format ?? 'png';
     return h(
       'div',
@@ -476,7 +494,7 @@ export async function openTargets(focus) {
           segmented({
             options: ['pages', 'banner'].map((v) => ({ value: v, label: t(`targets.kind.${v}`) })),
             value: tg.kind ?? 'pages',
-            onchange: (v) => patch(v === 'banner' ? { kind: v, group: null, gallery: null } : { kind: v, region: null, fit: null, gaps: null }),
+            onchange: (v) => patch(v === 'banner' ? { kind: v, group: null, gallery: null, screenshot_only: false } : { kind: v, region: null, fit: null, gaps: null }),
           }),
         ),
         row(t('targets.strip'), select({ options: s.strips.map((x) => x.id), value: tg.strip, onchange: (v) => patch({ strip: v, variant: null }) })),
@@ -487,10 +505,12 @@ export async function openTargets(focus) {
           select({ options: [{ value: '', label: t('targets.none.value') }, ...variants], value: tg.variant ?? '', onchange: (v) => patch({ variant: v || null }) }),
         ),
         banner ? null : row(t('targets.gallery'), galleryCtl),
+        banner ? null : row(t('targets.screenshot_only'), checkbox({ label: t('targets.screenshot_only.label'), checked: !!tg.screenshot_only, onchange: (v) => patch({ screenshot_only: v }) }), t('targets.screenshot_only.hint')),
         ...bannerRows,
         row(t('targets.screenshots'), select({ options: [{ value: '', label: t('targets.none.value') }, ...shotVariants], value: tg.screenshots ?? '', onchange: (v) => patch({ screenshots: v || null }) })),
         row(t('targets.device_map'), mapCtl),
         row(t('targets.langs'), langCtl),
+        row(t('targets.safe_area'), safeCtl, t('targets.safe_area.hint')),
         row(
           t('targets.format'),
           h(

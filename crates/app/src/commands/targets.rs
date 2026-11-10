@@ -4,7 +4,7 @@
 
 use arrangia_core::catalog;
 use arrangia_core::model::{
-    GalleryRef, Orientation, PixelSize, StripId, Target, TargetId, TargetKind,
+    GalleryRef, Orientation, PixelSize, Region, StripId, Target, TargetId, TargetKind,
 };
 use arrangia_core::ops::{Op, TargetPatch};
 use serde::{Deserialize, Serialize};
@@ -112,8 +112,19 @@ pub fn target_add_from_preset(app: &AppState, args: TargetAddArgs) -> CmdResult<
     target.screenshots.clone_from(&preset.screenshots);
     target.gallery = preset.gallery.as_deref().map(GalleryRef::preset);
     target.store.clone_from(&preset.slot);
+    target.screenshot_only = preset.screenshot_only;
+    target.safe_area = preset.safe_area;
     if target.kind == TargetKind::Banner {
         target.gallery = None;
+        target.fit = preset.fit;
+        // Page ranges are clamped to the strip (a 2-page strip gets [0, 1]).
+        let last = project
+            .strip(&args.strip)
+            .map_or(0, |s| s.page.count.saturating_sub(1));
+        target.region = preset.region.map(|r| match r {
+            Region::Pages([a, b]) => Region::Pages([a.min(last), b.min(last)]),
+            other @ Region::Rect(_) => other,
+        });
     }
     let result = session.apply_ops(
         vec![Op::AddTarget {
@@ -280,6 +291,47 @@ pub(super) mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn creative_and_watch_presets() {
+        let (_tmp, app) = opened();
+        call(
+            &app,
+            "target_add_from_preset",
+            json!({"preset": "ios-creative-universal", "strip": "phone"}),
+        );
+        let t = call(&app, "target_get", json!({"id": "ios-creative-universal"}));
+        assert_eq!(t["target"]["kind"], "banner");
+        assert_eq!(t["target"]["size"], json!([5244, 2950]));
+        assert_eq!(t["target"]["region"], json!({"pages": [0, 3]}));
+        assert_eq!(t["target"]["fit"], "cover");
+        assert_eq!(t["target"]["store"]["apple"]["placement"], "universal");
+        call(
+            &app,
+            "target_add_from_preset",
+            json!({"preset": "watch-ultra", "strip": "phone"}),
+        );
+        let t = call(&app, "target_get", json!({"id": "watch-ultra"}));
+        assert_eq!(t["target"]["screenshot_only"], true);
+        assert_eq!(t["target"]["screenshots"], "watch");
+        // The UI's patch switches it off and sets a safe area.
+        call(
+            &app,
+            "target_patch",
+            json!({"id": "watch-ultra", "patch": {"screenshot_only": false, "safe_area": {"top": 5, "right": 0, "bottom": 5, "left": 0}}}),
+        );
+        let t = call(&app, "target_get", json!({"id": "watch-ultra"}));
+        assert!(t["target"].get("screenshot_only").is_none());
+        assert_eq!(t["target"]["safe_area"]["top"], 5.0);
+        let devices = call(&app, "catalog_devices", Value::Null);
+        let duo = devices
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|d| d["id"] == "iphone-duo")
+            .unwrap();
+        assert_eq!(duo["fold"]["other"], "iphone-duo-folded");
     }
 
     #[test]

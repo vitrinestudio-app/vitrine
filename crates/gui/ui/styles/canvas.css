@@ -82,6 +82,14 @@
   fill: none;
 }
 
+.ov-safe {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  opacity: 0.8;
+}
+
 .ov-hatch-line {
   stroke: var(--hatch);
   stroke-width: 1;
