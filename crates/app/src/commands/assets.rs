@@ -6,14 +6,14 @@
 //! variant is detected from the pixel size via the device catalog when not
 //! given (preferring variants the project's targets use).
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
 use arrangia_core::Project;
 use arrangia_core::model::{ElementKind, Fill, Lang};
-use arrangia_core::resolve::SCREENSHOT_EXTENSIONS;
+use arrangia_core::resolve::{SCREENSHOT_EXTENSIONS, lang_chain, lookup_screenshot};
 use arrangia_render::raster::{Filter, SourceImage};
 use arrangia_render::scene::Resample;
 use serde::{Deserialize, Serialize};
@@ -87,6 +87,42 @@ pub struct AssetsListing {
     pub asset_usage: BTreeMap<String, Vec<String>>,
     /// Screenshot variants named by targets (in target order, unique).
     pub variants: Vec<String>,
+    /// Per project language: which language folder its screenshots come
+    /// from (core fallback chain, as the renderer looks them up).
+    pub screenshot_langs: BTreeMap<String, ScreenshotLangSource>,
+}
+
+/// Where the screenshots of one language come from, resolved with the core
+/// fallback chain (`lang_chain`: the language, its prefixes, explicit
+/// `languages.fallback`, the default) and the renderer's lookup
+/// (`lookup_screenshot`).
+#[derive(Debug, Clone, Serialize)]
+pub struct ScreenshotLangSource {
+    /// The fallback chain, the language itself first.
+    pub chain: Vec<String>,
+    /// Folder level: the first chain language with any screenshot file
+    /// (the language itself when it has some); `None`: none has any.
+    pub source: Option<String>,
+    /// `source` is the project's default language.
+    pub source_is_default: bool,
+    /// Screenshots of used keys (per target variant) this language takes
+    /// from another language of its chain, one entry per file.
+    pub borrowed: Vec<BorrowedScreenshot>,
+    /// Languages that borrow at least one screenshot from this one.
+    pub fallback_for: Vec<String>,
+}
+
+/// A screenshot a language shows from a fallback language.
+#[derive(Debug, Clone, Serialize)]
+pub struct BorrowedScreenshot {
+    pub key: String,
+    /// Target variant it was resolved for (`None`: no target names one).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variant: Option<String>,
+    /// The language whose file is used.
+    pub lang: String,
+    /// Project-relative path of that file.
+    pub path: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -247,10 +283,14 @@ pub fn assets_list(app: &AppState, _: NoArgs) -> CmdResult<AssetsListing> {
             .collect()
     };
     let (screenshot_keys, asset_usage, variants) = session.with_project(usage);
+    let used: Vec<&str> = screenshot_keys.keys().map(String::as_str).collect();
+    let screenshot_langs =
+        session.with_project(|p| screenshot_sources(p, &screenshots, &used, &variants));
     Ok(AssetsListing {
         screenshot_keys,
         asset_usage,
         variants,
+        screenshot_langs,
         screenshots,
         assets: list("assets", &ASSET_EXTENSIONS),
         fonts: list("fonts", &FONT_EXTENSIONS)
@@ -262,6 +302,79 @@ pub fn assets_list(app: &AppState, _: NoArgs) -> CmdResult<AssetsListing> {
             })
             .collect(),
     })
+}
+
+/// [`ScreenshotLangSource`] of every project language: `keys` are the
+/// screenshot keys used by devices, `variants` the targets' screenshot
+/// variants (each key is resolved per variant like the renderer does).
+fn screenshot_sources(
+    p: &Project,
+    screenshots: &[ScreenshotFile],
+    keys: &[&str],
+    variants: &[String],
+) -> BTreeMap<String, ScreenshotLangSource> {
+    let default = p.languages.default.as_str();
+    let files: BTreeSet<String> = screenshots.iter().map(|f| f.path.clone()).collect();
+    let variants: Vec<Option<&str>> = if variants.is_empty() {
+        vec![None]
+    } else {
+        variants.iter().map(|v| Some(v.as_str())).collect()
+    };
+    let mut out: BTreeMap<String, ScreenshotLangSource> = p
+        .languages
+        .available
+        .iter()
+        .map(|lang| {
+            let chain = lang_chain(p, lang.as_str());
+            let source = chain
+                .iter()
+                .find(|l| screenshots.iter().any(|f| &f.lang == *l))
+                .cloned();
+            let source_is_default = source.as_deref() == Some(default);
+            let mut borrowed: Vec<BorrowedScreenshot> = Vec::new();
+            for key in keys {
+                for variant in &variants {
+                    let r = lookup_screenshot(&files, &chain, *variant, key);
+                    let (Some(path), Some(from)) = (r.path, r.lang) else {
+                        continue;
+                    };
+                    if from.as_str() == lang.as_str() || borrowed.iter().any(|b| b.path == path) {
+                        continue;
+                    }
+                    borrowed.push(BorrowedScreenshot {
+                        key: (*key).to_owned(),
+                        variant: variant.map(str::to_owned),
+                        lang: from.as_str().to_owned(),
+                        path,
+                    });
+                }
+            }
+            (
+                lang.as_str().to_owned(),
+                ScreenshotLangSource {
+                    chain,
+                    source,
+                    source_is_default,
+                    borrowed,
+                    fallback_for: Vec::new(),
+                },
+            )
+        })
+        .collect();
+    // Which languages borrow from which (project language order).
+    for lang in &p.languages.available {
+        let from: BTreeSet<String> = out[lang.as_str()]
+            .borrowed
+            .iter()
+            .map(|b| b.lang.clone())
+            .collect();
+        for f in from {
+            if let Some(src) = out.get_mut(&f) {
+                src.fallback_for.push(lang.as_str().to_owned());
+            }
+        }
+    }
+    out
 }
 
 type Usage = (
@@ -742,6 +855,65 @@ mod tests {
         assert_eq!(sanitize("Über_Uns"), "ber_uns");
         assert_eq!(sanitize("  "), "file");
         assert_eq!(sanitize("plan--v2"), "plan-v2");
+    }
+
+    #[test]
+    fn screenshot_sources_follow_the_fallback_chain() {
+        let mut p = Project::new("t", Lang::new("de"));
+        for l in ["en", "fr", "nl", "de-AT"] {
+            p.languages.available.push(Lang::new(l));
+        }
+        p.languages
+            .fallback
+            .insert(Lang::new("fr"), Lang::new("en"));
+        p.languages
+            .fallback
+            .insert(Lang::new("nl"), Lang::new("en"));
+        let shot = |lang: &str, key: &str| ScreenshotFile {
+            path: format!("screenshots/{lang}/{key}.png"),
+            lang: lang.to_owned(),
+            variant: None,
+            key: key.to_owned(),
+            width: None,
+            height: None,
+        };
+        let variants = ["ios-phone".to_owned()];
+        let keys = ["home", "list"];
+        let files = [shot("de", "home"), shot("de", "list"), shot("en", "home")];
+        let s = screenshot_sources(&p, &files, &keys, &variants);
+        assert_eq!(s["de"].source.as_deref(), Some("de"));
+        assert!(s["de"].source_is_default);
+        assert_eq!(s["en"].source.as_deref(), Some("en"));
+        // Explicit fallback wins over the default language.
+        assert_eq!(s["fr"].source.as_deref(), Some("en"));
+        assert!(!s["fr"].source_is_default);
+        assert_eq!(s["fr"].chain, ["fr", "en", "de"]);
+        assert_eq!(s["nl"].source.as_deref(), Some("en"));
+        // Per key: home from en (fallback), list (missing in en) from de.
+        let fr: Vec<(&str, &str)> = s["fr"]
+            .borrowed
+            .iter()
+            .map(|b| (b.key.as_str(), b.lang.as_str()))
+            .collect();
+        assert_eq!(fr, [("home", "en"), ("list", "de")]);
+        assert_eq!(s["fr"].borrowed[0].path, "screenshots/en/home.png");
+        assert_eq!(s["en"].fallback_for, ["fr", "nl"]);
+        // en itself borrows `list` from de.
+        assert_eq!(s["de"].fallback_for, ["en", "fr", "nl", "de-AT"]);
+        assert_eq!(s["de"].borrowed.len(), 0);
+        // Prefix chain de-AT → de (the default).
+        assert_eq!(s["de-AT"].source.as_deref(), Some("de"));
+        assert!(s["de-AT"].source_is_default);
+        // Without the en folder fr falls through to the default.
+        let s = screenshot_sources(&p, &files[..2], &keys, &variants);
+        assert_eq!(s["fr"].source.as_deref(), Some("de"));
+        assert!(s["fr"].source_is_default);
+        assert_eq!(s["en"].fallback_for, Vec::<String>::new());
+        assert!(
+            screenshot_sources(&p, &[], &keys, &[])["fr"]
+                .source
+                .is_none()
+        );
     }
 
     #[test]

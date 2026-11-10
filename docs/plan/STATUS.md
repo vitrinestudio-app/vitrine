@@ -70,6 +70,7 @@ current: update after each phase/merge and whenever the user decides something.
 - 2026-11-10 Store setup UX (user requests): help text for creating the `.p8` key and the Google service account in the store settings; the upload dialog explains what is missing in the **app** settings as well as the project settings (ordered checklist with buttons); App Store apps selectable from a list (Play: package name typed + "Check", no list API exists).
 - 2026-11-10 GUI polish (user feedback): loading placeholder + spinner per output image until its first bitmap (no spinner on re-render; reduced motion respected); fit mode (Fit / initial open stays fitted on window or sidebar resize until a manual zoom/pan); Pages, Store gallery and All languages zoom/pan like the canvas (shared `views/viewport.js`, zoom per view, render resolution follows zoom × DPR, plain drag pans there).
 - 2026-11-10 Apple App Asset Library built because the user wants iPhone Duo and header/search assets (they need it). The user did **not** choose a default flow; conservative default (coordinator): `auto` = screenshot sets for everything the set API supports, the library only for Duo/creative slots (skipped with `needs_asset_library` if unavailable); `asset_library` opts in per project (ADR 0019). Switching the default stays open question (a). The real ref data is checked once with `arrangia upload refdata`.
+- 2026-11-10 User requests: no web-view context menu (text fields/selection keep theirs, ⌥+right-click = debug escape); app menu mirrored into the macOS menu bar (File/Ablage, Edit with Undo/Redo, Window, Help; localized; the native menu owns its items' shortcuts; Windows/Linux keep only the in-app menu; ADR 0020); assets panel shows the real screenshot source per language and per image from the fallback chain ("Aus en (Fallback)", "Fallback für fr, nl", badge "Standardsprache") – labels only, rendering was already correct.
 - License of the project: still open (no LICENSE file, `publish = false`). Swedish hyphenation patterns (LPPL 1.2) wait for this decision.
 
 ## Verified external facts
@@ -83,5 +84,5 @@ current: update after each phase/merge and whenever the user decides something.
 ## Known open items (cross-phase)
 - Native store app gallery gaps not measured (only web CSS).
 - Drag & drop of files in the real Tauri app not tested with a real drop.
-- No native menu bar; no font import UI.
+- No font import UI. Native menu bar (macOS, ADR 0020) not yet checked in the real app.
 - See "Follow-ups" sections in `docs/plan/phase-*.md`.

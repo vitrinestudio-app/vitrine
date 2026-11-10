@@ -22,6 +22,8 @@
 // Hide the console window on Windows release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod native_menu;
+
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
@@ -266,6 +268,33 @@ image_commands! {
     frames_thumbnail: commands::FramesThumbnailArgs,
 }
 
+/// GUI-only command (no `arrangia-app` counterpart): installs the native
+/// menu bar from the UI's spec (`native_menu`). Answers `{native: true}`
+/// on macOS; elsewhere the spec is only checked and the in-app menu stays
+/// the only menu (`{native: false}`).
+#[tauri::command]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Tauri command arguments are passed by value"
+)]
+fn menu_set(
+    app: AppHandle,
+    args: native_menu::MenuSpec,
+) -> Result<serde_json::Value, CommandError> {
+    args.validate().map_err(CommandError::invalid)?;
+    #[cfg(target_os = "macos")]
+    {
+        native_menu::install(&app, &args)
+            .map_err(|e| CommandError::internal(format!("cannot set the menu: {e}")))?;
+        Ok(serde_json::json!({ "native": true }))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        Ok(serde_json::json!({ "native": false }))
+    }
+}
+
 /// `arrangia-gui [PROJECT_DIR]`: the project to open right away.
 fn project_arg() -> Option<PathBuf> {
     std::env::args_os()
@@ -300,6 +329,10 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
+        // Native menu items (macOS) run the UI's own actions.
+        .on_menu_event(|app, event| {
+            let _ = app.emit(native_menu::MENU_EVENT, event.id().0.clone());
+        })
         .setup(move |app| {
             let _ = events.0.set(app.handle().clone());
             let _ = dialogs.0.set(app.handle().clone());
@@ -430,6 +463,7 @@ fn main() {
             upload_log,
             upload_confirm,
             upload_refdata,
+            menu_set,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Arrangia")
