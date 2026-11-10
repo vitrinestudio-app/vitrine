@@ -1,7 +1,7 @@
 //! Generates the fake app screenshots of the example project
 //! (`tests/fixtures/example/screenshots/`): a fictional garden planner
 //! ("Fernwood") on iPhone, Android, iPad, Mac and the web, in English and
-//! partly in German. Deterministic: same code, same pixels.
+//! partly in German and French. Deterministic: same code, same pixels.
 //!
 //! ```sh
 //! cargo run -p arrangia-render --release --example screens -- tests/fixtures/example/screenshots
@@ -44,35 +44,40 @@ const SOIL_D: &str = "#5E4329";
 const AMBER: &str = "#F2B33D";
 const RED: &str = "#E5533D";
 
-/// A crop: name (en, de), colour.
+/// A crop: name (en, de, fr), colour.
 #[derive(Clone, Copy)]
 struct Crop {
     en: &'static str,
     de: &'static str,
+    fr: &'static str,
     color: &'static str,
 }
 
-const fn crop(en: &'static str, de: &'static str, color: &'static str) -> Crop {
-    Crop { en, de, color }
+const fn crop(en: &'static str, de: &'static str, fr: &'static str, color: &'static str) -> Crop {
+    Crop { en, de, fr, color }
 }
 
-const TOMATO: Crop = crop("Tomato", "Tomate", "#E5533D");
-const BASIL: Crop = crop("Basil", "Basilikum", "#5FAE4E");
-const MARIGOLD: Crop = crop("Marigold", "Ringelblume", "#F2A93B");
-const CARROT: Crop = crop("Carrot", "Möhre", "#EE8A2C");
-const LETTUCE: Crop = crop("Lettuce", "Salat", "#8DC26F");
-const ONION: Crop = crop("Onion", "Zwiebel", "#C9A26B");
-const BEAN: Crop = crop("Bean", "Bohne", "#3E8E5A");
-const BEET: Crop = crop("Beetroot", "Rote Bete", "#B23A6B");
-const ZUCCHINI: Crop = crop("Zucchini", "Zucchini", "#4E9B45");
-const FENNEL: Crop = crop("Fennel", "Fenchel", "#A7C957");
-const POTATO: Crop = crop("Potato", "Kartoffel", "#B8925E");
-const PEPPER: Crop = crop("Pepper", "Paprika", "#D9452F");
+const TOMATO: Crop = crop("Tomato", "Tomate", "Tomate", "#E5533D");
+const BASIL: Crop = crop("Basil", "Basilikum", "Basilic", "#5FAE4E");
+const MARIGOLD: Crop = crop("Marigold", "Ringelblume", "Tagète", "#F2A93B");
+const CARROT: Crop = crop("Carrot", "Möhre", "Carotte", "#EE8A2C");
+const LETTUCE: Crop = crop("Lettuce", "Salat", "Laitue", "#8DC26F");
+const ONION: Crop = crop("Onion", "Zwiebel", "Oignon", "#C9A26B");
+const BEAN: Crop = crop("Bean", "Bohne", "Haricot", "#3E8E5A");
+const BEET: Crop = crop("Beetroot", "Rote Bete", "Betterave", "#B23A6B");
+const ZUCCHINI: Crop = crop("Zucchini", "Zucchini", "Courgette", "#4E9B45");
+const FENNEL: Crop = crop("Fennel", "Fenchel", "Fenouil", "#A7C957");
+const POTATO: Crop = crop("Potato", "Kartoffel", "Pomme de terre", "#B8925E");
+const PEPPER: Crop = crop("Pepper", "Paprika", "Poivron", "#D9452F");
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Lang {
     En,
     De,
+    /// French: only the phone screens home, planner and companions are
+    /// generated (the others fall back to English); texts come from
+    /// [`FRENCH`], keyed by the English text.
+    Fr,
 }
 
 impl Lang {
@@ -80,15 +85,93 @@ impl Lang {
         match self {
             Self::En => en,
             Self::De => de,
+            Self::Fr => match FRENCH.iter().find(|(e, _)| *e == en) {
+                Some((_, fr)) => fr,
+                None => panic!("no French text for {en:?}"),
+            },
         }
     }
     fn c(self, c: Crop) -> &'static str {
         match self {
             Self::En => c.en,
             Self::De => c.de,
+            Self::Fr => c.fr,
         }
     }
 }
+
+/// French texts of the generated French screens (English → French).
+/// French typography: no-break space (U+00A0) before `:`.
+const FRENCH: &[(&str, &str)] = &[
+    // navigation
+    ("Garden", "Jardin"),
+    ("Plan", "Plan"),
+    ("Calendar", "Calendrier"),
+    ("Harvest", "Récolte"),
+    // home
+    ("Spring 2026 · 4 beds", "Printemps 2026 · 4 planches"),
+    ("My Garden", "Mon potager"),
+    ("NEXT TASK", "PROCHAINE TÂCHE"),
+    ("Water tomatoes", "Arrosage"),
+    ("Today, 18:00 · Bed 1", "Tomates · aujourd’hui, 18 h"),
+    ("Mark done", "C’est fait"),
+    ("Beds", "Planches"),
+    ("See all", "Tout voir"),
+    ("Bed 1", "Planche 1"),
+    ("Bed 2", "Planche 2"),
+    ("Bed 3", "Planche 3"),
+    ("Bed 4", "Planche 4"),
+    ("Bed 5", "Planche 5"),
+    ("Bed 6", "Planche 6"),
+    ("Tomatoes & basil", "Tomates et basilic"),
+    ("Salad mix", "Mesclun"),
+    ("Carrots & onions", "Carottes et oignons"),
+    ("Beans & zucchini", "Haricots et courgettes"),
+    ("Peppers", "Poivrons"),
+    ("Potatoes", "Pommes de terre"),
+    ("6 plants · 2 tasks", "6 plants · 2 tâches"),
+    ("12 plants · 1 task", "12 plants · 1 tâche"),
+    ("18 plants", "18 plants"),
+    ("9 plants · 3 tasks", "9 plants · 3 tâches"),
+    ("8 plants", "8 plants"),
+    ("14 plants · 1 task", "14 plants · 1 tâche"),
+    (
+        "**Tip:** Basil next to tomatoes keeps pests away.",
+        "**Astuce\u{a0}:** le basilic près des tomates éloigne les ravageurs.",
+    ),
+    // planner
+    ("Save", "OK"),
+    (
+        "Bed 1 · 120 × 240 cm · full sun",
+        "Planche 1 · 120 × 240 cm · plein soleil",
+    ),
+    ("Layout", "Disposition"),
+    ("List", "Liste"),
+    ("Notes", "Notes"),
+    ("Good neighbour", "Bon voisin"),
+    ("Add plants", "Ajouter des plantes"),
+    ("Search 240 plants", "Rechercher parmi 240 plantes"),
+    // companions
+    ("Plants", "Plantes"),
+    ("VEGETABLE · NIGHTSHADE", "LÉGUME · SOLANACÉE"),
+    ("Full sun", "Plein soleil"),
+    ("Water often", "Arrosage régulier"),
+    (
+        "Repels aphids and whitefly",
+        "Éloigne pucerons et aleurodes",
+    ),
+    ("Attracts pollinators", "Attire les pollinisateurs"),
+    ("Loosens the soil", "Ameublit le sol"),
+    ("Stunts growth", "Freine la croissance"),
+    ("Shares blight", "Propage le mildiou"),
+    ("Good neighbours", "Bons voisins"),
+    ("Keep apart", "À tenir à l’écart"),
+    ("Growing tips", "Conseils de culture"),
+    (
+        "**Plant out after the last frost.** Set tomatoes deeper than in the pot, stake them early and water at the base in the morning.",
+        "**Repiquer après les dernières gelées.** Enterrer les tomates plus profond que dans le pot, les tuteurer tôt et arroser au pied le matin.",
+    ),
+];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Platform {
@@ -808,7 +891,7 @@ fn screen_home(ui: &mut Ui<'_>, p: Platform, lang: Lang) {
         lang.t("Today, 18:00 · Bed 1", "Heute, 18:00 · Beet 1"),
         Align::Left,
     );
-    let bw = if lang == Lang::De { 150.0 } else { 118.0 };
+    let bw = if lang == Lang::En { 118.0 } else { 150.0 };
     ui.rect(
         x + 20.0,
         cy + 108.0,
@@ -1145,7 +1228,11 @@ fn screen_planner(ui: &mut Ui<'_>, p: Platform, lang: Lang) {
     ui.plant(dx, dy + 2.0, 24.0, MARIGOLD.color);
     // compatibility badge
     let label = lang.t("Good neighbour", "Guter Nachbar");
-    let lw = if lang == Lang::De { 132.0 } else { 128.0 };
+    let lw = match lang {
+        Lang::En => 128.0,
+        Lang::De => 132.0,
+        Lang::Fr => 112.0,
+    };
     ui.shadow(dx - lw / 2.0, dy + 42.0, lw, 28.0, 14.0, 0.2);
     ui.rect(dx - lw / 2.0, dy + 42.0, lw, 28.0, 14.0, hex("#E7F5E4"));
     ui.icon("check", dx - lw / 2.0 + 16.0, dy + 56.0, 12.0, hex(GREEN));
@@ -3113,6 +3200,13 @@ fn main() -> anyhow::Result<()> {
             let mut ui = Ui::new(&mut lay, 1206, 2622, 3.0);
             f(&mut ui, Platform::Ios, Lang::De);
             write(&format!("de/ios-phone/{name}.png"), ui.encode())?;
+        }
+        // French phone screens only for the first three pages (harvest
+        // and calendar fall back to en).
+        if matches!(name, "home" | "planner" | "companions") {
+            let mut ui = Ui::new(&mut lay, 1206, 2622, 3.0);
+            f(&mut ui, Platform::Ios, Lang::Fr);
+            write(&format!("fr/ios-phone/{name}.png"), ui.encode())?;
         }
         let mut ui = Ui::new(&mut lay, 1080, 2400, 2.7);
         f(&mut ui, Platform::Android, Lang::En);

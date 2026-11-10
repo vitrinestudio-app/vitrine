@@ -150,8 +150,26 @@ fn xliff_per_language_names_and_errors() {
     );
     assert_eq!(code(&o), 0);
     let v: Value = serde_json::from_str(&stdout(&o)).unwrap();
-    assert_eq!(v[0]["file"]["keys"], 0, "everything is translated");
-    assert!(target.is_file());
+    // One file per language (`strings-<lang>.xlf`): de and fr are complete,
+    // fr-CA only overrides two texts (the rest falls back to fr).
+    let keys: Vec<_> = v
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| {
+            (
+                f["file"]["lang"].as_str().unwrap(),
+                f["file"]["keys"].as_u64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(keys[..2], [("de", 0), ("fr", 0)], "{keys:?}");
+    assert_eq!(keys[2].0, "fr-CA");
+    assert!(keys[2].1 > 20, "{keys:?}");
+    for lang in ["de", "fr", "fr-CA"] {
+        assert!(tmp.path().join(format!("t/strings-{lang}.xlf")).is_file());
+    }
+    assert!(!target.exists());
 
     let o = arrangia(&project, &["strings", "export", "--lang", "xx"]);
     assert_eq!(code(&o), 2);

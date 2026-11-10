@@ -315,7 +315,7 @@ fn failures_exit_with_code_2() {
 }
 
 /// The example project (`tests/fixtures/example`) is clean (no errors or
-/// warnings) and exports. A full export (8 targets × 2 languages, 68 files)
+/// warnings) and exports. A full export (8 targets × 4 languages, 136 files)
 /// takes about two CPU minutes in a debug build, so this exports the web
 /// targets only (browser frame, notebook with browser chrome, JPEG,
 /// gallery preview); `crates/render/tests/golden.rs` renders every
@@ -346,8 +346,8 @@ fn example_project_validates_and_exports() {
         ],
     );
     assert_eq!(code(&o), 0, "{}\n{}", stdout(&o), stderr(&o));
-    assert!(stdout(&o).contains("8 files written"), "{}", stdout(&o));
-    for lang in ["en", "de"] {
+    assert!(stdout(&o).contains("16 files written"), "{}", stdout(&o));
+    for lang in ["en", "de", "fr", "fr-CA"] {
         let dir = out.join("web-slides").join(lang);
         for file in ["01_plots.jpg", "02_seeds.jpg"] {
             assert!(dir.join(file).is_file(), "{lang}/{file} missing");

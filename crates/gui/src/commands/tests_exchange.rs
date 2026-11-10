@@ -49,8 +49,8 @@ fn export_writes_files_and_round_trips() {
         json!({"format": "xliff20", "path": path, "options": {"context": true}}),
     );
     let files = r["files"].as_array().unwrap();
-    assert_eq!(files.len(), 1);
-    assert_eq!(files[0]["lang"], "de");
+    let langs: Vec<_> = files.iter().map(|f| f["lang"].as_str().unwrap()).collect();
+    assert_eq!(langs, ["de", "fr", "fr-CA"]);
     assert_eq!(files[0]["keys"], 26);
     let written = PathBuf::from(files[0]["path"].as_str().unwrap());
     assert!(
@@ -141,7 +141,7 @@ fn import_plan_reports_bad_files() {
     let bad = tmp.path().join("bad.xlf");
     std::fs::write(
         &bad,
-        "<xliff version=\"2.0\" srcLang=\"en\" trgLang=\"fr\"><file id=\"f\"/></xliff>",
+        "<xliff version=\"2.0\" srcLang=\"en\" trgLang=\"it\"><file id=\"f\"/></xliff>",
     )
     .unwrap();
     let plan = call(
@@ -149,7 +149,7 @@ fn import_plan_reports_bad_files() {
         "strings_import_plan",
         json!({"paths": [bad], "layout": false}),
     );
-    assert!(plan["files"][0]["error"].as_str().unwrap().contains("`fr`"));
+    assert!(plan["files"][0]["error"].as_str().unwrap().contains("`it`"));
     let e = dispatch(
         &app,
         "strings_import_plan",

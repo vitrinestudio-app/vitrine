@@ -53,7 +53,7 @@ fn element_info_and_markup_check() {
         info["own_text"]
             .as_str()
             .unwrap()
-            .contains("[accent]Pflanzen")
+            .contains("[accent]Mischkulturpartner")
     );
     let device = call(
         &app,

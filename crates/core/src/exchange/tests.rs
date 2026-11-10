@@ -86,7 +86,10 @@ fn csv_layout_and_context() {
     };
     let csv = text(&export(&p, Format::Csv, &opts).unwrap()[0]);
     let mut lines = csv.split("\r\n");
-    assert_eq!(lines.next(), Some("key,en,de,max_chars,context,notes"));
+    assert_eq!(
+        lines.next(),
+        Some("key,en,de,fr,fr-CA,max_chars,context,notes")
+    );
     // Newlines inside a cell are quoted (RFC 4180).
     assert!(csv.contains(
         "callout.bad,\"**Fennel**\nbetter keep apart\",\"**Fenchel**\nlieber getrennt\""
@@ -110,12 +113,19 @@ fn xliff_round_trips_have_no_changes() {
                 ..ExportOptions::default()
             };
             let files = export(&p, format, &opts).unwrap();
-            assert_eq!(files.len(), 1);
-            assert_eq!(files[0].name, "Fernwood-de.xlf");
+            // One file per non-default language; fr-CA is sparse and
+            // French texts contain no-break spaces.
+            let names: Vec<_> = files.iter().map(|f| f.name.as_str()).collect();
+            assert_eq!(
+                names,
+                ["Fernwood-de.xlf", "Fernwood-fr.xlf", "Fernwood-fr-CA.xlf"]
+            );
             assert_eq!(files[0].lang.as_deref(), Some("de"));
-            assert_eq!(detect_format(&files[0].name, &text(&files[0])), format);
-            xliff::check_structure(&text(&files[0]))
-                .unwrap_or_else(|e| panic!("{format:?} {markup:?}: {e}"));
+            for f in &files {
+                assert_eq!(detect_format(&f.name, &text(f)), format);
+                xliff::check_structure(&text(f))
+                    .unwrap_or_else(|e| panic!("{format:?} {markup:?} {}: {e}", f.name));
+            }
             assert_no_changes(&p, &files);
         }
     }
@@ -293,7 +303,7 @@ fn malformed_inputs_are_reported_per_file() {
         ("b.csv", b"id,en\nx,y\n", "no `key` column"),
         (
             "c.csv",
-            b"key,fr\nx,y\n",
+            b"key,it\nx,y\n",
             "no column named after a project language",
         ),
         ("d.csv", b"key,de\n\xff\xfe\xfa,x\n", "UTF-8"),
@@ -304,8 +314,8 @@ fn malformed_inputs_are_reported_per_file() {
         ),
         (
             "f.xlf",
-            b"<xliff version=\"2.0\" srcLang=\"en\" trgLang=\"fr\"><file id=\"f\"/></xliff>",
-            "`fr` is not a project language",
+            b"<xliff version=\"2.0\" srcLang=\"en\" trgLang=\"it\"><file id=\"f\"/></xliff>",
+            "`it` is not a project language",
         ),
         ("g.xlf", b"<html/>", "not <xliff>"),
     ];
@@ -378,32 +388,32 @@ fn overflow_report_after_importing_a_long_german_string() {
 fn missing_only_and_language_selection() {
     let mut p = example();
     p.apply(Op::AddLanguage {
-        lang: Lang::new("fr"),
+        lang: Lang::new("it"),
         index: None,
         strings: std::collections::BTreeMap::default(),
         lang_overrides: std::collections::BTreeMap::default(),
     })
     .unwrap();
-    set(&mut p, "fr", "plan.title", Some("Votre jardin"));
+    set(&mut p, "it", "plan.title", Some("Il tuo giardino"));
     let opts = ExportOptions {
-        langs: vec!["fr".into()],
+        langs: vec!["it".into()],
         missing_only: true,
         ..ExportOptions::default()
     };
     let files = export(&p, Format::Xliff20, &opts).unwrap();
     assert_eq!(files.len(), 1);
     let x = text(&files[0]);
-    assert!(x.contains("trgLang=\"fr\""));
+    assert!(x.contains("trgLang=\"it\""));
     assert!(!x.contains("name=\"plan.title\""));
     assert!(x.contains("name=\"plan.sub\""));
     let csv = text(&export(&p, Format::Csv, &opts).unwrap()[0]);
-    assert!(csv.starts_with("key,en,fr\r\n"));
+    assert!(csv.starts_with("key,en,it\r\n"));
     assert!(!csv.contains("\r\nplan.title,"));
     assert_eq!(
         export(&p, Format::Xliff12, &ExportOptions::default())
             .unwrap()
             .len(),
-        2
+        4
     );
     assert_eq!(
         export(

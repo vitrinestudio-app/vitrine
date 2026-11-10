@@ -46,6 +46,6 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Renaming a used colour/style updates element references
 
 ## 3.7 Verification + docs
-- [ ] Example project gets a third language (e.g. `fr` with partial translations + fallbacks), one per-language override, one hyphenated text; golden tests updated
-- [ ] "Done when" scenario: 3 languages × 3 targets exported, overflow reported; Apple bezels imported and used (with the user's real package)
-- [ ] ADRs (per-language overrides, hyphenation, import rules, frame packages); CLAUDE.md/README
+- [x] Example project gets a third language: `fr` (all texts, French phone screenshots for 3 of 5 screens → en fallback, no-break spaces) plus `fr-CA` (2 Québec texts, rest via prefix fallback → info); German language override + automatic hyphenation on `title-companions` ("Mischkultur-partner"); golden tests: fr for the iPhone 6.9" and iPad sets (+1.1 MB)
+- [~] "Done when" scenario: 3 languages × 3 targets exported with fallbacks, overflow reported (`crates/cli/tests/scenario.rs`) – done; Apple bezels imported and used with the user's real package – open (coordinator/user)
+- [x] ADRs (0009 overrides + hyphenation, 0010 screenshot import, 0011 translation exchange, 0012 frame packages); CLAUDE.md/README updated
