@@ -56,7 +56,7 @@ and downloadable from a gallery.
       on disk, behind the user's reverse proxy – reuses `core` validation and
       `render` to build trusted preview images server-side. Uploader login
       via GitHub OAuth (no passwords), moderation queue, licence per
-      template fixed to **CC0** (user 2026-11-10: no licence choice; attribution/NC make no sense for store screenshots) – uploader confirms own rights + CC0 grant in the upload terms; fonts keep their own licence (OFL only, licence file required in the package, checked on upload); size limits, safe zip handling, rate limits, abuse report,
+      template fixed to **CC0** (user 2026-11-10: no licence choice; attribution/NC make no sense for store screenshots) – uploader confirms own rights + CC0 grant in the upload terms; fonts keep their own licence (OFL only). Licence file per font (user OK 2026-11-10): kept if present; otherwise generated when saving a template – copyright line (name ID 0, plus Reserved Font Name if stated) from the font + the standard OFL 1.1 text – only if the font itself declares OFL (name IDs 13/14); fonts without an OFL declaration are refused ("may not be redistributed / licence unclear"); the server re-checks on upload; size limits, safe zip handling, rate limits, abuse report,
       GDPR/Impressum; downloads without an account; in-app "browse gallery" opens the site or
       fetches an index (network → `publish`-like crate, not core)
 - [ ] Licence/attribution per template; checks on import (size limits, no
