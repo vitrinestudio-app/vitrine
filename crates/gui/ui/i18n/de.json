@@ -294,7 +294,7 @@
   "assets.screenshots": "Screenshots",
   "assets.images": "Bilder",
   "assets.fonts": "Schriften",
-  "assets.default_lang": "Standard",
+  "assets.default_lang": "Standardsprache",
   "assets.lang_empty_fallback": "Keine Screenshots; {lang} wird verwendet (Fallback).",
   "assets.lang_empty_default": "Keine Screenshots; die Standardsprache {lang} wird verwendet.",
   "assets.lang_empty_none": "Keine Screenshots in dieser Sprache oder ihren Fallback-Sprachen.",
@@ -1019,5 +1019,8 @@
   "upload.problem.processing_unconfirmed": "Apple hat Bilder dieses Sets nach dem Upload noch verarbeitet – „Store-Stand prüfen“ bestätigt es.",
   "upload.ready.no_editable_version": "Keine bearbeitbare App-Store-Version. Lege in App Store Connect eine neue Version an (z. B. {suggestion}) und plane dann erneut. Neueste Version: {latest} ({state}).",
   "upload.fix.app_store_connect": "App Store Connect öffnen",
-  "upload.fix.where.app_store_connect": "App Store Connect"
+  "upload.fix.where.app_store_connect": "App Store Connect",
+  "assets.fallback_for": "Fallback für {langs}",
+  "assets.borrowed": "Aus {lang} (Fallback)",
+  "assets.borrowed_default": "Aus {lang} (Standardsprache)"
 }

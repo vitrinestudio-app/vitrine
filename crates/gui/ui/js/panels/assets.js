@@ -137,6 +137,30 @@ export function mount(el, { store, editor, api, t }) {
     return h('p', { class: 'placeholder', title: chain ? `${t('assets.lang_chain')}: ${chain}` : '' }, text);
   }
 
+  /**
+   * Screenshots `lang` shows from a fallback language (resolved per key in
+   * Rust with the renderer's lookup), grouped by the source language.
+   */
+  function borrowedGroups(borrowed, def) {
+    const bySource = new Map();
+    for (const b of borrowed) {
+      if (!bySource.has(b.lang)) bySource.set(b.lang, []);
+      bySource.get(b.lang).push(b);
+    }
+    return [...bySource.entries()].map(([from, list]) =>
+      h(
+        'div',
+        { class: 'as-variant as-borrowed' },
+        h('div', { class: 'as-variant-title muted small' }, t(from === def ? 'assets.borrowed_default' : 'assets.borrowed').replace('{lang}', from)),
+        ...list.map((b) => {
+          const f = listing.screenshots.find((x) => x.path === b.path);
+          const sub = [b.variant, f ? size(f) : ''].filter(Boolean).join(' · ');
+          return item({ path: b.path, title: b.key, sub, removable: false, stamp: f ? `${f.width}x${f.height}` : '' });
+        }),
+      ),
+    );
+  }
+
   function render() {
     const l = listing;
     const s = store.get().summary;
@@ -154,11 +178,22 @@ export function mount(el, { store, editor, api, t }) {
         byVariant.get(v).push(f);
       }
       const variants = [...byVariant.keys()].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
+      const src = l.screenshot_langs?.[lang];
+      const borrowed = src?.borrowed ?? [];
+      const notes = [];
+      if (lang === def) notes.push(t('assets.default_lang'));
+      if (src?.fallback_for?.length) notes.push(t('assets.fallback_for').replace('{langs}', src.fallback_for.join(', ')));
       return h(
         'details',
         { class: 'as-lang', open: lang === store.get().lang },
-        h('summary', {}, h('strong', {}, lang), lang === def ? h('span', { class: 'muted small' }, ` · ${t('assets.default_lang')}`) : null, h('span', { class: 'as-count' }, String(files.length))),
-        files.length ? null : emptyHint(l.screenshot_langs?.[lang]),
+        h(
+          'summary',
+          { title: src?.chain ? `${t('assets.lang_chain')}: ${src.chain.join(' → ')}` : '' },
+          h('strong', {}, lang),
+          notes.length ? h('span', { class: 'muted small' }, ` · ${notes.join(' · ')}`) : null,
+          h('span', { class: 'as-count' }, borrowed.length ? `${files.length} + ${borrowed.length}` : String(files.length)),
+        ),
+        files.length || borrowed.length ? null : emptyHint(src),
         ...variants.map((v) =>
           h(
             'div',
@@ -171,6 +206,7 @@ export function mount(el, { store, editor, api, t }) {
             }),
           ),
         ),
+        ...borrowedGroups(borrowed, def),
       );
     });
 
