@@ -1,5 +1,5 @@
 //! Shared MCP test client: drives `arrangia mcp` over stdio with
-//! newline-delimited JSON-RPC, like Claude Code / Claude Desktop do.
+//! newline-delimited JSON-RPC, like MCP clients (Claude Code, Claude Desktop, …) do.
 
 #![allow(dead_code, clippy::needless_pass_by_value)]
 
@@ -28,7 +28,7 @@ impl Client {
     pub fn start(args: &[&str], app_dir: &Path, cwd: &Path) -> Client {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_arrangia"));
         cmd.args(args).current_dir(cwd);
-        Self::spawn(cmd, app_dir, "test-client")
+        Self::spawn(cmd, app_dir, "arrangia-test")
     }
 
     /// Starts `cmd` (an `arrangia mcp` invocation) and initialises as

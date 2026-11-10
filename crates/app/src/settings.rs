@@ -92,7 +92,7 @@ pub struct Settings {
     /// fonts). Off by default; never used by tests, CLI or CI.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub system_font_fallback: bool,
-    /// The GUI serves MCP on 127.0.0.1 so Claude can connect (ADR 0015).
+    /// The GUI serves MCP on 127.0.0.1 so AI assistants can connect (ADR 0015).
     /// On by default.
     #[serde(skip_serializing_if = "is_true")]
     pub mcp_enabled: bool,

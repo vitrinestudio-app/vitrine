@@ -82,7 +82,7 @@ fn proxy_forwards_to_the_hosted_session() {
     let tools = c.request("tools/list", json!({}))["tools"].clone();
     assert!(tools.as_array().unwrap().len() > 40);
 
-    // Claude creates a project: the "GUI" opens it (event for the UI).
+    // The assistant creates a project: the "GUI" opens it (event for the UI).
     let dir = tmp.path().join("Demo");
     let s = c.call(
         "project_create",
@@ -110,14 +110,14 @@ fn proxy_forwards_to_the_hosted_session() {
                "fields": {"at": {"x": 500, "y": 560}, "width": 840}}),
     );
     assert_eq!(r["created"], json!(["promo"]));
-    assert_eq!(r["step"], "Claude: Add text");
+    assert_eq!(r["step"], "Claude Desktop: Add text");
     let history = session.history_state();
-    assert_eq!(history.undo.last().unwrap(), "Claude: Add text");
+    assert_eq!(history.undo.last().unwrap(), "Claude Desktop: Add text");
     let edited = gui.events.named(PROJECT_EDITED);
     let last = edited.last().unwrap();
     assert_eq!(
         last["actor"],
-        json!({"kind": "claude", "client": "claude-ai"})
+        json!({"kind": "assistant", "client": "claude-ai", "name": "Claude Desktop"})
     );
     assert_eq!(last["changes"]["elements"], json!(["promo"]));
 

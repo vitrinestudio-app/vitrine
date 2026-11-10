@@ -46,7 +46,7 @@ fn stepped(r: &Value, verb: &str) -> ToolOutput {
 #[tool_router(router = history_tools, vis = "pub(crate)")]
 impl ArrangiaMcp {
     #[tool(
-        description = "Undo the most recent step of the project history. The history is shared with the GUI user: check history_state first; your own steps are labelled \"Claude: …\"."
+        description = "Undo the most recent step of the project history. The history is shared with the GUI user: check history_state first; your own steps start with your client's name (e.g. \"Claude Code: …\")."
     )]
     async fn history_undo(
         &self,
@@ -72,7 +72,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Undo/redo availability and the step labels (most recent last; steps by Claude start with \"Claude: \"). External edits of the files clear the history.",
+        description = "Undo/redo availability and the step labels (most recent last; steps by an MCP client start with its name, e.g. \"Claude Code: \"). External edits of the files clear the history.",
         annotations(read_only_hint = true)
     )]
     async fn history_state(

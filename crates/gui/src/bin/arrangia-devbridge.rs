@@ -16,7 +16,7 @@
 //! temporary copy of `--project`, so edits never touch e.g. the test
 //! fixture), `--mcp` (also host the MCP endpoint like the GUI, with the
 //! discovery file in `<app-dir>/data/mcp.json`, so `arrangia mcp
-//! --app-dir <app-dir>` or a script can drive Claude-like edits while the
+//! --app-dir <app-dir>` or a script can drive assistant edits while the
 //! browser shows them). "Add to Claude Desktop" always writes
 //! `<app-dir>/claude_desktop_config.json` here, never the real config.
 

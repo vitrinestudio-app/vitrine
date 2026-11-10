@@ -3,7 +3,7 @@
 //!
 //! 1. A running Arrangia GUI ([`discover_gui`]: discovery file in the app
 //!    data folder, health check) → forward stdio to its in-app endpoint
-//!    ([`crate::proxy`], feature `proxy`), so Claude edits the session the
+//!    ([`crate::proxy`], feature `proxy`), so the assistant edits the session the
 //!    user sees.
 //! 2. None, and the app setting `mcp_autostart_gui` is on (default) →
 //!    start the GUI ([`launch_gui`]), wait up to [`GUI_START_TIMEOUT`] for
@@ -144,7 +144,7 @@ pub fn launch_gui(
         std::thread::sleep(Duration::from_millis(250));
     }
     Err(format!(
-        "the GUI did not offer MCP within {} s (is \"Allow Claude to connect\" off?)",
+        "the GUI did not offer MCP within {} s (is \"Allow AI assistants to connect via MCP\" off?)",
         timeout.as_secs()
     ))
 }

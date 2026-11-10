@@ -274,16 +274,16 @@ mod tests {
         let r = json!({
             "applied": true, "revision": 4,
             "changes": {"name": false, "elements": ["a"], "strings": [], "styles": false},
-            "history": {"undo": ["x", "Claude: Move a"]},
+            "history": {"undo": ["x", "Claude Code: Move a"]},
             "created": ["a"],
         });
         let s = edit_summary(&r);
         assert_eq!(
             s,
-            json!({"applied": true, "revision": 4, "step": "Claude: Move a",
+            json!({"applied": true, "revision": 4, "step": "Claude Code: Move a",
                    "created": ["a"], "changed": {"elements": ["a"]}})
         );
-        assert_eq!(edit_line(&s), "done: Claude: Move a (revision 4)");
+        assert_eq!(edit_line(&s), "done: Claude Code: Move a (revision 4)");
         let none = edit_summary(&json!({"applied": false, "revision": 4, "changes": {}}));
         assert_eq!(edit_line(&none), "nothing changed");
     }

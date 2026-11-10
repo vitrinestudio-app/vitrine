@@ -6,8 +6,8 @@
 //! [`ArrangiaMcp`] is a thin adapter over the shared application layer
 //! (`arrangia_app`): every tool calls `arrangia_app::commands`, so GUI, CLI
 //! and MCP share one behaviour (ops, edit intents, validation, revision
-//! checks, atomic saves). Edits run as `Actor::Claude` (history labels
-//! `Claude: …`). The handler holds an `Arc<AppState>`, so the same router
+//! checks, atomic saves). Edits run as `Actor::Assistant` (history
+//! labels start with the client's display name, e.g. `Claude Code: …`). The handler holds an `Arc<AppState>`, so the same router
 //! can be served
 //!
 //! - headless over stdio with its own state ([`stdio::run`], `arrangia mcp

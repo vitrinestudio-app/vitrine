@@ -1,6 +1,6 @@
 //! End-to-end tests of `arrangia mcp` (Phase 4.4): the binary runs as a
 //! subprocess and is driven over stdio with newline-delimited JSON-RPC,
-//! like Claude Code / Claude Desktop do.
+//! like MCP clients (Claude Code, Claude Desktop, …) do.
 
 // One long scripted session reads best as one test; JSON values are
 // passed by value like `json!` literals.
@@ -104,7 +104,10 @@ fn mcp_session_creates_designs_translates_and_exports() {
         json!({"kind": "device", "id": "phone-2", "fields": {"rotation": -6, "width": 380, "at": {"x": 760, "y": 1500}}}),
     );
     assert_eq!(r["created"], json!(["phone-2"]));
-    assert!(r["step"].as_str().unwrap().starts_with("Claude: "), "{r}");
+    assert!(
+        r["step"].as_str().unwrap().starts_with("Arrangia Test: "),
+        "{r}"
+    );
     let r = c.call(
         "element_add",
         json!({
@@ -128,7 +131,7 @@ fn mcp_session_creates_designs_translates_and_exports() {
         "strings_set",
         json!({"lang": "de", "values": {"promo.title": "Schneller **planen**", "home.title": "Deine App auf einen Blick"}}),
     );
-    assert_eq!(r["step"], "Claude: Set 2 de strings");
+    assert_eq!(r["step"], "Arrangia Test: Set 2 de strings");
     let missing = c.call("strings_missing", json!({"lang": "de"}));
     assert_eq!(missing["missing"], json!([]));
 
@@ -203,17 +206,17 @@ fn mcp_session_creates_designs_translates_and_exports() {
         assert!(p.is_file(), "{} missing", p.display());
     }
 
-    // History: Claude's steps are labelled; undo works.
+    // History: the assistant's steps carry its display name; undo works.
     let h = c.call("history_state", json!({}));
     let undo = h["undo"].as_array().unwrap();
     assert_ne!(undo.len(), 0);
     assert!(
         undo.iter()
-            .all(|l| l.as_str().unwrap().starts_with("Claude: ")),
+            .all(|l| l.as_str().unwrap().starts_with("Arrangia Test: ")),
         "{h}"
     );
     let r = c.call("history_undo", json!({}));
-    assert_eq!(r["step"], "Claude: Set 2 de strings");
+    assert_eq!(r["step"], "Arrangia Test: Set 2 de strings");
     let de = c.call(
         "strings_get",
         json!({"lang": "de", "keys": ["promo.title"]}),

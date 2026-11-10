@@ -211,9 +211,7 @@ fn labels() {
 #[test]
 fn actor_labels_history_and_edits_are_announced() {
     let (_tmp, s, sink) = open();
-    let claude = Actor::Claude {
-        client: "claude-code".into(),
-    };
+    let claude = Actor::assistant("claude-code", None);
     let rot =
         |deg: i32| op(json!({"op": "update_element", "id": "band", "patch": {"rotation": deg}}));
 
@@ -232,7 +230,10 @@ fn actor_labels_history_and_edits_are_announced() {
         .unwrap();
     assert_eq!(
         r.history.undo,
-        ["Claude: rotate band", "Claude: update_element band"]
+        [
+            "Claude Code: rotate band",
+            "Claude Code: update_element band"
+        ]
     );
     // Default: the user, no prefix.
     let r = s.apply_ops(vec![rot(7)], None).unwrap();
@@ -244,9 +245,9 @@ fn actor_labels_history_and_edits_are_announced() {
     assert_eq!(ev[0]["action"], "apply");
     assert_eq!(
         ev[0]["actor"],
-        json!({"kind": "claude", "client": "claude-code"})
+        json!({"kind": "assistant", "client": "claude-code", "name": "Claude Code"})
     );
-    assert_eq!(ev[0]["label"], "Claude: rotate band");
+    assert_eq!(ev[0]["label"], "Claude Code: rotate band");
     assert_eq!(ev[0]["changes"]["elements"], json!(["band"]));
     assert_eq!(ev[2]["actor"], json!({"kind": "user"}));
     assert_eq!(ev[3]["action"], "undo");

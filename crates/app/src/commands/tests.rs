@@ -873,15 +873,13 @@ fn view_set_and_get() {
 }
 
 #[test]
-fn dispatch_as_labels_steps_by_claude() {
+fn dispatch_as_labels_steps_by_an_assistant() {
     let f = fixture();
     open(&f);
-    let claude = crate::Actor::Claude {
-        client: "test".into(),
-    };
+    let assistant = crate::Actor::assistant("test-client", None);
     let r = dispatch_as(
         &f.app,
-        claude,
+        assistant,
         "apply_ops",
         json!({"ops": [{"op": "set_name", "name": "Grove"}], "label": "Rename"}),
     )
@@ -889,11 +887,12 @@ fn dispatch_as_labels_steps_by_claude() {
     let Reply::Json(r) = r else {
         panic!("apply_ops returned an image")
     };
-    assert_eq!(r["history"]["undo"][0], "Claude: Rename");
+    assert_eq!(r["history"]["undo"][0], "Test Client: Rename");
     // Back to the user outside the scope.
     let r = call(&f.app, "undo", Value::Null);
-    assert_eq!(r["history"]["redo"][0], "Claude: Rename");
+    assert_eq!(r["history"]["redo"][0], "Test Client: Rename");
     let ev = f.sink.named(crate::events::PROJECT_EDITED);
-    assert_eq!(ev[0]["actor"]["kind"], "claude");
+    assert_eq!(ev[0]["actor"]["kind"], "assistant");
+    assert_eq!(ev[0]["actor"]["name"], "Test Client");
     assert_eq!(ev[1]["actor"]["kind"], "user");
 }

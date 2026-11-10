@@ -9,11 +9,11 @@
 //! Usage: `arrangia-gui [PROJECT_DIR]` opens that project at start (else
 //! the start screen).
 //!
-//! The app hosts the MCP endpoint for Claude (ADR 0015,
+//! The app hosts the MCP endpoint for AI assistants (ADR 0015,
 //! `arrangia_mcp::host`): on `127.0.0.1`, against this app's live state,
 //! with the discovery file `<app data>/mcp.json` for `arrangia mcp`
-//! (removed again on exit). The setting "Allow Claude to connect" switches
-//! it.
+//! (removed again on exit). The setting "Allow AI assistants to connect
+//! via MCP" switches it.
 //!
 //! JS calls them as `invoke(name, { args: {...} })` (see `ui/js/transport.js`);
 //! image commands answer with an `ArrayBuffer` (header + PNG/RGBA, see

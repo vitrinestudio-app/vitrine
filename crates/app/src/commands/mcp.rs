@@ -1,5 +1,6 @@
-//! The GUI-hosted MCP endpoint (ADR 0015): status, on/off, "Add to Claude
-//! Desktop", the Claude Code commands.
+//! The GUI-hosted MCP endpoint (ADR 0015): status, on/off, how any MCP
+//! client connects, plus the Claude-specific setup ("Add to Claude
+//! Desktop", the Claude Code commands).
 
 use std::path::PathBuf;
 
@@ -23,6 +24,17 @@ pub struct ClaudeCodeCommands {
     pub http: Option<String>,
 }
 
+/// How any MCP client connects (shown neutrally in the settings).
+#[derive(Debug, Clone, Serialize)]
+pub struct GenericConnect {
+    /// The stdio command: `<cli> mcp` (proxies to this app; always works).
+    pub stdio: String,
+    /// `Authorization: Bearer <token>` for the HTTP endpoint (`url` in the
+    /// status) while it runs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_header: Option<String>,
+}
+
 /// Answer of `mcp_status`.
 #[derive(Debug, Clone, Serialize)]
 pub struct McpStatusReply {
@@ -34,9 +46,12 @@ pub struct McpStatusReply {
     /// Bearer token of the running endpoint.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
-    /// The `arrangia` CLI that Claude Desktop / Claude Code start.
+    /// The `arrangia` CLI that stdio clients (Claude Desktop, Claude Code,
+    /// others) start.
     pub cli_path: PathBuf,
     pub cli_exists: bool,
+    /// For any MCP client.
+    pub generic: GenericConnect,
     pub claude_code: ClaudeCodeCommands,
 }
 
@@ -56,10 +71,14 @@ pub fn mcp_status(app: &AppState, _: NoArgs) -> CmdResult<McpStatusReply> {
     let status = app.mcp_status();
     let token = app.mcp_token().filter(|_| status.running);
     let cli = claude_desktop::cli_path();
-    let stdio = format!(
-        "claude mcp add arrangia -- {} mcp",
-        shell_quote(&cli.to_string_lossy())
-    );
+    let generic = GenericConnect {
+        stdio: format!("{} mcp", shell_quote(&cli.to_string_lossy())),
+        http_header: token
+            .as_ref()
+            .filter(|_| status.url.is_some())
+            .map(|t| format!("Authorization: Bearer {t}")),
+    };
+    let stdio = format!("claude mcp add arrangia -- {}", generic.stdio);
     let http = match (&status.url, &token) {
         (Some(url), Some(token)) => Some(format!(
             "claude mcp add --transport http arrangia {url} --header \"Authorization: Bearer {token}\""
@@ -71,6 +90,7 @@ pub fn mcp_status(app: &AppState, _: NoArgs) -> CmdResult<McpStatusReply> {
         token,
         cli_exists: cli.is_file(),
         cli_path: cli,
+        generic,
         claude_code: ClaudeCodeCommands { stdio, http },
         status,
     })
@@ -146,6 +166,7 @@ mod tests {
 
         let s = mcp_status(&app, NoArgs {}).unwrap();
         assert!(!s.status.running && s.token.is_none() && s.claude_code.http.is_none());
+        assert!(s.generic.http_header.is_none() && s.generic.stdio.ends_with(" mcp"));
         assert!(
             s.claude_code
                 .stdio
@@ -159,12 +180,16 @@ mod tests {
             s.running = true;
             s.url = Some("http://127.0.0.1:4100/mcp".into());
             s.port = Some(4100);
-            s.session_opened("claude-ai");
+            s.session_opened("claude-ai", None);
         });
         let ev = events.named(MCP_STATUS);
         assert_eq!(ev.last().unwrap()["clients"][0]["name"], "claude-ai");
         assert!(ev.last().unwrap().get("token").is_none());
         let s = mcp_status(&app, NoArgs {}).unwrap();
+        assert_eq!(
+            s.generic.http_header.as_deref(),
+            Some("Authorization: Bearer tok")
+        );
         assert_eq!(
             s.claude_code.http.as_deref(),
             Some(

@@ -5,7 +5,7 @@
 //! export|import` (translation exchange), `import screenshots`
 //! (fastlane / Arrangia / flat folders → `screenshots/`), `frames`
 //! (import/list/remove vendor device frames, app-wide) and `mcp` (MCP
-//! server over stdio for Claude; `arrangia-mcp`). The CLI only
+//! server over stdio for AI assistants; `arrangia-mcp`). The CLI only
 //! formats what `arrangia-core` and `arrangia-render` compute; it never
 //! edits project fields directly.
 //!

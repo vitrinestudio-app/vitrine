@@ -16,7 +16,7 @@
 //! pid}`, used by `arrangia mcp` to tell a live GUI from a stale discovery
 //! file). The discovery file ([`crate::discovery`]) is written on start
 //! and removed on stop. The host registers itself as the app's
-//! [`McpControl`], so the setting "Allow Claude to connect" switches it
+//! [`McpControl`], so the setting "Allow AI assistants to connect via MCP" switches it
 //! live, and reports into the app's MCP status (`mcp-status` events).
 
 use std::convert::Infallible;

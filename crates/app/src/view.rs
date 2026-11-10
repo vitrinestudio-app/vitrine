@@ -1,8 +1,8 @@
 //! What the user is looking at in the GUI (ADR 0013): strip, target,
 //! language, variant and selection. The GUI pushes it into the session
 //! (`view_set`, debounced) whenever its view context or selection changes;
-//! other front ends (MCP: `view_get`, `selection_get`) read it, so Claude
-//! can work on what the user sees ("make this bigger").
+//! other front ends (MCP: `view_get`, `selection_get`) read it, so an
+//! assistant can work on what the user sees ("make this bigger").
 
 use serde::{Deserialize, Deserializer, Serialize};
 

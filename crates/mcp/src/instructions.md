@@ -29,6 +29,6 @@ Workflow
 6. validate (errors must be 0 before export; missing screenshots are warnings while editing with preview: true).
 7. export {targets?, langs?} writes <project>/export/… and returns the file list.
 - Translating: strings_missing {lang} → strings_set {lang, values: {key: text}} (keep the markup) → render_preview with that lang.
-- Mistakes: history_undo (history_state shows the labels; your steps start with "Claude:"). The user may edit in the GUI at the same time: re-read project_summary when an id is unknown.
+- Mistakes: history_undo (history_state shows the labels; your steps start with your client's name, e.g. "Claude Code:"). The user may edit in the GUI at the same time: re-read project_summary when an id is unknown.
 
 Safety: tools never use the network; they only write inside the project folder and to paths you pass explicitly (export folder, strings_export path).

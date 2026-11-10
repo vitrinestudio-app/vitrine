@@ -29,6 +29,9 @@ pub trait McpControl: Send + Sync {
 pub struct McpClient {
     /// `clientInfo.name`, e.g. `claude-ai` (Claude Desktop), `claude-code`.
     pub name: String,
+    /// Display name ([`crate::client_display_name`]: known clients,
+    /// `clientInfo.title`, or the prettified name).
+    pub display_name: String,
     /// Open MCP sessions of this client.
     pub sessions: u32,
     /// Unix time (ms) of the last request.
@@ -84,22 +87,27 @@ impl McpStatus {
         }
         self.clients.push(McpClient {
             name: name.to_owned(),
+            display_name: crate::client_display_name(name, None),
             ..McpClient::default()
         });
         self.clients.last_mut().expect("just pushed")
     }
 
-    fn touch(&mut self, name: &str) -> &mut McpClient {
+    fn touch(&mut self, name: &str, title: Option<&str>) -> &mut McpClient {
         let now = now_ms();
         self.last_activity = Some(now);
         let c = self.client(name);
         c.last_seen = now;
+        if title.is_some_and(|t| !t.trim().is_empty()) {
+            c.display_name = crate::client_display_name(name, title);
+        }
         c
     }
 
-    /// A client opened an MCP session (`initialize`).
-    pub fn session_opened(&mut self, name: &str) {
-        self.touch(name).sessions += 1;
+    /// A client (`clientInfo.name`, optional `clientInfo.title`) opened an
+    /// MCP session (`initialize`).
+    pub fn session_opened(&mut self, name: &str, title: Option<&str>) {
+        self.touch(name, title).sessions += 1;
     }
 
     /// A session of `name` ended (closed or expired).
@@ -109,8 +117,8 @@ impl McpStatus {
     }
 
     /// `name` called `tool`.
-    pub fn tool_called(&mut self, name: &str, tool: &str) {
-        let c = self.touch(name);
+    pub fn tool_called(&mut self, name: &str, title: Option<&str>, tool: &str) {
+        let c = self.touch(name, title);
         c.calls += 1;
         c.last_tool = Some(tool.to_owned());
     }
@@ -140,12 +148,15 @@ mod tests {
     #[test]
     fn clients_connect_and_expire() {
         let mut s = McpStatus::default();
-        s.session_opened("claude-ai");
-        s.tool_called("claude-ai", "element_add");
-        s.tool_called("claude-code", "project_summary");
+        s.session_opened("claude-ai", None);
+        s.tool_called("claude-ai", None, "element_add");
+        s.tool_called("claude-code", None, "project_summary");
+        s.tool_called("some-client", Some("Some Editor"), "view_get");
         let now = now_ms();
         s.refresh(now);
-        assert_eq!(s.clients.len(), 2);
+        assert_eq!(s.clients.len(), 3);
+        assert_eq!(s.clients[0].display_name, "Claude Desktop");
+        assert_eq!(s.clients[2].display_name, "Some Editor");
         assert!(s.clients.iter().all(|c| c.connected));
         assert_eq!(s.clients[0].calls, 1);
         assert_eq!(s.clients[0].last_tool.as_deref(), Some("element_add"));

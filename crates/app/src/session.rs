@@ -9,7 +9,7 @@
 //!   [`ErrorCode::Conflict`]; other save errors leave everything unchanged.
 //!   Every applied, undone or redone step emits `project-edited`
 //!   ([`ProjectEdited`]: actor, label, changed ids), so front ends can show
-//!   who changed what (e.g. highlight Claude's changes).
+//!   who changed what (e.g. highlight an assistant's changes).
 //! - The watcher reloads `project.yaml`/`i18n` on external changes. Our own
 //!   writes are recognised because the folder then loads to exactly the
 //!   in-memory project. Screenshot/asset changes invalidate previews that

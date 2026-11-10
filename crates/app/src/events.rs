@@ -8,7 +8,7 @@
 //! | `project-error` | `{message}`: the folder changed but does not load |
 //! | `export-progress` | `{file, done, total}` per exported file |
 //! | `export-finished` | `{cancelled, written, errors}` |
-//! | `project-opened` | `{dir, name, actor}`: a project was opened (also by Claude over MCP) |
+//! | `project-opened` | `{dir, name, actor}`: a project was opened (also by an assistant over MCP) |
 //! | `project-closed` | `{actor}` |
 //! | `mcp-status` | [`crate::mcp::McpStatus`] of the GUI-hosted MCP endpoint |
 

@@ -3,7 +3,7 @@
 //! MCP clients (Claude Code, Claude Desktop) start this command themselves
 //! and speak JSON-RPC over stdin/stdout, so nothing else may be printed to
 //! stdout. With a running Arrangia app it forwards everything to the app's
-//! in-app endpoint (Claude edits what the user sees, ADR 0015); without one
+//! in-app endpoint (the assistant edits what the user sees, ADR 0015); without one
 //! it starts the app (setting `mcp_autostart_gui`, default on) or works
 //! headless with its own session. `--headless` forces the latter.
 

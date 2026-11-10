@@ -5,10 +5,11 @@
 //! same tool router can be served over stdio or Streamable HTTP. Every tool
 //! call
 //!
-//! 1. reads the MCP client's name (`clientInfo.name`) for the actor,
+//! 1. reads the MCP client's `clientInfo` (name, title) for the actor,
 //! 2. runs on the blocking pool (`spawn_blocking`) inside
-//!    `Actor::scope(Actor::Claude { client }, …)`, so history labels start
-//!    with `Claude: ` and `project-edited` events name Claude,
+//!    `Actor::scope(Actor::Assistant { client, name }, …)`, so history
+//!    labels start with the client's display name (`Claude Desktop: …`)
+//!    and `project-edited` events name the assistant,
 //! 3. first syncs with the disk (reload when the files changed; a
 //!    `project.yaml` that does not load is reported as error `load`),
 //! 4. then calls `arrangia_app::commands` – never the model directly.
@@ -68,7 +69,7 @@ struct SessionGuard {
 }
 
 impl SessionGuard {
-    fn opened(&self, name: &str) {
+    fn opened(&self, name: &str, title: Option<&str>) {
         let mut client = self
             .client
             .lock()
@@ -76,7 +77,8 @@ impl SessionGuard {
         if client.is_none() {
             *client = Some(name.to_owned());
             drop(client);
-            self.app.update_mcp_status(|s| s.session_opened(name));
+            self.app
+                .update_mcp_status(|s| s.session_opened(name, title));
         }
     }
 }
@@ -102,12 +104,16 @@ impl std::fmt::Debug for ArrangiaMcp {
     }
 }
 
-/// Name of the MCP client for history labels (`claude-code`, …).
-pub fn client_name(ctx: &RequestContext<RoleServer>) -> String {
-    ctx.client_info()
-        .map(|i| i.name)
-        .filter(|n| !n.trim().is_empty())
-        .unwrap_or_else(|| "mcp".to_owned())
+/// The MCP client's `clientInfo.name` (`claude-code`, …; `mcp` when
+/// empty) and `clientInfo.title`.
+pub fn client_info(ctx: &RequestContext<RoleServer>) -> (String, Option<String>) {
+    let info = ctx.client_info();
+    let name = info
+        .as_ref()
+        .map(|i| i.name.trim().to_owned())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "mcp".to_owned());
+    (name, info.and_then(|i| i.title))
 }
 
 impl ArrangiaMcp {
@@ -194,9 +200,8 @@ impl ArrangiaMcp {
     where
         F: FnOnce(&AppState) -> Result<ToolOutput, CommandError> + Send + 'static,
     {
-        let actor = Actor::Claude {
-            client: client_name(ctx),
-        };
+        let (client, title) = client_info(ctx);
+        let actor = Actor::assistant(&client, title.as_deref());
         let app = self.app.clone();
         let gui = self.host == Host::Gui;
         let joined = tokio::task::spawn_blocking(move || {
@@ -302,9 +307,9 @@ impl ServerHandler for ArrangiaMcp {
     ) -> Result<CallToolResponse, ErrorData> {
         let name = request.name.clone();
         if self.host == Host::Gui {
-            let client = client_name(&context);
+            let (client, title) = client_info(&context);
             self.app
-                .update_mcp_status(|s| s.tool_called(&client, &name));
+                .update_mcp_status(|s| s.tool_called(&client, title.as_deref(), &name));
         }
         let tcc = ToolCallContext::new(self, request, context);
         let response = self.tool_router.call(tcc).await;
@@ -341,7 +346,8 @@ impl ServerHandler for ArrangiaMcp {
     ) -> Result<InitializeResult, ErrorData> {
         if let Some(guard) = &self.session {
             let name = request.client_info.name.trim();
-            guard.opened(if name.is_empty() { "mcp" } else { name });
+            let title = request.client_info.title.as_deref();
+            guard.opened(if name.is_empty() { "mcp" } else { name }, title);
         }
         context.peer.set_peer_info(request.clone());
         self.negotiate_initialize(&request)
