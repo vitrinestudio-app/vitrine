@@ -172,8 +172,8 @@ fn missing_frames_fall_back_to_parametric_with_an_info() {
         .expect("info");
     assert_eq!(d.level, arrangia_core::resolve::Level::Info);
     assert_eq!(r.issues, []);
-    // A colour that is not installed: fallback too; the vendor colour name
-    // is only an info.
+    // A colour that is not installed: the default (or first) installed
+    // colour is drawn, with an info.
     let yaml = PROJECT.replace("color: black-titanium", "color: cosmic-orange");
     let (scene, _) = render(&root, Some(index.clone()), &yaml);
     assert!(
@@ -182,12 +182,19 @@ fn missing_frames_fall_back_to_parametric_with_an_info() {
             .iter()
             .all(|d| d.level == arrangia_core::resolve::Level::Info)
     );
-    assert!(
-        scene
-            .diagnostics
-            .iter()
-            .any(|d| d.code == DiagnosticCode::ImportedFrameMissing)
-    );
+    let d = scene
+        .diagnostics
+        .iter()
+        .find(|d| d.code == DiagnosticCode::ImportedColorFallback)
+        .expect("colour info");
+    assert!(d.message.contains("cosmic-orange"), "{}", d.message);
+    let ResolvedKind::Device(dev) = &scene.elements[0].props else {
+        panic!()
+    };
+    let f = dev.imported.as_ref().expect("installed colour drawn");
+    assert_eq!(f.color, "black-titanium");
+    assert_eq!(f.colors.len(), 2);
+    assert!(f.swatch.is_some());
     // No colour: the first installed one; landscape uses the landscape PNG.
     let yaml = PROJECT
         .replace("    color: black-titanium\n", "")

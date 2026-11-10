@@ -17,6 +17,7 @@
 //! with an `imported_frame_missing` info.
 
 mod analyze;
+mod colors;
 mod package;
 mod rules;
 mod store;
@@ -25,17 +26,18 @@ pub mod synthetic;
 use serde::Serialize;
 
 pub use analyze::{
-    ALPHA_THRESHOLD, MASK_GROW, PxRect, RgbaImage, ScreenAnalysis, analyze, decode_png,
-    encode_gray_png, encode_rgba_png,
+    ALPHA_THRESHOLD, MASK_GROW, PxRect, RgbaImage, ScreenAnalysis, analyze, body_swatch,
+    decode_png, encode_gray_png, encode_rgba_png, hex_rgb,
 };
+pub use colors::{parse_hex, remap_color, set_default_frame_ops};
 pub use package::{
     Package, PackageEntry, PackageError, PackageKind, attach_error, imageinfo_has_sla,
     likely_volume,
 };
 pub use rules::{FileMatch, Pattern, Rule, Rules, normalize_name, slug, vendor_model};
 pub use store::{
-    Assignment, FrameIndex, FrameSourceIndex, FrameStore, INDEX_FILE, InstalledFrame, RemoveFilter,
-    USER_MAPPING_FILE, UserMapping, today,
+    Assignment, FrameIndex, FrameSourceIndex, FrameStore, INDEX_FILE, InstalledColor,
+    InstalledFrame, RemoveFilter, USER_MAPPING_FILE, UserMapping, today,
 };
 
 use crate::model::{Orientation, PixelSize};
@@ -211,6 +213,7 @@ pub fn import(
                 package: package_name.clone(),
                 license: license.clone(),
                 imported: date.clone(),
+                swatch: Some(hex_rgb(a.swatch)),
             };
             let mask_png = encode_gray_png(a.size.w, a.size.h, &a.mask)?;
             store.install(source, frame, &bytes, &mask_png)?;

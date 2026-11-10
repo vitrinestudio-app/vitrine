@@ -206,6 +206,11 @@ pub struct ImportedFrame {
     pub automatic: String,
     /// All installed vendor models for this model × colour × orientation.
     pub bezels: Vec<String>,
+    /// Measured housing colour of the drawn bezel (`#RRGGBB`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swatch: Option<String>,
+    /// Installed colours of this model (the inspector's swatches).
+    pub colors: Vec<crate::frame_import::InstalledColor>,
 }
 
 /// Colour of a device frame.
@@ -568,6 +573,9 @@ pub enum DiagnosticCode {
     /// An imported bezel was chosen as a fallback: the pinned `bezel` is
     /// not installed, or no installed size matches (largest used).
     ImportedBezelFallback,
+    /// The device's colour is not installed for its imported frame; the
+    /// default (or first) installed colour is drawn.
+    ImportedColorFallback,
 }
 
 /// An info or warning collected during resolve.

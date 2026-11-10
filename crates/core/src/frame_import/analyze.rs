@@ -36,6 +36,8 @@ pub struct ScreenAnalysis {
     /// anti-aliased bezel edge), a 1 px feather of 128 around it, 0 outside.
     /// Opaque parts inside the screen (island, notch) stay 0.
     pub mask: Vec<u8>,
+    /// Housing colour measured on the outer rim ([`body_swatch`]).
+    pub swatch: [u8; 3],
 }
 
 /// Pixels the mask is grown beyond the transparent region.
@@ -171,7 +173,107 @@ pub fn analyze(img: &RgbaImage) -> Result<ScreenAnalysis, String> {
         screen,
         radius,
         mask,
+        swatch: body_swatch(img, screen),
     })
+}
+
+/// Pixels darker than this (Rec. 601 luma) count as the black glass
+/// border around the screen, not as housing.
+const GLASS_LUMA: u32 = 28;
+
+/// The housing colour of a bezel, for the inspector's colour swatches.
+///
+/// A front bezel is: the transparent screen, a near-black glass border
+/// around it, and outside that the coloured metal rim (plus side buttons).
+/// Scanlines across the middle 60 % of each side run from the image edge
+/// inwards; on each, the first `band` opaque pixels after the anti-aliased
+/// edge are sampled (`band` = 40 % of the edge-to-screen distance, so the
+/// rim is covered but not much glass). Glass-dark pixels are dropped when
+/// lighter ones make up at least 1/12 of the samples (a thin rim; an
+/// all-dark bezel keeps them all), and the
+/// result is the mean of the middle half by luma (no highlights, no
+/// shadows). Uniform test bezels give exactly their colour.
+pub fn body_swatch(img: &RgbaImage, screen: PxRect) -> [u8; 3] {
+    let (w, h) = (img.width, img.height);
+    let px = |x: u32, y: u32| {
+        let i = (y as usize * w as usize + x as usize) * 4;
+        let d = &img.data[i..i + 4];
+        [d[0], d[1], d[2], d[3]]
+    };
+    let mut samples: Vec<[u8; 3]> = Vec::new();
+    let mut scan = |points: &mut dyn Iterator<Item = (u32, u32)>, depth: u32| {
+        let band = (depth * 2 / 5).clamp(2, 64);
+        let mut taken = 0;
+        let mut skipped = 0;
+        for (x, y) in points.take(depth as usize) {
+            let p = px(x, y);
+            if p[3] < 250 {
+                if taken > 0 {
+                    break;
+                }
+                continue;
+            }
+            // Skip the first opaque pixel (edge shading).
+            if skipped < 1 {
+                skipped += 1;
+                continue;
+            }
+            samples.push([p[0], p[1], p[2]]);
+            taken += 1;
+            if taken >= band {
+                break;
+            }
+        }
+    };
+    let lines = |a: u32, len: u32| {
+        let lo = a + len / 5;
+        let hi = a + len - len / 5;
+        let step = ((hi - lo) / 48).max(1);
+        (lo..hi).step_by(step as usize)
+    };
+    for y in lines(screen.y, screen.h) {
+        scan(&mut (0..screen.x).map(|x| (x, y)), screen.x);
+        let right = screen.x + screen.w;
+        scan(&mut (right..w).rev().map(|x| (x, y)), w - right);
+    }
+    for x in lines(screen.x, screen.w) {
+        scan(&mut (0..screen.y).map(|y| (x, y)), screen.y);
+        let bottom = screen.y + screen.h;
+        scan(&mut (bottom..h).rev().map(|y| (x, y)), h - bottom);
+    }
+    let luma = |p: &[u8; 3]| {
+        (299 * u32::from(p[0]) + 587 * u32::from(p[1]) + 114 * u32::from(p[2])) / 1000
+    };
+    if samples.is_empty() {
+        return [0, 0, 0];
+    }
+    let light: Vec<[u8; 3]> = samples
+        .iter()
+        .copied()
+        .filter(|p| luma(p) >= GLASS_LUMA)
+        .collect();
+    let mut pool = if light.len() * 12 >= samples.len() {
+        light
+    } else {
+        samples
+    };
+    pool.sort_by_key(luma);
+    let n = pool.len();
+    let mid = &pool[n / 4..(n - n / 4).max(n / 4 + 1)];
+    let mut sum = [0u64; 3];
+    for p in mid {
+        for c in 0..3 {
+            sum[c] += u64::from(p[c]);
+        }
+    }
+    let k = mid.len() as u64;
+    #[allow(clippy::cast_possible_truncation, reason = "a mean of u8 values")]
+    sum.map(|v| ((v + k / 2) / k) as u8)
+}
+
+/// `#RRGGBB` of an RGB colour.
+pub fn hex_rgb(c: [u8; 3]) -> String {
+    format!("#{:02X}{:02X}{:02X}", c[0], c[1], c[2])
 }
 
 /// Mean corner radius: along each corner's diagonal, the distance `d` to

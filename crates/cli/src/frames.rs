@@ -237,6 +237,8 @@ fn print_license_notice(plan: &ImportPlan) {
 }
 
 fn run_list(a: &ListArgs, store: &FrameStore) -> anyhow::Result<u8> {
+    // Stores imported before swatches existed: measure them once.
+    let _ = store.fill_swatches(&a.source);
     let index = store.index();
     let frames = index.frames(&a.source);
     match a.format {
@@ -252,9 +254,10 @@ fn run_list(a: &ListArgs, store: &FrameStore) -> anyhow::Result<u8> {
             }
             for f in frames {
                 println!(
-                    "{:<14} {:<20} {:<10} {:<20} {}×{}  screen {}×{}  {}",
+                    "{:<14} {:<20} {:<8} {:<10} {:<20} {}×{}  screen {}×{}  {}",
                     f.model,
                     f.color,
+                    f.swatch.as_deref().unwrap_or("-"),
                     orientation_name(f.orientation),
                     f.apple_model,
                     f.size.w,

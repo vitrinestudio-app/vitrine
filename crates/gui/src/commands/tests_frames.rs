@@ -48,12 +48,13 @@ fn import_list_render_and_remove() {
         Arc::new(NoDialogs),
     )
     .without_watcher();
-    call(&app, "project_open", json!({"dir": dir}));
-    let before = missing_frames(&app);
+    let app = &app;
+    call(app, "project_open", json!({"dir": dir}));
+    let before = missing_frames(app);
     assert!(before > 0);
 
     // Plan: nothing written yet.
-    let plan = call(&app, "frames_import_plan", json!({"path": pkg}));
+    let plan = call(app, "frames_import_plan", json!({"path": pkg}));
     assert_eq!(plan["applied"], false);
     assert_eq!(plan["psd"], 2);
     assert_eq!(plan["licenses"].as_array().unwrap().len(), 1);
@@ -63,7 +64,7 @@ fn import_list_render_and_remove() {
 
     // Apply, assigning the unknown file manually.
     let plan = call(
-        &app,
+        app,
         "frames_import_apply",
         json!({"path": pkg, "assignments": [
             {"name": name, "model": "iphone-notch", "color": "Space Gray", "orientation": "portrait"}
@@ -82,7 +83,7 @@ fn import_list_render_and_remove() {
             .any(|e| e["reason"] == "frames")
     );
 
-    let list = call(&app, "frames_list", Value::Null);
+    let list = call(app, "frames_list", Value::Null);
     let apple = &list["sources"][0];
     assert_eq!(apple["source"], "apple");
     assert_eq!(apple["verified"], false);
@@ -93,14 +94,14 @@ fn import_list_render_and_remove() {
             .unwrap()
             .contains(&json!("iphone-island"))
     );
-    assert!(missing_frames(&app) < before);
+    assert!(missing_frames(app) < before);
 
     // The resolved device reports the chosen bezel: the example's iPhone
     // screenshots (1206×2622) are not the 1/4-size synthetic screens, so
     // the 1320×2868 target picks by aspect (Pro Max, the higher priority)
     // and lists both models for the inspector.
     let info = call(
-        &app,
+        app,
         "element_info",
         json!({"target": "ios-iphone-69", "lang": "en", "id": "phone-plan"}),
     );
@@ -111,10 +112,12 @@ fn import_list_render_and_remove() {
         json!(["iPhone 16 Pro", "iPhone 16 Pro Max"])
     );
 
+    colour_swatches_and_remapping(app, apple, imported);
+
     // Rendering uses the frames (no asset issues).
     let file = apple["frames"][0]["file"].as_str().unwrap();
     match dispatch(
-        &app,
+        app,
         "frames_thumbnail",
         json!({"file": file, "max_edge": 64}),
     )
@@ -123,15 +126,65 @@ fn import_list_render_and_remove() {
         Reply::Image(i) => assert!(i.width <= 64 && i.height <= 64),
         Reply::Json(v) => panic!("{v}"),
     }
-    assert!(dispatch(&app, "frames_thumbnail", json!({"file": "../x.png"})).is_err());
+    assert!(dispatch(app, "frames_thumbnail", json!({"file": "../x.png"})).is_err());
 
-    let n = call(&app, "frames_remove", json!({"model": "iphone-notch"}));
+    let n = call(app, "frames_remove", json!({"model": "iphone-notch"}));
     assert_eq!(n, 1);
-    let n = call(&app, "frames_remove", json!({"bezel": "iPhone 16 Pro"}));
+    let n = call(app, "frames_remove", json!({"bezel": "iPhone 16 Pro"}));
     assert_eq!(n, 2);
-    let n = call(&app, "frames_remove", json!({}));
+    let n = call(app, "frames_remove", json!({}));
     assert_eq!(n, 5);
-    assert_eq!(missing_frames(&app), before);
+    assert_eq!(missing_frames(app), before);
+}
+
+/// Swatches of installed colours, and colours following frame switches
+/// (project default and per device), each in one undo step.
+fn colour_swatches_and_remapping(app: &AppState, apple: &Value, imported: &Value) {
+    // Measured swatches per installed colour, also on the resolved device.
+    let colors = &apple["colors"]["iphone-island"];
+    assert_eq!(colors[0]["id"], "black-titanium");
+    assert_eq!(colors[0]["swatch"], "#2C2C30");
+    assert_eq!(colors[1]["swatch"], "#BFA48F");
+    assert_eq!(imported["colors"], *colors);
+
+    // Switching the project default remaps inheriting device colours in
+    // one undo step: to parametric keeps palette colours …
+    let beds = |app: &AppState| {
+        call(
+            app,
+            "element_get",
+            json!({"target": "ios-iphone-69", "id": "phone-beds"}),
+        )["base"]["color"]
+            .clone()
+    };
+    call(app, "styles_patch", json!({"frame": "detailed"}));
+    assert_eq!(beds(app), "natural-titanium");
+    // … to imported picks the closest installed colour.
+    let r = call(app, "styles_patch", json!({"frame": "imported:apple"}));
+    assert!(r["applied"].as_bool().unwrap());
+    assert_eq!(beds(app), "desert-titanium");
+    call(app, "undo", Value::Null);
+    assert_eq!(beds(app), "natural-titanium");
+    call(app, "redo", Value::Null);
+    // An imported-only colour on a device, then the device goes parametric:
+    // the colour follows in the same patch.
+    let r = call(
+        app,
+        "element_patch",
+        json!({"target": "ios-iphone-69", "id": "phone-beds", "patch": {"frame": "stylized"}}),
+    );
+    assert!(r["applied"].as_bool().unwrap());
+    assert_eq!(beds(app), "natural-titanium");
+    call(
+        app,
+        "element_patch",
+        json!({"target": "ios-iphone-69", "id": "phone-beds", "patch": {"frame": null}}),
+    );
+    assert_eq!(beds(app), "desert-titanium");
+    // Back to parametric project-wide: colours first, then the styles.
+    call(app, "styles_patch", json!({"frame": "stylized"}));
+    assert_eq!(beds(app), "natural-titanium");
+    call(app, "styles_patch", json!({"frame": "imported:apple"}));
 }
 
 #[test]

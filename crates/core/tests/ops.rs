@@ -1619,3 +1619,63 @@ fn device_bezel_patch_and_yaml_round_trip() {
         .is_err()
     );
 }
+
+#[test]
+fn imported_frames_accept_vendor_colours() {
+    use arrangia_core::model::FrameStyle;
+    let mut p = sample();
+    let strip = p.strips[0].id.clone();
+    let phone = ElementId::new("hero-phone");
+    let update = |yaml: &str| Op::UpdateElement {
+        id: phone.clone(),
+        patch: patch(yaml),
+    };
+    // Parametric (project default `detailed`): only palette colours.
+    let err = p.clone().apply(update("{ color: burgundy }")).unwrap_err();
+    assert!(err.to_string().contains("frame: imported"), "{err}");
+    // Frame and colour in one patch: valid.
+    apply_and_undo(
+        &mut p,
+        update("{ frame: 'imported:apple', color: burgundy }"),
+    );
+    // Not a colour id.
+    let err = p.clone().apply(update("{ color: DeepBlue }")).unwrap_err();
+    assert!(err.to_string().contains("no colour variant"), "{err}");
+    // Back to parametric with the vendor colour: refused.
+    assert!(p.clone().apply(update("{ frame: detailed }")).is_err());
+    assert!(p.clone().apply(update("{ frame: ~ }")).is_err());
+    // Back to parametric with a palette colour: fine.
+    apply_and_undo(&mut p, update("{ frame: ~, color: midnight }"));
+
+    // Project default imported: the element inherits it.
+    let mut styles = p.styles.clone();
+    styles.frame = Some(FrameStyle::Imported("apple".into()));
+    apply_and_undo(
+        &mut p,
+        Op::SetStyles {
+            styles: styles.clone(),
+        },
+    );
+    p.apply(Op::SetStyles { styles }).unwrap();
+    apply_and_undo(&mut p, update("{ color: glacier }"));
+    p.apply(update("{ color: glacier }")).unwrap();
+    // Switching the project back to parametric would orphan `glacier`.
+    let mut parametric = p.styles.clone();
+    parametric.frame = None;
+    let err = p
+        .clone()
+        .apply(Op::SetStyles { styles: parametric })
+        .unwrap_err();
+    assert!(err.to_string().contains("glacier"), "{err}");
+
+    // A variant override with an imported frame and its colour.
+    let mut q = sample();
+    let set = |yaml: &str| Op::SetVariantOverride {
+        strip: strip.clone(),
+        variant: VariantId::new("tablet-landscape"),
+        element: phone.clone(),
+        patch: Some(patch(yaml)),
+    };
+    assert!(q.clone().apply(set("{ color: burgundy }")).is_err());
+    apply_and_undo(&mut q, set("{ frame: 'imported:apple', color: burgundy }"));
+}

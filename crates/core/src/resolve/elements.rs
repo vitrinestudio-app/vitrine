@@ -519,6 +519,28 @@ impl Walker<'_, '_> {
             );
             return None;
         };
+        let installed = self
+            .inp
+            .options
+            .frames
+            .map(|ix| ix.installed_colors(source, model))
+            .unwrap_or_default();
+        if let Some(c) = color
+            && c != f.color
+        {
+            d.info(
+                DiagnosticCode::ImportedColorFallback,
+                format!(
+                    "colour `{c}` is not installed for the imported `{source}` frame of `{model}`; using `{}` (installed: {})",
+                    f.color_label,
+                    installed
+                        .iter()
+                        .map(|c| c.label.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            );
+        }
         if let Some(pin) = pin
             && choice != BezelChoice::Pinned
         {
@@ -559,6 +581,8 @@ impl Walker<'_, '_> {
             choice,
             automatic: auto.map_or_else(String::new, |(a, _)| a.apple_model.clone()),
             bezels,
+            swatch: f.swatch.clone(),
+            colors: installed,
         })
     }
 

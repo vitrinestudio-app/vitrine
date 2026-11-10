@@ -239,7 +239,6 @@ fn apply_writes_the_store_and_index() {
             ("desert-titanium".to_owned(), "Desert Titanium".to_owned())
         ]
     );
-
     // A second import replaces.
     let again = import(&store, &pkg, apple(), false).unwrap();
     assert!(again.installs().all(|i| i.action == Action::Replace));
@@ -371,6 +370,7 @@ fn frame(apple_model: &str, screen: (u32, u32), priority: i32) -> InstalledFrame
         package: String::new(),
         license: None,
         imported: String::new(),
+        swatch: None,
     }
 }
 
@@ -543,4 +543,120 @@ fn verified_rules_need_no_warning() {
     assert_eq!(plan.installs().count(), 5);
     assert!(!plan.unverified_rules);
     assert!(plan.items.iter().all(|i| i.matched.verified));
+}
+
+/// A bezel like Apple's: coloured metal rim (`rim` px, with a lighter
+/// highlight line and a darker shadow line), a near-black glass border, a
+/// transparent screen.
+fn rimmed_bezel(rim_color: [u8; 3], rim: u32) -> (RgbaImage, PxRect) {
+    let (w, h, m) = (300u32, 600u32, 60u32);
+    let screen = PxRect {
+        x: m,
+        y: m,
+        w: w - 2 * m,
+        h: h - 2 * m,
+    };
+    let mut data = Vec::with_capacity((w * h * 4) as usize);
+    for y in 0..h {
+        for x in 0..w {
+            let edge = x.min(y).min(w - 1 - x).min(h - 1 - y);
+            let px = if edge >= m {
+                [0, 0, 0, 0]
+            } else if edge == 0 {
+                [rim_color[0] / 2, rim_color[1] / 2, rim_color[2] / 2, 140]
+            } else if edge == 1 {
+                [255, 255, 255, 255]
+            } else if edge == rim - 1 {
+                [0, 0, 0, 255]
+            } else if edge < rim {
+                [rim_color[0], rim_color[1], rim_color[2], 255]
+            } else {
+                [6, 6, 8, 255]
+            };
+            data.extend_from_slice(&px);
+        }
+    }
+    (
+        RgbaImage {
+            width: w,
+            height: h,
+            data,
+        },
+        screen,
+    )
+}
+
+#[test]
+fn swatch_is_the_rim_colour_not_the_glass() {
+    for (rgb, rim) in [
+        ([0x2E, 0x2E, 0x30], 14),
+        ([0x5C, 0x1E, 0x2B], 10),
+        ([0xC4, 0xD5, 0xE2], 18),
+        ([0xDA, 0xDB, 0xDD], 6),
+    ] {
+        let (img, screen) = rimmed_bezel(rgb, rim);
+        let got = body_swatch(&img, screen);
+        let off = (0..3).map(|i| got[i].abs_diff(rgb[i])).max().unwrap();
+        assert!(off <= 3, "{rgb:?} rim {rim}: got {got:?}");
+        assert_eq!(analyze(&img).unwrap().swatch, got);
+    }
+    // An all-dark bezel (rim as dark as the glass) still gives a dark colour.
+    let (img, screen) = rimmed_bezel([12, 12, 14], 10);
+    let got = body_swatch(&img, screen);
+    assert!(got.iter().all(|&c| c < 20), "{got:?}");
+}
+
+#[test]
+fn swatches_are_measured_and_filled_in() {
+    let (dir, _) = package_dir();
+    let store_dir = tempfile::tempdir().unwrap();
+    let store = FrameStore::new(store_dir.path().join("frames"));
+    let pkg = Package::open(dir.path()).unwrap();
+    import(&store, &pkg, apple(), true).unwrap();
+    let root = store_dir.path().join("frames").join("apple");
+    let index = store.index();
+    let yaml = std::fs::read_to_string(root.join(INDEX_FILE)).unwrap();
+    // Swatches measured at import (uniform synthetic bezels: their colour).
+    let colors = index.installed_colors("apple", "iphone-island");
+    assert_eq!(colors[0].swatch.as_deref(), Some("#2C2C30"));
+    assert_eq!(colors[1].swatch.as_deref(), Some("#BFA48F"));
+    assert!(
+        yaml.contains("swatch: '#2C2C30'") || yaml.contains("swatch: \"#2C2C30\""),
+        "{yaml}"
+    );
+    // An unknown colour falls back like no colour.
+    let fb = index.candidates(
+        "apple",
+        "iphone-island",
+        Some("cosmic-orange"),
+        Some("desert-titanium"),
+        Orientation::Portrait,
+    );
+    assert!(fb.iter().all(|f| f.color == "desert-titanium") && !fb.is_empty());
+
+    // Stores without swatches get them filled in.
+    let path = root.join(INDEX_FILE);
+    let stripped: String = std::fs::read_to_string(&path)
+        .unwrap()
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("swatch:"))
+        .fold(String::new(), |mut out, l| {
+            out.push_str(l);
+            out.push('\n');
+            out
+        });
+    std::fs::write(&path, stripped).unwrap();
+    assert!(
+        store.index().installed_colors("apple", "iphone-island")[0]
+            .swatch
+            .is_none()
+    );
+    assert_eq!(store.fill_swatches("apple").unwrap(), 7);
+    assert_eq!(store.fill_swatches("apple").unwrap(), 0);
+    assert_eq!(
+        store.index().installed_colors("apple", "iphone-island")[0]
+            .swatch
+            .as_deref(),
+        Some("#2C2C30")
+    );
 }

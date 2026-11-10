@@ -41,7 +41,7 @@ pub use overlay::{
 use crate::geometry::{Rect, Vec2};
 use crate::model::fmt::double_option;
 use crate::model::{
-    Element, ElementId, ElementKind, ElementKindTag, ElementPatch, GroupProps,
+    Element, ElementId, ElementKind, ElementKindTag, ElementPatch, FrameStyle, GroupProps,
     LANG_OVERRIDE_FIELDS, Lang, Point, Project, Strip, StripId, Target, TextBox, VariantId,
 };
 use crate::ops::{Op, OpError};
@@ -1394,16 +1394,47 @@ impl<'a> Editor<'a> {
     /// given (`at` in home-page lu, `rotation` of the element itself); a
     /// patch that changes nothing gives no ops. The patched element must be
     /// valid for its kind (e.g. no `model` on a text).
+    ///
+    /// A device whose effective frame source changes (`frame` set, `color`
+    /// not) gets the closest colour of the new source in the same patch
+    /// ([`crate::frame_import::remap_color`]: `black-titanium` → `black`
+    /// for Apple's bezels, `burgundy` → `black-titanium` back), or no
+    /// colour (the default) when nothing fits.
     pub fn patch(&self, id: &str, patch: &ElementPatch) -> Result<Vec<Op>, EditError> {
         let e = self.effective(id)?;
         self.check_lang_fields(id, patch)?;
+        let mut patch = patch.clone();
+        if let (Some(frame), None, ElementKind::Device(d)) = (&patch.frame, &patch.color, &e.kind) {
+            let default = self
+                .project
+                .styles
+                .frame
+                .clone()
+                .unwrap_or(FrameStyle::Detailed);
+            let old = d.frame.clone().unwrap_or_else(|| default.clone());
+            let new = frame.clone().unwrap_or(default);
+            let model = match &patch.model {
+                Some(Some(m)) => m.as_str(),
+                _ => d.model.as_str(),
+            };
+            if old != new
+                && let Some(color) = crate::frame_import::remap_color(
+                    model,
+                    d.color.as_deref(),
+                    &new,
+                    self.options.frames,
+                )
+            {
+                patch.color = Some(color);
+            }
+        }
         let (patched, _) = e
-            .patched(patch)
+            .patched(&patch)
             .map_err(|err| EditError::Invalid(format!("element `{id}`: {err}")))?;
         if patched == e {
             return Ok(Vec::new());
         }
-        Ok(self.write(&e.id, patch.clone()))
+        Ok(self.write(&e.id, patch))
     }
 
     /// Move element `id` to position `index` of group `parent`'s children

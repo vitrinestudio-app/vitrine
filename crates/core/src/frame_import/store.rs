@@ -65,6 +65,11 @@ pub struct InstalledFrame {
     pub license: Option<String>,
     /// Import date (`YYYY-MM-DD`, UTC).
     pub imported: String,
+    /// Housing colour `#RRGGBB` measured from the bezel at import (the
+    /// inspector's swatch); filled in later for older stores
+    /// ([`FrameStore::fill_swatches`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub swatch: Option<String>,
 }
 
 #[allow(
@@ -106,6 +111,18 @@ impl InstalledFrame {
     pub fn screen_area(&self) -> u64 {
         u64::from(self.screen.w) * u64::from(self.screen.h)
     }
+}
+
+/// An installed colour of one model ([`FrameIndex::installed_colors`]).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct InstalledColor {
+    /// Colour id (`burgundy`).
+    pub id: String,
+    /// As the vendor writes it (`Burgundy`).
+    pub label: String,
+    /// Measured housing colour `#RRGGBB` (see [`super::analyze`]).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swatch: Option<String>,
 }
 
 /// `<source>/index.yaml`.
@@ -214,8 +231,9 @@ impl FrameIndex {
     }
 
     /// All installed bezels (vendor models) for `model` × `color` ×
-    /// `orientation`, in index order. Without a colour: `default_color` if
-    /// installed, else the first installed colour.
+    /// `orientation`, in index order. A colour that is not installed (or
+    /// none) gives `default_color` if installed, else the first installed
+    /// colour ([`Self::effective_color`]).
     pub fn candidates(
         &self,
         source: &str,
@@ -229,8 +247,10 @@ impl FrameIndex {
             .iter()
             .filter(|f| f.model == model && f.orientation == orientation)
             .collect();
+        let has = |c: &str| all.iter().any(|f| f.color == c);
         let color = color
-            .or_else(|| default_color.filter(|d| all.iter().any(|f| f.color == *d)))
+            .filter(|c| has(c))
+            .or_else(|| default_color.filter(|d| has(d)))
             .or_else(|| all.first().map(|f| f.color.as_str()));
         let Some(color) = color else {
             return Vec::new();
@@ -252,16 +272,34 @@ impl FrameIndex {
         super::select_bezel(&c, None, None, None).map(|(f, _)| f)
     }
 
-    /// Installed colours of `model` (any orientation), sorted, unique.
+    /// Installed colours of `model` (any orientation), sorted, unique:
+    /// `(id, label)`.
     pub fn colors(&self, source: &str, model: &str) -> Vec<(String, String)> {
-        let mut out: Vec<(String, String)> = self
-            .frames(source)
-            .iter()
-            .filter(|f| f.model == model)
-            .map(|f| (f.color.clone(), f.color_label.clone()))
-            .collect();
-        out.sort();
-        out.dedup_by(|a, b| a.0 == b.0);
+        self.installed_colors(source, model)
+            .into_iter()
+            .map(|c| (c.id, c.label))
+            .collect()
+    }
+
+    /// Installed colours of `model` with their measured swatch (portrait
+    /// bezels preferred), sorted by id.
+    pub fn installed_colors(&self, source: &str, model: &str) -> Vec<InstalledColor> {
+        let mut out: Vec<InstalledColor> = Vec::new();
+        for f in self.frames(source).iter().filter(|f| f.model == model) {
+            match out.iter_mut().find(|c| c.id == f.color) {
+                Some(c) => {
+                    if c.swatch.is_none() || f.orientation == Orientation::Portrait {
+                        c.swatch = f.swatch.clone().or(c.swatch.take());
+                    }
+                }
+                None => out.push(InstalledColor {
+                    id: f.color.clone(),
+                    label: f.color_label.clone(),
+                    swatch: f.swatch.clone(),
+                }),
+            }
+        }
+        out.sort_by(|a, b| a.id.cmp(&b.id));
         out
     }
 
@@ -424,6 +462,43 @@ impl FrameStore {
             self.save_index(source, &index)?;
         }
         Ok(index)
+    }
+
+    /// Measures the housing colour of frames recorded without one (stores
+    /// imported before swatches existed) and saves the index; returns how
+    /// many were filled. Unreadable files are left without a swatch.
+    pub fn fill_swatches(&self, source: &str) -> Result<usize, String> {
+        let mut index = self.source_index(source)?;
+        let mut filled = 0;
+        for f in index.frames.iter_mut().filter(|f| f.swatch.is_none()) {
+            let Ok(bytes) = fs::read(self.abs(source, &f.file)) else {
+                continue;
+            };
+            if let Ok(img) = super::analyze::decode_png(&bytes) {
+                let screen = f.screen;
+                if screen.x + screen.w <= img.width && screen.y + screen.h <= img.height {
+                    f.swatch = Some(super::analyze::hex_rgb(super::analyze::body_swatch(
+                        &img, screen,
+                    )));
+                    filled += 1;
+                }
+            }
+        }
+        if filled > 0 {
+            self.save_index(source, &index)?;
+        }
+        Ok(filled)
+    }
+
+    /// [`Self::fill_swatches`] for every source folder of the store.
+    pub fn fill_all_swatches(&self) -> usize {
+        let Ok(rd) = fs::read_dir(&self.root) else {
+            return 0;
+        };
+        rd.flatten()
+            .filter(|e| e.path().join(INDEX_FILE).is_file())
+            .filter_map(|e| self.fill_swatches(&e.file_name().to_string_lossy()).ok())
+            .sum()
     }
 
     /// Removes frames of `source` matching the filters (`None` = any;

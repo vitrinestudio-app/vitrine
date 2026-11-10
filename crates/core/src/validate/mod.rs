@@ -101,6 +101,9 @@ finding_codes! {
     /// The pinned `bezel` is not installed, or no installed bezel size
     /// matches the target / screenshot (a fallback is used).
     ImportedBezelFallback = "imported_bezel_fallback",
+    /// The colour is not installed for the imported frame; another
+    /// installed colour is drawn.
+    ImportedColorFallback = "imported_color_fallback",
     UnsupportedOrientation = "unsupported_orientation",
     /// Unknown `@colour` (rendered magenta).
     UnknownColor = "unknown_color",

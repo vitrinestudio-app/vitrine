@@ -28,9 +28,9 @@ pub use patch::{StripPatch, TargetPatch};
 
 use crate::catalog;
 use crate::model::{
-    ColorRef, DeviceProps, Element, ElementId, ElementKind, ElementPatch, ImportSettings, Lang,
-    Languages, Project, Region, StoreSlot, StringKey, Strip, StripId, StyleKind, Styles, Target,
-    TargetId, Variant, VariantId, is_valid_id,
+    ColorRef, DeviceProps, Element, ElementId, ElementKind, ElementPatch, FrameStyle,
+    ImportSettings, Lang, Languages, Project, Region, StoreSlot, StringKey, Strip, StripId,
+    StyleKind, Styles, Target, TargetId, Variant, VariantId, is_valid_id,
 };
 
 /// Overrides of removed elements, by variant, so that removal can be undone.
@@ -837,7 +837,7 @@ impl Project {
             check_color(c, styles)?;
         }
         if let ElementKind::Device(d) = &e.kind {
-            check_device(d)?;
+            check_device(d, imported_frame_context(strip, e, d, styles))?;
         }
         if let Some(s) = e.text_style()
             && !styles.text.contains_key(s)
@@ -964,7 +964,7 @@ impl Project {
             let mut result = Ok(());
             strip.walk_elements(&mut |e| {
                 if result.is_ok() {
-                    result = Self::check_element_style_refs(e, styles);
+                    result = Self::check_element_style_refs(strip, e, styles);
                 }
             });
             result?;
@@ -972,21 +972,39 @@ impl Project {
         Ok(())
     }
 
-    fn check_element_style_refs(e: &Element, styles: &Styles) -> Result<(), OpError> {
+    fn check_element_style_refs(
+        strip: &Strip,
+        e: &Element,
+        styles: &Styles,
+    ) -> Result<(), OpError> {
         for (_, patched) in e.lang_variants() {
             if let Ok(p) = patched {
-                Self::check_element_style_refs_own(&p, styles)?;
+                Self::check_element_style_refs_own(strip, &p, styles)?;
             }
         }
-        Self::check_element_style_refs_own(e, styles)
+        Self::check_element_style_refs_own(strip, e, styles)?;
+        // Variant overrides against the new styles (e.g. a device colour of
+        // an imported frame when the project default changes).
+        for v in strip.variants.values() {
+            if let Some(patch) = v.overrides.get(&e.id)
+                && let Ok((patched, _)) = e.patched(patch)
+            {
+                Self::check_element_style_refs_own(strip, &patched, styles)?;
+            }
+        }
+        Ok(())
     }
 
-    fn check_element_style_refs_own(e: &Element, styles: &Styles) -> Result<(), OpError> {
+    fn check_element_style_refs_own(
+        strip: &Strip,
+        e: &Element,
+        styles: &Styles,
+    ) -> Result<(), OpError> {
         for c in e.color_refs() {
             check_color(c, styles)?;
         }
         if let ElementKind::Device(d) = &e.kind {
-            check_device(d)?;
+            check_device(d, imported_frame_context(strip, e, d, styles))?;
         }
         if let Some(s) = e.text_style()
             && !styles.text.contains_key(s)
@@ -1085,20 +1103,49 @@ fn check_region(t: &Target, strip: &Strip) -> Result<(), OpError> {
     Ok(())
 }
 
-/// Device model and colour variant must exist in the catalog.
-fn check_device(d: &DeviceProps) -> Result<(), OpError> {
+/// Can the device show an imported frame (ADR 0012)? Its own `frame`, else
+/// the project default, is `imported:<source>`, or a variant override of
+/// the element sets an imported frame. Which colours are installed is
+/// app-wide, not project data: resolve and validation report a missing
+/// one (info), ops only check the colour is a valid name.
+fn imported_frame_context(strip: &Strip, e: &Element, d: &DeviceProps, styles: &Styles) -> bool {
+    let imported = |f: Option<&FrameStyle>| matches!(f, Some(FrameStyle::Imported(_)));
+    imported(d.frame.as_ref().or(styles.frame.as_ref()))
+        || strip.variants.values().any(|v| {
+            v.overrides
+                .get(&e.id)
+                .and_then(|p| p.frame.as_ref())
+                .is_some_and(|f| imported(f.as_ref()))
+        })
+}
+
+/// Device model and colour must exist: a catalog colour variant or a
+/// custom `#RRGGBB`; with an imported frame (`imported`) also any colour
+/// slug (`burgundy`, the vendor's colours).
+fn check_device(d: &DeviceProps, imported: bool) -> Result<(), OpError> {
     let model = catalog::device(&d.model).ok_or_else(|| OpError::UnknownDevice(d.model.clone()))?;
     if let Some(c) = &d.color
         && !c.starts_with('#')
         && !model.has_color(c)
+        && !(imported && is_color_slug(c))
     {
         return Err(invalid(format!(
-            "device `{}` has no colour variant `{c}` (available: {})",
+            "device `{}` has no colour variant `{c}` (available: {}{})",
             d.model,
-            model.colors.join(", ")
+            model.colors.join(", "),
+            if imported {
+                ""
+            } else {
+                "; colours of imported frames need `frame: imported:<source>`"
+            }
         )));
     }
     Ok(())
+}
+
+/// A colour id as the frame importer writes it (`black`, `deep-blue`).
+fn is_color_slug(c: &str) -> bool {
+    !c.is_empty() && crate::frame_import::slug(c) == c
 }
 
 /// Gallery preset, device map models and store slot values of a target

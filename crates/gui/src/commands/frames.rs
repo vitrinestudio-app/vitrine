@@ -3,12 +3,13 @@
 //! (`<data>/frames/`), never in a project; after every change the open
 //! session renders with the new index.
 
+use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use arrangia_core::frame_import::{
-    Assignment, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, InstalledFrame, Package,
-    PackageError, RemoveFilter, Rules, import, normalize_name,
+    Assignment, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, InstalledColor, InstalledFrame,
+    Package, PackageError, RemoveFilter, Rules, import, normalize_name,
 };
 use arrangia_core::model::Orientation;
 use arrangia_render::raster::{Filter, SourceImage};
@@ -170,6 +171,8 @@ pub struct FrameSourceInfo {
     /// Models the rules know (choices for manual assignment).
     pub models: Vec<String>,
     pub frames: Vec<InstalledFrame>,
+    /// Installed colours per model, with their measured swatches.
+    pub colors: BTreeMap<String, Vec<InstalledColor>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -181,6 +184,10 @@ pub struct FramesList {
 
 pub fn frames_list(app: &AppState, _: NoArgs) -> CmdResult<FramesList> {
     let root = app.frames_root();
+    // Stores imported before swatches existed: measure them once.
+    if FrameStore::new(&root).fill_all_swatches() > 0 {
+        app.refresh_frames();
+    }
     let index = FrameIndex::load(&root);
     let sources = [DEFAULT_SOURCE]
         .iter()
@@ -195,6 +202,17 @@ pub fn frames_list(app: &AppState, _: NoArgs) -> CmdResult<FramesList> {
                 verified: r.verified,
                 models,
                 frames: index.frames(&r.source).to_vec(),
+                colors: index
+                    .frames(&r.source)
+                    .iter()
+                    .map(|f| f.model.clone())
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .into_iter()
+                    .map(|m| {
+                        let c = index.installed_colors(&r.source, &m);
+                        (m, c)
+                    })
+                    .collect(),
             }
         })
         .collect();

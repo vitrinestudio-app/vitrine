@@ -214,14 +214,24 @@ pub fn styles_patch(app: &AppState, args: StylesPatchArgs) -> CmdResult<ApplyRes
     merge(&mut styles.shadows, args.shadows);
     merge(&mut styles.fonts, args.fonts);
     styles.fonts.retain(|_, f| !f.fallback.is_empty());
+    if styles != old {
+        let op = Op::SetStyles { styles };
+        scratch.apply(op.clone())?;
+        ops.push(op);
+    }
     if let Some(frame) = args.frame {
-        styles.frame = frame
+        let frame = frame
             .map(|f| FrameStyle::parse(&f))
             .transpose()
             .map_err(CommandError::invalid)?;
-    }
-    if styles != old {
-        ops.push(Op::SetStyles { styles });
+        // A new default frame source remaps the colours of the devices that
+        // inherit it (ADR 0012), in the same undo step.
+        let index = app.frame_index();
+        ops.extend(arrangia_core::frame_import::set_default_frame_ops(
+            &scratch,
+            frame,
+            index.as_deref(),
+        ));
     }
     if ops.is_empty() {
         return Ok(session.unchanged());
