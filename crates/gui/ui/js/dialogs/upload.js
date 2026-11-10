@@ -1,6 +1,9 @@
 // Store upload (Phase 5.5, ADR 0018): plan → confirm → progress → result.
 //
-// - `openUpload()`: the "Upload…" dialog (menu, export dialog link). Store
+// - `openUpload()`: the "Upload…" dialog (menu, export dialog link). A setup
+//   checklist (`upload_readiness` / `plan.readiness`: app settings → project
+//   settings → targets) comes first, each step with a button opening the
+//   place to fix it; the readiness is checked again when that dialog closes. Store
 //   tabs (the stores the project is mapped to), "Check store state" toggle
 //   (remote plan), plan table (target · language · locale · action · images ·
 //   problems), Confirm & upload → per-set progress from `upload-progress`
@@ -16,7 +19,10 @@ import { h, icon } from '../dom.js';
 import { editor } from '../editor.js';
 import { t } from '../i18n.js';
 import { store } from '../store.js';
+import { openAppSettings } from './app-settings.js';
 import { checkbox, confirmDialog, errorLine, openModal } from './modal.js';
+import { openProjectSettings } from './project-settings.js';
+import { openTargets } from './targets.js';
 
 const fmt = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
 
@@ -35,6 +41,48 @@ function problemList(problems, cls = '') {
     'ul',
     { class: `up-problems ${cls}`.trim() },
     problems.map((p) => h('li', { class: `up-problem ${p.blocking ? 'bad' : p.level}` }, icon(p.blocking || p.level === 'error' ? 'error' : 'warning'), h('span', {}, p.message))),
+  );
+}
+
+/** Opens the place that fixes a readiness step; resolves when it is closed. */
+async function openFix(fix) {
+  const m = fix === 'app_settings_stores' ? await openAppSettings({ section: 'stores' }) : fix === 'project_settings_stores' ? openProjectSettings('stores') : await openTargets();
+  await m?.closed;
+}
+
+/**
+ * The setup checklist (`{ready, steps}`); `onFixed` runs after the user
+ * closed the dialog a step's button opened.
+ */
+function checklist(readiness, onFixed) {
+  if (!readiness?.steps?.length) return null;
+  const items = readiness.steps.map((st) => {
+    const store = st.store ? storeLabel(st.store) : t('upload.ready.any_store');
+    return h(
+      'li',
+      { class: `up-check-item ${st.blocking ? 'bad' : 'warn'}`, title: st.message },
+      icon(st.blocking ? 'error' : 'warning'),
+      h('span', { class: 'up-check-text' }, fmt(t(`upload.ready.${st.code}`), { store }), h('span', { class: 'muted small' }, ` (${t(`upload.fix.where.${st.fix}`)})`)),
+      h(
+        'button',
+        {
+          class: 'btn btn-small',
+          type: 'button',
+          onclick: async () => {
+            await openFix(st.fix);
+            onFixed?.();
+          },
+        },
+        t(`upload.fix.${st.fix}`),
+      ),
+    );
+  });
+  return h(
+    'section',
+    { class: 'up-checklist' },
+    h('h3', { class: 'up-store-title' }, t(readiness.ready ? 'upload.ready.notes' : 'upload.ready.title')),
+    readiness.ready ? null : h('p', { class: 'muted small' }, t('upload.ready.intro')),
+    h('ol', { class: 'up-check-list' }, items),
   );
 }
 
@@ -126,14 +174,33 @@ export function openUpload() {
 
   async function init() {
     try {
+      unlisten.push(await listen('upload-progress', onProgress));
+      unlisten.push(await listen('upload-finished', onFinished));
+      const status = await api.uploadStatus();
+      if (status.run && (status.run.status === 'running' || status.run.status === 'paused')) showRun(status.run);
+      else await load();
+    } catch (e) {
+      err.show(e);
+    }
+  }
+
+  /** Tabs of the mapped stores, then the plan; without a mapping only the checklist. */
+  async function load() {
+    if (running) return;
+    try {
       const info = await api.projectStoreGet();
       const stores = ['apple', 'google'].filter((k) => info.store?.[k]);
       if (!stores.length) {
-        planBox.replaceChildren(h('p', { class: 'up-empty' }, t('upload.not_mapped')));
+        storeTab = null;
+        tabs.replaceChildren();
         options.hidden = true;
+        startBtn.disabled = true;
+        const r = await api.uploadReadiness();
+        planBox.replaceChildren(checklist(r, load) ?? h('p', { class: 'up-empty' }, t('upload.not_mapped')));
         return;
       }
-      storeTab = stores[0];
+      options.hidden = false;
+      if (!stores.includes(storeTab)) storeTab = stores[0];
       tabs.replaceChildren(
         ...stores.map((k) =>
           h(
@@ -152,11 +219,7 @@ export function openUpload() {
           ),
         ),
       );
-      unlisten.push(await listen('upload-progress', onProgress));
-      unlisten.push(await listen('upload-finished', onFinished));
-      const status = await api.uploadStatus();
-      if (status.run && (status.run.status === 'running' || status.run.status === 'paused')) showRun(status.run);
-      else await makePlan();
+      await makePlan();
     } catch (e) {
       err.show(e);
     }
@@ -169,7 +232,7 @@ export function openUpload() {
     planBox.replaceChildren(h('p', { class: 'muted' }, remote ? t('upload.planning.remote') : t('upload.planning')));
     try {
       plan = await api.uploadPlan({ store: storeTab, remote, force });
-      planBox.replaceChildren(planView(plan));
+      planBox.replaceChildren(...[checklist(plan.readiness, load), planView(plan)].filter(Boolean));
       startBtn.disabled = plan.blocked || plan.totals.upload_sets === 0;
       startBtn.title = plan.blocked ? t('upload.blocked') : plan.totals.upload_sets === 0 ? t('upload.nothing') : '';
     } catch (e) {

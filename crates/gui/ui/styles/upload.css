@@ -189,3 +189,61 @@
   width: 18px;
   height: 18px;
 }
+
+/* Setup checklist before the plan (readiness). */
+.up-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--bg-panel);
+}
+
+.up-check-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: up-step;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.up-check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.up-check-item::before {
+  counter-increment: up-step;
+  content: counter(up-step) ".";
+  flex: none;
+  min-width: 1.4em;
+  color: var(--fg-muted);
+}
+
+.up-check-item svg.icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.up-check-item.bad svg.icon {
+  color: var(--danger);
+}
+
+.up-check-item.warn svg.icon {
+  color: var(--warning);
+}
+
+.up-check-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.up-check-item > .btn {
+  flex: none;
+}

@@ -24,7 +24,8 @@ export function reloadInLanguage(lang) {
   location.replace(url.toString());
 }
 
-export async function openAppSettings() {
+/** App settings; `section: 'stores'` scrolls to the store accounts. */
+export async function openAppSettings({ section } = {}) {
   const [info, frames] = await Promise.all([api.settingsGet(), api.framesList().catch(() => null)]);
   const frameCount = frames?.sources?.reduce((n, s) => n + s.frames.length, 0) ?? 0;
   const err = errorLine();
@@ -103,6 +104,7 @@ export async function openAppSettings() {
     footer: [saved, h('span', { class: 'spacer' }), h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, t('project.dialog.done'))],
     onClose: () => unsubMcp?.(),
   });
+  if (section === 'stores') requestAnimationFrame(() => m.body.querySelector('.store-section')?.scrollIntoView({ block: 'start' }));
   return m;
 }
 

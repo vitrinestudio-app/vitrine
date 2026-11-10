@@ -56,6 +56,12 @@ export const api = {
   storeAccountImport: (args) => invoke('store_account_import', args),
   storeAccountRemove: (id) => invoke('store_account_remove', { id }),
   storeAccountTest: (id) => invoke('store_account_test', { id }),
+  /** Apple apps visible to the account's key `{account, apps: [{id, name, bundle_id, sku?, primary_locale?}], cached}` (cached per session; `refresh` asks again). */
+  storeAppsList: (account, refresh = false) => invoke('store_apps_list', { account, refresh }),
+  /** Play package check (temporary edit, deleted again) → `{package_name, title?, default_language?}`. */
+  storePackageCheck: (account, packageName) => invoke('store_package_check', { account, package_name: packageName }),
+  /** Opens an allow-listed help link in the system browser. */
+  openUrl: (url) => invoke('open_url', { url }),
   /** `{store, effective, locales, accounts, missing_accounts}`. */
   projectStoreGet: () => invoke('project_store_get'),
   /** `{apple?: obj|null, google?: obj|null, locales?: {apple?, google?}}` → one undo step. */
@@ -83,6 +89,8 @@ export const api = {
   // ----- store upload (Phase 5.5, ADR 0018) -----
   /** Dry run `{store?, targets?, langs?, remote?, force?}` → plan with `confirm_token`. */
   uploadPlan: (args) => invoke('upload_plan', args),
+  /** Setup checklist `{ready, steps: [{code, store?, message, fix, blocking}]}` (no rendering, no network). */
+  uploadReadiness: (store = null) => invoke('upload_readiness', store ? { store } : {}),
   /** Starts the run of a planned upload (returns at once; progress via `upload-progress`). */
   uploadExecute: (token, opts = {}) => invoke('upload_execute', { token, ...opts }),
   /** `{run, pending_confirmations}`. */

@@ -5,11 +5,16 @@
 //   the secret into the system keychain (the UI never sees key material).
 //   Test asks the store who we are (`not_implemented` until the store
 //   clients are wired up), remove deletes the keychain entry after a
-//   confirmation.
+//   confirmation. "How do I get this?" panels (also in the import dialog)
+//   explain how to create the keys; links open in the system browser via
+//   `open_url` (allow-listed in crates/app/src/commands/os.rs).
 // - Project settings → "Stores" tab: Apple app id / bundle id / platform,
 //   Google package name, account per store, language → store locale map
 //   with the built-in defaults shown. Every change is one
-//   `project_store_patch` (one undo step).
+//   `project_store_patch` (one undo step). "Choose app…" lists the apps the
+//   Apple key can see (`store_apps_list`, cached per session) and fills
+//   Apple ID + bundle id; Google Play has no app list, so the package name
+//   is typed and "Check" verifies it (`store_package_check`).
 
 import { api } from '../api.js';
 import { h, icon } from '../dom.js';
@@ -17,6 +22,60 @@ import { t } from '../i18n.js';
 import { choiceDialog, confirmDialog, input, row, select } from './modal.js';
 
 const KINDS = ['apple', 'google'];
+
+/** Steps and links of the "How do I get this?" panels (texts: `stores.help.<kind>.<n>`). */
+const HELP = {
+  apple: {
+    steps: 6,
+    links: [
+      ['stores.help.link.asc_keys', 'https://appstoreconnect.apple.com/access/integrations/api'],
+      ['stores.help.link.apple_docs', 'https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api'],
+    ],
+  },
+  google: {
+    steps: 8,
+    links: [
+      ['stores.help.link.enable_api', 'https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com'],
+      ['stores.help.link.service_accounts', 'https://console.cloud.google.com/iam-admin/serviceaccounts'],
+      ['stores.help.link.play_console', 'https://play.google.com/console'],
+      ['stores.help.link.google_docs', 'https://developers.google.com/android-publisher/getting_started'],
+    ],
+  },
+};
+
+/** Collapsible "How do I get this?" panel for `kind`. */
+export function storeHelp(kind, { open = false } = {}) {
+  const help = HELP[kind];
+  const err = h('div', { class: 'form-error', role: 'alert', hidden: true });
+  const link = ([key, url]) =>
+    h(
+      'button',
+      {
+        class: 'btn btn-small store-help-link',
+        type: 'button',
+        title: url,
+        onclick: async () => {
+          err.hidden = true;
+          try {
+            await api.openUrl(url);
+          } catch (e) {
+            err.textContent = `${e.message ?? e} – ${url}`;
+            err.hidden = false;
+          }
+        },
+      },
+      t(key),
+    );
+  return h(
+    'details',
+    { class: 'store-help', open },
+    h('summary', {}, t(`stores.help.${kind}.title`)),
+    h('ol', { class: 'store-help-steps' }, Array.from({ length: help.steps }, (_, i) => h('li', {}, t(`stores.help.${kind}.${i + 1}`)))),
+    h('p', { class: 'form-hint' }, t(`stores.help.${kind}.note`)),
+    h('div', { class: 'store-help-links' }, help.links.map(link)),
+    err,
+  );
+}
 
 // ----- app settings: accounts --------------------------------------------------------
 
@@ -116,7 +175,7 @@ export function storeAccountRows() {
 
   refresh();
   return [
-    h('div', { class: 'form-section' }, icon('export'), t('stores.title')),
+    h('div', { class: 'form-section store-section' }, icon('export'), t('stores.title')),
     row(
       t('stores.accounts'),
       h(
@@ -129,6 +188,7 @@ export function storeAccountRows() {
           { class: 'store-accounts-add' },
           ...KINDS.map((k) => h('button', { class: 'btn', type: 'button', onclick: () => add(k) }, t(`stores.add.${k}`))),
         ),
+        ...KINDS.map((k) => storeHelp(k)),
         keychain,
       ),
       t('stores.accounts.hint'),
@@ -153,7 +213,7 @@ function importDetails(kind, path) {
   if (kind === 'apple') {
     fields.push(h('label', { class: 'dlg-field' }, h('span', {}, t('stores.apple.issuer_id')), issuer), h('label', { class: 'dlg-field' }, h('span', {}, t('stores.apple.key_id')), keyId));
   }
-  fields.push(err);
+  fields.push(storeHelp(kind), err);
   const check = () => {
     let msg = null;
     if (kind === 'apple' && !/^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/.test(issuer.value.trim())) msg = t('stores.import.issuer_invalid');
@@ -187,6 +247,9 @@ function importDetails(kind, path) {
 
 // ----- project settings: mapping ------------------------------------------------------
 
+/** Accounts whose app list was loaded this session (re-render shows it again from the cache). */
+const pickerLoaded = new Set();
+
 /**
  * The "Stores" tab of the project settings. `commit(call)` applies a
  * backend result through the editor and re-renders the dialog.
@@ -215,6 +278,7 @@ export async function storesPane(commit) {
       'div',
       { class: 'form' },
       row(t('stores.account'), accountSelect('apple', a.account, (v) => set('account', v)), accounts('apple').length ? null : t('stores.account.add_hint')),
+      row(t('stores.apple.app'), applePicker(a), t('stores.apple.app.hint')),
       row(t('stores.apple.app_id'), input({ value: a.app_id ?? '', cls: 'mono', placeholder: '1234567890', onchange: (v) => set('app_id', v.trim()) }), t('stores.apple.app_id.hint')),
       row(t('stores.apple.bundle_id'), input({ value: a.bundle_id ?? '', cls: 'mono', placeholder: 'com.example.app', onchange: (v) => set('bundle_id', v.trim()) })),
       row(
@@ -229,6 +293,88 @@ export async function storesPane(commit) {
     );
   }
 
+  /** "Choose app…": the apps the account's key can see → Apple ID + bundle id. */
+  function applePicker(a) {
+    const account = a.account && accounts('apple').some((x) => x.id === a.account) ? a.account : null;
+    const box = h('div', { class: 'store-picker' });
+    const status = h('div', { class: 'store-check small', role: 'status' });
+    if (!account) {
+      box.append(h('span', { class: 'muted small' }, t('stores.apple.app.need_account')));
+      return box;
+    }
+    const load = async (refresh) => {
+      status.dataset.state = 'busy';
+      status.textContent = t('stores.apple.app.loading');
+      try {
+        const r = await api.storeAppsList(account, refresh);
+        pickerLoaded.add(account);
+        show(r.apps);
+      } catch (e) {
+        status.dataset.state = 'error';
+        status.textContent = e.message ?? String(e);
+      }
+    };
+    const show = (apps) => {
+      status.textContent = '';
+      delete status.dataset.state;
+      if (!apps.length) {
+        status.dataset.state = 'warn';
+        status.textContent = t('stores.apple.app.none');
+      }
+      const current = apps.find((x) => x.id === a.app_id || (!a.app_id && x.bundle_id === a.bundle_id));
+      const options = [{ value: '', label: current ? '' : t('stores.apple.app.choose') }, ...apps.map((x) => ({ value: x.id, label: `${x.name} – ${x.bundle_id}` }))].filter((o) => o.label);
+      const sel = select({
+        options,
+        value: current?.id ?? '',
+        onchange: (id) => {
+          const app = apps.find((x) => x.id === id);
+          if (app) patch({ apple: { ...a, app_id: app.id, bundle_id: app.bundle_id } });
+        },
+      });
+      const facts = current ? h('span', { class: 'muted small mono selectable' }, [current.sku ? `SKU ${current.sku}` : null, current.primary_locale].filter(Boolean).join(' · ')) : null;
+      box.replaceChildren(
+        sel,
+        h('button', { class: 'icon-btn', type: 'button', title: t('stores.apple.app.refresh'), onclick: () => load(true) }, icon('reset')),
+        facts ?? '',
+        status,
+      );
+    };
+    if (pickerLoaded.has(account)) load(false);
+    else box.append(h('button', { class: 'btn btn-small', type: 'button', onclick: () => load(false) }, t('stores.apple.app.load')), status);
+    return box;
+  }
+
+  /** "Check" next to the Play package name (temporary edit, deleted again). */
+  function packageCheck(g) {
+    const status = h('div', { class: 'store-check small', role: 'status' });
+    const account = g.account && accounts('google').some((x) => x.id === g.account) ? g.account : null;
+    const btn = h(
+      'button',
+      {
+        class: 'btn btn-small',
+        type: 'button',
+        disabled: !account || !g.package_name,
+        title: !account ? t('stores.google.check.need_account') : !g.package_name ? t('stores.google.check.need_package') : t('stores.google.check.hint'),
+        onclick: async () => {
+          btn.disabled = true;
+          status.dataset.state = 'busy';
+          status.textContent = t('stores.google.check.running');
+          try {
+            const r = await api.storePackageCheck(account, g.package_name);
+            status.dataset.state = 'ok';
+            status.textContent = r.title ? t('stores.google.check.ok_title').replace('{title}', r.title).replace('{lang}', r.default_language ?? '') : t('stores.google.check.ok');
+          } catch (e) {
+            status.dataset.state = 'error';
+            status.textContent = e.message ?? String(e);
+          }
+          btn.disabled = false;
+        },
+      },
+      t('stores.google.check'),
+    );
+    return h('div', { class: 'store-picker' }, btn, status);
+  }
+
   function googleSection() {
     const g = s.google;
     if (!g) return setupButton('google');
@@ -237,7 +383,8 @@ export async function storesPane(commit) {
       'div',
       { class: 'form' },
       row(t('stores.account'), accountSelect('google', g.account, (v) => set('account', v)), accounts('google').length ? null : t('stores.account.add_hint')),
-      row(t('stores.google.package_name'), input({ value: g.package_name ?? '', cls: 'mono', placeholder: 'com.example.app', onchange: (v) => set('package_name', v.trim()) })),
+      row(t('stores.google.package_name'), input({ value: g.package_name ?? '', cls: 'mono', placeholder: 'com.example.app', onchange: (v) => set('package_name', v.trim()) }), t('stores.google.package_name.hint')),
+      row('', packageCheck(g), t('stores.google.check.note')),
       removeRow('google'),
     );
   }

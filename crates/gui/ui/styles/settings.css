@@ -429,3 +429,74 @@
 .store-locale[data-state='none'] > .small {
   color: var(--warning);
 }
+
+/* "How do I get this?" panels (app settings → Stores, import dialog). */
+.store-help {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  padding: 4px 8px;
+  background: var(--bg-panel);
+}
+
+.store-help > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.store-help[open] > summary {
+  margin-bottom: 4px;
+}
+
+.store-help-steps {
+  margin: 0 0 6px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  user-select: text;
+}
+
+.store-help-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+/* App picker (Apple) and package check (Google) in the project settings. */
+.store-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.store-picker > select {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.store-check {
+  flex-basis: 100%;
+}
+
+.store-check:empty {
+  display: none;
+}
+
+.store-check[data-state='busy'] {
+  color: var(--fg-muted);
+}
+
+.store-check[data-state='ok'] {
+  color: var(--success);
+}
+
+.store-check[data-state='warn'] {
+  color: var(--warning);
+}
+
+.store-check[data-state='error'] {
+  color: var(--danger);
+}
