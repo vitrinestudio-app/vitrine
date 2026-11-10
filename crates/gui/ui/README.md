@@ -5,6 +5,9 @@ run in the Tauri window and, via the dev bridge, in a normal browser
 (`cargo run -p arrangia-gui --features devbridge --bin arrangia-devbridge --
 --project tests/fixtures/example --copy`). Debug query parameters:
 `?theme=dark|light` (force a theme), `?lang=en|de` (UI language).
+Right-click shows no web-view menu except in text fields and on selected
+text (`main.js`); ⌥/Alt + right-click shows it anywhere ("Inspect
+Element" in debug builds).
 
 ## Layout
 
@@ -39,7 +42,8 @@ js/panels/*.js        sidebar/inspector panels (see below); importer.js =
                       asset import dialog + drag & drop routing
 js/panels/fields.js   form controls: scrub numbers, colours, selects, fill editor
 js/panels/strip-settings.js  strip settings (inspector with no selection)
-js/menu.js            app menu (top-bar button), ⌘N/⌘O/⌘E/⌘, shortcuts
+js/menu.js            app menu (top-bar button), its macOS menu-bar mirror
+                      (`menu_set`, see below), ⌘N/⌘O/⌘E/⌘, shortcuts
 js/add-menu.js        top-bar "Add" menu → `element_add` on the visible page
 js/start.js           start screen (#welcome), new-project dialog, folder drop
 js/assistant.js       AI assistants over MCP (ADR 0015): status, top-bar indicator +
@@ -144,3 +148,16 @@ with `elementPatch`; core keeps the page on drags). `store.langScope`
 language; language-overridden fields (`lang_overridden` from
 `element_get`) are marked teal with their own reset
 (`api.resetOverride(view, id, field, true)`).
+
+## Native menu bar (macOS)
+
+ADR 0019. `menu.js` mirrors the in-app menu (`ITEMS`) into the macOS menu
+bar: `initNativeMenu(handlers)` sends a spec (labels via `t()`, shortcuts
+in `mod+shift+z` notation, enabled state) with the GUI-only command
+`menu_set` (`crates/gui/src/native_menu.rs`); clicks come back as
+`menu-action` events and run the same `handlers`. Re-sent on project
+open/close; a language switch reloads the page. Windows/Linux answer
+`{native: false}`, the dev bridge has no menu. Shortcut owner: the native
+menu owns its items' shortcuts (⌘N ⌘O ⌘E ⌘, ⌘Z ⇧⌘Z) and the JS key
+handlers skip them (`menuOwns` in `shortcuts.js`). New labels go under
+`native.*` in both catalogs.

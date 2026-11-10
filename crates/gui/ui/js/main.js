@@ -15,7 +15,7 @@ import { openProjectSettings } from './dialogs/project-settings.js';
 import { openTargets } from './dialogs/targets.js';
 import { editor } from './editor.js';
 import { applyTranslations, initI18n } from './i18n.js';
-import { bindAppShortcuts, createMenu } from './menu.js';
+import { bindAppShortcuts, createMenu, initNativeMenu } from './menu.js';
 import { installDropImport } from './panels/importer.js';
 import { mountShell } from './shell.js';
 import { bindShortcuts } from './shortcuts.js';
@@ -26,6 +26,30 @@ import { isTauri } from './transport.js';
 const params = new URLSearchParams(location.search);
 const theme = params.get('theme');
 if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme;
+
+/** Text fields whose native context menu (cut/copy/paste, spelling) stays. */
+const TEXT_FIELDS =
+  'textarea, [contenteditable]:not([contenteditable="false"]), input:not([type]), ' +
+  'input[type="text"], input[type="search"], input[type="url"], input[type="email"], input[type="number"], input[type="password"]';
+
+/**
+ * No web-view context menu ("Reload", "Inspect Element") on the app's own
+ * surfaces: only text fields and selected text keep it. Custom context
+ * menus call `preventDefault` themselves and are unaffected. Holding ⌥/Alt
+ * while right-clicking shows the native menu anywhere (debugging: "Inspect
+ * Element" in debug builds, which have the dev tools).
+ */
+function suppressContextMenu() {
+  document.addEventListener('contextmenu', (e) => {
+    if (e.defaultPrevented || e.altKey) return;
+    const el = e.target instanceof Element ? e.target : e.target?.parentElement;
+    if (el?.closest(TEXT_FIELDS)) return;
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && el && sel.containsNode(el, true)) return;
+    e.preventDefault();
+  });
+}
+suppressContextMenu();
 
 /** View context kept across a UI reload (language switch). */
 const CONTEXT_KEY = 'arrangia.context';
@@ -155,6 +179,12 @@ async function start() {
   await initAssistant({ onProjectOpened: projectOpened, onProjectClosed: projectClosed });
   // Store uploads requested by an assistant need the user's click (ADR 0018).
   await initUploadConfirm();
+  // Native menu bar (macOS app): before the key handlers, which skip its shortcuts.
+  await initNativeMenu({
+    ...appActions,
+    undo: () => appActions.hasProject() && actions.undo(),
+    redo: () => appActions.hasProject() && actions.redo(),
+  });
   bindAppShortcuts(appActions);
   await bindFolderDrop();
   await listen('project-changed', (change) => {

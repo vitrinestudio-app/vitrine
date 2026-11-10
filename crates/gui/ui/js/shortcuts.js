@@ -1,6 +1,8 @@
 // Keyboard shortcuts. One window-level listener maps key combinations to
 // named commands; `bindShortcuts(handlers)` supplies the functions. Keys
 // are ignored while typing in inputs. `mod` = ⌘ on macOS, Ctrl elsewhere.
+// In the macOS app ⌘Z / ⇧⌘Z belong to the native Edit menu (`menuOwns`);
+// it runs the same undo/redo (menu.js).
 //
 //   ⌘Z / ⇧⌘Z (⌘Y)   undo / redo
 //   ⌫ / Delete       delete selection
@@ -24,9 +26,32 @@ export function keyLabel(combo) {
   return parts.map((p) => map[p] ?? p.toUpperCase()).join('+');
 }
 
-function isTyping(e) {
+/** Is the event's target a text field (input, textarea, select, contenteditable)? */
+export function isTyping(e) {
   const tag = e.target?.tagName;
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable;
+}
+
+/**
+ * Shortcuts owned by the native menu bar (macOS app, see menu.js): one
+ * owner per shortcut, so the JS handlers skip these.
+ */
+let menuOwned = new Set();
+
+/** Hands `combos` (`mod+shift+z` notation) to the native menu bar. */
+export function setMenuOwned(combos) {
+  menuOwned = new Set(combos);
+}
+
+/** Is the shortcut of keydown `e` owned by the native menu bar? */
+export function menuOwns(e) {
+  if (!menuOwned.size) return false;
+  const parts = [];
+  if (isMac ? e.metaKey : e.ctrlKey) parts.push('mod');
+  if (e.altKey) parts.push('alt');
+  if (e.shiftKey) parts.push('shift');
+  parts.push(e.key.toLowerCase());
+  return menuOwned.has(parts.join('+'));
 }
 
 /**
@@ -44,7 +69,7 @@ export function bindShortcuts(handlers) {
   };
 
   const onKey = (e) => {
-    if (isTyping(e)) return;
+    if (isTyping(e) || menuOwns(e)) return;
     const mod = isMac ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     let handled = false;

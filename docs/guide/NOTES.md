@@ -29,6 +29,7 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Variants: per-format overrides (position, size, rotation…) while content stays shared. Inspector marks overrides purple.
 - Language overrides: per-language text tweaks (font size, box, style, fit, effects); marked teal in the inspector; `de-AT` inherits `de`.
 - Regional languages (`fr-CA`, `de-AT`, `pt-BR`): fall back automatically to their prefix language (`fr-CA → fr → default`); translate only the keys that differ (example: fr-CA has 2 Québec texts, "jardin communautaire", "cellulaire"). No `languages.fallback` entry needed for prefixes; use it only for non-prefix chains.
+- Fallback order: a language's own chain first (prefix, then its `languages.fallback` entry, e.g. `fr → en`), the default language only last. Assets panel → Screenshots shows per language which images come from where ("From en (fallback)", "From de (default language)", per key and variant, resolved like the renderer) and on the source language "fallback for fr, nl"; hover a language for its full chain.
 - Fallback severities: text from the default language = warning "not translated" (fails `validate --strict`); text from a prefix/configured fallback = info; screenshot from any fallback = info. A partial screenshot set per language is fine (missing ones come from the fallback chain).
 - Rotation sign: positive = clockwise (CSS convention).
 
@@ -175,6 +176,8 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Images still rendering show a grey placeholder with a small spinner (only until the first picture arrives; re-renders after edits keep the old picture until the new one is there). Rendering follows the zoom: zooming in requests sharper images.
 - All languages: language labels sit in a fixed column on the left; Fit keeps rows at least ~140 px high and lets you scroll (pan) through many languages.
 - Dev bridge (developers only): run the UI in a browser – see CLAUDE.md.
+- macOS menu bar (ADR 0019): the app menu's entries also sit in the system menu bar – Arrangia menu (About, App settings… ⌘,, Services, Hide, Quit), File / Ablage (New ⌘N, Open ⌘O, Project settings, Targets, Export ⌘E, Upload, Import screenshots, Close project; project items greyed out without a project), Edit (Undo ⌘Z / Redo ⇧⌘Z = project history, or the text field's own undo while typing; Cut/Copy/Paste/Select All), Window, Help (store API key docs). Labels follow the UI language. Windows/Linux: only the in-app menu (☰ in the top bar).
+- No browser context menu (Reload / Inspect Element) on right-click; text fields and selected text keep theirs (copy/paste, spelling). Developers: ⌥/Alt + right-click shows the web view's menu anywhere ("Inspect Element" in debug builds).
 
 ## Contributor notes
 - Built-in device frames are own parametric artwork (devices.yaml + render/frames); how to add devices + ready-made Claude prompt: docs/dev/adding-devices.md.
