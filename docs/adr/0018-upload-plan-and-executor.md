@@ -195,3 +195,81 @@ older stored plans still load) and the MCP `upload_plan` text lists the
 steps as numbered hints. The plan's own store problem for a missing
 account choice was renamed `no_account` → `account_not_selected` so
 `no_account` means only "nothing in the app settings".
+
+## Amendment 2026-11-10 (b): processing model, watchdog, store-level failures
+
+**Finding (first real App Store Connect upload).** Set `de-DE` /
+`APP_IPHONE_67`, 6 images: images 1 and 2 were `COMPLETE` after two polls,
+image 3 stayed `UPLOAD_COMPLETE` for 43 polls. The client polled each image
+before uploading the next (`upload_screenshot` = reserve → parts → commit →
+poll until `COMPLETE`, timeout 10 min), so the run sat silently for 10
+minutes per slow image, then failed the whole set with `Error::Timeout`
+(images 4–6 never uploaded) and moved on. The run was never deadlocked,
+but: no progress events while polling (the GUI looked stuck after image
+2), HTTP events were buffered per set and written with the flush time (all
+67 events of the run had one timestamp), and every poll request was logged.
+
+**Processing model.**
+
+- The flow reserves/uploads/commits **all** missing images of a set first
+  (`apple::Client::upload_screenshot_committed`, no waiting), then polls
+  all their `assetDeliveryState`s together (interval 2 s doubling to 15 s)
+  for up to `UploadConfig::processing_budget` (default 15 min per set).
+- `COMPLETE` → file `done`. `FAILED` → file `failed` with Apple's
+  `assetDeliveryState.errors`, the asset is deleted (Apple recommends it),
+  the set fails with those details (`Error::Processing`).
+- Still `UPLOAD_COMPLETE` after the budget → **not a failure**: file
+  `processing`, set `uploaded_processing`, run `completed` (when nothing
+  else failed) with "Apple is still processing N image(s) – check later".
+  The order is set with all ids (reservations are appended in upload order
+  anyway); whether Apple accepts reordering while assets process is not
+  documented – a rejected reorder or an unconfirmed order is a note on the
+  set, not an error, while something is processing.
+- **Reuse.** Before uploading, screenshots the set already holds with the
+  same MD5 (`sourceFileChecksum`) and state `COMPLETE`/`UPLOAD_COMPLETE`
+  are kept (each used once); everything else in the set is deleted. A
+  re-run after a timeout, cancel or failure uploads only what is missing.
+  `force` disables reuse.
+- **Plan.** The log's `last_success` also matches `uploaded_processing`:
+  locally such a set is `unchanged` with info `processing_unconfirmed`;
+  the remote check (`remote: true`, GUI "Check store state" / "Check
+  processing", CLI `plan --remote`) confirms it: same checksums in order
+  and each `COMPLETE` or still processing → `unchanged` (`processing: N`
+  while Apple works); otherwise `replace` with `reusable: N`.
+- **Progress steps** (`upload-progress.step`): `file_started` (reserving),
+  `file_reserved`, `transfer` (bytes), `file_commit`, `file_uploaded`,
+  `processing` (every poll round: `{pending, state, elapsed_secs}`),
+  `file_done`, `file_failed`, `delete_existing`, `set_order`, `verify`,
+  `set_finished`. `RunState` gains `images_processing`, `SetRun`
+  `files_processing` and `note`.
+- **Log.** Events carry the time they happened (observer timestamp) and
+  are flushed on every progress step; successful poll requests are not
+  logged, delivery-state transitions are (`… #3 x.png: UPLOAD_COMPLETE
+  after 0:02`). File rows are written at commit (`processing`) and updated.
+
+**Never stuck.** `exec::spawn` runs the executor in `catch_unwind` (a panic
+ends the run `failed`) next to a watchdog thread: it writes
+`runs.heartbeat_at` every `heartbeat_interval` (30 s); a run that is
+`running` (not `paused`) without any progress for `stall_timeout` (10 min)
+is cancelled and ends `failed` ("no progress for … s"); if the executor
+does not return within `stall_grace` (30 s) the watchdog ends the run
+itself. Opening the log marks runs still `running`/`paused` without a
+heartbeat for 3 minutes as `interrupted` (app closed or crashed), and
+their running sets too. Cancel works in every phase (the poll sleep
+selects on the cancel token).
+
+**Store-level failures.** "No editable App Store version" is one short
+message ("No editable App Store version. Create a new version (e.g. 2.1.1)
+in App Store Connect, then plan again. Latest version: 2.1.0 (Ready for
+Distribution).") – the version list is only in the error details and the
+log. In the remote plan it is one store problem `no_editable_version`
+with `vars {latest, state, suggestion, platform}` (GUI text
+`upload.problem.no_editable_version`) and `link` to
+`https://appstoreconnect.apple.com/apps/<app id>/distribution`
+(allow-listed in `open_url` for numeric app ids), plus a blocking
+readiness step with `fix: app_store_connect`. In a run it is reported
+once in `RunState.store_failures`; the store's sets are `skipped` ("no
+editable App Store version"). Other store-level failures (app not
+reachable, credentials) are also reported once; their sets fail with a
+short "not uploaded: …".
+

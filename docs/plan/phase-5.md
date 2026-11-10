@@ -89,13 +89,31 @@ Client part done 2026-11-10 (`arrangia_publish::google`, ADR 0017).
       "Check" (`store_package_check`: temporary edit, deleted, explicit click)
 - [ ] Look at it in the real app (dev bridge checked with curl only)
 
+## 5.5c First real Apple upload fixes (2026-11-10, ADR 0018 amendment b)
+- [x] Run hung for 10 min per slow image (per-image poll, timeout failed the
+      set), no progress while polling, events with one flush timestamp
+      → upload all images of a set, then poll together (budget 15 min);
+      still processing = `uploaded_processing`, not a failure; `FAILED` with
+      Apple's errors; reuse of images already in the set (checksum)
+- [x] Watchdog (heartbeat, stall → cancel/fail, panic safety net),
+      stale `running` runs → `interrupted` on log open
+- [x] Event time per event, poll requests logged as state transitions only
+- [x] Plan: `uploaded_processing` → unchanged (info), remote: `processing` /
+      `reusable` counts; GUI "Check processing", per-image step text
+- [x] "No editable App Store version": short message with suggestion,
+      once per store (plan problem + readiness step + link; run:
+      `store_failures`, sets skipped)
+- [ ] User re-runs the real upload with the fixes
+
 ## 5.6 Tests & real run
 - [~] wiremock tests for both clients (happy path, partial failure + resume,
       processing errors, rate limit) – client tests done
       (`crates/publish/tests/{apple,google}.rs`); executor end to end in
       `crates/app/tests/upload.rs` (fake stores: plan local/remote, Apple
       replace + order, Google edit/commit, partial failure + resume, cancel,
-      tokens, blocking rules, MCP policy)
+      tokens, blocking rules, MCP policy, Apple processing budget,
+      FAILED processing, cancel while polling, reuse, stale runs, watchdog,
+      no editable version once)
 - [ ] User runs a real upload into a test app (Apple first, then Google)
 - [~] Docs: ADR(s), NOTES (setup: creating API keys / service account, roles
       needed, locale mapping, how to upload), CLAUDE.md, STATUS.md – done
