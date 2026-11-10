@@ -20,6 +20,7 @@ mod assets;
 mod catalog;
 #[macro_use]
 mod edit;
+mod add;
 mod export;
 mod inspect;
 mod os;
@@ -38,6 +39,7 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock};
 use serde::Deserialize;
 use serde_json::Value;
 
+pub use add::*;
 pub use assets::*;
 pub use catalog::*;
 pub use edit::*;
@@ -209,7 +211,7 @@ command_table! {
         edit_move, edit_move_by, edit_resize, edit_rotate, edit_set_page,
         edit_reorder, edit_duplicate, edit_remove, edit_group, edit_ungroup,
         edit_reset_override,
-        element_get, element_patch, edit_rename, edit_arrange,
+        element_get, element_patch, edit_rename, edit_arrange, element_add,
         strip_get, strip_patch, strip_variant,
         validate, export, export_cancel,
         strings_get, strings_missing,

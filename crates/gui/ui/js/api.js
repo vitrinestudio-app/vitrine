@@ -104,6 +104,11 @@ export const api = {
   elementPatch: (view, ids, patch, strings = []) =>
     invoke('element_patch', { ...view, ids: [ids].flat(), patch, strings }),
   rename: (id, to) => invoke('edit_rename', { id, to }),
+  /**
+   * New element of `kind` (device | text | image | shape | background),
+   * centred on `page`, defaults built in Rust; `opts`: { model, asset, text }.
+   */
+  elementAdd: (view, kind, page, opts = {}) => invoke('element_add', { ...view, kind, page, ...opts }),
   /** Into group `parent` (null = top level) at `index` (null = top). */
   arrange: (view, id, parent, index) => invoke('edit_arrange', { ...view, id, parent, index }),
   stripGet: (strip) => invoke('strip_get', { strip }),

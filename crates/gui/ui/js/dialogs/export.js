@@ -228,7 +228,7 @@ export function openExport() {
         h('dd', {}, String(written)),
         h('dt', {}, t('export.unchanged')),
         h('dd', {}, String(skipped)),
-        h('dt', {}, t('export.issues')),
+        h('dt', {}, t('export.issues_label')),
         h('dd', {}, String(issues.length)),
         h('dt', {}, t('export.folder')),
         h('dd', { class: 'mono small', title: dir ?? '' }, dir ?? '–'),

@@ -176,6 +176,19 @@ fn dims(path: &Path) -> Option<(u32, u32)> {
     Some((u32::try_from(s.width).ok()?, u32::try_from(s.height).ok()?))
 }
 
+/// Pixel size of an image file (`None` for vector or unreadable files).
+pub(super) fn image_dims(path: &Path) -> Option<(u32, u32)> {
+    dims(path)
+}
+
+/// Project-relative path of the first image in `assets/`.
+pub(super) fn first_image_asset(root: &Path) -> Option<String> {
+    files(&root.join("assets"))
+        .into_iter()
+        .filter(|p| ext_of(p).is_some_and(|e| ASSET_EXTENSIONS.contains(&e.as_str())))
+        .find_map(|p| rel(root, &p))
+}
+
 fn rel(root: &Path, path: &Path) -> Option<String> {
     let r = path.strip_prefix(root).ok()?;
     let parts: Vec<String> = r

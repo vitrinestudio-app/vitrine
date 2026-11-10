@@ -741,3 +741,68 @@ fn canvas_region_and_variant_renders() {
     );
     assert_ne!(own.data, base.data);
 }
+
+#[test]
+fn element_add_builds_each_kind_with_defaults() {
+    let f = fixture();
+    open(&f);
+    let view = json!({"target": "ios-iphone-69", "lang": "de"});
+    let add = |kind: &str, page: u32| {
+        let mut args = view.clone();
+        args["kind"] = json!(kind);
+        args["page"] = json!(page);
+        call(&f.app, "element_add", args)
+    };
+
+    let r = add("device", 1);
+    assert_eq!(r["applied"], true);
+    let id = r["created"][0].as_str().unwrap().to_owned();
+    let dev = element_yaml(&f, &id);
+    assert_eq!(dev["kind"], "device");
+    assert_eq!(dev["page"], 1);
+    // The iPhone 6.9" preset's device.
+    assert_eq!(dev["model"], "iphone-island");
+    assert!(dev["width"].as_f64().unwrap() <= 600.0);
+    let o = overlay_element(&call(&f.app, "overlay", view.clone()), &id).clone();
+    assert_eq!(o["page"], 1);
+
+    // Text: a new key with the placeholder in the default language only,
+    // the `headline` style, one undo step for key + element.
+    let r = add("text", 0);
+    let id = r["created"][0].as_str().unwrap().to_owned();
+    let text = element_yaml(&f, &id);
+    assert_eq!(text["style"], "headline");
+    let key = text["text"].as_str().unwrap().to_owned();
+    let strings = call(&f.app, "project_get", Value::Null)["strings"].clone();
+    assert_eq!(strings["en"][&key], "New text");
+    assert!(strings["de"].get(&key).is_none());
+    assert_eq!(
+        r["history"]["undo"].as_array().unwrap().last().unwrap(),
+        "Add text"
+    );
+    call(&f.app, "undo", Value::Null);
+    let strings = call(&f.app, "project_get", Value::Null)["strings"].clone();
+    assert!(strings["en"].get(&key).is_none());
+
+    assert_eq!(
+        element_yaml(&f, add("image", 2)["created"][0].as_str().unwrap())["kind"],
+        "image"
+    );
+    assert_eq!(
+        element_yaml(&f, add("shape", 0)["created"][0].as_str().unwrap())["fill"],
+        "@accent"
+    );
+    let r = add("background", 0);
+    let bg = r["created"][0].as_str().unwrap();
+    let model = call(&f.app, "project_get", Value::Null);
+    let first = &model["project"]["strips"][0]["elements"][0];
+    assert_eq!(first["id"], bg, "backgrounds go to the bottom");
+
+    let mut args = view.clone();
+    args["kind"] = json!("text");
+    args["page"] = json!(99);
+    assert_eq!(
+        dispatch(&f.app, "element_add", args).unwrap_err().code,
+        ErrorCode::InvalidArgs
+    );
+}

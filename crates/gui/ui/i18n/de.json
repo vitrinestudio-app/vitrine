@@ -538,5 +538,13 @@
   "settings.store": "Store-Zugänge",
   "settings.store.note": "Zugänge für App Store Connect und Google Play folgen mit dem Store-Upload (Phase 5); sie werden im Schlüsselbund des Systems gespeichert.",
   "settings.file": "Einstellungsdatei",
-  "settings.saved": "Gespeichert."
+  "settings.saved": "Gespeichert.",
+  "add.button": "Hinzufügen",
+  "add.title": "Element auf der sichtbaren Seite hinzufügen",
+  "add.device": "Gerät",
+  "add.text": "Text",
+  "add.image": "Bild",
+  "add.shape": "Form",
+  "add.background": "Seitenhintergrund",
+  "export.issues_label": "Hinweise"
 }

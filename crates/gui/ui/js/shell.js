@@ -3,6 +3,7 @@
 // with the bottom view switch and zoom controls, right inspector.
 
 import { actions } from './actions.js';
+import { createAddMenu } from './add-menu.js';
 import { h, icon, picker } from './dom.js';
 import { editor } from './editor.js';
 import { t } from './i18n.js';
@@ -36,6 +37,7 @@ export function mountShell(app = {}) {
   const badge = h('button', { class: 'badge badge-btn', type: 'button', title: t('top.validation'), onclick: () => toggleValidation(badge, shell) });
   const targetsBtn = h('button', { class: 'icon-btn', type: 'button', title: t('project.menu.targets'), onclick: () => app.targets?.() }, icon('targets'));
   const exportBtn = h('button', { class: 'btn btn-small', type: 'button', title: `${t('project.menu.export')} (${keyLabel('mod+e')})`, onclick: () => app.exportDialog?.() }, icon('export'), t('export.button'));
+  const addMenu = createAddMenu(() => shell.canvas);
   const undo = h('button', { class: 'icon-btn', type: 'button', onclick: () => actions.undo() }, icon('undo'));
   const redo = h('button', { class: 'icon-btn', type: 'button', onclick: () => actions.redo() }, icon('redo'));
   topbar.append(
@@ -48,6 +50,8 @@ export function mountShell(app = {}) {
     targetsBtn,
     lang.el,
     variant.el,
+    h('span', { class: 'sep' }),
+    addMenu.el,
     h('span', { class: 'spacer' }),
     exportBtn,
     badge,

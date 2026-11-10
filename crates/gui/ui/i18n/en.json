@@ -538,5 +538,13 @@
   "settings.store": "Store access",
   "settings.store.note": "App Store Connect and Google Play credentials follow with store upload (Phase 5); they will be kept in the system keychain.",
   "settings.file": "Settings file",
-  "settings.saved": "Saved."
+  "settings.saved": "Saved.",
+  "add.button": "Add",
+  "add.title": "Add an element to the visible page",
+  "add.device": "Device",
+  "add.text": "Text",
+  "add.image": "Image",
+  "add.shape": "Shape",
+  "add.background": "Page background",
+  "export.issues_label": "Issues"
 }

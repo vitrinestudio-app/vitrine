@@ -824,6 +824,13 @@ export function mountCanvas(root) {
     zoomIn: () => step(1),
     zoomOut: () => step(-1),
     zoomTo: (z) => zoomAround(z, centre()),
+    /** Index of the page at (or nearest to) the centre of the visible area. */
+    visiblePage() {
+      const o = store.get().overlay;
+      if (!o?.pages?.length) return null;
+      const { zoom, panX } = view();
+      return pageAt(o.pages, (el.clientWidth / 2 - panX) / zoom)?.index ?? null;
+    },
     /** Fits the canvas rect `r` (lu) into the view (validation "go to page"). */
     zoomToRect(r) {
       const w = el.clientWidth - FIT_PADDING * 2;
