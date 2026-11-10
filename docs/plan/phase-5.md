@@ -34,11 +34,11 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       `google: {image_type}`) – validate completeness (`store_no_slot`,
       `store_slot_duplicate`, locale findings)
 
-## 5.2 Plan (dry run)
-- [ ] For each target × language: which store set gets replaced, which images
+## 5.2 Plan (dry run) (done 2026-11-10, ADR 0018)
+- [x] For each target × language: which store set gets replaced, which images
       changed (hash vs last upload / vs store state), store-rule checks
       (count, size, format), editable app version / edit state check
-- [ ] Plan object with a confirm token (hash of the plan + expiry); shown in
+- [x] Plan object with a confirm token (hash of the plan + expiry); shown in
       CLI/GUI/MCP
 
 ## 5.3 App Store Connect client
@@ -65,20 +65,25 @@ Client part done 2026-11-10 (`arrangia_publish::google`, ADR 0017).
       `edits.images.upload` (order = upload order) → `edits.commit`
       (with `changesNotSentForReview` option where required); abort = delete edit
 
-## 5.5 Execute + UI
-- [ ] Executor with progress events, cancel, resume, upload log
-- [ ] CLI: `arrangia upload plan [--store apple|google] [--target] [--lang]`,
-      `arrangia upload execute --confirm <token>`
-- [ ] GUI: "Upload…" dialog (plan table: store/target/language/changes/rule
-      problems → confirm → progress → result/log)
-- [ ] MCP: `upload_plan`, `upload_execute {confirm_token}`; when the GUI hosts
-      MCP, execution additionally needs a confirmation click in the GUI
-      (decision pending with the user)
+## 5.5 Execute + UI (done 2026-11-10, ADR 0018; GUI not yet checked visually)
+- [x] Executor with progress events, cancel, resume, upload log
+- [x] CLI: `arrangia upload plan [--store apple|google] [--target] [--lang]`,
+      `arrangia upload execute --confirm <token>`, `arrangia upload log`
+- [x] GUI: "Upload…" dialog (plan table: store/target/language/changes/rule
+      problems → confirm → progress → result/log) + MCP confirmation dialog
+- [x] MCP: `upload_plan`, `upload_execute {confirm_token}`, `upload_status`,
+      `upload_log`; GUI-hosted needs the user's click, headless off unless
+      `mcp_allow_headless_upload` (recommended default implemented; user
+      decision (b) still to confirm)
 
 ## 5.6 Tests & real run
 - [~] wiremock tests for both clients (happy path, partial failure + resume,
       processing errors, rate limit) – client tests done
-      (`crates/publish/tests/{apple,google}.rs`); executor resume tests in 5.5
+      (`crates/publish/tests/{apple,google}.rs`); executor end to end in
+      `crates/app/tests/upload.rs` (fake stores: plan local/remote, Apple
+      replace + order, Google edit/commit, partial failure + resume, cancel,
+      tokens, blocking rules, MCP policy)
 - [ ] User runs a real upload into a test app (Apple first, then Google)
-- [ ] Docs: ADR(s), NOTES (setup: creating API keys / service account, roles
-      needed, locale mapping), CLAUDE.md, STATUS.md
+- [~] Docs: ADR(s), NOTES (setup: creating API keys / service account, roles
+      needed, locale mapping, how to upload), CLAUDE.md, STATUS.md – done
+      except the findings of the real run

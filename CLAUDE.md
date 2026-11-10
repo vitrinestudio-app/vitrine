@@ -20,7 +20,8 @@ done and reviewed; Phase 3 (languages & import, `docs/plan/phase-3.md`)
 is nearly done; Phase 4 (MCP, `docs/plan/phase-4.md`) is in progress (MCP
 server, GUI hosting + Claude Desktop integration done; real-world check
 with Claude next); Phase 5 (store upload, `docs/plan/phase-5.md`) has
-started (5.1 accounts/config, 5.3/5.4 store clients). Current state and
+started (5.1 accounts/config, 5.3/5.4 store clients, 5.2/5.5 upload plan,
+executor, CLI/GUI/MCP; real run pending). Current state and
 decisions: `docs/plan/STATUS.md`. See
 the roadmap in KONZEPT.md §12.
 
@@ -149,7 +150,21 @@ Play (service-account OAuth, edits, `deleteall`, upload, commit) REST
 clients with retry/backoff, cancellation, observer and progress hooks;
 no network in tests (wiremock, `crates/publish/tests/`).
 Project store mapping: `store:` in `project.yaml` (`core::model::store`,
-op `set_store`, locale defaults `data/store-locales.yaml`). `mcp` (ADR 0014,
+op `set_store`, locale defaults `data/store-locales.yaml`). `app::upload`
+(ADR 0018) – plan → confirm → execute: `plan` (incremental render into
+`.cache/upload/images`, SHA-256/MD5, compare with the log or the store
+(`remote`), blocking problems, confirm token stored with a fingerprint in
+the log), `log` (`<project>/.cache/uploads.sqlite`: plans, runs, sets,
+files, redacted events), `remote` (clients from account + keychain,
+`AppleUploadFlow` trait – today `ScreenshotSetFlow`, the App Asset Library
+would be a second implementation), `exec` (run thread: Apple per set,
+Google one edit, progress events `upload-progress`/`upload-finished`,
+cancel, rate-limit pauses; resume = new plan, done sets are unchanged),
+`policy` (MCP rule table: GUI-hosted needs the user's "Confirm upload"
+click via `upload-confirm-requested` → `upload_confirm`, headless only with
+setting `mcp_allow_headless_upload`). Commands `upload_plan|execute|status|
+cancel|log|confirm`; `UploadConfig` on `AppState::upload()` (endpoints via
+`ARRANGIA_ASC_BASE_URL`… loopback only in CLI/dev bridge; tests set it). `mcp` (ADR 0014,
 0015) – `ArrangiaMcp` over an `Arc<AppState>` (headless: own state; GUI:
 the live one, `Host::Gui`: omitted target/lang default to the GUI's view,
 sessions/tool calls go into the MCP status). `host` (feature `http`):
@@ -274,7 +289,10 @@ list`, `frames remove [--model] [--color] [--orientation] [--bezel] [--all]`
 synthetic_bezels -- [--full-size] <dir|file.zip>`), `mcp [--app-dir DIR]
 [--headless]` (MCP over stdio: proxy to the running GUI, GUI autostart,
 else headless opening `--project` when it holds a `project.yaml`; never
-print to stdout there). Exit codes: 0 ok, 1 project
+print to stdout there), `upload plan [--store apple|google] [--target]
+[--lang] [--remote] [--force] [--format json]`, `upload execute --confirm
+<token> [--yes] [--changes-not-sent-for-review]`, `upload log [--last]
+[--events]` (`upload` takes `--app-dir`; ADR 0018). Exit codes: 0 ok, 1 project
 problems, 2 could not run.
 
 Golden tests (`crates/render/tests/golden.rs`) render every output image
