@@ -240,14 +240,11 @@ fn validate_strings_catalog() {
     let s = call(&f.app, "strings_get", json!({"lang": "de"}));
     assert!(s["strings"]["de"]["plan.title"].is_string());
     assert!(s["strings"].get("en").is_none());
+    // de and fr are complete; fr-CA only overrides two texts.
     let missing = call(&f.app, "strings_missing", Value::Null);
-    assert!(
-        missing
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|m| m["lang"] == "de" || m["lang"] == "en")
-    );
+    let missing = missing.as_array().unwrap();
+    assert!(missing.len() > 20, "{missing:?}");
+    assert!(missing.iter().all(|m| m["lang"] == "fr-CA"), "{missing:?}");
     assert!(
         call(&f.app, "catalog_devices", Value::Null)
             .as_array()

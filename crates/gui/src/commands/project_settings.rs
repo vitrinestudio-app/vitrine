@@ -250,22 +250,31 @@ mod tests {
         );
         assert!(dispatch(&app, "project_rename", json!({"name": " "})).is_err());
 
-        call(&app, "language_add", json!({"lang": "fr"}));
+        call(&app, "language_add", json!({"lang": "it"}));
         let s = call(&app, "project_summary", Value::Null);
-        assert_eq!(s["languages"]["available"], json!(["en", "de", "fr"]));
+        assert_eq!(
+            s["languages"]["available"],
+            json!(["en", "de", "fr", "fr-CA", "it"])
+        );
         call(
             &app,
             "languages_set",
-            json!({"order": ["fr", "en", "de"], "fallback": {"fr": "de"}}),
+            json!({"order": ["it", "en", "de", "fr", "fr-CA"], "fallback": {"it": "de"}}),
         );
         let s = call(&app, "project_summary", Value::Null);
-        assert_eq!(s["languages"]["available"], json!(["fr", "en", "de"]));
-        assert_eq!(s["languages"]["fallback"], json!({"fr": "de"}));
-        assert!(dispatch(&app, "languages_set", json!({"order": ["fr"]})).is_err());
+        assert_eq!(
+            s["languages"]["available"],
+            json!(["it", "en", "de", "fr", "fr-CA"])
+        );
+        assert_eq!(s["languages"]["fallback"], json!({"it": "de"}));
+        assert!(dispatch(&app, "languages_set", json!({"order": ["it"]})).is_err());
         call(&app, "languages_set", json!({"fallback": {}}));
-        call(&app, "language_remove", json!({"lang": "fr"}));
+        call(&app, "language_remove", json!({"lang": "it"}));
         let s = call(&app, "project_summary", Value::Null);
-        assert_eq!(s["languages"]["available"], json!(["en", "de"]));
+        assert_eq!(
+            s["languages"]["available"],
+            json!(["en", "de", "fr", "fr-CA"])
+        );
     }
 
     #[test]

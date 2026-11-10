@@ -1,8 +1,9 @@
 //! Golden-image tests on the example project (`tests/fixtures/example`).
 //!
 //! Every output image of every target is rendered in English at
-//! [`SCALE`] of the target size, plus German for the iPhone set and the
-//! blog header, and store gallery previews [`GALLERY_HEIGHT`] px high. Each
+//! [`SCALE`] of the target size, plus the extra languages of
+//! [`EXTRA_LANGS`] (de: iPhone set, blog header; fr: iPhone set, iPad
+//! set), and store gallery previews [`GALLERY_HEIGHT`] px high. Each
 //! render is compared with its reference PNG in
 //! `tests/fixtures/example/golden/<target>/<lang>/`:
 //!
@@ -48,7 +49,15 @@ const MAX_DIFF_SHARE: f64 = 0.005;
 const WHITE: [u8; 3] = [255, 255, 255];
 
 /// Extra languages per target (English is always rendered).
-const EXTRA_LANGS: &[(&str, &str)] = &[("ios-iphone-69", "de"), ("blog-header", "de")];
+/// German covers the language override + automatic hyphenation of
+/// `title-companions`; French the partial screenshot set (fallbacks to
+/// en) and French typography (no-break spaces).
+const EXTRA_LANGS: &[(&str, &str)] = &[
+    ("ios-iphone-69", "de"),
+    ("ios-iphone-69", "fr"),
+    ("ios-ipad-13-landscape", "fr"),
+    ("blog-header", "de"),
+];
 
 fn fixture() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
