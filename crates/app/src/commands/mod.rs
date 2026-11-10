@@ -31,6 +31,7 @@ mod project;
 mod project_settings;
 mod render;
 mod screenshot_import;
+mod stores;
 mod strings;
 mod system;
 mod targets;
@@ -58,6 +59,7 @@ pub use project::*;
 pub use project_settings::*;
 pub use render::*;
 pub use screenshot_import::*;
+pub use stores::*;
 pub use strings::*;
 pub use system::*;
 pub use targets::*;
@@ -71,6 +73,8 @@ use crate::mcp::{McpControl, McpStatus};
 use crate::preview::PreviewImage;
 use crate::session::Session;
 use crate::settings::{AppPaths, RecentStore, SettingsStore};
+use crate::stores::ConnectionTester;
+use arrangia_publish::credentials::SecretStore;
 
 /// Arguments of commands that take none (`{}` or `null`).
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
@@ -93,6 +97,10 @@ pub struct AppState {
     mcp_control: OnceLock<Arc<dyn McpControl>>,
     /// Claude Desktop config file override (dev bridge, tests).
     claude_config: Option<PathBuf>,
+    /// Keychain for store secrets (created on first use, ADR 0016).
+    secrets: OnceLock<Arc<SecretStore>>,
+    /// Store clients' connection test (none until Phase 5.3/5.4 wire it).
+    connection_tester: OnceLock<Arc<dyn ConnectionTester>>,
 }
 
 impl std::fmt::Debug for AppState {
@@ -120,7 +128,40 @@ impl AppState {
             mcp_token: Mutex::new(None),
             mcp_control: OnceLock::new(),
             claude_config: None,
+            secrets: OnceLock::new(),
+            connection_tester: OnceLock::new(),
         }
+    }
+
+    /// Uses `store` for store secrets instead of the environment's choice
+    /// (tests: `SecretStore::mock()`).
+    #[must_use]
+    pub fn with_secret_store(self, store: SecretStore) -> Self {
+        let _ = self.secrets.set(Arc::new(store));
+        self
+    }
+
+    /// The keychain for store secrets: set by [`Self::with_secret_store`],
+    /// else `SecretStore::from_env()` (system keychain, or the in-memory
+    /// store with `ARRANGIA_KEYRING=mock`). Unit tests always get a mock.
+    pub fn secret_store(&self) -> CmdResult<Arc<SecretStore>> {
+        if let Some(s) = self.secrets.get() {
+            return Ok(s.clone());
+        }
+        #[cfg(test)]
+        let store = SecretStore::mock();
+        #[cfg(not(test))]
+        let store = SecretStore::from_env().map_err(keychain_error)?;
+        Ok(self.secrets.get_or_init(|| Arc::new(store)).clone())
+    }
+
+    /// Registers the store clients' connection test (once).
+    pub fn set_connection_tester(&self, tester: Arc<dyn ConnectionTester>) {
+        let _ = self.connection_tester.set(tester);
+    }
+
+    pub fn connection_tester(&self) -> Option<&Arc<dyn ConnectionTester>> {
+        self.connection_tester.get()
     }
 
     /// Uses `path` as Claude Desktop's config file instead of the real one
@@ -321,6 +362,8 @@ command_table! {
         frames_import_plan, frames_import_apply, frames_list, frames_remove,
         view_get, view_set,
         mcp_status, mcp_set_enabled, claude_desktop_plan, claude_desktop_install,
+        store_accounts_list, store_account_import, store_account_remove, store_account_test,
+        project_store_get, project_store_patch, store_config_get,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,
@@ -363,3 +406,6 @@ mod tests_import;
 
 #[cfg(test)]
 mod tests_frames;
+
+#[cfg(test)]
+mod tests_stores;

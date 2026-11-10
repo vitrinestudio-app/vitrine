@@ -41,7 +41,10 @@ jsonwebtoken = "11.1.0"
 
 # Storage and secrets
 rusqlite = { version = "0.41.1", features = ["bundled"] }
+# keyring 4 (`v1` feature) picks the platform store; keyring-core gives the
+# store API and the in-memory mock used by tests and `ARRANGIA_KEYRING=mock`.
 keyring = "4.2.0"
+keyring-core = "1.0.1"
 
 # Rendering (to be confirmed by the Phase 0 spike)
 tiny-skia = "0.12.0"

@@ -15,6 +15,8 @@
 //!
 //! Plain REST via `reqwest` + rustls, no vendor SDKs.
 
+pub mod credentials;
+
 /// The stores Arrangia can publish to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Store {

@@ -832,6 +832,17 @@ impl ArrangiaMcp {
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
+            // Store mapping (app ids, accounts) is read-only over MCP
+            // (Phase 5.1): the user sets it in the GUI.
+            if p.ops
+                .iter()
+                .any(|o| o.get("op").and_then(Value::as_str) == Some("set_store"))
+            {
+                return Err(CommandError::invalid(
+                    "set_store is not available over MCP: the user edits the store mapping in \
+                     the GUI (Project settings → Stores); read it with store_config_get",
+                ));
+            }
             let mut args = json!({ "ops": p.ops });
             if let Some(l) = p.label {
                 args["label"] = json!(l);

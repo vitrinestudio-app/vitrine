@@ -33,13 +33,16 @@ impl Client {
 
     /// Starts `cmd` (an `arrangia mcp` invocation) and initialises as
     /// `client_name`. Never starts a real GUI: `ARRANGIA_GUI` points to a
-    /// missing file unless the caller set it.
+    /// missing file unless the caller set it; store secrets use the in-memory
+    /// keychain (`ARRANGIA_KEYRING=mock`).
     pub fn spawn(mut cmd: Command, app_dir: &Path, client_name: &str) -> Client {
         if !cmd.get_envs().any(|(k, _)| k == "ARRANGIA_GUI") {
             cmd.env("ARRANGIA_GUI", app_dir.join("no-gui-in-tests"));
         }
         let mut child = cmd
             .env("ARRANGIA_APP_DIR", app_dir)
+            // Store secrets: in-memory keychain, never the real one.
+            .env("ARRANGIA_KEYRING", "mock")
             .env("NO_COLOR", "1")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

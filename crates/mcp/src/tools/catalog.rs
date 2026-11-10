@@ -101,6 +101,37 @@ impl ArrangiaMcp {
     }
 
     #[tool(
+        description = "Store upload configuration (read-only): the app-wide store accounts (id, kind apple/google, label, Apple issuer/key id, Google client email – never any key material) and, with a project open, its store mapping (`store:` in project.yaml: Apple app id / bundle id / platform, Google package name, account references) with the effective store locale of every project language (explicit, exact or built-in default) and account references that do not resolve. Accounts and the mapping are set by the user in the GUI; there is no tool to import keys.",
+        annotations(read_only_hint = true)
+    )]
+    async fn store_config_get(
+        &self,
+        Parameters(_): Parameters<NoParams>,
+        ctx: RequestContext<RoleServer>,
+    ) -> CallToolResult {
+        self.run(&ctx, move |app| {
+            let v = cmd(app, "store_config_get", Value::Null)?;
+            let n = v["accounts"].as_array().map_or(0, Vec::len);
+            let mapped: Vec<&str> = ["apple", "google"]
+                .into_iter()
+                .filter(|s| !v["project"]["store"][*s].is_null())
+                .collect();
+            let text = if v["project"].is_null() {
+                format!("{n} store account(s); no project open")
+            } else if mapped.is_empty() {
+                format!("{n} store account(s); the project is not mapped to a store")
+            } else {
+                format!(
+                    "{n} store account(s); project mapped to {}",
+                    mapped.join(", ")
+                )
+            };
+            Ok(ToolOutput::new(text, v))
+        })
+        .await
+    }
+
+    #[tool(
         description = "Store gallery profiles (gap between images, corner radius, background) used for gallery previews and to cut content in gaps.",
         annotations(read_only_hint = true)
     )]

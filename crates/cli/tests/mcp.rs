@@ -407,7 +407,10 @@ fn mcp_overrides_batches_docs_and_asset_mapping() {
             {"id": "title-plan", "scope": "lang", "lang": "fr", "patch": {"font_size": 62}},
         ]}),
     );
-    assert_eq!(r["step"], "Arrangia Test: Edit font_size of title-plan", "{r}");
+    assert_eq!(
+        r["step"], "Arrangia Test: Edit font_size of title-plan",
+        "{r}"
+    );
     let de = c.call("element_get", json!({"id": "title-plan", "lang": "de"}));
     assert_eq!(de["lang_override"]["font_size"], 60);
     c.call("history_undo", json!({}));
@@ -481,6 +484,18 @@ fn mcp_overrides_batches_docs_and_asset_mapping() {
     c.call("assets_import", json!({"files": files}));
     assert!(dir.join("screenshots/de/promo-shot.png").is_file());
     assert!(dir.join("assets/promo-bg.png").is_file());
+
+    // Store configuration: read-only over MCP, `set_store` refused.
+    let r = c.call("store_config_get", json!({}));
+    assert_eq!(r["accounts"], json!([]));
+    assert_eq!(r["project"]["store"], json!({}));
+    assert!(r["project"]["effective"]["apple"].is_array());
+    let e = c.call_err(
+        "apply_ops",
+        json!({"ops": [{"op": "set_store", "store": {"google": {"package_name": "com.x.y"}}}]}),
+    );
+    assert!(e.to_string().contains("not available over MCP"), "{e}");
+    assert!(!std::fs::read_to_string(&file).unwrap().contains("com.x.y"));
 }
 
 fn copy_dir(src: &Path, dst: &Path) {

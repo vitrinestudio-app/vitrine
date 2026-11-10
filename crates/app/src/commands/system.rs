@@ -76,6 +76,9 @@ pub struct DialogPickFilesArgs {
     pub kind: Option<AssetKind>,
     #[serde(default = "yes")]
     pub multiple: bool,
+    /// Explicit extensions (`["p8"]`); used instead of `kind`.
+    #[serde(default)]
+    pub extensions: Option<Vec<String>>,
 }
 
 fn yes() -> bool {
@@ -84,14 +87,20 @@ fn yes() -> bool {
 
 /// Asks for files (empty when cancelled); import them with `assets_import`.
 pub fn dialog_pick_files(app: &AppState, args: DialogPickFilesArgs) -> CmdResult<Vec<PathBuf>> {
-    let filters: Vec<FileFilter> = args
-        .kind
-        .map(|k| FileFilter {
-            name: format!("{k:?}"),
-            extensions: k.extensions().iter().map(|e| (*e).to_owned()).collect(),
-        })
-        .into_iter()
-        .collect();
+    let filters: Vec<FileFilter> = if let Some(ext) = args.extensions.filter(|e| !e.is_empty()) {
+        vec![FileFilter {
+            name: ext.join(", "),
+            extensions: ext,
+        }]
+    } else {
+        args.kind
+            .map(|k| FileFilter {
+                name: format!("{k:?}"),
+                extensions: k.extensions().iter().map(|e| (*e).to_owned()).collect(),
+            })
+            .into_iter()
+            .collect()
+    };
     let title = args.title.unwrap_or_else(|| "Choose files".to_owned());
     Ok(app.dialogs().pick_files(&title, &filters, args.multiple))
 }

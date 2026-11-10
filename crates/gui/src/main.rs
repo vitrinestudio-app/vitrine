@@ -232,6 +232,13 @@ json_commands! {
     mcp_set_enabled: commands::McpSetEnabledArgs,
     claude_desktop_plan: commands::NoArgs,
     claude_desktop_install: commands::ClaudeDesktopInstallArgs,
+    store_accounts_list: commands::NoArgs,
+    store_account_import: commands::StoreAccountImportArgs,
+    store_account_remove: commands::StoreAccountIdArgs,
+    store_account_test: commands::StoreAccountIdArgs,
+    project_store_get: commands::NoArgs,
+    project_store_patch: commands::ProjectStorePatchArgs,
+    store_config_get: commands::NoArgs,
 }
 
 image_commands! {
@@ -382,6 +389,13 @@ fn main() {
             mcp_set_enabled,
             claude_desktop_plan,
             claude_desktop_install,
+            store_accounts_list,
+            store_account_import,
+            store_account_remove,
+            store_account_test,
+            project_store_get,
+            project_store_patch,
+            store_config_get,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Arrangia")

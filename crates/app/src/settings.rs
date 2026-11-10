@@ -18,6 +18,7 @@ use arrangia_core::model::{FrameStyle, Lang};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{CmdResult, CommandError};
+use crate::stores::StoreAccount;
 
 /// Where app data lives.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -104,6 +105,11 @@ pub struct Settings {
     /// works headless). On by default.
     #[serde(skip_serializing_if = "is_true")]
     pub mcp_autostart_gui: bool,
+    /// Store accounts (Phase 5.1): public facts only, secrets are in the
+    /// system keychain (`crate::stores`). Changed only by the
+    /// `store_account_*` commands, never by `settings_set`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub store_accounts: Vec<StoreAccount>,
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)] // serde's skip_serializing_if signature
@@ -122,6 +128,7 @@ impl Default for Settings {
             mcp_enabled: true,
             mcp_port: None,
             mcp_autostart_gui: true,
+            store_accounts: Vec::new(),
         }
     }
 }
@@ -141,6 +148,7 @@ impl Settings {
         }
         Lang::parse(&self.default_project_language)?;
         FrameStyle::parse(&self.default_frame_style)?;
+        crate::stores::check_accounts(&self.store_accounts)?;
         Ok(())
     }
 }
@@ -187,6 +195,11 @@ impl SettingsStore {
         let serde_json::Value::Object(patch) = patch else {
             return Err(CommandError::invalid("settings must be an object"));
         };
+        if patch.contains_key("store_accounts") {
+            return Err(CommandError::invalid(
+                "store accounts are changed with store_account_import / store_account_remove",
+            ));
+        }
         let mut current = serde_json::to_value(self.load()?)?;
         if let serde_json::Value::Object(map) = &mut current {
             for (k, v) in patch {
@@ -332,6 +345,7 @@ mod tests {
             mcp_enabled: false,
             mcp_port: Some(4100),
             mcp_autostart_gui: true,
+            store_accounts: Vec::new(),
         };
         store.save(&s).unwrap();
         assert_eq!(store.load().unwrap(), s);
@@ -358,6 +372,11 @@ mod tests {
                 .is_err()
         );
         assert!(store.update(&serde_json::json!({"nope": 1})).is_err());
+        assert!(
+            store
+                .update(&serde_json::json!({"store_accounts": []}))
+                .is_err()
+        );
         assert_eq!(store.load().unwrap(), updated);
     }
 

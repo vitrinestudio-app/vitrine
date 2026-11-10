@@ -19,6 +19,9 @@
 //! --app-dir <app-dir>` or a script can drive assistant edits while the
 //! browser shows them). "Add to Claude Desktop" always writes
 //! `<app-dir>/claude_desktop_config.json` here, never the real config.
+//! Store account secrets go to an in-memory keychain (lost on exit) unless
+//! `--system-keychain` is given (then `ARRANGIA_KEYRING_SERVICE` decides
+//! the service name; use a test name).
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -40,9 +43,10 @@ struct Options {
     dialogs: FixedDialogs,
     copy: bool,
     mcp: bool,
+    system_keychain: bool,
 }
 
-const USAGE: &str = "usage: arrangia-devbridge [--port N] [--project DIR] [--ui DIR] [--app-dir DIR] [--pick-folder DIR] [--pick-file FILE]... [--save-file FILE] [--copy] [--mcp]";
+const USAGE: &str = "usage: arrangia-devbridge [--port N] [--project DIR] [--ui DIR] [--app-dir DIR] [--pick-folder DIR] [--pick-file FILE]... [--save-file FILE] [--copy] [--mcp] [--system-keychain]";
 
 fn parse() -> Result<Options, String> {
     let mut o = Options::default();
@@ -59,6 +63,7 @@ fn parse() -> Result<Options, String> {
             "--save-file" => o.dialogs.save = Some(value()?.into()),
             "--copy" => o.copy = true,
             "--mcp" => o.mcp = true,
+            "--system-keychain" => o.system_keychain = true,
             "-h" | "--help" => return Err(USAGE.to_owned()),
             _ => return Err(format!("unknown argument `{a}`\n{USAGE}")),
         }
@@ -83,10 +88,12 @@ fn main() -> ExitCode {
     let relay = Arc::new(ProgressRelay::new(hub.clone()));
     let paths = AppPaths::in_dir(&app_dir);
     let discovery = arrangia_mcp::discovery::path(&paths);
-    let app = Arc::new(
-        AppState::new(paths, relay.clone(), Arc::new(o.dialogs))
-            .with_claude_desktop_config(app_dir.join("claude_desktop_config.json")),
-    );
+    let mut state = AppState::new(paths, relay.clone(), Arc::new(o.dialogs))
+        .with_claude_desktop_config(app_dir.join("claude_desktop_config.json"));
+    if !o.system_keychain {
+        state = state.with_secret_store(arrangia_gui::stores::credentials::SecretStore::mock());
+    }
+    let app = Arc::new(state);
     let project = match (&o.project, o.copy) {
         (Some(dir), true) => {
             let copy = app_dir.join("project-copy");

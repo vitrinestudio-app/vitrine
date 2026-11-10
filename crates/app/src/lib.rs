@@ -19,6 +19,7 @@
 //! dialogs   Dialogs trait (Tauri dialog plugin / fixed answers)
 //! mcp       status of the GUI-hosted MCP endpoint (+ McpControl hook)
 //! claude_desktop  "Add to Claude Desktop" (config merge with backup)
+//! stores    app-wide store accounts (secrets in the keychain), connection test seam
 //! ```
 //!
 //! All model changes go through the core Operations API.
@@ -33,6 +34,7 @@ pub mod mcp;
 pub mod preview;
 pub mod session;
 pub mod settings;
+pub mod stores;
 pub mod view;
 pub mod watch;
 

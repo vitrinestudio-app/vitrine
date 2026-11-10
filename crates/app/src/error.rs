@@ -28,6 +28,10 @@ pub enum ErrorCode {
     Busy,
     /// The user cancelled (dialog, export).
     Cancelled,
+    /// The feature is not available in this build yet.
+    NotImplemented,
+    /// The system keychain failed.
+    Keychain,
     Internal,
 }
 
