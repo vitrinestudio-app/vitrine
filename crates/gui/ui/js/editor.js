@@ -45,6 +45,20 @@ function rectsOf(overlay, ids) {
   return out;
 }
 
+/**
+ * `{strip, target, variant}` of state `s` made valid for `summary`: an
+ * unknown strip falls back to the first one with a target, an unknown
+ * target (or one of another strip) to the strip's first target, an
+ * unknown variant to the target's own.
+ */
+export function validContext(summary, s) {
+  const strip = summary.strips.some((x) => x.id === s.strip) ? s.strip : summary.targets[0]?.strip ?? summary.strips[0]?.id ?? null;
+  const target = summary.targets.some((x) => x.id === s.target && x.strip === strip) ? s.target : summary.targets.find((x) => x.strip === strip)?.id ?? null;
+  const variants = summary.strips.find((x) => x.id === strip)?.variants ?? [];
+  const variant = typeof s.variant === 'string' && !variants.includes(s.variant) ? undefined : strip === s.strip ? s.variant : undefined;
+  return { strip, target, variant };
+}
+
 let validateTimer = 0;
 let overlaySeq = 0;
 
@@ -130,8 +144,25 @@ export const editor = {
       emit('invalidate', { rects: [] });
       return result;
     }
-    const [overlay, summary] = await Promise.all([this.refreshOverlay(), api.summary()]);
-    store.set({ summary });
+    let overlay;
+    let contextChanged = false;
+    const c0 = result.changes ?? {};
+    if (c0.strips?.length || c0.targets?.length) {
+      // Strips, variants or targets may have been added, renamed or removed
+      // (also by undo/redo): keep the view context valid before asking for
+      // the overlay.
+      const summary = await api.summary();
+      const s = store.get();
+      const next = validContext(summary, s);
+      contextChanged = next.strip !== s.strip || next.target !== s.target || next.variant !== s.variant;
+      store.set({ summary, ...next });
+      overlay = await this.refreshOverlay();
+    } else {
+      const [o, summary] = await Promise.all([this.refreshOverlay(), api.summary()]);
+      overlay = o;
+      store.set({ summary });
+    }
+    if (contextChanged) emit('reset', {});
     if (select === 'created' && result.created?.length) store.set({ selection: result.created });
     else if (Array.isArray(select)) store.set({ selection: select });
 

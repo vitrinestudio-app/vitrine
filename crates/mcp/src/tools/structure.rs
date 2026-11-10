@@ -15,26 +15,64 @@ use crate::server::{ArrangiaMcp, cmd};
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct StripAddParams {
-    /// New strip id, e.g. `tablet`.
-    pub id: String,
+    /// New strip id, e.g. `tablet` (default: `canvas`, made unique).
+    #[serde(default)]
+    pub id: Option<String>,
     /// Page aspect `w:h`, usually the export size of its main target, e.g.
     /// `1320:2868` (iPhone 6.9" portrait) or `2064:2752` (iPad 13").
-    pub aspect: String,
-    /// Number of pages (default 1).
-    #[serde(default = "one")]
-    pub count: u32,
+    /// Optional with `target_preset` (then the preset's size).
+    #[serde(default)]
+    pub aspect: Option<String>,
+    /// Number of pages (default 3 for portrait pages, else 1).
+    #[serde(default)]
+    pub count: Option<u32>,
     /// Page ids (optional, e.g. `["intro", "plan"]`; default `page-01` …).
     #[serde(default)]
     pub ids: Vec<String>,
     /// Canvas backgrounds bottom to top (Fill objects: `"#0B3324"`, or
     /// `{"kind": "linear-gradient", "angle": 115, "stops": [["#0B3324", 0],
-    /// ["#1D5C68", 1]]}`).
+    /// ["#1D5C68", 1]]}`). Default: one light grey.
     #[serde(default)]
     pub backgrounds: Vec<Value>,
+    /// `empty` (default) or `starter` (a headline + device on every page,
+    /// texts with placeholder strings in the default language).
+    #[serde(default)]
+    pub start: Option<String>,
+    /// Also add a target from this catalog preset showing the new strip
+    /// (same undo step), e.g. `ios-ipad-13`.
+    #[serde(default)]
+    pub target_preset: Option<String>,
 }
 
-fn one() -> u32 {
-    1
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct StripDuplicateParams {
+    /// Strip to copy.
+    pub strip: String,
+    /// Id of the copy (default: the original's id made unique, `phone-2`).
+    #[serde(default)]
+    pub id: Option<String>,
+    /// Give the copied texts their own translation keys (`<id>.<key>`,
+    /// translations copied) instead of sharing them with the original.
+    #[serde(default)]
+    pub copy_strings: bool,
+    /// Also copy the targets showing the original (ids `<target>-<id>`).
+    #[serde(default)]
+    pub copy_targets: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct StripRenameParams {
+    pub strip: String,
+    /// New id.
+    pub to: String,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct StripIdParams {
+    pub strip: String,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -61,9 +99,10 @@ pub struct StripUpdateParams {
 #[derive(Debug, Clone, Copy, Deserialize, serde::Serialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum VariantAction {
-    /// Add an empty variant (optionally with `content_scale`).
+    /// Add a variant: empty (optionally with `content_scale`) or a copy of
+    /// `from`; `targets` show it from then on.
     Add,
-    /// Remove it (refused while a target shows it).
+    /// Remove it; targets showing it fall back to the base layout.
     Remove,
     /// Rename it to `to`; targets follow.
     Rename,
@@ -85,6 +124,12 @@ pub struct StripVariantParams {
     /// `scale`).
     #[serde(default)]
     pub content_scale: Option<f64>,
+    /// `add`: copy this variant's overrides and content scale.
+    #[serde(default)]
+    pub from: Option<String>,
+    /// `add`: targets of the strip that show the new variant.
+    #[serde(default)]
+    pub targets: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -153,7 +198,7 @@ fn edited(r: &Value) -> ToolOutput {
 #[tool_router(router = structure_tools, vis = "pub(crate)")]
 impl ArrangiaMcp {
     #[tool(
-        description = "Add a strip (canvas) with N pages of one aspect. Example: {\"id\": \"tablet\", \"aspect\": \"2064:2752\", \"count\": 3, \"backgrounds\": [\"#0B3324\"]}. Then add a target showing it (target_add) before adding elements."
+        description = "Add a strip (canvas) with N pages of one aspect, empty or with a starter layout (`start: \"starter\"`: headline + device per page), optionally with a first target from a catalog preset (one undo step). Example: {\"id\": \"tablet\", \"target_preset\": \"ios-ipad-13\", \"start\": \"starter\"} or {\"id\": \"tablet\", \"aspect\": \"2064:2752\", \"count\": 3, \"backgrounds\": [\"#0B3324\"]}. Without `target_preset` add a target showing it (target_add) before adding elements."
     )]
     async fn strip_add(
         &self,
@@ -161,23 +206,80 @@ impl ArrangiaMcp {
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
-            let mut page = json!({ "aspect": p.aspect, "count": p.count });
-            if !p.ids.is_empty() {
-                page["ids"] = json!(p.ids);
+            let mut args = json!({ "ids": p.ids });
+            for (k, v) in [
+                ("id", p.id.map(Value::from)),
+                ("aspect", p.aspect.map(Value::from)),
+                ("count", p.count.map(Value::from)),
+                ("start", p.start.map(Value::from)),
+                ("target_preset", p.target_preset.map(Value::from)),
+            ] {
+                if let Some(v) = v {
+                    args[k] = v;
+                }
             }
-            let mut strip = json!({ "id": p.id, "page": page });
             if !p.backgrounds.is_empty() {
-                strip["backgrounds"] = json!(p.backgrounds);
+                args["backgrounds"] = json!(p.backgrounds);
             }
-            let r = cmd(
+            Ok(edited(&cmd(app, "strip_add", args)?))
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Duplicate a strip (canvas): pages, backgrounds, elements (new unique ids), variants with their overrides; optionally the targets showing it and own copies of the texts' translations (one undo step). Example: {\"strip\": \"phone\", \"id\": \"tablet\", \"copy_targets\": true}."
+    )]
+    async fn strip_duplicate(
+        &self,
+        Parameters(p): Parameters<StripDuplicateParams>,
+        ctx: RequestContext<RoleServer>,
+    ) -> CallToolResult {
+        self.run(&ctx, move |app| {
+            let mut args = json!({
+                "duplicate_of": p.strip,
+                "copy_strings": p.copy_strings,
+                "copy_targets": p.copy_targets,
+            });
+            if let Some(id) = p.id {
+                args["id"] = json!(id);
+            }
+            Ok(edited(&cmd(app, "strip_add", args)?))
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Rename a strip (canvas); targets showing it follow. Example: {\"strip\": \"main\", \"to\": \"phone\"}."
+    )]
+    async fn strip_rename(
+        &self,
+        Parameters(p): Parameters<StripRenameParams>,
+        ctx: RequestContext<RoleServer>,
+    ) -> CallToolResult {
+        self.run(&ctx, move |app| {
+            Ok(edited(&cmd(
                 app,
-                "apply_ops",
-                json!({
-                    "ops": [{ "op": "add_strip", "strip": strip }],
-                    "label": format!("Add strip {}", p.id),
-                }),
-            )?;
-            Ok(edited(&r))
+                "strip_rename",
+                json!({ "strip": p.strip, "to": p.to }),
+            )?))
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Remove a strip (canvas) with its elements, variants and the targets showing it (one undo step, refused for the last strip). Tell the user which targets go with it. Example: {\"strip\": \"tablet\"}."
+    )]
+    async fn strip_remove(
+        &self,
+        Parameters(p): Parameters<StripIdParams>,
+        ctx: RequestContext<RoleServer>,
+    ) -> CallToolResult {
+        self.run(&ctx, move |app| {
+            Ok(edited(&cmd(
+                app,
+                "strip_remove",
+                json!({ "strip": p.strip }),
+            )?))
         })
         .await
     }
@@ -210,7 +312,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Add, remove, rename or scale a variant of a strip. A variant holds per-format overrides (e.g. `tablet-landscape` for iPad targets with group 2); set it on a target with target_update {patch: {variant: …}} and edit with scope `variant`. Example: {\"strip\": \"phone\", \"action\": \"add\", \"id\": \"tablet-landscape\", \"content_scale\": 0.75}."
+        description = "Add (empty, or a copy `from` another variant), remove, rename or scale a variant of a strip. A variant holds per-format overrides (e.g. `tablet-landscape` for iPad targets with group 2); `targets` on add (or target_update {patch: {variant: …}}) make targets show it; edit it with scope `variant`. Removing detaches its targets (they show the base layout again). Example: {\"strip\": \"phone\", \"action\": \"add\", \"id\": \"tablet-landscape\", \"content_scale\": 0.75, \"targets\": [\"ios-ipad-13\"]}."
     )]
     async fn strip_variant(
         &self,
@@ -219,9 +321,10 @@ impl ArrangiaMcp {
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
             let change = match p.action {
-                VariantAction::Add => {
-                    json!({ "action": "add", "id": p.id, "content_scale": p.content_scale })
-                }
+                VariantAction::Add => json!({
+                    "action": "add", "id": p.id, "content_scale": p.content_scale,
+                    "from": p.from, "targets": p.targets,
+                }),
                 VariantAction::Remove => json!({ "action": "remove", "id": p.id }),
                 VariantAction::Rename => json!({
                     "action": "rename", "id": p.id,

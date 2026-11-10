@@ -2,6 +2,8 @@
 //! (incl. rename) and remove. The UI sends field values; the ops are built
 //! here (`AddTarget`, `UpdateTarget`, `RenameTarget`, `RemoveTarget`).
 
+use std::collections::BTreeSet;
+
 use arrangia_core::catalog;
 use arrangia_core::model::{
     GalleryRef, Orientation, PixelSize, Region, StripId, Target, TargetId, TargetKind,
@@ -65,34 +67,38 @@ pub struct TargetAddArgs {
     pub orientation: Option<Orientation>,
 }
 
-/// `base`, or `base-2`, `base-3` … if taken.
-fn unique_target_id(project: &arrangia_core::Project, base: &str) -> String {
-    if project.target(base).is_none() {
+/// `base`, or `base-2`, `base-3` … if taken (by the project or `taken`).
+pub(super) fn unique_target_id(
+    project: &arrangia_core::Project,
+    base: &str,
+    taken: &BTreeSet<String>,
+) -> String {
+    let free = |id: &str| project.target(id).is_none() && !taken.contains(id);
+    if free(base) {
         return base.to_owned();
     }
-    // At most one id per existing target is taken.
-    (2..=project.targets.len() + 2)
+    // At most one id per existing or taken target is in use.
+    (2..=project.targets.len() + taken.len() + 2)
         .map(|n| format!("{base}-{n}"))
-        .find(|id| project.target(id).is_none())
+        .find(|id| free(id))
         .unwrap_or_else(|| base.to_owned())
 }
 
-/// Adds a target from a catalog preset (size, kind, gallery profile,
-/// screenshot variant and store slot of the preset).
-pub fn target_add_from_preset(app: &AppState, args: TargetAddArgs) -> CmdResult<EditResult> {
+/// A target from a catalog preset (size, kind, gallery profile, screenshot
+/// variant and store slot of the preset) showing `strip` with
+/// `page_count` pages; the id defaults to the preset id made unique
+/// against the project and `taken`.
+pub(super) fn preset_target(
+    project: &arrangia_core::Project,
+    args: &TargetAddArgs,
+    page_count: u32,
+    taken: &BTreeSet<String>,
+) -> CmdResult<Target> {
     let preset = catalog::target_preset(&args.preset)
         .ok_or_else(|| CommandError::not_found(format!("unknown preset `{}`", args.preset)))?;
-    let session = app.session()?;
-    let project = session.snapshot();
-    if project.strip(&args.strip).is_none() {
-        return Err(CommandError::not_found(format!(
-            "unknown strip `{}`",
-            args.strip
-        )));
-    }
-    let id = match args.id {
-        Some(id) => id,
-        None => unique_target_id(&project, &preset.id),
+    let id = match &args.id {
+        Some(id) => id.clone(),
+        None => unique_target_id(project, &preset.id, taken),
     };
     let size = args
         .size
@@ -118,14 +124,24 @@ pub fn target_add_from_preset(app: &AppState, args: TargetAddArgs) -> CmdResult<
         target.gallery = None;
         target.fit = preset.fit;
         // Page ranges are clamped to the strip (a 2-page strip gets [0, 1]).
-        let last = project
-            .strip(&args.strip)
-            .map_or(0, |s| s.page.count.saturating_sub(1));
+        let last = page_count.saturating_sub(1);
         target.region = preset.region.map(|r| match r {
             Region::Pages([a, b]) => Region::Pages([a.min(last), b.min(last)]),
             other @ Region::Rect(_) => other,
         });
     }
+    Ok(target)
+}
+
+/// Adds a target from a catalog preset (see [`preset_target`]).
+pub fn target_add_from_preset(app: &AppState, args: TargetAddArgs) -> CmdResult<EditResult> {
+    let session = app.session()?;
+    let project = session.snapshot();
+    let strip = project
+        .strip(&args.strip)
+        .ok_or_else(|| CommandError::not_found(format!("unknown strip `{}`", args.strip)))?;
+    let target = preset_target(&project, &args, strip.page.count, &BTreeSet::new())?;
+    let id = target.id.to_string();
     let result = session.apply_ops(
         vec![Op::AddTarget {
             target,

@@ -33,6 +33,7 @@ mod render;
 mod screenshot_import;
 mod stores;
 mod strings;
+mod strips;
 mod system;
 mod targets;
 mod texts;
@@ -62,6 +63,7 @@ pub use render::*;
 pub use screenshot_import::*;
 pub use stores::*;
 pub use strings::*;
+pub use strips::*;
 pub use system::*;
 pub use targets::*;
 pub use texts::*;
@@ -389,7 +391,7 @@ command_table! {
         edit_reorder, edit_duplicate, edit_remove, edit_group, edit_ungroup,
         edit_reset_override, element_reset_override,
         element_get, element_patch, edit_rename, edit_arrange, element_add,
-        strip_get, strip_patch, strip_variant,
+        strip_get, strip_patch, strip_variant, strip_add, strip_rename, strip_remove,
         validate, export, export_cancel,
         strings_get, strings_missing,
         assets_list, assets_import, assets_remove,

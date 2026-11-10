@@ -19,8 +19,14 @@ import { onViewportChange } from './views/viewport.js';
 import { toggleValidation } from './dialogs/validation.js';
 
 const BASE = '__base__';
+/** Value of the "+ Add…" entry at the end of the top-bar pickers. */
+const ADD = '__add__';
 
-/** `app`: app-level actions `{ menu (button element), targets(), exportDialog(), assistant (MCP indicator element) }` from main.js. */
+/**
+ * `app`: app-level actions from main.js: `{ menu (button element), targets(), exportDialog(),
+ * assistant (MCP indicator element), addStrip(), addTarget(), addLanguage(), addVariant() }`
+ * (the last four back the "+ Add…" entries of the top-bar pickers).
+ */
 export function mountShell(app = {}) {
   const ctx = panelContext();
   /** `canvas`: the canvas view (null in other views); `view`: the mounted view (zoom API). */
@@ -29,13 +35,20 @@ export function mountShell(app = {}) {
   // ----- top bar --------------------------------------------------------------
   const topbar = document.getElementById('topbar');
   const name = h('span', { class: 'project-name' });
-  const strip = picker({ label: t('top.strip'), onchange: (v) => editor.setContext({ strip: v }) });
-  const target = picker({ label: t('top.target'), onchange: (v) => editor.setContext({ target: v }) });
-  const lang = picker({ label: t('top.lang'), onchange: (v) => editor.setContext({ lang: v }) });
+  /** Picker change: "+ Add…" runs `add` (and restores the shown value), anything else `set`. */
+  const choose = (add, set) => (v) => {
+    if (v !== ADD) return set(v);
+    renderTop();
+    return add?.();
+  };
+  const strip = picker({ label: t('top.strip'), onchange: choose(app.addStrip, (v) => editor.setContext({ strip: v })) });
+  const target = picker({ label: t('top.target'), onchange: choose(app.addTarget, (v) => editor.setContext({ target: v })) });
+  const lang = picker({ label: t('top.lang'), onchange: choose(app.addLanguage, (v) => editor.setContext({ lang: v })) });
   const variant = picker({
     label: t('top.variant'),
-    onchange: (v) => editor.setContext({ variant: v === '' ? undefined : v === BASE ? null : v }),
+    onchange: choose(app.addVariant, (v) => editor.setContext({ variant: v === '' ? undefined : v === BASE ? null : v })),
   });
+  const addEntry = (key) => ({ value: ADD, label: `+ ${t(key)}` });
   const badge = h('button', { class: 'badge badge-btn', type: 'button', title: t('top.validation'), onclick: () => toggleValidation(badge, shell) });
   const targetsBtn = h('button', { class: 'icon-btn', type: 'button', title: t('project.menu.targets'), onclick: () => app.targets?.() }, icon('targets'));
   const exportBtn = h('button', { class: 'btn btn-small', type: 'button', title: `${t('project.menu.export')} (${keyLabel('mod+e')})`, onclick: () => app.exportDialog?.() }, icon('export'), t('export.button'));
@@ -69,20 +82,20 @@ export function mountShell(app = {}) {
     if (!s) return;
     name.textContent = s.name;
     name.title = s.dir;
-    strip.set(
-      s.strips.map((x) => ({ value: x.id, label: x.id })),
-      st.strip,
-    );
+    strip.set([...s.strips.map((x) => ({ value: x.id, label: x.id })), addEntry('top.add.strip')], st.strip);
     target.set(
-      s.targets.filter((x) => x.strip === st.strip).map((x) => ({ value: x.id, label: `${x.id}  (${x.size[0]}×${x.size[1]})`, short: x.id })),
+      [...s.targets.filter((x) => x.strip === st.strip).map((x) => ({ value: x.id, label: `${x.id}  (${x.size[0]}×${x.size[1]})`, short: x.id })), addEntry('top.add.target')],
       st.target ?? '',
     );
     lang.set(
-      s.languages.available.map((l) => ({
-        value: l,
-        label: l === s.languages.default ? `${l} · ${t('top.lang.default')}` : l,
-        short: l,
-      })),
+      [
+        ...s.languages.available.map((l) => ({
+          value: l,
+          label: l === s.languages.default ? `${l} · ${t('top.lang.default')}` : l,
+          short: l,
+        })),
+        addEntry('top.add.lang'),
+      ],
       st.lang,
     );
     const tg = currentTarget(st);
@@ -92,6 +105,7 @@ export function mountShell(app = {}) {
     if (own) options.push({ value: BASE, label: t('top.variant.base'), short: t('top.variant.base') });
     for (const v of sp?.variants ?? []) if (v !== own) options.push({ value: v, label: v, short: v, group: t('top.variant.others') });
     const current = st.variant === undefined ? '' : st.variant === null ? (own ? BASE : '') : st.variant;
+    options.push(addEntry('top.add.variant'));
     variant.set(options, current);
     variant.value.classList.toggle('variant-active', effectiveVariant(st) != null);
     variant.el.title = effectiveVariant(st) ? t('top.variant.hint') : '';

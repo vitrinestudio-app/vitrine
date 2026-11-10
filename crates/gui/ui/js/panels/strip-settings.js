@@ -4,6 +4,8 @@
 // (add/rename/remove, content scale). Every change is one undo step via
 // `strip_patch` / `strip_variant`.
 
+import { openTargets } from '../dialogs/targets.js';
+import { openNewVariant, removeVariant } from '../dialogs/variants.js';
 import { h, icon } from '../dom.js';
 import { fillCss, fillEditor, numberInput, selectInput, textInput } from './fields.js';
 
@@ -149,17 +151,8 @@ export async function renderStripSettings(ctx, ui) {
           validate: (x) => (/^[a-z0-9][a-z0-9_-]*$/i.test(x) ? null : t('inspector.id.invalid')),
           onCommit: (x) => variant({ action: 'rename', id: v.id, to: x }),
         }),
-        h(
-          'button',
-          {
-            type: 'button',
-            class: 'mini-btn',
-            title: v.targets.length ? `${t('strip.variant.in_use')}: ${v.targets.join(', ')}` : t('strip.variant.remove'),
-            disabled: v.targets.length > 0,
-            onclick: () => variant({ action: 'remove', id: v.id }),
-          },
-          icon('trash'),
-        ),
+        h('button', { type: 'button', class: 'mini-btn', title: t('strips.duplicate'), onclick: () => openNewVariant({ strip: stripId, from: v.id }) }, icon('copy')),
+        h('button', { type: 'button', class: 'mini-btn', title: t('strip.variant.remove'), onclick: () => removeVariant(stripId, v) }, icon('trash')),
       ),
       row(
         t('strip.variant.scale'),
@@ -168,24 +161,18 @@ export async function renderStripSettings(ctx, ui) {
       h('div', { class: 'insp-note muted small' }, `${v.overrides.length} ${t('strip.variant.overrides')}${v.targets.length ? ` · ${v.targets.join(', ')}` : ''}`),
     ),
   );
-  let newName = '';
-  const nameInput = h('input', { class: 'insp-text mono', type: 'text', placeholder: t('strip.variant.new'), spellcheck: 'false', dataset: { key: 'strip.variant.new' } });
-  const add = () => {
-    newName = nameInput.value.trim();
-    if (!/^[a-z0-9][a-z0-9_-]*$/i.test(newName)) {
-      nameInput.classList.add('invalid');
-      return;
-    }
-    variant({ action: 'add', id: newName });
-  };
-  nameInput.addEventListener('keydown', (e) => e.key === 'Enter' && add());
-  nameInput.addEventListener('input', () => nameInput.classList.remove('invalid'));
   nodes.push(
     section(
       'strip.variants',
       t('strip.variants'),
+      h('p', { class: 'insp-note muted small' }, t('variant.hint')),
       vRows.length ? vRows : h('p', { class: 'insp-note muted small' }, t('strip.variants.none')),
-      h('div', { class: 'insp-actions' }, nameInput, h('button', { type: 'button', class: 'btn btn-small', onclick: add }, icon('plus'), t('strip.variant.add'))),
+      h(
+        'div',
+        { class: 'insp-actions' },
+        h('button', { type: 'button', class: 'btn btn-small', onclick: () => openNewVariant({ strip: stripId, targets: [], switchTo: true }) }, icon('plus'), t('variant.new')),
+        h('button', { type: 'button', class: 'btn btn-small', onclick: () => openTargets(null, { mode: 'strip', strip: stripId }) }, t('strips.manage')),
+      ),
     ),
   );
   return nodes;

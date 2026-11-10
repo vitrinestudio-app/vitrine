@@ -45,6 +45,8 @@ fn mcp_session_creates_designs_translates_and_exports() {
         "catalog_devices",
         "catalog_targets",
         "strip_add",
+        "strip_duplicate",
+        "strip_remove",
         "target_add",
         "element_add",
         "element_update",

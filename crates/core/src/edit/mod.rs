@@ -28,6 +28,7 @@
 
 mod lang;
 mod overlay;
+mod strip;
 
 use std::collections::BTreeSet;
 
@@ -37,6 +38,7 @@ pub use lang::{DefaultLanguageImpact, LostScreenshot, LostText, default_language
 pub use overlay::{
     Overlay, OverlayElement, OverlayGroup, OverlayHandle, OverlayImage, OverlayPage, OverlayText,
 };
+pub use strip::{StripCopy, copy_strip, fresh_element_id, unique_string_key, unique_strip_id};
 
 use crate::geometry::{Rect, Vec2};
 use crate::model::fmt::double_option;

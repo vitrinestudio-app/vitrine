@@ -1,12 +1,25 @@
 // Strips panel: the project's strips; choosing one shows it with its first
-// target. (Strip settings follow in task 2.6.)
+// target. "New strip…" and "Manage…" open the strips & targets dialog
+// (create, rename, duplicate, remove, variants); the strip's own settings
+// (pages, backgrounds, variants) are in the inspector with nothing selected.
 
-import { h } from '../dom.js';
+import { openTargets } from '../dialogs/targets.js';
+import { h, icon } from '../dom.js';
 
 /** @param {HTMLElement} el  @param {import('./index.js').PanelContext} ctx */
 export function mount(el, { store, editor, t }) {
   const list = h('ul', { class: 'list', role: 'listbox', 'aria-label': t('panel.strips') });
-  el.append(h('div', { class: 'section-title' }, t('panel.strips')), list);
+  const report = (e) => editor.toast(e?.message ?? String(e), true);
+  el.append(
+    h('div', { class: 'section-title' }, t('panel.strips')),
+    list,
+    h(
+      'div',
+      { class: 'panel-actions' },
+      h('button', { class: 'btn btn-small', type: 'button', onclick: () => openTargets(null, { mode: 'new-strip' }).catch(report) }, icon('plus'), t('strips.add')),
+      h('button', { class: 'btn btn-small', type: 'button', onclick: () => openTargets(null, { mode: 'strip', strip: store.get().strip }).catch(report) }, t('strips.manage')),
+    ),
+  );
 
   function render() {
     const { summary, strip } = store.get();
@@ -22,6 +35,7 @@ export function mount(el, { store, editor, t }) {
             'aria-selected': String(s.id === strip),
             onclick: () => editor.setContext({ strip: s.id }),
             onkeydown: (e) => e.key === 'Enter' && editor.setContext({ strip: s.id }),
+            ondblclick: () => openTargets(null, { mode: 'strip', strip: s.id }).catch(report),
           },
           h('span', { class: 'grow' }, s.id),
           h('span', { class: 'muted small' }, `${s.page.count} ${t('panel.strips.pages')} · ${targets} ${t('panel.strips.targets')}`),

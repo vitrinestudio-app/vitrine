@@ -111,3 +111,70 @@
   gap: 4px;
   flex-wrap: wrap;
 }
+
+/* Strips (canvases) in the list and the strip pane. */
+.tg-list-head {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tg-strip-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: calc(100% - 16px);
+  margin: 10px 8px 2px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tg-strip-head:hover {
+  background: var(--bg-hover);
+}
+
+.tg-strip-head[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.tg-strip-head[aria-selected="true"] .muted {
+  color: rgb(255 255 255 / 75%);
+}
+
+.tg-strip-head .grow {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tg-strip-head .muted {
+  font-weight: 400;
+}
+
+.tg-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.tg-variant {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.tg-variant .spacer {
+  flex: 1;
+}

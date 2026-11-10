@@ -13,6 +13,7 @@ import { initUploadConfirm, openUpload } from './dialogs/upload.js';
 import { openScreenshotImport } from './dialogs/screenshot-import.js';
 import { openProjectSettings } from './dialogs/project-settings.js';
 import { openTargets } from './dialogs/targets.js';
+import { openNewVariant } from './dialogs/variants.js';
 import { editor } from './editor.js';
 import { applyTranslations, initI18n } from './i18n.js';
 import { bindAppShortcuts, createMenu, initNativeMenu } from './menu.js';
@@ -81,6 +82,11 @@ async function showProject() {
       targets: appActions.targets,
       exportDialog: appActions.exportDialog,
       assistant: createAssistantIndicator({ openSettings: appActions.appSettings }),
+      // "+ Add…" entries of the top-bar pickers: open the place where that thing is created.
+      addStrip: () => openTargets(null, { mode: 'new-strip' }).catch(report),
+      addTarget: () => openTargets(null, { mode: 'add', strip: store.get().strip }).catch(report),
+      addLanguage: () => openProjectSettings('languages', { focusAdd: true }),
+      addVariant: () => openNewVariant({ strip: store.get().strip, targets: [], switchTo: true }).catch(report),
     });
     bindShortcuts({
       ...actions,
