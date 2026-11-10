@@ -1,0 +1,77 @@
+# Arrangia ops (apply_ops)
+
+`apply_ops {ops: [...], label?}` applies all ops atomically as one undo step:
+either every op succeeds or nothing changes. Each op is a JSON object with an
+`"op"` tag. Field values use the YAML names of `project.yaml` (read the
+resource `arrangia://project/project.yaml` for real examples). Prefer the
+specific tools (element_update, strings_set …); use ops for multi-part
+changes that must be one step.
+
+## Value shapes
+- Ids: letters, digits, `-`, `_`, `.`; element ids are unique in the project.
+- Point `{x, y}` in lu. Aspect `"w:h"`. Pixel size `[w, h]`.
+- Colour `"#RRGGBB"`, `"#RRGGBBAA"` or `"@name"` (styles.colors).
+- Fill: `"#0B3324"` | `{kind: color, color}` | `{kind: linear-gradient, angle, stops: [[colour, 0..1], …]}`
+  (angle CSS-like: 0 = to top, 90 = to right, 180 = to bottom) |
+  `{kind: radial-gradient, center?: {x, y} (fractions), radius?, stops}` |
+  `{kind: image, asset, fit?: cover|contain|tile, …}`.
+- ElementPatch: object of element fields (see element_update); `null`
+  resets a field to its default.
+
+## Elements
+- `{"op": "add_element", "strip": "phone", "element": {"id": "badge", "kind": "shape", "page": 0, "at": {"x": 820, "y": 300}, "width": 200, "height": 80, "shape": "rect", "radius": 40, "fill": "@accent"}, "parent"?: "group-id", "index"?: 0}`
+  (`index`: position in the list, 0 = bottom; default top)
+- `{"op": "update_element", "id": "title", "patch": {"font_size": 80, "align": "left"}}`
+- `{"op": "remove_element", "id": "badge"}`
+- `{"op": "move_element", "id": "badge", "index": 0}` (painting order)
+- `{"op": "move_element_to", "id": "badge", "parent": "group-id" | null, "index"?: n}`
+- `{"op": "rename_element", "from": "text-2", "to": "title-beds"}`
+
+Element kinds and their fields:
+- device: `model` (catalog_devices), `screenshot` (key), `width` (height
+  follows), `orientation`, `color`, `frame`, `fit`, `shadow`, `chrome`, `url`
+- text: `text` (translation key), `style`, `box: {top, left, right, bottom}`
+  (margins to the page) or `at` + `width` (+ `height`) for a free box,
+  `align`, `valign`, `fit: {shrink_to, max_lines}`, `font_size`, `color`,
+  `stroke`, `glow`, `shadow`, `hyphenate`, `langs: {de: {…patch…}}`
+- image: `asset`, `width`, `height`, `fit`, `shadow`
+- shape: `shape` (rect|ellipse|line), `width`, `height`, `radius`, `fill`, `stroke`, `shadow`
+- background: `fill` (a per-page background; canvas backgrounds are strip `backgrounds`)
+- group: `children: [elements]`
+- common: `page`, `at`, `rotation` (degrees, clockwise), `pivot`, `anchor_y`,
+  `opacity`, `z`, `clip` (none|page), `visible`, `visible_in: {targets, langs}`, `lock_page`
+
+## Variants and language overrides
+- `{"op": "add_variant", "strip": "phone", "id": "tablet-landscape", "variant": {"content_scale": 0.75}}`
+- `{"op": "remove_variant", "strip": "phone", "id": "tablet-landscape"}`
+- `{"op": "rename_variant", "strip": "phone", "from": "a", "to": "b"}`
+- `{"op": "set_variant_content_scale", "strip": "phone", "variant": "tablet-landscape", "content_scale": 0.8 | null}`
+- `{"op": "set_variant_override", "strip": "phone", "variant": "tablet-landscape", "element": "phone-plan", "patch": {"width": 520} | null}`
+- `{"op": "reset_override_field", "strip": "phone", "variant": "tablet-landscape", "element": "phone-plan", "field": "width"}`
+- `{"op": "set_lang_override", "element": "title", "lang": "de", "patch": {"box": {"top": 170, "left": 40, "right": 40}} | null}`
+  (only at, width, height, anchor_y, style, box, align, valign, fit, color, font_size, stroke, glow, shadow, hyphenate)
+- `{"op": "reset_lang_override_field", "element": "title", "lang": "de", "field": "box"}`
+
+## Strips
+- `{"op": "add_strip", "strip": {"id": "tablet", "page": {"aspect": "2064:2752", "count": 3, "ids"?: ["a", "b", "c"]}, "backgrounds"?: [fill, …]}, "index"?: n}`
+- `{"op": "update_strip", "id": "phone", "patch": {"aspect"?: "1320:2868", "count"?: 5, "ids"?: [...], "backgrounds"?: [...]}}`
+- `{"op": "remove_strip", "id": "tablet"}`, `{"op": "rename_strip", "from": "a", "to": "b"}`
+
+## Targets
+- `{"op": "add_target", "target": {"id": "ipad", "kind": "pages", "strip": "phone", "size": [2064, 2752], "group"?: 2, "variant"?: "tablet-landscape", "screenshots"?: "ipad-13", "gallery"?: {"preset": "appstore-ipad"}, "langs"?: ["en"], "store"?: {…}}}`
+  (easier: the target_add tool with a catalog preset)
+- `{"op": "update_target", "id": "ipad", "patch": {"group": 2, "variant": null, …}}`
+- `{"op": "remove_target", "id": "ipad"}`, `{"op": "rename_target", "from": "a", "to": "b"}`
+
+## Translations and languages
+- `{"op": "set_string", "lang": "de", "key": "hero.title", "value": "Hallo **Welt**" | null}`
+- `{"op": "rename_string_key", "from": "text-2", "to": "beds.title"}`
+- `{"op": "add_language", "lang": "fr"}`, `{"op": "remove_language", "lang": "fr"}`
+- `{"op": "set_default_language", "lang": "en"}`
+- `{"op": "set_languages", "languages": {"default": "en", "available": ["en", "de"], "fallback"?: {"de-AT": "de"}}}`
+
+## Project and styles
+- `{"op": "set_name", "name": "Fernwood"}`
+- `{"op": "set_styles", "styles": {…complete styles object…}}` (prefer styles_update)
+- `{"op": "rename_style", "kind": "color" | "text" | "span" | "shadow", "from": "accent", "to": "highlight"}`
+- `{"op": "set_import", "import": {…screenshot import mappings…}}`

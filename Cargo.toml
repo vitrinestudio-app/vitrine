@@ -64,7 +64,12 @@ resvg = { version = "0.49.0", default-features = false }
 
 # Front ends
 clap = { version = "4.6.7", features = ["derive"] }
-rmcp = "3.9.0"
+# Official MCP SDK (exact pin: the API moves fast). `transport-streamable-http-server`
+# is enabled by arrangia-mcp's `http` feature (GUI-hosted server, Phase 4.3b).
+rmcp = { version = "=3.9.0", default-features = false, features = ["server", "macros", "schemars", "transport-io"] }
+# JSON schemas of the MCP tool arguments (same major version as rmcp uses).
+schemars = "1.2.3"
+base64 = "0.23.0"
 tauri = { version = "2.12.5", features = [] }
 tauri-build = { version = "2.7.4", features = [] }
 # File dialogs, used from Rust only (the web view keeps `core:default`).
