@@ -1,4 +1,4 @@
-//! Screenshot import (KONZEPT §5.2, ADR 0009): plan where the files of a
+//! Screenshot import (KONZEPT §5.2, ADR 0010): plan where the files of a
 //! source folder go in `screenshots/<lang>/[<variant>/]<key>.<ext>`, then
 //! copy them.
 //!
@@ -1096,6 +1096,14 @@ fn detect_flat(ctx: &Ctx<'_>, src: &Source, stem: &str, size: Option<(u32, u32)>
 fn learned_mapping(ctx: &Ctx<'_>, items: &[PlannedFile]) -> ImportMapping {
     let mut m = ImportMapping::default();
     let mut conflicting: BTreeSet<String> = BTreeSet::new();
+    // Keys per screen name over all files: a row correction becomes a key
+    // mapping only when every file of that screen name gets the same key.
+    let mut screen_keys: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
+    for it in items {
+        if let (Some(screen), Some(key)) = (&it.screen, &it.key) {
+            screen_keys.entry(screen).or_default().insert(key);
+        }
+    }
     for it in items {
         if it.action == Action::Unresolved {
             continue;
@@ -1119,6 +1127,9 @@ fn learned_mapping(ctx: &Ctx<'_>, items: &[PlannedFile]) -> ImportMapping {
         if let (Some(screen), Some(key)) = (&it.screen, &it.key)
             && (it.overridden || ctx.mapping.keys.contains_key(screen))
             && slugify(strip_numeric_prefix(screen)) != *key
+            && screen_keys
+                .get(screen.as_str())
+                .is_some_and(|k| k.len() == 1)
         {
             m.keys.insert(screen.clone(), key.clone());
         }

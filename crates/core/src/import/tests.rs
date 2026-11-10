@@ -286,8 +286,9 @@ fn overrides_fix_rows() {
         skipped(&plan, "fr-FR/iPhone 16 Pro Max-01_home.png").reason,
         "skipped by you"
     );
-    // The per-row key becomes a key mapping.
-    assert_eq!(plan.mapping.keys["01_home"], "watch");
+    // Other files share the screen name `01_home`: the row correction is
+    // not turned into a key mapping for all of them.
+    assert!(!plan.mapping.keys.contains_key("01_home"));
 }
 
 #[test]

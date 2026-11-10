@@ -1,5 +1,5 @@
 //! Screenshot import mappings stored in `project.yaml` (`import:`, KONZEPT
-//! §5.2, ADR 0009). Used by `core::import` to turn fastlane snapshot
+//! §5.2, ADR 0010). Used by `core::import` to turn fastlane snapshot
 //! output (`<locale>/<Device Name>-<screen>.png`) into
 //! `screenshots/<lang>/<variant>/<key>.png`.
 //!
