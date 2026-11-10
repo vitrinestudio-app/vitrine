@@ -15,6 +15,7 @@ path = "src/main.rs"
 [dependencies]
 arrangia-core.workspace = true
 arrangia-render.workspace = true
+arrangia-mcp.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 directories.workspace = true
@@ -23,6 +24,7 @@ serde_json.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+base64.workspace = true
 
 [lints]
 workspace = true

@@ -3,8 +3,9 @@
 //! Commands: `new` (project from a template), `render` (preview/debug PNG),
 //! `export` (all files of targets × languages), `validate`, `strings
 //! export|import` (translation exchange), `import screenshots`
-//! (fastlane / Arrangia / flat folders → `screenshots/`) and `frames`
-//! (import/list/remove vendor device frames, app-wide). The CLI only
+//! (fastlane / Arrangia / flat folders → `screenshots/`), `frames`
+//! (import/list/remove vendor device frames, app-wide) and `mcp` (MCP
+//! server over stdio for Claude; `arrangia-mcp`). The CLI only
 //! formats what `arrangia-core` and `arrangia-render` compute; it never
 //! edits project fields directly.
 //!
@@ -19,6 +20,7 @@
 mod export;
 mod frames;
 mod import;
+mod mcp;
 mod new;
 mod project;
 mod render;
@@ -98,6 +100,8 @@ enum Command {
     Import(import::ImportCommand),
     /// Import, list and remove vendor device frames (Apple Product Bezels).
     Frames(frames::FramesArgs),
+    /// Run the MCP server over stdio (for Claude Code / Claude Desktop).
+    Mcp(mcp::McpArgs),
 }
 
 impl Command {
@@ -111,6 +115,7 @@ impl Command {
             Self::Strings(_) => "strings",
             Self::Import(_) => "import",
             Self::Frames(_) => "frames",
+            Self::Mcp(_) => "mcp",
         }
     }
 }
@@ -125,6 +130,7 @@ fn main() -> ExitCode {
         Command::Strings(args) => strings::run(args, &cli.global),
         Command::Import(cmd) => import::run(cmd, &cli.global),
         Command::Frames(args) => frames::run(args, &cli.global),
+        Command::Mcp(args) => mcp::run(args, &cli.global),
     };
     match result {
         Ok(code) => ExitCode::from(code),
@@ -167,6 +173,34 @@ mod tests {
             Cli::try_parse_from(["arrangia", "render", "--width", "1", "--scale", "1"]).is_err()
         );
         assert!(Cli::try_parse_from(["arrangia", "render", "--canvas", "--scale", "0.5"]).is_ok());
+    }
+
+    #[test]
+    fn parses_mcp() {
+        let cli = Cli::try_parse_from([
+            "arrangia",
+            "mcp",
+            "--project",
+            "demo",
+            "--app-dir",
+            "/tmp/a",
+            "--headless",
+        ])
+        .unwrap();
+        assert_eq!(cli.command.name(), "mcp");
+        let Command::Mcp(args) = &cli.command else {
+            unreachable!()
+        };
+        assert!(args.headless);
+        assert_eq!(
+            args.app_dir.as_deref(),
+            Some(std::path::Path::new("/tmp/a"))
+        );
+        let cli = Cli::try_parse_from(["arrangia", "mcp"]).unwrap();
+        let Command::Mcp(args) = &cli.command else {
+            unreachable!()
+        };
+        assert!(!args.headless);
     }
 
     #[test]
