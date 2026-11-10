@@ -107,6 +107,19 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - `export` sends MCP progress notifications (one per file) when the client passes a progress token.
 - Example prompts: "Create an Arrangia project in ~/Screens/Fernwood (en, de) for a garden planner, three iPhone pages with headline + phone each, show me the gallery"; "Translate everything missing into French, then check page 2 in French for overflows"; "Select the title in the app and say: make this 20 % smaller"; "Export iPhone and iPad for all languages".
 
+### Store upload – setup (Phase 5; docs checked 2026-11-10, details in ADR 0016)
+- Apple, App Store Connect API **team key**: App Store Connect → Users and Access → **Integrations** tab → "App Store Connect API" (left column) → Team Keys → "Generate API Key" (or +) → name + **Access** role → Generate. Needs an **Admin** account to create team keys. Role for screenshot upload: **App Manager** (edits App Store details; Admin works too but is broader than needed).
+- The private key `.p8` can be **downloaded only once** (Apple keeps no copy). Note the **Key ID** (in the key list) and the **Issuer ID** (shown above the key list). Lost/leaked → revoke the key in the same place.
+- Individual keys (user profile → Individual API Key) also work: no Issuer ID, access = that user's roles; a team Admin must grant "Generate Individual API Keys".
+- Apple only lets you change screenshots on a version in an editable state (e.g. "Prepare for Submission", rejected); otherwise create a new version in App Store Connect first. Upload error then: "no editable App Store version".
+- Apple processes each uploaded screenshot (seconds to minutes); wrong dimensions show up as a processing error per image.
+- Apple's API limit: about 3500 requests/hour per key (rolling); Arrangia waits and retries on rate limits.
+- Note: Apple deprecated the screenshot-set API (API 4.5.1) in favour of the "App Asset Library"; it still works, Arrangia will follow (ADR 0016).
+- Google Play, service account: Google Cloud Console → create/select a project → enable "**Google Play Android Developer API**" → IAM & Admin → Service Accounts → "Create service account" → Keys → Add key → JSON (download). Linking the Play developer account to the Cloud project is no longer needed.
+- Play Console → **Users and permissions** → "Invite new users" → service account e-mail → app permissions: **"Manage store presence"** (store listing text and images) + "View app information (read-only)" for the app(s) → Invite user.
+- Google image upload: PNG/JPEG, max 15 MB per image; images appear in upload order. Changes go live only when the edit is committed (one commit per upload run).
+- Secrets: both keys are imported once in the app settings and stored in the system keychain; Arrangia never writes them to the project or logs (5.1).
+
 ## 4. Reference notes
 - CLI exit codes: 0 ok, 1 project problems (validation errors / export errors), 2 command could not run.
 - `validate --strict` fails on warnings; `--preview` treats missing screenshots as warnings.
