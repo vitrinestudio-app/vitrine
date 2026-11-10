@@ -12,4 +12,22 @@ publish = false
 workspace = true
 
 [dependencies]
-arrangia-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["time"] }
+tokio-util.workspace = true
+# `query`/`form` are opt-in since reqwest 0.13 (query strings, OAuth token form).
+reqwest = { workspace = true, features = ["query", "form"] }
+# aws-lc-rs: same crypto backend as reqwest's rustls (no second crypto stack).
+jsonwebtoken = { workspace = true, features = ["aws_lc_rs"] }
+bytes.workspace = true
+getrandom.workspace = true
+md-5.workspace = true
+zeroize = { workspace = true, features = ["serde"] }
+
+[dev-dependencies]
+wiremock.workspace = true
+tokio = { workspace = true, features = ["time", "rt-multi-thread", "macros"] }
+aws-lc-rs.workspace = true
+base64.workspace = true

@@ -38,6 +38,12 @@ anyhow = "1.0.104"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "fs", "sync"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "http2", "json", "multipart"] }
 jsonwebtoken = "11.1.0"
+# Store clients (arrangia-publish): MD5 for the App Store Connect commit
+# checksum, wiping key material, test-time key generation (aws-lc-rs is
+# already rustls' crypto backend, so no second crypto stack).
+md-5 = "0.10.6"
+zeroize = "1.9.1"
+aws-lc-rs = "1.19.0"
 
 # Storage and secrets
 rusqlite = { version = "0.41.1", features = ["bundled"] }
