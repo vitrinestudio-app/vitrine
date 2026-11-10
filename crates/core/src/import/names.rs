@@ -56,11 +56,65 @@ pub(crate) fn normalized(name: &str) -> String {
         .collect()
 }
 
-/// Splits a fastlane snapshot stem `<Device Name>-<screen>` at the first
-/// `-` outside parentheses (`iPad Pro (12.9-inch) (6th generation)-01_home`
-/// → device `iPad Pro (12.9-inch) (6th generation)`, screen `01_home`).
-/// Device names in `known` (longest first) win over the heuristic.
-pub fn split_fastlane<'a>(stem: &'a str, known: &[&str]) -> Option<(&'a str, &'a str)> {
+/// Byte positions of the `-` in `stem` that may separate a fastlane device
+/// name from the screen name: outside parentheses, both sides non-empty,
+/// and not right after a purely numeric segment (`…-01-home` splits
+/// before `01`, not after it).
+fn split_points(stem: &str) -> Vec<usize> {
+    let mut out = Vec::new();
+    let mut depth = 0i32;
+    let mut seg_start = 0;
+    for (i, c) in stem.char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            '-' if depth <= 0 => {
+                let seg = &stem[seg_start..i];
+                let numeric = !seg.is_empty() && seg.chars().all(|c| c.is_ascii_digit());
+                if i > 0 && i + 1 < stem.len() && !stem[..i].trim().is_empty() && !numeric {
+                    out.push(i);
+                }
+                seg_start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// How many file names start with each possible device-name prefix; lets
+/// [`split_fastlane`] keep hyphens that all files of a device share
+/// (`iPad Pro 13-inch (M4)-01_home`, `iPad Pro 13-inch (M4)-02_plan`).
+#[derive(Clone, Debug, Default)]
+pub struct DevicePrefixes(std::collections::BTreeMap<String, usize>);
+
+impl DevicePrefixes {
+    pub fn new<'a>(stems: impl IntoIterator<Item = &'a str>) -> Self {
+        let mut map = std::collections::BTreeMap::new();
+        for stem in stems {
+            for i in split_points(stem) {
+                *map.entry(stem[..i].to_owned()).or_insert(0) += 1;
+            }
+        }
+        Self(map)
+    }
+
+    fn count(&self, prefix: &str) -> usize {
+        self.0.get(prefix).copied().unwrap_or(0)
+    }
+}
+
+/// Splits a fastlane snapshot stem `<Device Name>-<screen>`. Device names
+/// in `known` (longest first) win. Otherwise the split is the longest
+/// candidate prefix (see [`DevicePrefixes`]) shared by as many files as the
+/// shortest one, so `iPad Pro 13-inch (M4)-01_home` next to
+/// `iPad Pro 13-inch (M4)-02_plan` gives the device `iPad Pro 13-inch (M4)`;
+/// hyphens inside parentheses never split.
+pub fn split_fastlane<'a>(
+    stem: &'a str,
+    known: &[&str],
+    prefixes: &DevicePrefixes,
+) -> Option<(&'a str, &'a str)> {
     let mut known: Vec<&str> = known.to_vec();
     known.sort_by_key(|k| std::cmp::Reverse(k.len()));
     for k in known {
@@ -71,28 +125,23 @@ pub fn split_fastlane<'a>(stem: &'a str, known: &[&str]) -> Option<(&'a str, &'a
             return Some((&stem[..k.len()], screen));
         }
     }
-    let mut depth = 0i32;
-    for (i, c) in stem.char_indices() {
-        match c {
-            '(' => depth += 1,
-            ')' => depth -= 1,
-            '-' if depth <= 0 => {
-                let (device, screen) = (&stem[..i], &stem[i + 1..]);
-                if device.trim().is_empty() || screen.is_empty() {
-                    return None;
-                }
-                return Some((device, screen));
-            }
-            _ => {}
-        }
-    }
-    None
+    let points = split_points(stem);
+    let first = *points.first()?;
+    let base = prefixes.count(&stem[..first]);
+    let pick = points
+        .iter()
+        .rev()
+        .copied()
+        .find(|&i| prefixes.count(&stem[..i]) >= base)
+        .unwrap_or(first);
+    Some((&stem[..pick], &stem[pick + 1..]))
 }
 
 /// Does `stem` look like a fastlane device-prefixed name (a device name
 /// with a space or parenthesis before the separating `-`)?
 pub(crate) fn looks_like_fastlane(stem: &str) -> bool {
-    split_fastlane(stem, &[]).is_some_and(|(d, _)| d.contains(' ') || d.ends_with(')'))
+    split_fastlane(stem, &[], &DevicePrefixes::default())
+        .is_some_and(|(d, _)| d.contains(' ') || d.ends_with(')'))
 }
 
 /// Screenshot variants (device catalog) whose typical sizes include
@@ -184,20 +233,37 @@ mod tests {
 
     #[test]
     fn splits_fastlane_names() {
+        let none = DevicePrefixes::default();
         assert_eq!(
-            split_fastlane("iPhone 16 Pro Max-01_home", &[]),
+            split_fastlane("iPhone 16 Pro Max-01_home", &[], &none),
             Some(("iPhone 16 Pro Max", "01_home"))
         );
         assert_eq!(
-            split_fastlane("iPad Pro (12.9-inch) (6th generation)-02-plan", &[]),
+            split_fastlane("iPad Pro (12.9-inch) (6th generation)-02-plan", &[], &none),
             Some(("iPad Pro (12.9-inch) (6th generation)", "02-plan"))
         );
-        // A known device name with a hyphen outside parentheses.
+        // A hyphen outside parentheses, shared by all files of the device.
+        let stems = [
+            "iPad Pro 13-inch (M4)-01_home",
+            "iPad Pro 13-inch (M4)-02_plan",
+            "iPhone 16-01-home",
+            "iPhone 16-02-plan-b",
+        ];
+        let prefixes = DevicePrefixes::new(stems);
         assert_eq!(
-            split_fastlane("Pixel-7 Pro-home", &["Pixel-7 Pro"]),
+            split_fastlane(stems[0], &[], &prefixes),
+            Some(("iPad Pro 13-inch (M4)", "01_home"))
+        );
+        assert_eq!(
+            split_fastlane(stems[3], &[], &prefixes),
+            Some(("iPhone 16", "02-plan-b"))
+        );
+        // A known device name wins.
+        assert_eq!(
+            split_fastlane("Pixel-7 Pro-home", &["Pixel-7 Pro"], &none),
             Some(("Pixel-7 Pro", "home"))
         );
-        assert_eq!(split_fastlane("home", &[]), None);
+        assert_eq!(split_fastlane("home", &[], &none), None);
         assert!(looks_like_fastlane("iPhone 16-home"));
         assert!(!looks_like_fastlane("garden-plan"));
     }

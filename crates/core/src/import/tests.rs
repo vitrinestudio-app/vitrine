@@ -142,8 +142,8 @@ fn fastlane_output_is_mapped() {
     );
     assert_eq!(home.device.as_deref(), Some("iPhone 16 Pro Max"));
     assert_eq!(home.action, Action::New);
-    // en-US → en is a subtag match: medium.
-    assert_eq!(home.confidence, Confidence::Medium, "{:?}", home.notes);
+    // en-US → en is the default subtag rule: certain.
+    assert_eq!(home.confidence, Confidence::High, "{:?}", home.notes);
 
     let plan3 = item(&plan, "en-US/iPhone 16 Pro Max-03_garden_plan.png");
     assert_eq!(

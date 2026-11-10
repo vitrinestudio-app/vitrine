@@ -42,8 +42,8 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 pub use names::{
-    catalog_variants, slugify, split_fastlane, strip_numeric_prefix, variants_for_aspect,
-    variants_for_size,
+    DevicePrefixes, catalog_variants, slugify, split_fastlane, strip_numeric_prefix,
+    variants_for_aspect, variants_for_size,
 };
 
 use crate::io::write_atomic;
@@ -421,6 +421,8 @@ struct Ctx<'a> {
     known_variants: Vec<String>,
     /// Keys used by device elements.
     keys: BTreeSet<String>,
+    /// Device-name prefixes of all source files (fastlane splitting).
+    prefixes: DevicePrefixes,
 }
 
 /// A detected value with its confidence and an explanation.
@@ -457,7 +459,7 @@ impl Ctx<'_> {
             if let Some(l) = langs.iter().find(|l| l.as_str().eq_ignore_ascii_case(cur)) {
                 return Some((
                     l.to_string(),
-                    Confidence::Medium,
+                    Confidence::High,
                     format!("language `{raw}` → {l} (language subtag)"),
                 ));
             }
@@ -604,12 +606,13 @@ fn plan_sources(
             known_variants.push(v.clone());
         }
     }
-    let ctx = Ctx {
+    let mut ctx = Ctx {
         project,
         mapping,
         target_variants,
         known_variants,
         keys: used_keys(project).into_values().flatten().collect(),
+        prefixes: DevicePrefixes::default(),
     };
 
     // Strip a leading `screenshots/` (a project folder picked as source).
@@ -627,6 +630,8 @@ fn plan_sources(
         SourceFormat::Auto => detect_format(&ctx, &sources),
         f => f,
     };
+    let stems: Vec<String> = sources.iter().map(Source::stem).collect();
+    ctx.prefixes = DevicePrefixes::new(stems.iter().map(String::as_str));
 
     let mut items: Vec<PlannedFile> = Vec::new();
     let mut skipped: Vec<SkippedFile> = Vec::new();
@@ -931,7 +936,7 @@ fn detect_fastlane(
         });
     };
     let known: Vec<&str> = ctx.mapping.devices.keys().map(String::as_str).collect();
-    let Some((device, screen)) = split_fastlane(stem, &known) else {
+    let Some((device, screen)) = split_fastlane(stem, &known, &ctx.prefixes) else {
         return Err("name is not <Device Name>-<screen>".to_owned());
     };
     let mut d = Detection {
@@ -995,7 +1000,7 @@ fn detect_flat(ctx: &Ctx<'_>, src: &Source, stem: &str, size: Option<(u32, u32)>
     // A mapped device name at the start (`iPhone 16 Pro Max-home`).
     let known: Vec<&str> = ctx.mapping.devices.keys().map(String::as_str).collect();
     let mut variant_from_name: Option<(String, String)> = None;
-    if let Some((device, screen)) = split_fastlane(stem, &known)
+    if let Some((device, screen)) = split_fastlane(stem, &known, &DevicePrefixes::default())
         && let Some(v) = ctx.mapping.devices.get(device)
     {
         variant_from_name = Some((v.clone(), format!("device `{device}` → {v} (device map)")));
