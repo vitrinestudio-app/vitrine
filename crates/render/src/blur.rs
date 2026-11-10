@@ -98,6 +98,32 @@ pub fn draw_shadow(target: &mut Pixmap, path: &Path, transform: Transform, shado
     let Some(bounds) = path.clone().transform(transform).map(|p| p.bounds()) else {
         return;
     };
+    draw_blurred(target, bounds, shadow, |mask, to_mask| {
+        let mut paint = Paint::default();
+        paint.set_color_rgba8(0, 0, 0, 255);
+        paint.anti_alias = true;
+        mask.fill_path(
+            path,
+            &paint,
+            FillRule::Winding,
+            transform.post_concat(to_mask),
+            None,
+        );
+    });
+}
+
+/// Draws a blurred, tinted copy of an arbitrary silhouette onto `target`:
+/// `paint_mask` paints the silhouette (only its alpha counts) into the
+/// mask pixmap, mapping target pixels to mask pixels with the transform it
+/// is given (post-concatenate it to a pixel-space transform). `bounds` are
+/// the silhouette's bounds in target pixels (before the shadow offset).
+/// Used for drop shadows of paths, image alpha channels and text glows.
+pub fn draw_blurred(
+    target: &mut Pixmap,
+    bounds: tiny_skia::Rect,
+    shadow: ShadowPx,
+    paint_mask: impl FnOnce(&mut Pixmap, Transform),
+) {
     let margin = (shadow.sigma * 3.0).ceil() as f32 + 2.0;
     let left = (bounds.left() + shadow.dx as f32 - margin).floor();
     let top = (bounds.top() + shadow.dy as f32 - margin).floor();
@@ -115,13 +141,9 @@ pub fn draw_shadow(target: &mut Pixmap, path: &Path, transform: Transform, shado
     let Some(mut mask) = Pixmap::new(mw, mh) else {
         return;
     };
-    let to_mask = transform
-        .post_translate(shadow.dx as f32 - left, shadow.dy as f32 - top)
+    let to_mask = Transform::from_translate(shadow.dx as f32 - left, shadow.dy as f32 - top)
         .post_scale(1.0 / factor, 1.0 / factor);
-    let mut paint = Paint::default();
-    paint.set_color_rgba8(0, 0, 0, 255);
-    paint.anti_alias = true;
-    mask.fill_path(path, &paint, FillRule::Winding, to_mask, None);
+    paint_mask(&mut mask, to_mask);
 
     let (w, h) = (mw as usize, mh as usize);
     let mut alpha: Vec<f32> = mask

@@ -48,7 +48,7 @@ const GALLERY_BACKGROUND: [u8; 4] = [0xF2, 0xF2, 0xF7, 0xFF];
 pub const MANIFEST: &str = ".arrangia-export.json";
 /// Bump when the renderer's output changes, to invalidate incremental
 /// exports made by an older build.
-pub const RENDER_REVISION: u32 = 2;
+pub const RENDER_REVISION: u32 = 3;
 /// PNG compression of exported files (High costs ~2× the time for ~5 %).
 const PNG_COMPRESSION: png::Compression = png::Compression::Balanced;
 

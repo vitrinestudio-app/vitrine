@@ -79,6 +79,8 @@ pub enum AssetError {
 struct DecodedEntry {
     mtime: Option<SystemTime>,
     data: Arc<Decoded>,
+    /// Raster image without any transparent pixel (SVGs never count).
+    opaque: bool,
 }
 
 /// Decoded and resampled assets below one project folder.
@@ -143,14 +145,29 @@ impl AssetCache {
             return Ok((e.data.clone(), mtime));
         }
         let data = Arc::new(decode(&path, rel)?);
+        let opaque = match &*data {
+            Decoded::Raster(r) => r.rgba.as_chunks::<4>().0.iter().all(|p| p[3] == 255),
+            Decoded::Svg(_) => false,
+        };
         lock(&self.decoded).insert(
             rel.to_owned(),
             DecodedEntry {
                 mtime,
                 data: data.clone(),
+                opaque,
             },
         );
         Ok((data, mtime))
+    }
+
+    /// Is the asset a raster image without transparent pixels? Its shadow
+    /// can then be drawn from its rectangle (`false` for SVGs, images with
+    /// alpha and assets that cannot be decoded).
+    pub fn is_opaque(&self, rel: &str) -> bool {
+        if self.decoded(rel).is_err() {
+            return false;
+        }
+        lock(&self.decoded).get(rel).is_some_and(|e| e.opaque)
     }
 
     /// Natural size of an asset (px or SVG user units).

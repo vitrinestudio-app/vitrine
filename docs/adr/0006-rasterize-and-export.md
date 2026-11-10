@@ -49,7 +49,16 @@ fast_image_resize, png).
   omitted without special cases.
 - Shadows: blurred silhouettes (`blur.rs`), offsets in canvas space (they
   do not rotate with the element). Silhouettes: device outline, shape path
-  (stroke outline for unfilled shapes), glyph outlines, image rect.
+  (stroke outline for unfilled shapes), glyph outlines, and for images the
+  **alpha channel** of the resampled image (like CSS `filter:
+  drop-shadow`: transparent parts of SVGs and PNGs cast no shadow). The
+  image pixmap is drawn into the (downsampled) blur mask with the
+  element's transform, so rotation, clip and opacity behave as for every
+  other shadow. Raster images without any transparent pixel (flag computed
+  once at decode) keep the cheaper rect silhouette, which gives the same
+  result. The blurred mask is not cached separately: it depends on
+  rotation and sub-pixel position, and its cost equals a rect shadow of
+  the same size (the image pixmap itself comes from the asset cache).
 - Images and image fills are resampled once to the exact pixel size of
   their destination (cover crops by focus, contain letterboxes) and then
   mapped with a bilinear pattern that only handles rotation and sub-pixel
@@ -118,6 +127,6 @@ Apple M1 Pro, release, sample project (`cargo run -p arrangia-render
 
 - The GUI renders previews with `RenderOptions::preview(w)` from a
   `PreparedScene` and re-prepares only when texts change.
-- Open: image shadows from alpha; text inside SVG assets; colour
+- Open: text inside SVG assets; colour
   management (P3 → sRGB); `aspect: free` devices follow the screenshot
   (resolve, ADR 0005).

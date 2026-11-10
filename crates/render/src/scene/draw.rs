@@ -16,7 +16,7 @@ use tiny_skia::{
 
 use super::assets::Resample;
 use super::{IssueKind, PreparedScene, Quality, RenderContext, RenderIssue, Rendered};
-use crate::blur::{ShadowPx, draw_shadow};
+use crate::blur::{ShadowPx, draw_blurred, draw_shadow};
 use crate::frames;
 use crate::geometry::view_transform;
 use crate::paint::{css_gradient_line, linear, radial, round_rect, shader_paint, solid};
@@ -495,6 +495,43 @@ impl Painter<'_> {
         }
     }
 
+    /// Drop shadow from the alpha channel of what `paint` draws into `path`
+    /// (images with transparency, like CSS `filter: drop-shadow`).
+    fn alpha_shadow(
+        &self,
+        pm: &mut Pixmap,
+        path: &Path,
+        paint: &tiny_skia::Paint<'_>,
+        ts: Transform,
+        layers: &[ResolvedShadowLayer],
+    ) {
+        let Some(bounds) = path.clone().transform(ts).map(|p| p.bounds()) else {
+            return;
+        };
+        let s = self.view.scale;
+        for l in layers {
+            draw_blurred(
+                pm,
+                bounds,
+                ShadowPx {
+                    sigma: l.blur * s,
+                    dx: l.x * s,
+                    dy: l.y * s,
+                    color: rgba(l.color),
+                },
+                |mask, to_mask| {
+                    mask.fill_path(
+                        path,
+                        paint,
+                        FillRule::Winding,
+                        ts.post_concat(to_mask),
+                        None,
+                    );
+                },
+            );
+        }
+    }
+
     #[allow(clippy::too_many_lines, reason = "one arm per element kind")]
     fn draw_item(&mut self, pm: &mut Pixmap, item: &Item<'_>, e: &ResolvedElement, lt: Transform) {
         let shadows = Self::shadows(e);
@@ -564,21 +601,32 @@ impl Painter<'_> {
                     ),
                 };
                 if let Some(p) = rect_path(target) {
-                    if !shadows.is_empty() {
-                        self.shadow(pm, &p, lt, shadows);
-                    }
-                    match self.ctx.assets.pixmap(
+                    let img = self.ctx.assets.pixmap(
                         asset,
                         px(target.w * s),
                         px(target.h * s),
                         mode,
                         self.filter,
-                    ) {
+                    );
+                    match img {
                         Ok(img) => {
                             let paint = shader_paint(image_shader(&img, target, SpreadMode::Pad));
+                            if !shadows.is_empty() {
+                                if self.ctx.assets.is_opaque(asset) {
+                                    // Same result as the alpha mask, cheaper.
+                                    self.shadow(pm, &p, lt, shadows);
+                                } else {
+                                    self.alpha_shadow(pm, &p, &paint, lt, shadows);
+                                }
+                            }
                             pm.fill_path(&p, &paint, FillRule::Winding, lt, None);
                         }
-                        Err(err) => self.issue(Some(e), err.to_string()),
+                        Err(err) => {
+                            if !shadows.is_empty() {
+                                self.shadow(pm, &p, lt, shadows);
+                            }
+                            self.issue(Some(e), err.to_string());
+                        }
                     }
                 }
             }
