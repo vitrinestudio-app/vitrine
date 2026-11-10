@@ -188,6 +188,8 @@ json_commands! {
     styles_patch: commands::StylesPatchArgs,
     dialog_pick_folder: commands::DialogPickFolderArgs,
     reveal_path: commands::RevealPathArgs,
+    import_plan: commands::ImportPlanArgs,
+    import_apply: commands::ImportApplyArgs,
 }
 
 image_commands! {
@@ -294,6 +296,8 @@ fn main() {
             styles_patch,
             dialog_pick_folder,
             reveal_path,
+            import_plan,
+            import_apply,
             render_image,
             render_canvas,
             render_gallery,

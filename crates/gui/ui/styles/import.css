@@ -1,0 +1,209 @@
+/* Screenshot import dialog (js/dialogs/screenshot-import.js). */
+
+.imp-dialog .dlg-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+
+.imp {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.imp.loading .imp-table {
+  opacity: 0.55;
+  transition: opacity 0.15s 0.1s;
+}
+
+.imp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.imp-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.imp-dir {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+}
+
+.imp-format {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.imp-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.imp-mapping {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  background: var(--bg-panel);
+}
+
+.imp-mapping > summary {
+  cursor: pointer;
+}
+
+.imp-map-title {
+  margin: 8px 0 4px;
+}
+
+.imp-map-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 300px) 14px minmax(140px, 220px) auto;
+  justify-content: start;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.imp-map-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imp-arrow {
+  transform: rotate(-90deg);
+  color: var(--fg-muted);
+}
+
+.imp-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.imp-row {
+  display: grid;
+  grid-template-columns: 84px minmax(180px, 1fr) 76px 130px 140px 56px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.imp-row .field {
+  min-width: 0;
+  width: 100%;
+}
+
+.imp-row .badge {
+  justify-content: center;
+}
+
+.imp-cols {
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.imp-row.overridden .imp-name {
+  color: var(--override);
+}
+
+.imp-row.act-unchanged,
+.imp-row.act-duplicate {
+  color: var(--fg-muted);
+}
+
+.imp-src {
+  min-width: 0;
+}
+
+.imp-name,
+.imp-notes {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imp-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.imp-conf {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.imp-conf.conf-medium {
+  background: var(--warning);
+}
+
+.imp-conf.conf-low {
+  background: var(--danger);
+}
+
+.imp-key.invalid {
+  border-color: var(--danger);
+}
+
+.imp-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.imp-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 4px;
+  font-weight: 600;
+}
+
+.imp-group.error {
+  color: var(--danger);
+}
+
+.imp-group .as-count {
+  margin-left: 4px;
+}
+
+.imp-skipped > summary {
+  cursor: pointer;
+}
+
+.imp-skip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.imp-skip .grow {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imp-miss {
+  padding: 2px 0;
+}

@@ -145,5 +145,11 @@ export const api = {
   assetsRemove: (paths) => invoke('assets_remove', { paths }),
   assetThumbnail: (path, maxEdge) => invoke('asset_thumbnail', { path, max_edge: maxEdge }),
   pickFiles: (args = {}) => invoke('dialog_pick_files', args),
+
+  // ----- screenshot import (3.3) -----
+  /** Plan of a folder (`dir`) or `files`: `{ format?, mapping?, overrides?, include_framed? }`. */
+  importPlan: (args) => invoke('import_plan', args),
+  /** Re-plans with the same arguments and copies; `save_mapping` stores the mapping. */
+  importApply: (args) => invoke('import_apply', args),
   catalogFonts: () => invoke('catalog_fonts'),
 };

@@ -8,6 +8,7 @@ import { actions } from './actions.js';
 import { api, listen } from './api.js';
 import { openAppSettings } from './dialogs/app-settings.js';
 import { openExport } from './dialogs/export.js';
+import { openScreenshotImport } from './dialogs/screenshot-import.js';
 import { openProjectSettings } from './dialogs/project-settings.js';
 import { openTargets } from './dialogs/targets.js';
 import { editor } from './editor.js';
@@ -36,6 +37,7 @@ const appActions = {
   projectSettings: () => openProjectSettings(),
   targets: () => openTargets().catch(report),
   exportDialog: () => openExport(),
+  importScreenshots: () => openScreenshotImport().catch(report),
   appSettings: () => openAppSettings().catch(report),
   closeProject: () => closeProject().catch(report),
   hasProject: () => Boolean(store.get().summary),
