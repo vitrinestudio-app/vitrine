@@ -65,6 +65,10 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Supports Arrangia folder layout, fastlane snapshot output (`de-DE/iPhone 17 Pro Max-01_home.png`), flat folders.
 - Locale `de-DE` → `de` automatically; device name → variant by mapping or pixel size; `01_home` → key `home`.
 - `_framed.png` (frameit) and `screenshots.html` are skipped.
+- A whole `fastlane/` folder can be picked: `screenshots/` = snapshot output, `metadata/android/<locale>/images/<type>Screenshots/` = screengrab output (phone → `android-phone`, 7"/10" → `android-tablet`, wear → `wear`, tv by pixel size; `--device-map tenInchScreenshots=…` overrides; the `_<millis>` timestamp is dropped). Picking `metadata/android` or `metadata` works too.
+- snapshot names like `iPhone 15 Pro Max-01Home.png` → key `home` (number glued to a capitalised word is dropped; `3D`, `2fa` stay).
+- Skipped with a reason: `Framefile.json`, `title.strings`, `keyword.strings`, the background images a `Framefile.json` names, `iMessage/` and `appleTV/` folders, deliver metadata (`metadata/<locale>/*.txt`), Play store graphics (`images/featureGraphic.png`, `icon`, `tvBanner`, `promoGraphic`).
+- Locale folders also match through the store locale map: `iw-IL` → `he`, `zh-Hans`, `no` (project `store.locales` or the defaults).
 - Mapping can be saved to `project.yaml` (`import.fastlane`) so re-imports run unattended.
 - CLI: `arrangia import screenshots <dir> [--dry-run] [--device-map "NAME=VARIANT"] [--save-mapping]`.
 
@@ -104,6 +108,21 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 
 ### Export
 - Files: `export/<target>/<lang>/<nn>_<page-id>.png`, grouped `<nn>_<id1>+<id2>`, `banner.png`, `_gallery.png`.
+- `index.html` in the export folder (on by default; CLI `--no-html`, GUI "Overview page", MCP `html: false`): every exported image (no gallery previews) by language → target in page order, file name, pixel size, file size; click to enlarge, ←/→ to step, Esc to close. Self-contained (opens from the file system, no internet), light/dark. Lists all current files of the folder, also from earlier exports of other targets.
+- Re-export removes images of the same targets × languages it no longer produces (fewer or renamed pages) – only files the export wrote earlier (listed in `.arrangia-export.json`), never other files in the folder.
+- fastlane layout: `arrangia export --layout fastlane [--out <app>/fastlane]` (GUI: Layout → fastlane; MCP `layout: "fastlane"`), default folder `export/fastlane/`:
+  - App Store targets → `screenshots/<asc-locale>/<nn>_<target>.png` (deliver; iMessage sets in `screenshots/iMessage/<locale>/`); Google Play → `metadata/android/<play-locale>/images/<type>/<nn>_<play-locale>.png` (supply), feature graphic → `images/featureGraphic.png`.
+  - Store locales: project `store.locales` or the defaults (`de` → `de-DE`, `he` → Play `iw-IL`). `nn` keeps page order in deliver's natural and supply's alphabetical sort.
+  - Left out with a note: targets without a store slot (web, blog), App Store creative assets (header/search results), sizes deliver rejects (deliver would abort the whole upload), languages without a store locale. No gallery previews (deliver would try to upload them).
+  - deliver detects the set from the pixel size, so two targets of one size class (e.g. 1320×2868 and 1290×2796 both = APP_IPHONE_67) in one locale folder are a **conflict**: the first wins, the other is not written (error). Same for two targets with one Play image type. More than 10 (Apple) / 8 (Play) images in a set → warning.
+  - 2048×2732 iPad targets with slot `APP_IPAD_PRO_129` get `_app_ipad_pro_129` in the file name (deliver's 2nd-gen marker).
+  - Warns when the deliver folder holds frameit `*_framed.png` files: deliver then uploads only those.
+- Migrating from fastlane frameit:
+  - `arrangia import screenshots fastlane/` (keeps snapshot/screengrab capture in place; frameit files are ignored).
+  - Design the layout once in Arrangia (texts from `title.strings`/`keyword.strings` go into the strings, per language).
+  - `arrangia export --layout fastlane --out fastlane` and drop `frameit` from the Fastfile; `deliver`/`supply` (`upload_to_app_store` / `upload_to_play_store`) upload the folders unchanged. Delete old `*_framed.png` files first.
+  - Or skip deliver/supply for screenshots and use Arrangia's own upload (`arrangia upload plan`).
+  - Conventions and sources: `docs/research/2026-11-10-fastlane-conventions.md`.
 - Always opaque (no alpha), sRGB. Incremental: unchanged images are skipped (`--force` to re-render).
 
 ### AI assistants / MCP (Phase 4)
