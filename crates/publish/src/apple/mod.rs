@@ -26,8 +26,8 @@ use tokio::time::Instant;
 use zeroize::Zeroizing;
 
 pub use model::{
-    App, AppRef, AppScreenshot, AppStoreVersion, AppsOverview, DeliveryState, HttpHeader,
-    Localization, Platform, ScreenshotSet, UploadOperation,
+    App, AppRef, AppScreenshot, AppStoreVersion, AppSummary, AppsOverview, DeliveryState,
+    HttpHeader, Localization, Platform, ScreenshotSet, UploadOperation,
 };
 use model::{
     AppAttrs, Document, ErrorResponse, LocalizationAttrs, Resource, ScreenshotAttrs, SetAttrs,
@@ -320,6 +320,30 @@ impl Client {
             total,
             first: doc.data.into_iter().next().map(App::from),
         })
+    }
+
+    /// Every app the key can see (read-only; follows `links.next`), sorted
+    /// by name: id (= Apple ID), name, bundle id, SKU, primary locale. Used
+    /// by the app picker in the project settings.
+    pub async fn list_apps(&self) -> Result<Vec<AppSummary>> {
+        let mut url = self.url(&["v1", "apps"])?;
+        url.query_pairs_mut()
+            .append_pair("fields[apps]", "name,bundleId,sku,primaryLocale")
+            .append_pair("sort", "name")
+            .append_pair("limit", "200");
+        let mut apps: Vec<AppSummary> = self
+            .get_all::<AppAttrs>(url)
+            .await?
+            .into_iter()
+            .map(AppSummary::from)
+            .collect();
+        apps.sort_by(|a, b| {
+            a.name
+                .to_lowercase()
+                .cmp(&b.name.to_lowercase())
+                .then_with(|| a.bundle_id.cmp(&b.bundle_id))
+        });
+        Ok(apps)
     }
 
     /// Finds the app by bundle id or Apple id.

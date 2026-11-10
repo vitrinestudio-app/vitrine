@@ -50,6 +50,23 @@ pub struct App {
     pub name: String,
 }
 
+/// One entry of [`crate::apple::Client::list_apps`] (the app picker).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AppSummary {
+    /// Resource id = the numeric "Apple ID" of the app.
+    pub id: String,
+    /// App name.
+    pub name: String,
+    /// Bundle id.
+    pub bundle_id: String,
+    /// SKU (set by the developer when the app was created).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sku: Option<String>,
+    /// Primary language (`en-US`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub primary_locale: Option<String>,
+}
+
 /// Result of [`crate::apple::Client::apps_overview`]: what the key can see.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppsOverview {
@@ -214,6 +231,8 @@ pub(crate) struct Resource<A> {
 pub(crate) struct AppAttrs {
     pub bundle_id: String,
     pub name: String,
+    pub sku: Option<String>,
+    pub primary_locale: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -282,6 +301,19 @@ impl From<Resource<AppAttrs>> for App {
             id: r.id,
             bundle_id: a.bundle_id,
             name: a.name,
+        }
+    }
+}
+
+impl From<Resource<AppAttrs>> for AppSummary {
+    fn from(r: Resource<AppAttrs>) -> Self {
+        let a = r.attributes.unwrap_or_default();
+        Self {
+            id: r.id,
+            name: a.name,
+            bundle_id: a.bundle_id,
+            sku: a.sku.filter(|s| !s.is_empty()),
+            primary_locale: a.primary_locale.filter(|s| !s.is_empty()),
         }
     }
 }

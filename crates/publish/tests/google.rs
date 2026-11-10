@@ -558,3 +558,65 @@ fn bad_service_account_files_are_config_errors() {
     let err = Client::new(Config::new(json, PKG), fast_options()).unwrap_err();
     assert!(!err.to_string().contains("SECRETKEY"));
 }
+
+#[tokio::test]
+async fn check_package_reads_and_deletes_a_temporary_edit() {
+    let f = fixture(fast_options()).await;
+    let s = &f.server;
+    f.mount_token("tok-1", 3600, 1).await;
+    Mock::given(method("POST"))
+        .and(path(format!("{API}/edits")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "id": "e9" })))
+        .expect(1)
+        .mount(s)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(format!("{API}/edits/e9/details")))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(json!({ "defaultLanguage": "en-US" })),
+        )
+        .expect(1)
+        .mount(s)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(format!("{API}/edits/e9/listings/en-US")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            json!({ "language": "en-US", "title": "Fernwood", "shortDescription": "x" }),
+        ))
+        .expect(1)
+        .mount(s)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path(format!("{API}/edits/e9")))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(s)
+        .await;
+    let info = f.client.check_package().await.unwrap();
+    assert_eq!(info.default_language.as_deref(), Some("en-US"));
+    assert_eq!(info.title.as_deref(), Some("Fernwood"));
+    // No commit was sent (unmatched requests would fail the expectations).
+    let commits = s
+        .received_requests()
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|r| r.url.path().contains(":commit"))
+        .count();
+    assert_eq!(commits, 0);
+}
+
+#[tokio::test]
+async fn check_package_unknown_package_is_not_found() {
+    let f = fixture(fast_options()).await;
+    f.mount_token("tok-1", 3600, 1).await;
+    Mock::given(method("POST"))
+        .and(path(format!("{API}/edits")))
+        .respond_with(ResponseTemplate::new(404).set_body_json(json!({
+            "error": { "code": 404, "message": "Package not found: com.example.app.", "status": "NOT_FOUND" }
+        })))
+        .mount(&f.server)
+        .await;
+    let err = f.client.check_package().await.unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound, "{err:?}");
+}

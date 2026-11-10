@@ -774,3 +774,71 @@ async fn creates_a_version_localization() {
     assert_eq!(loc.id, "loc-de");
     assert_eq!(loc.locale, "de-DE");
 }
+
+#[tokio::test]
+async fn list_apps_follows_pagination_and_sorts_by_name() {
+    let f = fixture(fast_options()).await;
+    let next = format!("{}/v1/apps?cursor=page2&limit=200", f.server.uri());
+    Mock::given(method("GET"))
+        .and(path("/v1/apps"))
+        .and(query_param("fields[apps]", "name,bundleId,sku,primaryLocale"))
+        .and(query_param("limit", "200"))
+        .and(f.jwt())
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": [
+                { "type": "apps", "id": "2", "attributes": {
+                    "name": "Zinnia", "bundleId": "com.example.zinnia", "sku": "ZIN", "primaryLocale": "de-DE" } }
+            ],
+            "links": { "next": next },
+            "meta": { "paging": { "total": 3, "limit": 200 } }
+        })))
+        .expect(1)
+        .mount(&f.server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/apps"))
+        .and(query_param("cursor", "page2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "data": [
+                { "type": "apps", "id": "1", "attributes": {
+                    "name": "fernwood", "bundleId": "com.example.fernwood", "sku": "", "primaryLocale": "en-US" } },
+                { "type": "apps", "id": "3", "attributes": { "name": "Aster", "bundleId": "com.example.aster" } }
+            ],
+            "links": { "self": "x" }
+        })))
+        .expect(1)
+        .mount(&f.server)
+        .await;
+    let apps = f.client.list_apps().await.unwrap();
+    let names: Vec<_> = apps.iter().map(|a| a.name.as_str()).collect();
+    assert_eq!(names, ["Aster", "fernwood", "Zinnia"]);
+    assert_eq!(apps[1].id, "1");
+    assert_eq!(apps[1].bundle_id, "com.example.fernwood");
+    assert_eq!(apps[1].sku, None, "empty SKU is dropped");
+    assert_eq!(apps[1].primary_locale.as_deref(), Some("en-US"));
+    assert_eq!(apps[2].sku.as_deref(), Some("ZIN"));
+    assert_eq!(apps[0].primary_locale, None);
+}
+
+#[tokio::test]
+async fn list_apps_reports_a_rejected_key() {
+    let f = fixture(fast_options()).await;
+    Mock::given(method("GET"))
+        .and(path("/v1/apps"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(json!({
+            "errors": [{ "status": "403", "code": "FORBIDDEN_ERROR", "title": "no", "detail": "role" }]
+        })))
+        .mount(&f.server)
+        .await;
+    let err = f.client.list_apps().await.unwrap_err();
+    assert!(
+        matches!(
+            err,
+            Error::Auth {
+                status: Some(403),
+                ..
+            }
+        ),
+        "{err:?}"
+    );
+}

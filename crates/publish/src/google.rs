@@ -113,6 +113,33 @@ pub struct Image {
     pub sha256: Option<String>,
 }
 
+/// App details of an edit (`AppDetails`, only what Arrangia shows).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AppDetails {
+    /// Default language of the store listing (`en-US`).
+    pub default_language: Option<String>,
+}
+
+/// A store listing of one language (`Listing`, only what Arrangia shows).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Listing {
+    /// Language code.
+    pub language: String,
+    /// App title in that language.
+    pub title: Option<String>,
+}
+
+/// What [`Client::check_package`] found.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PackageInfo {
+    /// Default listing language.
+    pub default_language: Option<String>,
+    /// Title of the default-language listing.
+    pub title: Option<String>,
+}
+
 /// Credentials and endpoints. The service account JSON is held in memory
 /// only (the caller loads it from the keychain) and wiped on drop.
 #[derive(Clone)]
@@ -520,6 +547,51 @@ impl Client {
             .api(Method::POST, url, None, Retry::NotIdempotent)
             .await?;
         parse_json(&reply)
+    }
+
+    /// App details of an edit (default language).
+    pub async fn app_details(&self, edit_id: &str) -> Result<AppDetails> {
+        let url = self.edit_url(false, &["edits", edit_id, "details"])?;
+        let reply = self.api(Method::GET, url, None, Retry::Idempotent).await?;
+        parse_json_or_default(&reply)
+    }
+
+    /// The store listing of one language in an edit.
+    pub async fn listing(&self, edit_id: &str, language: &str) -> Result<Listing> {
+        let url = self.edit_url(false, &["edits", edit_id, "listings", language])?;
+        let reply = self.api(Method::GET, url, None, Retry::Idempotent).await?;
+        parse_json_or_default(&reply)
+    }
+
+    /// Checks that the package exists and the service account may edit it.
+    ///
+    /// The Android Publisher API has no "list my apps" call and no
+    /// edit-free read that the store-listing permission covers, so this
+    /// opens a temporary edit, reads the app details and the default
+    /// listing's title, and **deletes the edit again** (never committed;
+    /// nothing changes in Play). Only call it on an explicit user action.
+    pub async fn check_package(&self) -> Result<PackageInfo> {
+        let edit = self.insert_edit().await?;
+        let read = async {
+            let details = self.app_details(&edit.id).await?;
+            let title = match &details.default_language {
+                Some(lang) => self
+                    .listing(&edit.id, lang)
+                    .await
+                    .ok()
+                    .and_then(|l| l.title),
+                None => None,
+            };
+            Ok(PackageInfo {
+                default_language: details.default_language,
+                title,
+            })
+        }
+        .await;
+        let deleted = self.delete_edit(&edit.id).await;
+        let info = read?;
+        deleted?;
+        Ok(info)
     }
 
     /// Discards the edit (abort). An already deleted/expired edit counts as
