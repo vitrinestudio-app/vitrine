@@ -41,17 +41,26 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       CLI/GUI/MCP
 
 ## 5.3 App Store Connect client
-- [ ] JWT ES256 (20 min), apps → editable `appStoreVersion` →
-      `appStoreVersionLocalizations` → `appScreenshotSets` per display type
-- [ ] Replace set: delete old screenshots, reserve (`appScreenshots` POST with
+Client part done 2026-11-10 (`arrangia_publish::apple`, ADR 0017). Apple
+deprecated the set-based screenshot API in 4.5.1 (App Asset Library
+replaces it) – open question in ADR 0017.
+- [x] JWT ES256 (15 min, max 20; team + individual keys), apps → editable
+      `appStoreVersion` → `appStoreVersionLocalizations` →
+      `appScreenshotSets` per display type
+- [x] Replace set: delete old screenshots, reserve (`appScreenshots` POST with
       file size/name), upload parts per `uploadOperations`, commit with MD5
       checksum, poll `assetDeliveryState`, set order
       (`appScreenshotSets/{id}/relationships/appScreenshots` PATCH)
-- [ ] Rate limits / retries / resume after abort; log every step
+- [~] Rate limits / retries / resume after abort; log every step – client
+      side done (retry/backoff/Retry-After, cancel, observer hook, progress
+      events, idempotent deletes); resume + upload log belong to 5.5
+- [ ] Optional: App Asset Library backend (`appAssetLibraryImages` +
+      placements + ordering requests; needed for `IPHONE_DUO`)
 
 ## 5.4 Google Play client
-- [ ] OAuth2 JWT bearer (service account) → access token
-- [ ] `edits.insert` → per language & image type `edits.images.deleteall` →
+Client part done 2026-11-10 (`arrangia_publish::google`, ADR 0017).
+- [x] OAuth2 JWT bearer (service account) → access token
+- [x] `edits.insert` → per language & image type `edits.images.deleteall` →
       `edits.images.upload` (order = upload order) → `edits.commit`
       (with `changesNotSentForReview` option where required); abort = delete edit
 
@@ -66,8 +75,9 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       (decision pending with the user)
 
 ## 5.6 Tests & real run
-- [ ] wiremock tests for both clients (happy path, partial failure + resume,
-      processing errors, rate limit)
+- [~] wiremock tests for both clients (happy path, partial failure + resume,
+      processing errors, rate limit) – client tests done
+      (`crates/publish/tests/{apple,google}.rs`); executor resume tests in 5.5
 - [ ] User runs a real upload into a test app (Apple first, then Google)
 - [ ] Docs: ADR(s), NOTES (setup: creating API keys / service account, roles
       needed, locale mapping), CLAUDE.md, STATUS.md
