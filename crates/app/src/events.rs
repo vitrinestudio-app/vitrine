@@ -4,6 +4,7 @@
 //! | event | payload |
 //! |---|---|
 //! | `project-changed` | [`crate::session::ProjectChanged`]: reason + what changed |
+//! | `project-edited` | [`crate::session::ProjectEdited`]: a step was applied, undone or redone (actor, label, changed ids) |
 //! | `project-error` | `{message}`: the folder changed but does not load |
 //! | `export-progress` | `{file, done, total}` per exported file |
 //! | `export-finished` | `{cancelled, written, errors}` |
@@ -14,6 +15,7 @@ use serde_json::Value;
 
 pub const PROJECT_CHANGED: &str = "project-changed";
 pub const PROJECT_ERROR: &str = "project-error";
+pub const PROJECT_EDITED: &str = "project-edited";
 pub const EXPORT_PROGRESS: &str = "export-progress";
 pub const EXPORT_FINISHED: &str = "export-finished";
 

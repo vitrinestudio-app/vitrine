@@ -7,6 +7,9 @@
 //!   the history step. A revision conflict reloads the project from disk,
 //!   emits `project-changed` (`reason: conflict`) and returns
 //!   [`ErrorCode::Conflict`]; other save errors leave everything unchanged.
+//!   Every applied, undone or redone step emits `project-edited`
+//!   ([`ProjectEdited`]: actor, label, changed ids), so front ends can show
+//!   who changed what (e.g. highlight Claude's changes).
 //! - The watcher reloads `project.yaml`/`i18n` on external changes. Our own
 //!   writes are recognised because the folder then loads to exactly the
 //!   in-memory project. Screenshot/asset changes invalidate previews that
@@ -30,8 +33,9 @@ use arrangia_render::scene::RenderContext;
 use serde::Serialize;
 use serde_json::json;
 
+pub use crate::actor::Actor;
 use crate::error::{CmdResult, CommandError, ErrorCode};
-use crate::events::{EventSink, PROJECT_CHANGED, PROJECT_ERROR};
+use crate::events::{EventSink, PROJECT_CHANGED, PROJECT_EDITED, PROJECT_ERROR};
 use crate::preview::PreviewCache;
 use crate::watch::{self, FsChange, Watcher};
 use arrangia_core::frame_import::FrameIndex;
@@ -169,6 +173,32 @@ pub struct ProjectChanged {
     pub changes: Changes,
     /// The undo history was cleared (model reloaded).
     pub history_cleared: bool,
+}
+
+/// Options of [`Session::apply_ops_with`].
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ApplyOptions {
+    /// Undo label (default: [`label_for`] the ops). The actor prefix is
+    /// added on top.
+    pub label: Option<String>,
+    /// Who makes the change (default: the user).
+    pub actor: Actor,
+}
+
+/// Payload of the `project-edited` event: a step was applied, undone or
+/// redone through this session (not sent for reloads; see
+/// [`ProjectChanged`]).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ProjectEdited {
+    /// `apply`, `undo` or `redo`.
+    pub action: &'static str,
+    /// Who made the change (for an undo/redo: who undid/redid it).
+    pub actor: Actor,
+    /// History label of the step (with the actor prefix).
+    pub label: String,
+    pub revision: u64,
+    /// What changed; `changes.elements` are the touched element ids.
+    pub changes: Changes,
 }
 
 struct Inner {
@@ -453,50 +483,99 @@ impl Session {
     }
 
     /// Applies `ops` as one undo step and saves. `label` defaults to
-    /// [`label_for`].
+    /// [`label_for`]; the actor is [`Actor::current`] (the user unless the
+    /// caller runs inside [`Actor::scope`]).
     pub fn apply_ops(&self, ops: Vec<Op>, label: Option<String>) -> CmdResult<ApplyResult> {
+        self.apply_ops_with(
+            ops,
+            ApplyOptions {
+                label,
+                actor: Actor::current(),
+            },
+        )
+    }
+
+    /// Applies `ops` as one undo step by `options.actor` and saves.
+    pub fn apply_ops_with(&self, ops: Vec<Op>, options: ApplyOptions) -> CmdResult<ApplyResult> {
         if ops.is_empty() {
             return Err(CommandError::invalid("no ops given"));
         }
-        let label = label.unwrap_or_else(|| label_for(&ops));
-        self.transact(|project, history| {
+        let label = options
+            .actor
+            .label(&options.label.unwrap_or_else(|| label_for(&ops)));
+        let (r, mut inner) = self.transact(|project, history| {
             history.apply(project, ops)?;
             Ok(true)
-        })
-        .map(|(r, mut inner)| {
-            if r.applied {
-                inner.undo_labels.push(label);
-                trim(&mut inner.undo_labels);
-                inner.redo_labels.clear();
-            }
-            r.with_history(inner.history_state())
-        })
+        })?;
+        if r.applied {
+            inner.undo_labels.push(label.clone());
+            trim(&mut inner.undo_labels);
+            inner.redo_labels.clear();
+        }
+        let r = r.with_history(inner.history_state());
+        drop(inner);
+        self.emit_edited("apply", options.actor, label, &r);
+        Ok(r)
     }
 
     /// Undoes the last step and saves.
     pub fn undo(&self) -> CmdResult<ApplyResult> {
-        self.transact(|project, history| Ok(history.undo(project)?))
-            .map(|(r, mut inner)| {
-                if r.applied
-                    && let Some(l) = inner.undo_labels.pop()
-                {
-                    inner.redo_labels.push(l);
-                }
-                r.with_history(inner.history_state())
-            })
+        self.undo_as(Actor::current())
+    }
+
+    /// Undoes the last step on behalf of `actor` and saves.
+    pub fn undo_as(&self, actor: Actor) -> CmdResult<ApplyResult> {
+        let (r, mut inner) = self.transact(|project, history| Ok(history.undo(project)?))?;
+        let mut label = String::new();
+        if r.applied
+            && let Some(l) = inner.undo_labels.pop()
+        {
+            label.clone_from(&l);
+            inner.redo_labels.push(l);
+        }
+        let r = r.with_history(inner.history_state());
+        drop(inner);
+        self.emit_edited("undo", actor, label, &r);
+        Ok(r)
     }
 
     /// Redoes the last undone step and saves.
     pub fn redo(&self) -> CmdResult<ApplyResult> {
-        self.transact(|project, history| Ok(history.redo(project)?))
-            .map(|(r, mut inner)| {
-                if r.applied
-                    && let Some(l) = inner.redo_labels.pop()
-                {
-                    inner.undo_labels.push(l);
-                }
-                r.with_history(inner.history_state())
-            })
+        self.redo_as(Actor::current())
+    }
+
+    /// Redoes the last undone step on behalf of `actor` and saves.
+    pub fn redo_as(&self, actor: Actor) -> CmdResult<ApplyResult> {
+        let (r, mut inner) = self.transact(|project, history| Ok(history.redo(project)?))?;
+        let mut label = String::new();
+        if r.applied
+            && let Some(l) = inner.redo_labels.pop()
+        {
+            label.clone_from(&l);
+            inner.undo_labels.push(l);
+        }
+        let r = r.with_history(inner.history_state());
+        drop(inner);
+        self.emit_edited("redo", actor, label, &r);
+        Ok(r)
+    }
+
+    /// Emits `project-edited` for an applied step (nothing for a no-op).
+    fn emit_edited(&self, action: &'static str, actor: Actor, label: String, r: &ApplyResult) {
+        if !r.applied {
+            return;
+        }
+        let payload = ProjectEdited {
+            action,
+            actor,
+            label,
+            revision: r.revision,
+            changes: r.changes.clone(),
+        };
+        self.events.emit(
+            PROJECT_EDITED,
+            serde_json::to_value(payload).unwrap_or_default(),
+        );
     }
 
     /// Runs `f` on copies of project and history, saves the copy and

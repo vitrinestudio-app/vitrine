@@ -207,3 +207,57 @@ fn labels() {
         "set_name"
     );
 }
+
+#[test]
+fn actor_labels_history_and_edits_are_announced() {
+    let (_tmp, s, sink) = open();
+    let claude = Actor::Claude {
+        client: "claude-code".into(),
+    };
+    let rot =
+        |deg: i32| op(json!({"op": "update_element", "id": "band", "patch": {"rotation": deg}}));
+
+    // Explicit options and the thread's current actor give the same label.
+    s.apply_ops_with(
+        vec![rot(5)],
+        ApplyOptions {
+            label: Some("rotate band".into()),
+            actor: claude.clone(),
+        },
+    )
+    .unwrap();
+    let r = claude
+        .clone()
+        .scope(|| s.apply_ops(vec![rot(6)], None))
+        .unwrap();
+    assert_eq!(
+        r.history.undo,
+        ["Claude: rotate band", "Claude: update_element band"]
+    );
+    // Default: the user, no prefix.
+    let r = s.apply_ops(vec![rot(7)], None).unwrap();
+    assert_eq!(r.history.undo.last().unwrap(), "update_element band");
+    s.undo().unwrap();
+
+    let ev = sink.named(PROJECT_EDITED);
+    assert_eq!(ev.len(), 4);
+    assert_eq!(ev[0]["action"], "apply");
+    assert_eq!(
+        ev[0]["actor"],
+        json!({"kind": "claude", "client": "claude-code"})
+    );
+    assert_eq!(ev[0]["label"], "Claude: rotate band");
+    assert_eq!(ev[0]["changes"]["elements"], json!(["band"]));
+    assert_eq!(ev[2]["actor"], json!({"kind": "user"}));
+    assert_eq!(ev[3]["action"], "undo");
+    assert_eq!(ev[3]["label"], "update_element band");
+    assert_eq!(ev[3]["revision"], s.revision());
+    // Edits through the session are not reported as external changes.
+    assert_eq!(sink.named(PROJECT_CHANGED), Vec::<Value>::new());
+
+    // Nothing to redo after a new step: no event.
+    let before = sink.named(PROJECT_EDITED).len();
+    s.apply_ops(vec![rot(8)], None).unwrap();
+    assert!(!s.redo().unwrap().applied);
+    assert_eq!(sink.named(PROJECT_EDITED).len(), before + 1);
+}

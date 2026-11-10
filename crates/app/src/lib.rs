@@ -8,6 +8,7 @@
 //! Tauri dependency.
 //!
 //! ```text
+//! actor     who made a change (user / Claude) for labels and events
 //! commands  AppState + one function per command, `dispatch(name, json)`
 //! session   the open project: model, history, atomic save, live reload
 //! preview   preview render cache and the binary image payload
@@ -19,6 +20,7 @@
 //!
 //! All model changes go through the core Operations API.
 
+pub mod actor;
 pub mod commands;
 pub mod dialogs;
 pub mod error;
@@ -68,7 +70,8 @@ pub mod testutil {
     }
 }
 
-pub use commands::{AppState, Reply, dispatch};
+pub use actor::Actor;
+pub use commands::{AppState, Reply, dispatch, dispatch_as};
 pub use error::{CommandError, ErrorCode};
 pub use events::EventSink;
 pub use session::Session;

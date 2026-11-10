@@ -245,6 +245,17 @@ command_table! {
     ],
 }
 
+/// [`dispatch`] on behalf of `actor` (history labels and `project-edited`
+/// events name it; see [`crate::actor`]).
+pub fn dispatch_as(
+    app: &AppState,
+    actor: crate::Actor,
+    name: &str,
+    args: Value,
+) -> CmdResult<Reply> {
+    actor.scope(|| dispatch(app, name, args))
+}
+
 /// Default language of the open project when `lang` is `None`.
 fn lang_or_default(session: &Session, lang: Option<String>) -> String {
     lang.unwrap_or_else(|| session.with_project(|p| p.languages.default.to_string()))
