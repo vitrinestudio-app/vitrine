@@ -53,6 +53,7 @@ current: update after each phase/merge and whenever the user decides something.
 - User-facing facts go to `docs/guide/NOTES.md` (English, notes only, no prose yet).
 
 ## Decisions taken with the user
+- 2026-11-10 Phase 6 runs in parallel with the Phase 5 real-run tests; plan in `docs/plan/phase-6.md`. Website arrangia.app and documentation are separate steps. Colour management P3 → sRGB started now; installer/signing on 2026-11-11 (prepared in phase-6.md). Templates: uploadable to and downloadable from a web gallery (on arrangia.app). Feature graphic: largely present (`play-feature-graphic`), close to Apple's header/search creatives.
 - 2026-11-09 Text engine parley (Phase 0 ADR 0001) – "du entscheidest".
 - 2026-11-09 Hyphenation: soft hyphens + warning on emergency break in Phase 1; automatic pattern hyphenation opt-in in Phase 3, only when auto-fit at `shrink_to` is not enough.
 - 2026-11-09 Phase 1 → Phase 2 → Phase 3 approved after reviews.
