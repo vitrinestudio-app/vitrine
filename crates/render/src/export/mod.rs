@@ -314,6 +314,7 @@ struct Output {
 }
 
 /// Exports `project` (folder = `ctx.root()`).
+#[allow(clippy::too_many_lines)]
 pub fn export(project: &Project, ctx: &RenderContext, opts: &ExportOptions) -> ExportReport {
     let start = Instant::now();
     let root = ctx.root().to_path_buf();
@@ -561,7 +562,19 @@ fn fastlane_tasks(
             locale: Some(p.locale),
         });
     }
-    // frameit leftovers make deliver skip every unframed file of the folder.
+    notes.extend(framed_warnings(out_dir, deliver_dirs));
+    for n in &notes {
+        if n.level == NoteLevel::Error {
+            report.errors.push(n.message.clone());
+        }
+    }
+    report.notes = notes;
+    tasks
+}
+
+/// frameit leftovers make deliver skip every unframed file of the folder.
+fn framed_warnings(out_dir: &Path, deliver_dirs: BTreeSet<String>) -> Vec<LayoutNote> {
+    let mut notes = Vec::new();
     let framed = &arrangia_core::catalog::fastlane().deliver.framed_suffix;
     for dir in deliver_dirs {
         let has_framed = std::fs::read_dir(out_dir.join(&dir))
@@ -585,13 +598,7 @@ fn fastlane_tasks(
             });
         }
     }
-    for n in &notes {
-        if n.level == NoteLevel::Error {
-            report.errors.push(n.message.clone());
-        }
-    }
-    report.notes = notes;
-    tasks
+    notes
 }
 
 /// Deletes the files of an earlier export of the same targets × languages

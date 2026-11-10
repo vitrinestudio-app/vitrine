@@ -112,158 +112,176 @@ pub fn placements(
     target: &Target,
     lang: &str,
 ) -> (Vec<Placement>, Vec<LayoutNote>) {
-    let fl = fastlane();
-    let tid = target.id.as_str();
     let mut out = Vec::new();
     let mut notes = Vec::new();
-    let note = |level, msg: String| LayoutNote::new(level, tid, Some(lang), msg);
     let Some(slot) = &target.store else {
         notes.push(LayoutNote::new(
             NoteLevel::Info,
-            tid,
+            target.id.as_str(),
             None,
             "no store slot: not part of the fastlane layout".to_owned(),
         ));
         return (out, notes);
     };
-    let locales = catalog::store_locales();
     if let Some(apple) = &slot.apple {
-        let dt = apple.display_type.as_str();
-        if apple.placement.is_some() {
-            notes.push(LayoutNote::new(
-                NoteLevel::Info,
-                tid,
-                None,
-                format!("App Store creative asset ({dt}): deliver uploads screenshot sets only"),
-            ));
-        } else if target.kind == TargetKind::Banner {
-            notes.push(LayoutNote::new(
-                NoteLevel::Info,
-                tid,
-                None,
-                "banner: deliver uploads screenshot sets only".to_owned(),
-            ));
-        } else if !fl.deliver.knows(dt) {
-            notes.push(LayoutNote::new(
-                NoteLevel::Warn,
-                tid,
-                None,
-                format!("deliver has no screenshot set for display type {dt}"),
-            ));
-        } else {
-            match locales
-                .apple
-                .resolve(project.store.locales.get(StoreKind::Apple), lang)
-            {
-                None => notes.push(note(
-                    NoteLevel::Warn,
-                    format!("no App Store locale for `{lang}` (set store.locales.apple)"),
-                )),
-                Some((code, _)) => match fl.deliver.locale(code) {
-                    None => notes.push(note(
-                        NoteLevel::Warn,
-                        format!("deliver does not accept the locale folder `{code}`"),
-                    )),
-                    Some(code) => {
-                        let imessage = dt.starts_with("IMESSAGE_");
-                        let dir = if imessage {
-                            format!(
-                                "{}/{}/{code}",
-                                fl.deliver.screenshots_dir, fl.deliver.imessage_dir
-                            )
-                        } else {
-                            format!("{}/{code}", fl.deliver.screenshots_dir)
-                        };
-                        let (w, h) = (target.size.w, target.size.h);
-                        let marker = fl
-                            .deliver
-                            .marker_for(w, h, dt)
-                            .map(|words| words.join("_"))
-                            .filter(|m| !tid.to_lowercase().contains(&m.to_lowercase()));
-                        let p = Placement {
-                            store: StoreKind::Apple,
-                            dir,
-                            locale: code.to_owned(),
-                            slot: dt.to_owned(),
-                            naming: Naming::Deliver {
-                                target: tid.to_owned(),
-                                marker,
-                            },
-                        };
-                        let probe = p.path(0, "png");
-                        match fl.deliver.display_type(w, h, &probe, imessage) {
-                            None => notes.push(note(
-                                NoteLevel::Warn,
-                                format!(
-                                    "deliver rejects {w}×{h} (no display type has this size) and would stop the whole upload: not written"
-                                ),
-                            )),
-                            Some(found) => {
-                                if found != dt {
-                                    notes.push(note(
-                                        NoteLevel::Warn,
-                                        format!(
-                                            "deliver detects {w}×{h} as {found}, not the target's {dt}"
-                                        ),
-                                    ));
-                                }
-                                out.push(p);
-                            }
-                        }
-                    }
-                },
+        match deliver_placement(project, target, lang, apple) {
+            Ok((p, n)) => {
+                out.push(p);
+                notes.extend(n);
             }
+            Err(n) => notes.push(n),
         }
     }
     if let Some(google) = &slot.google {
-        let ty = google.image_type.as_str();
-        let screenshot = fl.supply.screenshot_type(ty);
-        let image = fl.supply.image_types.iter().find(|t| *t == ty);
-        if screenshot.is_none() && image.is_none() {
-            notes.push(LayoutNote::new(
-                NoteLevel::Info,
-                tid,
-                None,
-                format!("supply does not upload the image type {ty}"),
-            ));
-        } else {
-            match locales
-                .google
-                .resolve(project.store.locales.get(StoreKind::Google), lang)
-            {
-                None => notes.push(note(
-                    NoteLevel::Warn,
-                    format!("no Google Play locale for `{lang}` (set store.locales.google)"),
-                )),
-                Some((code, _)) => {
-                    let base =
-                        format!("{}/{code}/{}", fl.supply.metadata_dir, fl.supply.images_dir);
-                    let (dir, naming) = match screenshot {
-                        Some(t) => (
-                            format!("{base}/{t}"),
-                            Naming::SupplyScreenshot {
-                                locale: code.to_owned(),
-                            },
-                        ),
-                        None => (
-                            base,
-                            Naming::SupplyImage {
-                                image_type: ty.to_owned(),
-                            },
-                        ),
-                    };
-                    out.push(Placement {
-                        store: StoreKind::Google,
-                        dir,
-                        locale: code.to_owned(),
-                        slot: ty.to_owned(),
-                        naming,
-                    });
-                }
-            }
+        match supply_placement(project, target, lang, &google.image_type) {
+            Ok(p) => out.push(p),
+            Err(n) => notes.push(n),
         }
     }
     (out, notes)
+}
+
+/// deliver placement of an App Store slot (with warnings), or why none.
+fn deliver_placement(
+    project: &Project,
+    target: &Target,
+    lang: &str,
+    apple: &crate::model::AppleSlot,
+) -> Result<(Placement, Option<LayoutNote>), LayoutNote> {
+    let fl = fastlane();
+    let tid = target.id.as_str();
+    let dt = apple.display_type.as_str();
+    let general = |level, msg: String| LayoutNote::new(level, tid, None, msg);
+    let note = |level, msg: String| LayoutNote::new(level, tid, Some(lang), msg);
+    if apple.placement.is_some() {
+        return Err(general(
+            NoteLevel::Info,
+            format!("App Store creative asset ({dt}): deliver uploads screenshot sets only"),
+        ));
+    }
+    if target.kind == TargetKind::Banner {
+        return Err(general(
+            NoteLevel::Info,
+            "banner: deliver uploads screenshot sets only".to_owned(),
+        ));
+    }
+    if !fl.deliver.knows(dt) {
+        return Err(general(
+            NoteLevel::Warn,
+            format!("deliver has no screenshot set for display type {dt}"),
+        ));
+    }
+    let (code, _) = catalog::store_locales()
+        .apple
+        .resolve(project.store.locales.get(StoreKind::Apple), lang)
+        .ok_or_else(|| {
+            note(
+                NoteLevel::Warn,
+                format!("no App Store locale for `{lang}` (set store.locales.apple)"),
+            )
+        })?;
+    let code = fl.deliver.locale(code).ok_or_else(|| {
+        note(
+            NoteLevel::Warn,
+            format!("deliver does not accept the locale folder `{code}`"),
+        )
+    })?;
+    let imessage = dt.starts_with("IMESSAGE_");
+    let dir = if imessage {
+        format!(
+            "{}/{}/{code}",
+            fl.deliver.screenshots_dir, fl.deliver.imessage_dir
+        )
+    } else {
+        format!("{}/{code}", fl.deliver.screenshots_dir)
+    };
+    let (w, h) = (target.size.w, target.size.h);
+    let marker = fl
+        .deliver
+        .marker_for(w, h, dt)
+        .map(|words| words.join("_"))
+        .filter(|m| !tid.to_lowercase().contains(&m.to_lowercase()));
+    let p = Placement {
+        store: StoreKind::Apple,
+        dir,
+        locale: code.to_owned(),
+        slot: dt.to_owned(),
+        naming: Naming::Deliver {
+            target: tid.to_owned(),
+            marker,
+        },
+    };
+    let found = fl
+        .deliver
+        .display_type(w, h, &p.path(0, "png"), imessage)
+        .ok_or_else(|| {
+            note(
+                NoteLevel::Warn,
+                format!(
+                    "deliver rejects {w}×{h} (no display type has this size) and would stop the whole upload: not written"
+                ),
+            )
+        })?;
+    let warn = (found != dt).then(|| {
+        note(
+            NoteLevel::Warn,
+            format!("deliver detects {w}×{h} as {found}, not the target's {dt}"),
+        )
+    });
+    Ok((p, warn))
+}
+
+/// supply placement of a Google Play image type, or why none.
+fn supply_placement(
+    project: &Project,
+    target: &Target,
+    lang: &str,
+    ty: &str,
+) -> Result<Placement, LayoutNote> {
+    let fl = fastlane();
+    let tid = target.id.as_str();
+    let screenshot = fl.supply.screenshot_type(ty);
+    if screenshot.is_none() && !fl.supply.image_types.iter().any(|t| t == ty) {
+        return Err(LayoutNote::new(
+            NoteLevel::Info,
+            tid,
+            None,
+            format!("supply does not upload the image type {ty}"),
+        ));
+    }
+    let (code, _) = catalog::store_locales()
+        .google
+        .resolve(project.store.locales.get(StoreKind::Google), lang)
+        .ok_or_else(|| {
+            LayoutNote::new(
+                NoteLevel::Warn,
+                tid,
+                Some(lang),
+                format!("no Google Play locale for `{lang}` (set store.locales.google)"),
+            )
+        })?;
+    let base = format!("{}/{code}/{}", fl.supply.metadata_dir, fl.supply.images_dir);
+    let (dir, naming) = match screenshot {
+        Some(t) => (
+            format!("{base}/{t}"),
+            Naming::SupplyScreenshot {
+                locale: code.to_owned(),
+            },
+        ),
+        None => (
+            base,
+            Naming::SupplyImage {
+                image_type: ty.to_owned(),
+            },
+        ),
+    };
+    Ok(Placement {
+        store: StoreKind::Google,
+        dir,
+        locale: code.to_owned(),
+        slot: ty.to_owned(),
+        naming,
+    })
 }
 
 /// A file (written now or earlier) claiming a place in the layout.
@@ -408,7 +426,7 @@ store:
     fn paths_per_store() {
         let p = project();
         let (pl, notes) = place(&p, "phone", "de");
-        assert!(notes.is_empty(), "{notes:?}");
+        assert_eq!(notes, []);
         assert_eq!(pl[0].path(0, "png"), "screenshots/de-DE/01_phone.png");
         assert_eq!(pl[0].path(9, "jpg"), "screenshots/de-DE/10_phone.jpg");
         let (pl, _) = place(&p, "phone", "fr-CA");
@@ -426,7 +444,7 @@ store:
         assert!(pl[0].single_image());
         // The shared 12.9" size needs deliver's marker for the 2nd gen slot.
         let (pl, notes) = place(&p, "pad-old", "en");
-        assert!(notes.is_empty(), "{notes:?}");
+        assert_eq!(notes, []);
         assert_eq!(
             pl[0].path(0, "png"),
             "screenshots/en-US/01_pad-old_app_ipad_pro_129.png"
@@ -437,13 +455,13 @@ store:
     fn notes_for_what_is_left_out() {
         let p = project();
         let (pl, notes) = place(&p, "web", "en");
-        assert!(pl.is_empty());
+        assert_eq!(pl.len(), 0);
         assert!(notes[0].message.contains("no store slot"), "{notes:?}");
         let (pl, notes) = place(&p, "odd", "en");
-        assert!(pl.is_empty());
+        assert_eq!(pl.len(), 0);
         assert!(notes[0].message.contains("deliver rejects"), "{notes:?}");
         let (pl, notes) = place(&p, "phone", "xx");
-        assert!(pl.is_empty());
+        assert_eq!(pl.len(), 0);
         assert!(
             notes[0].message.contains("no App Store locale"),
             "{notes:?}"
@@ -482,7 +500,7 @@ store:
         // Over the limit.
         let many: Vec<Claim> = (0..9).map(|i| claim("play", "en", i)).collect();
         let (rejected, notes) = check_claims(&[], &many);
-        assert!(rejected.is_empty());
+        assert_eq!(rejected.len(), 0);
         assert!(notes[0].message.contains("at most 8"), "{notes:?}");
     }
 }

@@ -27,6 +27,7 @@ struct Item<'a> {
 }
 
 /// Builds the page for the files of `manifest` that exist below `out_dir`.
+#[allow(clippy::too_many_lines)] // one linear HTML template
 pub fn render(
     project: &Project,
     out_dir: &Path,

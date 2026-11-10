@@ -549,6 +549,7 @@ fn project_with_android() -> Project {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn whole_fastlane_folder_snapshot_and_screengrab() {
     let d = dirs();
     let p = project_with_android();
