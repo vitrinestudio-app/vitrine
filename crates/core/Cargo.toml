@@ -20,6 +20,9 @@ skrifa.workspace = true
 imagesize.workspace = true
 csv.workspace = true
 quick-xml.workspace = true
+png.workspace = true
+zip.workspace = true
+flate2.workspace = true
 
 [dev-dependencies]
 insta.workspace = true

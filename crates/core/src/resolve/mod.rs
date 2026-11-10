@@ -29,11 +29,11 @@ pub use lookup::{
     lookup_text,
 };
 pub use scene::{
-    DeviceColor, Diagnostic, DiagnosticCode, Frame, GalleryInfo, Level, OutputImage, PageFrame,
-    ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedGlow, ResolvedImage, ResolvedKind,
-    ResolvedScene, ResolvedScreenshot, ResolvedShadowLayer, ResolvedShape, ResolvedSpanStyle,
-    ResolvedStop, ResolvedStroke, ResolvedText, ResolvedTextStroke, ResolvedTextStyle,
-    ScreenshotSource, TextEffects, TextFrame,
+    DeviceColor, Diagnostic, DiagnosticCode, Frame, GalleryInfo, ImportedFrame, Level, OutputImage,
+    PageFrame, ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedGlow, ResolvedImage,
+    ResolvedKind, ResolvedScene, ResolvedScreenshot, ResolvedShadowLayer, ResolvedShape,
+    ResolvedSpanStyle, ResolvedStop, ResolvedStroke, ResolvedText, ResolvedTextStroke,
+    ResolvedTextStyle, ScreenshotSource, TextEffects, TextFrame,
 };
 pub use style::{DEFAULT_FONT, StyleResolver, UNKNOWN_COLOR, builtin_shadow, default_text_style};
 
@@ -50,6 +50,9 @@ pub struct ResolveOptions<'a> {
     /// context, a [`crate::layout::TextLayouter`]) so pivots match the
     /// rendered lines.
     pub text: Option<&'a dyn TextMeasure>,
+    /// Installed vendor frames (`frame: imported:<source>`, ADR 0012);
+    /// `None` = none installed (parametric fallback + info).
+    pub frames: Option<&'a crate::frame_import::FrameIndex>,
 }
 
 impl<'a> ResolveOptions<'a> {
@@ -59,7 +62,15 @@ impl<'a> ResolveOptions<'a> {
             catalog: crate::catalog::catalog(),
             assets,
             text: None,
+            frames: None,
         }
+    }
+
+    /// The same options with installed vendor frames.
+    #[must_use]
+    pub fn with_frames(mut self, frames: Option<&'a crate::frame_import::FrameIndex>) -> Self {
+        self.frames = frames;
+        self
     }
 
     /// The same options measuring texts with `text`.

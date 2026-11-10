@@ -260,7 +260,30 @@ async function dropOptions(getCanvas, x, y) {
   }
 }
 
+// Frame packages (task 3.5): while the frame packages dialog is open it
+// takes native drops; a dropped .dmg / .zip otherwise opens it.
+let dropHook = null;
+
+/** Routes native drops (paths) to `fn(path)` while set; `null` restores. */
+export function setDropHook(fn) {
+  dropHook = fn;
+}
+
+const FRAME_PACKAGE = /\.(dmg|zip)$/i;
+
 async function routeDrop(getCanvas, sources, x, y) {
+  const native = sources.find((s) => s.path);
+  if (dropHook) {
+    if (native) dropHook(native.path);
+    else editor.toast(t('frames.drop_no_path'), true);
+    return;
+  }
+  if (sources.length === 1 && FRAME_PACKAGE.test(sources[0].name ?? '')) {
+    if (!native) return editor.toast(t('frames.drop_no_path'), true);
+    const { openFramePackages } = await import('../dialogs/frame-packages.js');
+    await openFramePackages({ path: native.path });
+    return;
+  }
   if (!sources.length || !store.get().summary) return;
   const opts = await dropOptions(getCanvas, x, y);
   await importFiles(opts.single ? sources.slice(0, 1) : sources, opts);

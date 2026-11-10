@@ -175,6 +175,28 @@ pub struct ResolvedDevice {
     /// Content scale applied to size, pivot and shadow.
     pub content_scale: f64,
     pub shadow: Vec<ResolvedShadowLayer>,
+    /// The installed vendor frame drawn instead of the parametric one
+    /// (`frame: imported:<source>` and the frame is installed; ADR 0012).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub imported: Option<ImportedFrame>,
+}
+
+/// An installed vendor frame (bezel PNG + screen mask) chosen by resolve.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ImportedFrame {
+    /// Frame source (`apple`).
+    pub source: String,
+    /// Bezel PNG relative to the frames root
+    /// ([`crate::frame_import::FrameIndex::root`]).
+    pub file: String,
+    /// Screen mask PNG relative to the frames root.
+    pub mask: String,
+    /// Bezel pixel size; the element's aspect follows it.
+    pub size: PixelSize,
+    /// Screen rectangle in bezel pixels.
+    pub screen: crate::frame_import::PxRect,
+    /// Colour id of the installed frame.
+    pub color: String,
 }
 
 /// Colour of a device frame.
@@ -531,6 +553,9 @@ pub enum DiagnosticCode {
     PartialImage,
     /// A banner region exceeds the strip.
     RegionOutOfRange,
+    /// `frame: imported:<source>` but no such frame is installed; the
+    /// parametric frame is drawn.
+    ImportedFrameMissing,
 }
 
 /// An info or warning collected during resolve.

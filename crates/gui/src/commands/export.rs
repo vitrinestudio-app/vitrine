@@ -49,6 +49,7 @@ pub fn validate(app: &AppState, args: ValidateArgs) -> CmdResult<ValidateResult>
     let ctx = session.render_context();
     let mut opts = ValidateOptions::new(&fs);
     opts.fonts = ctx.fonts().clone();
+    opts.frames = ctx.frames();
     opts.targets = args.targets;
     opts.langs = args.langs;
     opts.mode = if args.preview {

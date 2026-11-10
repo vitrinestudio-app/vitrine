@@ -5,12 +5,10 @@ use std::path::PathBuf;
 
 use anyhow::{Context, bail};
 use arrangia_core::model::TargetKind;
-use arrangia_core::resolve::{Frame, FsAssets, Level, ResolveOptions, ResolvedScene, resolve};
+use arrangia_core::resolve::{Frame, FsAssets, Level, ResolvedScene, resolve};
 use arrangia_render::export::gallery;
 use arrangia_render::raster::save_png_rgb;
-use arrangia_render::scene::{
-    CanvasOptions, Quality, RenderContext, RenderIssue, RenderOptions, Scale,
-};
+use arrangia_render::scene::{CanvasOptions, Quality, RenderIssue, RenderOptions, Scale};
 use clap::Args;
 
 use crate::{EXIT_OK, Global, project};
@@ -95,14 +93,14 @@ pub fn run(args: &RenderArgs, global: &Global) -> anyhow::Result<u8> {
         bail!("--scale must be a positive number");
     }
 
-    let (ctx, fonts) = RenderContext::new(root);
+    let (ctx, fonts) = crate::frames::render_context(root);
     if !global.quiet
         && let Some(r) = &fonts
     {
         project::report_font_errors(&r.errors);
     }
     let fs = FsAssets::new(root);
-    let scene = resolve(&project, &target, &lang, &ResolveOptions::new(&fs))?;
+    let scene = resolve(&project, &target, &lang, &ctx.resolve_options(&fs))?;
     let prepared = ctx.prepare(&scene);
     let frame = &scene.frame;
 

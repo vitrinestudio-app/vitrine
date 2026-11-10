@@ -17,7 +17,9 @@ mod draw;
 mod overlay;
 
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
+
+use arrangia_core::frame_import::FrameIndex;
 
 use arrangia_core::geometry::Viewport;
 use arrangia_core::layout::{
@@ -216,6 +218,9 @@ pub struct RenderContext {
     assets: AssetCache,
     fonts: FontLibrary,
     layouters: Mutex<Vec<TextLayouter>>,
+    /// Installed vendor frames and their decoded/scaled bezels and masks
+    /// (cache rooted at the frames root; ADR 0012).
+    frames: Option<(Arc<FrameIndex>, AssetCache)>,
 }
 
 impl std::fmt::Debug for RenderContext {
@@ -242,7 +247,29 @@ impl RenderContext {
             assets: AssetCache::new(root),
             fonts,
             layouters: Mutex::new(Vec::new()),
+            frames: None,
         }
+    }
+
+    /// The same context drawing `frame: imported:*` devices with the
+    /// installed frames of `index` (`None` = parametric fallback).
+    #[must_use]
+    pub fn with_frames(mut self, index: Option<Arc<FrameIndex>>) -> Self {
+        self.frames = index.map(|ix| {
+            let cache = AssetCache::new(ix.root());
+            (ix, cache)
+        });
+        self
+    }
+
+    /// Installed vendor frames, if any were given.
+    pub fn frames(&self) -> Option<&FrameIndex> {
+        self.frames.as_ref().map(|(ix, _)| ix.as_ref())
+    }
+
+    /// Decoded/scaled bezels and masks (paths relative to the frames root).
+    pub fn frame_assets(&self) -> Option<&AssetCache> {
+        self.frames.as_ref().map(|(_, c)| c)
     }
 
     pub fn root(&self) -> &Path {
@@ -280,7 +307,9 @@ impl RenderContext {
         &'a self,
         assets: &'a dyn arrangia_core::resolve::AssetLookup,
     ) -> arrangia_core::resolve::ResolveOptions<'a> {
-        arrangia_core::resolve::ResolveOptions::new(assets).with_text(self)
+        arrangia_core::resolve::ResolveOptions::new(assets)
+            .with_text(self)
+            .with_frames(self.frames())
     }
 
     /// Lays out all texts of `scene` (via `core::layout::layout_text`, so

@@ -213,6 +213,10 @@ json_commands! {
     strings_import_apply: commands::StringsImportApplyArgs,
     import_plan: commands::ImportPlanArgs,
     import_apply: commands::ImportApplyArgs,
+    frames_import_plan: commands::FramesImportPlanArgs,
+    frames_import_apply: commands::FramesImportApplyArgs,
+    frames_list: commands::NoArgs,
+    frames_remove: commands::FramesRemoveArgs,
 }
 
 image_commands! {
@@ -222,6 +226,7 @@ image_commands! {
     render_preview_edit: commands::RenderPreviewEditArgs,
     render_preview_string: commands::RenderPreviewStringArgs,
     asset_thumbnail: commands::AssetThumbnailArgs,
+    frames_thumbnail: commands::FramesThumbnailArgs,
 }
 
 /// `arrangia-gui [PROJECT_DIR]`: the project to open right away.
@@ -232,7 +237,7 @@ fn project_arg() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-#[allow(clippy::too_many_lines)] // mostly the command list of `generate_handler!`
+#[allow(clippy::too_many_lines, reason = "the generate_handler! command list")]
 fn main() {
     let events = Arc::new(TauriEvents::default());
     let dialogs = Arc::new(TauriDialogs::default());
@@ -336,6 +341,11 @@ fn main() {
             assets_upload,
             render_preview_string,
             asset_thumbnail,
+            frames_import_plan,
+            frames_import_apply,
+            frames_list,
+            frames_remove,
+            frames_thumbnail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Arrangia");

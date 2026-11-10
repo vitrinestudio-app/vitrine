@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use arrangia_core::resolve::Level;
 use arrangia_render::export::{ExportOptions, ExportReport, IssueSource, export};
-use arrangia_render::scene::RenderContext;
 use clap::Args;
 
 use crate::term::{Style, plural};
@@ -38,7 +37,7 @@ pub fn run(args: &ExportArgs, global: &Global) -> anyhow::Result<u8> {
     let project = project::load(root)?;
     project::check_targets(&project, &args.targets)?;
     project::check_langs(&args.langs)?;
-    let (ctx, fonts) = RenderContext::new(root);
+    let (ctx, fonts) = crate::frames::render_context(root);
     if !global.quiet
         && let Some(r) = &fonts
     {

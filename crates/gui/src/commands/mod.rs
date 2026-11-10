@@ -23,6 +23,7 @@ mod edit;
 mod add;
 mod exchange;
 mod export;
+mod frames;
 mod inspect;
 mod os;
 mod project;
@@ -47,6 +48,7 @@ pub use catalog::*;
 pub use edit::*;
 pub use exchange::*;
 pub use export::*;
+pub use frames::*;
 pub use inspect::*;
 pub use os::*;
 pub use project::*;
@@ -158,6 +160,7 @@ impl AppState {
         if self.settings.load().is_ok_and(|s| s.system_font_fallback) {
             session.set_system_font_fallback(true);
         }
+        session.set_frames(self.frame_index(), false);
         if self.watch {
             session.watch()?;
         }
@@ -234,10 +237,11 @@ command_table! {
         dialog_pick_folder, reveal_path,
         dialog_save_file, strings_export, strings_import_plan, strings_import_apply,
         import_plan, import_apply,
+        frames_import_plan, frames_import_apply, frames_list, frames_remove,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,
-        render_preview_string, asset_thumbnail,
+        render_preview_string, asset_thumbnail, frames_thumbnail,
     ],
 }
 
@@ -262,3 +266,6 @@ mod tests_exchange;
 
 #[cfg(test)]
 mod tests_import;
+
+#[cfg(test)]
+mod tests_frames;

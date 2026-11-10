@@ -647,3 +647,41 @@ fn report_serializes() {
     let back: ValidationReport = serde_json::from_value(json).unwrap();
     assert_eq!(back, r);
 }
+
+#[test]
+fn imported_frame_missing_is_an_info() {
+    use crate::frame_import::{FrameStore, Package, Rules, import, synthetic};
+    let elements = "
+  - id: phone
+    kind: device
+    page: 0
+    at: {x: 500, y: 1000}
+    width: 600
+    model: iphone-island
+    frame: imported:apple
+    color: desert-titanium";
+    let p = project(elements, "");
+    let r = run(&p);
+    let f = find(&r, FindingCode::ImportedFrameMissing);
+    assert_eq!(f.level, Severity::Info);
+    assert_eq!(f.element.as_ref().unwrap().as_str(), "phone");
+    // The vendor colour name of a missing frame is an info, not a warning.
+    assert_eq!(
+        find(&r, FindingCode::UnknownDeviceColor).level,
+        Severity::Info
+    );
+
+    // Installed: no finding.
+    let dir = tempfile::tempdir().unwrap();
+    let pkg_dir = dir.path().join("pkg");
+    synthetic::write_folder(&pkg_dir, &synthetic::default_specs()).unwrap();
+    let store = FrameStore::new(dir.path().join("frames"));
+    let pkg = Package::open(&pkg_dir).unwrap();
+    import(&store, &pkg, Rules::builtin("apple").unwrap(), true).unwrap();
+    let index = store.index();
+    let mut opts = ValidateOptions::new(&NoAssets);
+    opts.frames = Some(&index);
+    let r = validate(&p, &opts);
+    assert!(!has(&r, FindingCode::ImportedFrameMissing));
+    assert!(!has(&r, FindingCode::UnknownDeviceColor));
+}

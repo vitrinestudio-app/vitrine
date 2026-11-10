@@ -1,0 +1,128 @@
+# File-name mapping for the Apple Design Resources "Product Bezels"
+# (KONZEPT §4.2, docs/adr/0012-imported-frames.md). Data, not code: new
+# Apple packages are supported by adding rules here. Loaded by
+# `arrangia_core::frame_import` (embedded at build time). Per-file
+# assignments made by the user live in the app-wide frame store
+# (`<app data>/frames/apple/user-mapping.yaml`) and take precedence.
+#
+# Arrangia never ships, downloads or commits these images: the user downloads
+# the bezels from https://developer.apple.com/design/resources/ and imports
+# the DMG / ZIP / folder; the files go to the app data folder only.
+#
+# STATUS: built from documentation and secondary sources, NOT yet verified
+# with a real package (`verified: false`). Sources (checked 2026-11-10):
+#   - https://developer.apple.com/design/resources/ (one `Bezel-*.dmg` per
+#     device family, e.g. Bezel-iPhone-17.dmg, Bezel-iPad-Pro-(M5).dmg,
+#     Bezel-MacBook-Air-M5.dmg, Bezel-iMac-M4.dmg)
+#   - https://github.com/joshluongo/frameme (real file name
+#     `iPhone 14 Pro - Space Black - Portrait.png`)
+#   - https://github.com/jonnyjackson26/device-frames-media,
+#     https://github.com/weirdapps/mockups,
+#     https://github.com/arturs105/device-framer (bezel sizes = screen plus
+#     a ~100 px margin, transparent screen area, portrait + landscape for
+#     phones/tablets, no orientation for Macs)
+#   iPad and Mac name patterns are educated guesses (low confidence).
+#
+# Matching
+#   Only the file name is matched (folders are ignored), without the `.png`
+#   extension, case-insensitively. Before matching, en/em dashes become `-`,
+#   typographic quotes become `"`, runs of white space become one space.
+#   Rules are tried top to bottom; the first match wins.
+#
+#   pattern placeholders
+#     {color}        the colour name (non-empty, never contains ` - `, so
+#                    `MacBook Pro 14 - M4 - Space Black` gives `Space Black`);
+#                    stored as a slug
+#                    (`Black Titanium` → `black-titanium`, see color_aliases)
+#     {orientation}  `Portrait` or `Landscape`
+#     {*}            any text (also empty)
+#   rule fields
+#     model          catalog model id (devices.yaml) the frame stands in for
+#     orientation    orientation when the pattern has no {orientation}
+#                    (Macs: landscape)
+#     priority       several files for the same model × colour × orientation
+#                    (e.g. iPhone 17 Pro and 17 Pro Max): the higher priority
+#                    wins, then the larger image (default 0)
+#     note           free text
+
+source: apple
+label: Apple Design Resources (Product Bezels)
+verified: false
+
+# Apple colour name (case-insensitive) → colour id. Everything else is
+# slugified.
+color_aliases:
+  "(PRODUCT)RED": product-red
+  "Space Grey": space-gray
+
+rules:
+  # ---- iPhone with notch (iPhone X … 13, 14 / 14 Plus, 16e)
+  - pattern: "iPhone X{*} - {color} - {orientation}"
+    model: iphone-notch
+  - pattern: "iPhone 11{*} - {color} - {orientation}"
+    model: iphone-notch
+  - pattern: "iPhone 12{*} - {color} - {orientation}"
+    model: iphone-notch
+  - pattern: "iPhone 13{*} - {color} - {orientation}"
+    model: iphone-notch
+  - pattern: "iPhone 14 Pro{*} - {color} - {orientation}"
+    model: iphone-island
+    priority: 10
+    note: first generation with Dynamic Island
+  - pattern: "iPhone 14{*} - {color} - {orientation}"
+    model: iphone-notch
+  - pattern: "iPhone 16e - {color} - {orientation}"
+    model: iphone-notch
+  # ---- iPhone with Dynamic Island (15 and later)
+  - pattern: "iPhone 1{*}Pro Max - {color} - {orientation}"
+    model: iphone-island
+    priority: 30
+    note: 6.9" Pro Max, matches the catalog aspect 1320:2868 best
+  - pattern: "iPhone 1{*} - {color} - {orientation}"
+    model: iphone-island
+    priority: 20
+    note: iPhone 15 … 18 incl. Plus / Pro
+  - pattern: "iPhone Air{*} - {color} - {orientation}"
+    model: iphone-island
+    priority: 15
+  - pattern: "iPhone Duo{*} - {color} - {orientation}"
+    model: iphone-island
+    priority: 5
+  # ---- iPhone with home button
+  - pattern: "iPhone SE{*} - {color} - {orientation}"
+    model: iphone-home
+  - pattern: "iPhone 8{*} - {color} - {orientation}"
+    model: iphone-home
+  # ---- iPad
+  - pattern: "iPad Pro{*} - {color} - {orientation}"
+    model: ipad-modern
+    priority: 30
+    note: iPad Pro 13" matches the catalog aspect 2064:2752 best
+  - pattern: "iPad Air{*} - {color} - {orientation}"
+    model: ipad-modern
+    priority: 20
+  - pattern: "iPad mini{*} - {color} - {orientation}"
+    model: ipad-modern
+    priority: 5
+  - pattern: "iPad (10th generation){*} - {color} - {orientation}"
+    model: ipad-modern
+    priority: 10
+  - pattern: "iPad ({*}generation){*} - {color} - {orientation}"
+    model: ipad-home
+    note: iPad up to the 9th generation (home button)
+  - pattern: "iPad{*} - {color} - {orientation}"
+    model: ipad-modern
+    priority: 10
+    note: iPad (A16) / 10th generation
+  # ---- Mac (no orientation in the file name)
+  - pattern: "MacBook Pro{*} - {color}"
+    model: macbook
+    orientation: landscape
+    priority: 20
+  - pattern: "MacBook{*} - {color}"
+    model: macbook
+    orientation: landscape
+    priority: 10
+  - pattern: "iMac{*} - {color}"
+    model: imac
+    orientation: landscape

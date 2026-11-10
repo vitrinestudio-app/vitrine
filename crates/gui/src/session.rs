@@ -34,6 +34,7 @@ use crate::error::{CmdResult, CommandError, ErrorCode};
 use crate::events::{EventSink, PROJECT_CHANGED, PROJECT_ERROR};
 use crate::preview::PreviewCache;
 use crate::watch::{self, FsChange, Watcher};
+use arrangia_core::frame_import::FrameIndex;
 
 /// A translation that changed.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -193,6 +194,9 @@ pub struct Session {
     dir: PathBuf,
     inner: Mutex<Inner>,
     ctx: RwLock<Arc<RenderContext>>,
+    /// Installed vendor frames (app-wide, ADR 0012), kept across render
+    /// context rebuilds.
+    frames: RwLock<Option<Arc<FrameIndex>>>,
     preview: PreviewCache,
     events: Arc<dyn EventSink>,
     watcher: Mutex<Option<Watcher>>,
@@ -262,6 +266,7 @@ impl Session {
                 redo_labels: Vec::new(),
             }),
             ctx: RwLock::new(Arc::new(ctx)),
+            frames: RwLock::new(None),
             preview: PreviewCache::default(),
             events,
             watcher: Mutex::new(None),
@@ -292,9 +297,15 @@ impl Session {
 
     /// A render context: bundled + project fonts, plus system fonts for
     /// characters of the translations none of them has (if enabled).
+    /// Imported vendor frames (`set_frames`) are attached in either case.
     fn context_for(&self, project: &Project) -> RenderContext {
+        let frames = self
+            .frames
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
         if !self.system_fonts.load(Ordering::Relaxed) {
-            return RenderContext::new(&self.dir).0;
+            return RenderContext::new(&self.dir).0.with_frames(frames);
         }
         let mut fonts = FontLibrary::bundled();
         let dir = self.dir.join("fonts");
@@ -307,7 +318,7 @@ impl Session {
             .flat_map(|m| m.values().map(String::as_str))
             .collect();
         fonts.add_system_fallbacks(&text.join(" "));
-        RenderContext::with_fonts(&self.dir, fonts)
+        RenderContext::with_fonts(&self.dir, fonts).with_frames(frames)
     }
 
     fn replace_context(&self, ctx: RenderContext) {
@@ -379,6 +390,24 @@ impl Session {
             .read()
             .unwrap_or_else(PoisonError::into_inner)
             .clone()
+    }
+
+    /// Renders `frame: imported:*` devices with `frames` from now on;
+    /// `notify` tells the UI to reload (element sizes may change).
+    pub fn set_frames(&self, frames: Option<Arc<FrameIndex>>, notify: bool) {
+        *self.frames.write().unwrap_or_else(PoisonError::into_inner) = frames;
+        self.rebuild_context();
+        if notify {
+            let revision = self.revision();
+            self.emit_changed("frames", revision, Changes::default(), false);
+        }
+    }
+
+    /// New render context (fonts re-read) with the current frames; clears
+    /// the preview cache.
+    fn rebuild_context(&self) {
+        let project = self.snapshot();
+        self.replace_context(self.context_for(&project));
     }
 
     pub fn preview(&self) -> &PreviewCache {

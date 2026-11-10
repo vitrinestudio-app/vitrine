@@ -164,4 +164,14 @@ export const api = {
   /** Re-plans with the same arguments and copies; `save_mapping` stores the mapping. */
   importApply: (args) => invoke('import_apply', args),
   catalogFonts: () => invoke('catalog_fonts'),
+
+  // ----- imported frame packages (3.5) -----
+  framesList: () => invoke('frames_list'),
+  /** Plan of importing a folder / .zip / .dmg (nothing written). */
+  framesImportPlan: (path) => invoke('frames_import_plan', { path }),
+  /** `assignments`: [{ name, model?, color?, orientation? }] (no model = ignore). */
+  framesImportApply: (path, assignments = []) => invoke('frames_import_apply', { path, assignments }),
+  /** `args`: { model?, color?, orientation? } (none = all). */
+  framesRemove: (args = {}) => invoke('frames_remove', args),
+  framesThumbnail: (file, maxEdge) => invoke('frames_thumbnail', { file, max_edge: maxEdge }),
 };

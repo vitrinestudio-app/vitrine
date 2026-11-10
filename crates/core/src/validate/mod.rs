@@ -95,6 +95,9 @@ finding_codes! {
     UnknownMappedDevice = "unknown_mapped_device",
     /// The colour variant does not exist for the (mapped) model.
     UnknownDeviceColor = "unknown_device_color",
+    /// `frame: imported:<source>` but the frame is not installed on this
+    /// machine; the parametric frame is used.
+    ImportedFrameMissing = "imported_frame_missing",
     UnsupportedOrientation = "unsupported_orientation",
     /// Unknown `@colour` (rendered magenta).
     UnknownColor = "unknown_color",
@@ -266,6 +269,8 @@ pub struct ValidateOptions<'a> {
     pub langs: Option<Vec<String>>,
     pub mode: ValidateMode,
     pub thresholds: Thresholds,
+    /// Installed vendor frames (ADR 0012); `None` = none installed.
+    pub frames: Option<&'a crate::frame_import::FrameIndex>,
 }
 
 impl<'a> ValidateOptions<'a> {
@@ -280,6 +285,7 @@ impl<'a> ValidateOptions<'a> {
             langs: None,
             mode: ValidateMode::default(),
             thresholds: Thresholds::default(),
+            frames: None,
         }
     }
 }
@@ -488,6 +494,7 @@ fn validate_target(
         catalog: options.catalog,
         assets: options.assets,
         text: Some(layouter),
+        frames: options.frames,
     };
     let mut frame_checked = false;
     for lang in target_langs(project, target, options) {

@@ -2,8 +2,9 @@
 //!
 //! Commands: `new` (project from a template), `render` (preview/debug PNG),
 //! `export` (all files of targets × languages), `validate`, `strings
-//! export|import` (translation exchange) and `import screenshots`
-//! (fastlane / Arrangia / flat folders → `screenshots/`). The CLI only
+//! export|import` (translation exchange), `import screenshots`
+//! (fastlane / Arrangia / flat folders → `screenshots/`) and `frames`
+//! (import/list/remove vendor device frames, app-wide). The CLI only
 //! formats what `arrangia-core` and `arrangia-render` compute; it never
 //! edits project fields directly.
 //!
@@ -16,6 +17,7 @@
 //! | 2 | the command could not run: usage error (clap), project not loadable, IO error |
 
 mod export;
+mod frames;
 mod import;
 mod new;
 mod project;
@@ -94,6 +96,8 @@ enum Command {
     /// Import files into the project (`screenshots <dir>`: fastlane, Arrangia or flat folders).
     #[command(subcommand)]
     Import(import::ImportCommand),
+    /// Import, list and remove vendor device frames (Apple Product Bezels).
+    Frames(frames::FramesArgs),
 }
 
 impl Command {
@@ -106,6 +110,7 @@ impl Command {
             Self::Validate(_) => "validate",
             Self::Strings(_) => "strings",
             Self::Import(_) => "import",
+            Self::Frames(_) => "frames",
         }
     }
 }
@@ -119,6 +124,7 @@ fn main() -> ExitCode {
         Command::Validate(args) => validate::run(args, &cli.global),
         Command::Strings(args) => strings::run(args, &cli.global),
         Command::Import(cmd) => import::run(cmd, &cli.global),
+        Command::Frames(args) => frames::run(args, &cli.global),
     };
     match result {
         Ok(code) => ExitCode::from(code),
