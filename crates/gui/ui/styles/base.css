@@ -48,6 +48,9 @@
   /* AI assistants' live edits (ADR 0015): indicator, toasts, canvas glow */
   --assistant: #d97757;
   --assistant-soft: rgb(217 119 87 / 14%);
+  /* loading placeholder of rendered images (js/views/viewport.js) */
+  --slot-placeholder: #f1f1f3;
+  --slot-spinner: rgb(60 60 67 / 45%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -76,6 +79,8 @@
     --lang-override-bg: rgb(45 212 191 / 14%);
     --assistant: #e8916f;
     --assistant-soft: rgb(232 145 111 / 18%);
+    --slot-placeholder: #2a2a2d;
+    --slot-spinner: rgb(235 235 245 / 45%);
   }
 }
 
@@ -104,6 +109,8 @@
   --lang-override-bg: rgb(45 212 191 / 14%);
   --assistant: #e8916f;
   --assistant-soft: rgb(232 145 111 / 18%);
+  --slot-placeholder: #2a2a2d;
+  --slot-spinner: rgb(235 235 245 / 45%);
 }
 
 *,

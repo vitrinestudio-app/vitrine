@@ -147,6 +147,11 @@
   background: var(--bg-hover);
 }
 
+/* Fit mode on: the view re-fits when the window or a sidebar resizes. */
+.zoom-controls .icon-btn[aria-pressed="true"] {
+  color: var(--accent);
+}
+
 .status-text {
   color: var(--fg-muted);
   font-size: var(--fs-small);

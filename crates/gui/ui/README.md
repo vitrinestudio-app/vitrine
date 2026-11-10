@@ -27,7 +27,10 @@ js/shortcuts.js       keyboard map → named handlers
 js/geometry.js        2D helpers for canvas lu geometry
 js/dom.js             h()/s() element helpers, inline SVG icons, picker()
 js/shell.js           top bar, sidebar tabs, inspector, view switch, zoom
-js/views/canvas.js    canvas: pixmaps, zoom/pan, hit test, gestures, previews
+js/views/viewport.js  shared zoom/pan viewport of all centre views (fit mode,
+                      wheel/pinch, pan, per-view memory) + pixmap slots with
+                      loading placeholder (`makeSlot`/`paintSlot`, `densityFor`)
+js/views/canvas.js    canvas: pixmaps, hit test, gestures, previews (zoom via viewport.js)
 js/views/overlay.js   SVG overlay drawing (pure function of a model)
 js/views/snap.js      snapping lines/box/angle
 js/views/{pages,gallery,languages}.js   other centre views
@@ -80,6 +83,20 @@ builds the ops (e.g. `target_patch`, `styles_patch`) and then
   (emits `reset`).
 - **Views** (`js/views/*.js`) export `mountX(root)` returning at least
   `{ unmount() }`; they listen to `editor.on('invalidate' | 'reset')`.
+  Zoomable views also return `fit`, `zoomIn`, `zoomOut`, `zoomTo`,
+  `zoomActual`, `percent` and the `fitMode` getter (the shell's zoom
+  controls and ⌘+/⌘−/⌘0/⌘1 act on `shell.view`). They build on
+  `createViewport(el, { key, content, unit, … })` from
+  `views/viewport.js`: world units (lu, or export px in the gallery) map
+  to screen px by `zoom`/`pan`; `fit()` enters **fit mode** (re-fit on
+  every resize of the view element, e.g. window or sidebar), any manual
+  zoom/pan leaves it; `refresh(contentKey)` re-fits in fit mode or when
+  the content changed; zoom state is remembered per `key`. Rendered
+  images are slots (`makeSlot` → loading spinner until the first
+  `paintSlot`; re-renders keep the old bitmap) requested at
+  `densityFor(zoom, rect, cap)` (zoom × devicePixelRatio in √2 steps).
+  `applyWorld` sets the world transform and `--px` (one screen px in world
+  units) for hairlines inside the zoomed world.
 - **No inline styles in markup** (Tauri CSP `style-src 'self'`): use CSS
   classes; setting `el.style.prop` from JS is fine. SVG presentation
   attributes are fine.

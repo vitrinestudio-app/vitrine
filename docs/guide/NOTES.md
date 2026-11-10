@@ -170,6 +170,10 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Text overflow (`text_overflow`) is an **error** (exit 1) – only the affected language/target; other languages still validate clean.
 - `render --gallery --max-edge N`: N is the image *height* of the gallery, not its long side.
 - Keyboard: arrows nudge 1 lu (⇧ 10), ⌘D duplicate, ⌘G / ⇧⌘G group/ungroup, `[` `]` z-order, ⌘Z/⇧⌘Z, ⌥ disables snapping while dragging, ⇧ free rotation / axis lock, ⌘N/⌘O/⌘E/⌘, menus.
+- Zoom (all centre views: Canvas, Pages, Store gallery, All languages; each view keeps its own zoom for the session): bottom-bar −, %, +, Fit; ⌘+ / ⌘− zoom, ⌘0 fit, ⌘1 = 100 % (one export pixel per screen pixel; in the gallery: full-size gallery); ⌘/Ctrl + wheel or trackpad pinch zooms around the pointer; wheel/trackpad scroll pans (⇧ = horizontal); Space + drag or middle-button drag pans. In Pages, Store gallery and All languages a plain drag pans too (a click on a cell in All languages still opens it in the canvas).
+- Fit mode: after Fit (and when a project or strip opens) the view stays fitted – resizing the window or a sidebar re-fits; the Fit button is highlighted while fit mode is on. Any manual zoom or pan ends it.
+- Images still rendering show a grey placeholder with a small spinner (only until the first picture arrives; re-renders after edits keep the old picture until the new one is there). Rendering follows the zoom: zooming in requests sharper images.
+- All languages: language labels sit in a fixed column on the left; Fit keeps rows at least ~140 px high and lets you scroll (pan) through many languages.
 - Dev bridge (developers only): run the UI in a browser – see CLAUDE.md.
 
 ## Contributor notes

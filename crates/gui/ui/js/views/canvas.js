@@ -1,7 +1,7 @@
 // Canvas view: the strip of the current target as Rust-rendered pixmaps
 // (one per output image, plus the gaps rendered separately, shown
 // semi-transparent under a hatch) positioned in canvas lu, a screen-space
-// SVG overlay, zoom/pan and direct manipulation (select, marquee, move,
+// SVG overlay, zoom/pan (shared viewport, views/viewport.js) and direct manipulation (select, marquee, move,
 // resize, rotate, nudge) with snapping and live previews.
 //
 // Drag feedback: the overlay ghost follows the pointer immediately; in
@@ -19,19 +19,13 @@ import { currentTarget, effectiveVariant, store, viewArgs } from '../store.js';
 import { drawOverlay, screen } from './overlay.js';
 import { snapAngle, snapBox, snapLines } from './snap.js';
 import { openTextEditor } from './textedit.js';
+import { applyWorld, createViewport, densityFor, makeSlot as makePixmapSlot, paintSlot } from './viewport.js';
 
-const ZOOM_STEPS = [0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2, 3, 4, 6, 8];
-const MIN_ZOOM = 0.02;
-const MAX_ZOOM = 8;
-const MAX_SIDE = 8192;
 const DRAG_THRESHOLD = 3;
 const SNAP_PX = 6;
 const PREVIEW_INTERVAL = 66;
-const FIT_PADDING = 56;
 const OPPOSITE = { nw: 'se', n: 's', ne: 'sw', e: 'w', se: 'nw', s: 'n', sw: 'ne', w: 'e' };
 const UNIT = { nw: [-1, -1], n: [0, -1], ne: [1, -1], e: [1, 0], se: [1, 1], s: [0, 1], sw: [-1, 1], w: [-1, 0] };
-
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /**
  * Mounts the canvas view into `root`. Returns the view API used by the
@@ -51,8 +45,6 @@ export function mountCanvas(root) {
   /** Gesture in progress (see the start* functions). */
   let drag = null;
   let dragSeq = 0;
-  let spaceDown = false;
-  let fitPending = true;
   let resTimer = 0;
   const pump = { inflight: false, sentKey: null, last: 0, timer: 0 };
   const unsubs = [];
@@ -86,15 +78,11 @@ export function mountCanvas(root) {
   // ----- slots (pixmaps) ----------------------------------------------------
 
   function makeSlot(kind, index, rect) {
-    const real = h('canvas', { class: 'real' });
     const preview = h('canvas', { class: 'preview' });
-    const node = h('div', { class: `canvas-slot ${kind}` }, real, preview);
-    node.style.left = `${rect.x}px`;
-    node.style.top = `${rect.y}px`;
-    node.style.width = `${rect.w}px`;
-    node.style.height = `${rect.h}px`;
-    world.append(node);
-    return { kind, index, rect, el: node, real, preview, level: 0, gen: 0, dirty: true };
+    const slot = makePixmapSlot(world, rect, `canvas-slot ${kind}`, preview);
+    // Gaps are shown dimmed under a hatch: no loading spinner there.
+    if (kind === 'gap') slot.el.classList.remove('slot-loading');
+    return { ...slot, kind, index, preview };
   }
 
   function rebuildSlots() {
@@ -114,17 +102,11 @@ export function mountCanvas(root) {
 
   /** Pixel density wanted for the current zoom (quantised to √2 steps). */
   function levelFor(slot) {
-    const want = view().zoom * (window.devicePixelRatio || 1);
-    let level = 2 ** (Math.ceil(Math.log2(want) * 2) / 2);
-    level = Math.min(level, exportScale());
-    level = Math.min(level, MAX_SIDE / Math.max(slot.rect.w, slot.rect.h));
-    return level;
+    return densityFor(view().zoom, slot.rect, exportScale());
   }
 
   function isVisible(slot) {
-    const { zoom, panX, panY } = view();
-    const r = { x: slot.rect.x * zoom + panX, y: slot.rect.y * zoom + panY, w: slot.rect.w * zoom, h: slot.rect.h * zoom };
-    return intersects(r, { x: -200, y: -200, w: el.clientWidth + 400, h: el.clientHeight + 400 });
+    return vp.isVisible(slot.rect);
   }
 
   async function renderSlot(slot) {
@@ -137,12 +119,11 @@ export function mountCanvas(root) {
       const img =
         slot.kind === 'image' ? await api.renderImage(v, slot.index, width) : await api.renderRegion(v, slot.rect, level);
       const bitmap = await toImageBitmap(img);
-      if (gen !== slot.gen) return;
-      slot.real.width = bitmap.width;
-      slot.real.height = bitmap.height;
-      slot.real.getContext('2d').drawImage(bitmap, 0, 0);
-      bitmap.close?.();
-      slot.level = level;
+      if (gen !== slot.gen) {
+        bitmap.close?.();
+        return;
+      }
+      paintSlot(slot, bitmap, level);
       if (!drag || drag.committing) slot.el.classList.remove('previewing');
     } catch (e) {
       if (gen === slot.gen) {
@@ -176,59 +157,30 @@ export function mountCanvas(root) {
     }
   }
 
-  // ----- zoom / pan ------------------------------------------------------------
+  // ----- zoom / pan (views/viewport.js) ----------------------------------------
 
   function applyTransform() {
     const { zoom, panX, panY } = view();
-    world.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    applyWorld(world, { zoom, panX, panY });
   }
 
-  function setView(zoom, panX, panY) {
-    store.set({ zoom: clamp(zoom, MIN_ZOOM, MAX_ZOOM), panX, panY });
-  }
-
-  function zoomAround(z, p) {
-    const { zoom, panX, panY } = view();
-    const nz = clamp(z, MIN_ZOOM, MAX_ZOOM);
-    setView(nz, p.x - ((p.x - panX) * nz) / zoom, p.y - ((p.y - panY) * nz) / zoom);
-  }
-
-  const centre = () => ({ x: el.clientWidth / 2, y: el.clientHeight / 2 });
-
-  function fit() {
-    const o = store.get().overlay;
-    if (!o || !el.clientWidth) return;
-    const c = o.canvas;
-    const w = el.clientWidth - FIT_PADDING * 2;
-    const hh = el.clientHeight - FIT_PADDING * 2 - 16;
-    const z = clamp(Math.min(w / c.w, hh / c.h), MIN_ZOOM, MAX_ZOOM);
-    setView(z, (el.clientWidth - c.w * z) / 2 - c.x * z, (el.clientHeight - c.h * z) / 2 - c.y * z + 8);
-    fitPending = false;
-  }
-
-  function step(dir) {
-    const z = view().zoom;
-    const next = dir > 0 ? ZOOM_STEPS.find((v) => v > z * 1.001) : [...ZOOM_STEPS].reverse().find((v) => v < z / 1.001);
-    zoomAround(next ?? z, centre());
-  }
-
-  el.addEventListener(
-    'wheel',
-    (e) => {
-      e.preventDefault();
-      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1;
-      if (e.ctrlKey || e.metaKey) {
-        const d = clamp(e.deltaY * unit, -50, 50);
-        zoomAround(view().zoom * Math.exp(-d * 0.005), localPoint(e));
-      } else {
-        const { zoom, panX, panY } = view();
-        const dx = (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * unit;
-        const dy = (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * unit;
-        setView(zoom, panX - dx, panY - dy);
-      }
+  const vp = createViewport(el, {
+    key: 'canvas',
+    // The canvas zoom lives in the store (overlay, text editor, shell read it).
+    state: { get: view, set: (zoom, panX, panY) => store.set({ zoom, panX, panY }) },
+    content: () => store.get().overlay?.canvas ?? null,
+    unit: exportScale,
+    pointer: false,
+    minZoom: 0.02,
+    inset: { top: 16 },
+    onResize() {
+      redraw();
+      scheduleResolution();
     },
-    { passive: false },
-  );
+  });
+
+  /** Content key of the overlay: a different canvas size re-fits. */
+  const contentKey = (o) => (o ? `${store.get().summary?.dir}|${o.canvas.w}x${o.canvas.h}` : '');
 
   // ----- hit testing ---------------------------------------------------------------
 
@@ -505,6 +457,7 @@ export function mountCanvas(root) {
 
   function cancel() {
     if (!drag) return false;
+    if (drag.type === 'pan') vp.panEnd();
     if (drag.type === 'nudge') clearTimeout(drag.timer);
     drag = null;
     clearPreviews();
@@ -572,12 +525,10 @@ export function mountCanvas(root) {
     }
     if (drag) return;
     const sp = localPoint(e);
-    if (e.button === 1 || (e.button === 0 && spaceDown)) {
+    if (vp.isPanTrigger(e)) {
       e.preventDefault();
-      const { panX, panY } = view();
-      drag = { type: 'pan', startScreen: sp, panX, panY };
-      el.classList.add('panning');
-      capture(e);
+      drag = { type: 'pan' };
+      vp.panStart(e);
       return;
     }
     if (e.button !== 0) return;
@@ -616,17 +567,15 @@ export function mountCanvas(root) {
 
   el.addEventListener('pointermove', (e) => {
     if (!drag) {
-      const hit = spaceDown ? null : hitTest(toLu(e), e.metaKey || e.ctrlKey);
+      const hit = vp.spaceDown() ? null : hitTest(toLu(e), e.metaKey || e.ctrlKey);
       if (hit !== store.get().hover) store.set({ hover: hit });
       return;
     }
     if (drag.committing) return;
     switch (drag.type) {
-      case 'pan': {
-        const sp = localPoint(e);
-        setView(view().zoom, drag.panX + sp.x - drag.startScreen.x, drag.panY + sp.y - drag.startScreen.y);
+      case 'pan':
+        vp.panMove(e);
         break;
-      }
       case 'move':
         updateMove(e);
         break;
@@ -649,7 +598,7 @@ export function mountCanvas(root) {
     if (el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture(e.pointerId);
     if (drag.type === 'pan') {
       drag = null;
-      el.classList.remove('panning');
+      vp.panEnd(e);
       return;
     }
     if (drag.type === 'marquee') {
@@ -704,26 +653,6 @@ export function mountCanvas(root) {
     const id = hitTest(toLu({ clientX: x, clientY: y }), true);
     return id ? store.get().overlay.elements.find((e) => e.id === id) ?? null : null;
   }
-
-  // Space-drag panning.
-  const isTyping = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName) || e.target?.isContentEditable;
-  const onKeyDown = (e) => {
-    if (e.code === 'Space' && !isTyping(e)) {
-      if (!e.repeat) {
-        spaceDown = true;
-        el.classList.add('space');
-      }
-      e.preventDefault();
-    }
-  };
-  const onKeyUp = (e) => {
-    if (e.code === 'Space') {
-      spaceDown = false;
-      el.classList.remove('space');
-    }
-  };
-  window.addEventListener('keydown', onKeyDown);
-  window.addEventListener('keyup', onKeyUp);
 
   // ----- nudge -----------------------------------------------------------------------
 
@@ -805,11 +734,10 @@ export function mountCanvas(root) {
         scheduleResolution();
       },
     ),
-    store.select((st) => st.overlay, (o, prev) => {
+    store.select((st) => st.overlay, (o) => {
       if (!o || signature(o) !== slotSignature) {
-        const resized = !prev || !o || prev.canvas.w !== o.canvas.w || prev.canvas.h !== o.canvas.h;
         rebuildSlots();
-        if (fitPending || resized) fit();
+        if (o) vp.refresh(contentKey(o));
         updateResolution();
       }
       redraw();
@@ -823,33 +751,27 @@ export function mountCanvas(root) {
     editor.on('reset', () => {
       cancel();
       for (const slot of slots) slot.dirty = true;
-      if (fitPending) fit();
+      const o = store.get().overlay;
+      if (o) vp.refresh(contentKey(o));
       updateResolution();
       redraw();
     }),
   );
 
-  const resize = new ResizeObserver(() => {
-    if (fitPending) fit();
-    redraw();
-    scheduleResolution();
-  });
-  resize.observe(el);
-
   applyTransform();
   rebuildSlots();
   if (store.get().overlay) {
-    fit();
+    vp.refresh(contentKey(store.get().overlay));
     updateResolution();
   }
   redraw();
 
   return {
     el,
-    fit,
-    zoomIn: () => step(1),
-    zoomOut: () => step(-1),
-    zoomTo: (z) => zoomAround(z, centre()),
+    fit: vp.fit,
+    zoomIn: vp.zoomIn,
+    zoomOut: vp.zoomOut,
+    zoomTo: vp.zoomTo,
     /** Index of the page at (or nearest to) the centre of the visible area. */
     visiblePage() {
       const o = store.get().overlay;
@@ -858,17 +780,14 @@ export function mountCanvas(root) {
       return pageAt(o.pages, (el.clientWidth / 2 - panX) / zoom)?.index ?? null;
     },
     /** Fits the canvas rect `r` (lu) into the view (validation "go to page"). */
-    zoomToRect(r) {
-      const w = el.clientWidth - FIT_PADDING * 2;
-      const hh = el.clientHeight - FIT_PADDING * 2;
-      if (w <= 0 || hh <= 0) return;
-      const z = clamp(Math.min(w / r.w, hh / r.h), MIN_ZOOM, MAX_ZOOM);
-      setView(z, (el.clientWidth - r.w * z) / 2 - r.x * z, (el.clientHeight - r.h * z) / 2 - r.y * z);
-      fitPending = false;
-    },
+    zoomToRect: vp.zoomToRect,
     /** 100 % = one export pixel per screen pixel. */
-    zoomActual: () => zoomAround(exportScale(), centre()),
-    percent: () => Math.round((view().zoom / exportScale()) * 100),
+    zoomActual: vp.zoomActual,
+    percent: vp.percent,
+    /** Fit mode: the view re-fits on resize until a manual zoom/pan. */
+    get fitMode() {
+      return vp.fitMode;
+    },
     nudge,
     cancel,
     editText,
@@ -878,9 +797,7 @@ export function mountCanvas(root) {
       cancel();
       textEdit?.close(false);
       for (const u of unsubs) u();
-      resize.disconnect();
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      vp.destroy();
       el.remove();
     },
   };

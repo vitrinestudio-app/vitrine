@@ -15,6 +15,7 @@ import { mountCanvas } from './views/canvas.js';
 import { mountGallery } from './views/gallery.js';
 import { mountLanguages } from './views/languages.js';
 import { mountPages } from './views/pages.js';
+import { onViewportChange } from './views/viewport.js';
 import { toggleValidation } from './dialogs/validation.js';
 
 const BASE = '__base__';
@@ -22,7 +23,8 @@ const BASE = '__base__';
 /** `app`: app-level actions `{ menu (button element), targets(), exportDialog(), assistant (MCP indicator element) }` from main.js. */
 export function mountShell(app = {}) {
   const ctx = panelContext();
-  const shell = { canvas: null };
+  /** `canvas`: the canvas view (null in other views); `view`: the mounted view (zoom API). */
+  const shell = { canvas: null, view: null };
 
   // ----- top bar --------------------------------------------------------------
   const topbar = document.getElementById('topbar');
@@ -163,14 +165,15 @@ export function mountShell(app = {}) {
     { id: 'languages', icon: 'languages', mount: mountLanguages },
   ];
   const segmented = h('div', { class: 'segmented', role: 'group', 'aria-label': t('view.switch') });
-  const zoomValue = h('button', { class: 'zoom-value', type: 'button', title: `${t('zoom.actual')} (${keyLabel('mod+1')})`, onclick: () => shell.canvas?.zoomActual() });
+  const zoomValue = h('button', { class: 'zoom-value', type: 'button', title: `${t('zoom.actual')} (${keyLabel('mod+1')})`, onclick: () => shell.view?.zoomActual() });
+  const fitBtn = h('button', { class: 'icon-btn', type: 'button', title: `${t('zoom.fit')} (${keyLabel('mod+0')})`, onclick: () => shell.view?.fit() }, icon('fit'));
   const zoom = h(
     'div',
     { class: 'zoom-controls' },
-    h('button', { class: 'icon-btn', type: 'button', title: `${t('zoom.out')} (${keyLabel('mod+-')})`, onclick: () => shell.canvas?.zoomOut() }, icon('minus')),
+    h('button', { class: 'icon-btn', type: 'button', title: `${t('zoom.out')} (${keyLabel('mod+-')})`, onclick: () => shell.view?.zoomOut() }, icon('minus')),
     zoomValue,
-    h('button', { class: 'icon-btn', type: 'button', title: `${t('zoom.in')} (${keyLabel('mod+=')})`, onclick: () => shell.canvas?.zoomIn() }, icon('plus')),
-    h('button', { class: 'icon-btn', type: 'button', title: `${t('zoom.fit')} (${keyLabel('mod+0')})`, onclick: () => shell.canvas?.fit() }, icon('fit')),
+    h('button', { class: 'icon-btn', type: 'button', title: `${t('zoom.in')} (${keyLabel('mod+=')})`, onclick: () => shell.view?.zoomIn() }, icon('plus')),
+    fitBtn,
   );
   const status = h('span', { class: 'status-text' });
   bottombar.append(segmented, h('span', { class: 'spacer' }), status, zoom);
@@ -188,12 +191,16 @@ export function mountShell(app = {}) {
     const def = VIEWS.find((v) => v.id === id) ?? VIEWS[0];
     current = def.mount(viewEl);
     shell.canvas = def.id === 'canvas' ? current : null;
-    zoom.hidden = def.id !== 'canvas';
+    shell.view = current;
     renderZoom();
   }
 
   function renderZoom() {
-    if (shell.canvas) zoomValue.textContent = `${shell.canvas.percent()} %`;
+    if (shell.view?.percent) zoomValue.textContent = `${shell.view.percent()} %`;
+    // Fit mode (re-fits on resize until the next manual zoom/pan).
+    const fitted = Boolean(shell.view?.fitMode);
+    fitBtn.setAttribute('aria-pressed', String(fitted));
+    fitBtn.title = `${t(fitted ? 'zoom.fit.active' : 'zoom.fit')} (${keyLabel('mod+0')})`;
   }
 
   function renderStatus() {
@@ -208,6 +215,7 @@ export function mountShell(app = {}) {
 
   store.select((st) => st.view, renderView);
   store.select((st) => [st.zoom, st.target, st.overlay], renderZoom);
+  onViewportChange(renderZoom);
   store.select((st) => [st.selection, st.variant, st.target], renderStatus);
   renderView();
   renderTop();
