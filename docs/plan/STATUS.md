@@ -14,8 +14,22 @@ current: update after each phase/merge and whenever the user decides something.
   - Done: 4.1 `arrangia-app` extracted (shared session/commands layer, no Tauri; ADR 0013) + actor labels, `project-edited` event, `view_set`/`view_get`.
   - Done: 4.2–4.4 headless MCP server (`arrangia-mcp`, rmcp =3.9.0, ADR 0014): ~50 tools, resources, instructions, `arrangia mcp [--project] [--app-dir] [--headless]`; stdio integration tests (`crates/cli/tests/mcp.rs`). `element_add` in `arrangia-app` gained `id`/`key`/`fields`.
   - Done: 4.3b GUI hosting (ADR 0015): in-app Streamable HTTP endpoint (`arrangia_mcp::host`, 127.0.0.1, bearer token, Host/Origin checks, discovery file `<app data>/mcp.json`, on/off setting), `arrangia mcp` stdio proxy (GUI autostart, reconnect, headless fallback), app settings "AI assistants (MCP)" (generic: switch, status, port, autostart, other MCP clients; then Add to Claude Desktop with confirm + backup, Claude Code commands), live aids (top-bar indicator + activity list, canvas glow, toasts with the client's display name, projects opened by an assistant open in the GUI, tools default to the GUI's target/language); dev bridge `--mcp`; tests `crates/cli/tests/mcp_proxy.rs`.
-  - Next: 4.5 real-world check with Claude Desktop/Code (confirm Claude Desktop's clientInfo name, tool ergonomics).
-- Next phases per KONZEPT §12: 5 store upload, 6 polish/website, 7 3D.
+  - 4.5 real-world check: the user created a first project via Claude Desktop + GUI-hosted MCP on 2026-11-10 ("ging super"). Feedback of that session (all being fixed by a subagent in a worktree branch `worktree-agent-a748608ef73978e42` – merge it with `--no-ff` when done, then remove the worktree):
+    1. `scope: lang` + `field: null` stored `en: {at: null}` instead of resetting → null must reset; new tool `element_reset_override`.
+    2. `apply_ops update_element` lacks scope/lang → `element_update` batch form `updates: [...]` in one undo step; override ops documented for `apply_ops`.
+    3. ids from several strips rejected → group per strip, one transaction.
+    4. `arrangia://docs/ops` unreachable (Claude Desktop doesn't let the model read resources) → new tool `docs_get(topic)` (overview, ops, elements with all fields e.g. background `focus`, project, markup, targets, scopes); check resources through the stdio proxy.
+    5. `assets_import` kind `asset` vs "image assets" wording; mapping-list import `files: [{path, kind, key, lang, variant, name}]`.
+    - Open question to the user (to forward to the other session): how exactly was `arrangia://docs/ops` read and what came back; Claude Desktop or Claude Code?
+  - Still to confirm: Claude Desktop's real `clientInfo.name` (assumed `claude-ai` → "Claude Desktop"); clean-exit removal of `mcp.json` on ⌘Q in the real app; CLI path for bundled builds (Phase 6 TODO, today `arrangia` next to the GUI binary or `ARRANGIA_CLI`); oddity: `element_add` text without `key` creates key `text`.
+- Phase 5 (store upload) – planning started 2026-11-10, see `docs/plan/phase-5.md`.
+- Next phases per KONZEPT §12: 6 polish/website, 7 3D.
+
+## Session practicalities
+- Build for the user's manual tests: `cargo build -p arrangia-cli -p arrangia-gui` (Claude Desktop config points to `target/debug/arrangia mcp`).
+- The user runs the real GUI themselves; agents must never touch the real app data dir, the real Claude Desktop config or the user's running app. Use `ARRANGIA_APP_DIR`, `ARRANGIA_CLAUDE_DESKTOP_CONFIG`, dev bridge `--app-dir`.
+- The user's real app data dir contains the imported Apple iPhone 18 bezels (16 frames).
+- Subagents sometimes leave a background process; stop finished agents with TaskStop and check `ps aux | grep arrangia`.
 
 ## How we work
 - Coordinator session plans and reviews (incl. looking at rendered images); subagents implement (worktrees for parallel work, merged with `--no-ff`).
