@@ -747,3 +747,30 @@ fn options_are_shareable() {
     };
     let _ = format!("{opts:?}");
 }
+
+#[tokio::test]
+async fn creates_a_version_localization() {
+    let f = fixture(fast_options()).await;
+    Mock::given(method("POST"))
+        .and(path("/v1/appStoreVersionLocalizations"))
+        .and(f.jwt())
+        .and(body_json(json!({
+            "data": {
+                "type": "appStoreVersionLocalizations",
+                "attributes": { "locale": "de-DE" },
+                "relationships": {
+                    "appStoreVersion": { "data": { "type": "appStoreVersions", "id": "v1" } }
+                }
+            }
+        })))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({
+            "data": {"type": "appStoreVersionLocalizations", "id": "loc-de",
+                     "attributes": {"locale": "de-DE"}}
+        })))
+        .expect(1)
+        .mount(&f.server)
+        .await;
+    let loc = f.client.create_localization("v1", "de-DE").await.unwrap();
+    assert_eq!(loc.id, "loc-de");
+    assert_eq!(loc.locale, "de-DE");
+}

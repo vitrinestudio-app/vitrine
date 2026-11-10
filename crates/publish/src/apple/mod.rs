@@ -407,6 +407,36 @@ impl Client {
             .collect())
     }
 
+    /// Creates the version localization for `locale` (`POST
+    /// /v1/appStoreVersionLocalizations`, 201). Apple also expects the same
+    /// locale in the app info localizations before submission; that is
+    /// left to the user (App Store Connect shows it).
+    pub async fn create_localization(
+        &self,
+        version_id: &str,
+        locale: &str,
+    ) -> Result<Localization> {
+        let body = json!({
+            "data": {
+                "type": "appStoreVersionLocalizations",
+                "attributes": { "locale": locale },
+                "relationships": {
+                    "appStoreVersion": { "data": { "type": "appStoreVersions", "id": version_id } }
+                }
+            }
+        });
+        let reply = self
+            .api(
+                Method::POST,
+                self.url(&["v1", "appStoreVersionLocalizations"])?,
+                Some(body),
+                Retry::NotIdempotent,
+            )
+            .await?;
+        let doc: Document<Resource<LocalizationAttrs>> = parse_json(&reply)?;
+        Ok(doc.data.into())
+    }
+
     /// Screenshot sets of a localization.
     pub async fn screenshot_sets(&self, localization_id: &str) -> Result<Vec<ScreenshotSet>> {
         let mut url = self.url(&[
