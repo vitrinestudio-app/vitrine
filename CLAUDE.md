@@ -122,8 +122,9 @@ a new command goes into the `command_table!` in
 which only wraps them as Tauri commands), `session` (open project,
 apply/undo/redo with atomic save per transaction, revision conflicts, live
 reload via `watch`; every step emits `project-edited` with its `actor`),
-`actor` (`Actor::User | Claude {client}`: "Claude: " history labels, set
-per thread with `Actor::scope` / `dispatch_as`), `view` (`ViewState`:
+`actor` (`Actor::User | Assistant {client, name}`: history labels
+prefixed with the MCP client's display name, e.g. "Claude Desktop: ",
+`client_display_name`; set per thread with `Actor::scope` / `dispatch_as`), `view` (`ViewState`:
 strip/target/lang/variant/selection pushed by the GUI via `view_set`,
 read via `view_get`), `preview` (binary preview payload + cache),
 `settings` (settings.yaml + recent projects in SQLite), `events`,
@@ -143,7 +144,8 @@ live in `tools/<area>.rs`, one `#[tool_router(router = <area>_tools)]` impl
 block each (combined in `ArrangiaMcp::new`); arguments are
 `schemars::JsonSchema` structs (doc comments = schema descriptions,
 `deny_unknown_fields`). Every tool body runs in `ArrangiaMcp::run`
-(`spawn_blocking`, `Actor::Claude {client}`, `sync_with_disk`) and calls
+(`spawn_blocking`, `Actor::Assistant {client, name}` from `clientInfo`,
+`sync_with_disk`) and calls
 `arrangia_app::commands` by name (`server::cmd` / `image_cmd`), never the
 model; results via `output::ToolOutput` (structuredContent + text, PNG
 image blocks), errors via `output::error_result`. A new tool: add it to

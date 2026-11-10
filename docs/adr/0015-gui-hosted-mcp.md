@@ -151,3 +151,30 @@ settings, the token cannot).
   autostart with a fake GUI script, headless fallback, token/host/origin
   checks, on/off); unit tests for the config merge, discovery file and
   status.
+
+## Amendment (2026-11-10): neutral MCP wording
+
+User request: the app should not be Claude-heavy; what works for any MCP
+client is described neutrally, the Claude-specific setup keeps its names.
+
+- App settings section "AI assistants (MCP)" / "KI-Assistenten (MCP)":
+  generic rows first (switch "Allow AI assistants to connect via MCP",
+  status, fixed port, start on demand, "Other MCP clients" with the stdio
+  command `<cli> mcp` and the HTTP URL + `Authorization: Bearer` header,
+  from `mcp_status.generic`), then "Claude Desktop" (Add to Claude
+  Desktop…) and "Claude Code" (`claude mcp add` commands).
+- `Actor::Claude { client }` became `Actor::Assistant { client, name }`
+  (`{"kind":"assistant","client":"claude-ai","name":"Claude Desktop"}`;
+  `"kind":"claude"` is still accepted when deserializing – actors are
+  never persisted, the history lives in memory only). `name` is the
+  display name from `clientInfo` (`arrangia_app::client_display_name`:
+  `claude-ai` → Claude Desktop, `claude-code` → Claude Code, else
+  `title`, else the prettified `name`, else "Assistant"). History labels,
+  toasts and the activity list use it (`Claude Desktop: Move title`);
+  `McpClient.display_name` carries it in the status.
+- Top-bar indicator: "MCP" when ready, the client's display name when
+  connected; activity list "Assistant activity". GUI module
+  `js/assistant.js`, styles `styles/assistant.css`, i18n keys `mcp.*`
+  / `assistant.*` (Claude-specific ones stay `claude.*`).
+- Server `instructions` and tool descriptions no longer say "Claude"
+  generically.

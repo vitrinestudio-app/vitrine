@@ -42,7 +42,10 @@ inside `Actor::scope(actor, …)` or calls `commands::dispatch_as(app,
 actor, name, args)`, and `Session::apply_ops`/`undo`/`redo` take
 `Actor::current()`. `Session::apply_ops_with(ops, ApplyOptions { label,
 actor })` (and `undo_as`/`redo_as`) take it explicitly. Steps by Claude
-get the history label prefix `Claude: ` (e.g. `Claude: move title`). A
+get the history label prefix `Claude: ` (e.g. `Claude: move title`)
+(since 2026-11-10 `Actor::Assistant { client, name }` with the client's
+display name as prefix, e.g. `Claude Code: move title`; ADR 0015
+amendment). A
 thread-local was chosen over an argument on every command because ~25
 commands apply ops; the Tauri and bridge workers run each command on one
 thread, so the scope cannot leak.

@@ -3,7 +3,8 @@
 Arrangia is an open-source desktop app for creating App Store and Play Store
 screenshots: device frames, texts, translations and panorama sets, designed once
 and rendered for every language, device class and store – with store upload and
-an MCP interface so Claude can design and translate alongside you.
+an MCP interface so AI assistants such as Claude can design and translate
+alongside you.
 
 Instead of composing individual images, you design one continuous canvas. A
 device that spans two screenshots exists exactly once, backgrounds run across
@@ -22,8 +23,9 @@ import (fastlane and folder layouts), translation exchange via CSV and
 XLIFF, and imported Apple Product Bezels (still to be verified with the
 real package). Projects can be created, designed, translated, validated
 and exported in the desktop app, or headless with the `arrangia` command
-line tool; Claude can work on projects through MCP – the desktop app hosts
-the server, so you watch Claude's edits live and can undo them; store
+line tool; AI assistants (e.g. Claude Desktop, Claude Code) can work on
+projects through MCP – the desktop app hosts the server, so you watch the
+assistant's edits live and can undo them; store
 upload is not built yet. The full
 concept (in German) is in [`docs/KONZEPT.md`](docs/KONZEPT.md), the task
 lists in [`docs/plan/`](docs/plan/) (`phase-1.md` … `phase-4.md`, with
@@ -144,21 +146,40 @@ command could not run (usage error, project not loadable, IO error).
 `<project>/.cache/render/`). Colours are used on a terminal unless
 `NO_COLOR` is set.
 
-## Claude (MCP)
+## AI assistants (MCP)
 
-Arrangia speaks [MCP](https://modelcontextprotocol.io): Claude can create
-a project, add devices and texts, translate, look at rendered previews
-(`render_preview` returns a PNG), check the layout, validate and export.
-The desktop app hosts the server: Claude works on the project you have
-open, every change appears live (briefly outlined, with a small "Claude:
-…" note), is one undo step labelled `Claude: …`, and you comment on it in
-Claude. Nothing goes over the network (ADR 0014, ADR 0015).
+Arrangia speaks [MCP](https://modelcontextprotocol.io), so any MCP-capable
+assistant can create a project, add devices and texts, translate, look at
+rendered previews (`render_preview` returns a PNG), check the layout,
+validate and export. The desktop app hosts the server: the assistant works
+on the project you have open, every change appears live (briefly outlined,
+with a small note naming the client, e.g. "Claude Desktop: …"), is one undo
+step labelled with the client's name, and you discuss it in your assistant.
+Nothing goes over the network (ADR 0014, ADR 0015). The settings live under
+App settings → *AI assistants (MCP)*.
+
+**Any MCP client**: add a stdio server named `arrangia` that runs the
+`arrangia` command with the argument `mcp` (the exact path is shown under
+*Other MCP clients*), e.g.
+
+```json
+{
+  "mcpServers": {
+    "arrangia": { "command": "/path/to/arrangia", "args": ["mcp"] }
+  }
+}
+```
+
+Clients that speak Streamable HTTP can also use
+`http://127.0.0.1:<port>/mcp` with the header `Authorization: Bearer <token>`
+(both shown in the settings; they change per start of the app unless you set
+a fixed port, the token always changes).
 
 **Claude Desktop** (no terminal needed):
 
 1. Start Arrangia.
-2. App settings → *Claude / MCP* → **Add to Claude Desktop…** (shows the
-   entry and the file, asks before writing, keeps a backup).
+2. App settings → *AI assistants (MCP)* → **Add to Claude Desktop…** (shows
+   the entry and the file, asks before writing, keeps a backup).
 3. Restart Claude Desktop and ask it to work on your screenshots.
 
 Claude Desktop then starts `arrangia mcp`, which connects to the running
