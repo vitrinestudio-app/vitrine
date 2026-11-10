@@ -24,6 +24,8 @@ directories.workspace = true
 png.workspace = true
 tiny-skia.workspace = true
 imagesize.workspace = true
+sha2.workspace = true
+getrandom.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

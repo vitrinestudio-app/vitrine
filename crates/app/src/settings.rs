@@ -78,6 +78,7 @@ pub struct WindowState {
 /// are noticed; missing fields take their defaults.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[allow(clippy::struct_excessive_bools)] // independent switches
 pub struct Settings {
     /// UI language (`en`, `de`); `None` follows the system.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -110,6 +111,10 @@ pub struct Settings {
     /// `store_account_*` commands, never by `settings_set`.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub store_accounts: Vec<StoreAccount>,
+    /// AI assistants may upload through `arrangia mcp --headless` (no
+    /// GUI to confirm in). Off by default (ADR 0018).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub mcp_allow_headless_upload: bool,
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)] // serde's skip_serializing_if signature
@@ -129,6 +134,7 @@ impl Default for Settings {
             mcp_port: None,
             mcp_autostart_gui: true,
             store_accounts: Vec::new(),
+            mcp_allow_headless_upload: false,
         }
     }
 }
@@ -346,6 +352,7 @@ mod tests {
             mcp_port: Some(4100),
             mcp_autostart_gui: true,
             store_accounts: Vec::new(),
+            mcp_allow_headless_upload: false,
         };
         store.save(&s).unwrap();
         assert_eq!(store.load().unwrap(), s);

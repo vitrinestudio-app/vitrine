@@ -20,6 +20,7 @@
 //! mcp       status of the GUI-hosted MCP endpoint (+ McpControl hook)
 //! claude_desktop  "Add to Claude Desktop" (config merge with backup)
 //! stores    app-wide store accounts (secrets in the keychain), connection test seam
+//! upload    store upload: plan (dry run + confirm token), executor, log, MCP policy
 //! ```
 //!
 //! All model changes go through the core Operations API.
@@ -36,6 +37,7 @@ pub mod session;
 pub mod settings;
 pub mod store_test;
 pub mod stores;
+pub mod upload;
 pub mod view;
 pub mod watch;
 

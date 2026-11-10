@@ -42,6 +42,8 @@ jsonwebtoken = "11.1.0"
 # checksum, wiping key material, test-time key generation (aws-lc-rs is
 # already rustls' crypto backend, so no second crypto stack).
 md-5 = "0.10.6"
+# Upload plan hashes and confirm tokens (arrangia-app::upload).
+sha2 = "0.10.9"
 zeroize = "1.9.1"
 aws-lc-rs = "1.19.0"
 

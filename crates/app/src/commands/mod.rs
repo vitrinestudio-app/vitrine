@@ -36,6 +36,7 @@ mod strings;
 mod system;
 mod targets;
 mod texts;
+mod upload;
 mod view;
 
 use std::path::PathBuf;
@@ -64,6 +65,7 @@ pub use strings::*;
 pub use system::*;
 pub use targets::*;
 pub use texts::*;
+pub use upload::*;
 pub use view::*;
 
 use crate::dialogs::Dialogs;
@@ -101,6 +103,8 @@ pub struct AppState {
     secrets: OnceLock<Arc<SecretStore>>,
     /// Store clients' connection test (none until Phase 5.3/5.4 wire it).
     connection_tester: OnceLock<Arc<dyn ConnectionTester>>,
+    /// Store upload: config, running run, MCP confirmations (ADR 0018).
+    upload: crate::upload::UploadState,
 }
 
 impl std::fmt::Debug for AppState {
@@ -130,6 +134,7 @@ impl AppState {
             claude_config: None,
             secrets: OnceLock::new(),
             connection_tester: OnceLock::new(),
+            upload: crate::upload::UploadState::default(),
         }
     }
 
@@ -162,6 +167,11 @@ impl AppState {
 
     pub fn connection_tester(&self) -> Option<&Arc<dyn ConnectionTester>> {
         self.connection_tester.get()
+    }
+
+    /// Store upload state (config, run, MCP confirmations).
+    pub fn upload(&self) -> &crate::upload::UploadState {
+        &self.upload
     }
 
     /// Uses `path` as Claude Desktop's config file instead of the real one
@@ -364,6 +374,7 @@ command_table! {
         mcp_status, mcp_set_enabled, claude_desktop_plan, claude_desktop_install,
         store_accounts_list, store_account_import, store_account_remove, store_account_test,
         project_store_get, project_store_patch, store_config_get,
+        upload_plan, upload_execute, upload_status, upload_cancel, upload_log, upload_confirm,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,

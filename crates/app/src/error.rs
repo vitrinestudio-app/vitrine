@@ -32,6 +32,12 @@ pub enum ErrorCode {
     NotImplemented,
     /// The system keychain failed.
     Keychain,
+    /// An upload was not confirmed: unknown/expired/used token, the
+    /// project changed since the plan, or the user declined / did not
+    /// answer an assistant's request (`details.reason`).
+    NotConfirmed,
+    /// Not allowed for this caller (e.g. headless MCP uploads).
+    Forbidden,
     Internal,
 }
 

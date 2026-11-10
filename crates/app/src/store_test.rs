@@ -189,7 +189,7 @@ impl ConnectionTester for StoreClientTester {
     }
 }
 
-fn is_loopback_url(url: &str) -> bool {
+pub(crate) fn is_loopback_url(url: &str) -> bool {
     ["http://127.0.0.1:", "http://localhost:", "http://[::1]:"]
         .iter()
         .any(|p| url.starts_with(p))

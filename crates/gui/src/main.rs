@@ -239,6 +239,12 @@ json_commands! {
     project_store_get: commands::NoArgs,
     project_store_patch: commands::ProjectStorePatchArgs,
     store_config_get: commands::NoArgs,
+    upload_plan: commands::PlanArgs,
+    upload_execute: commands::UploadExecuteArgs,
+    upload_status: commands::NoArgs,
+    upload_cancel: commands::NoArgs,
+    upload_log: commands::UploadLogArgs,
+    upload_confirm: commands::UploadConfirmArgs,
 }
 
 image_commands! {
@@ -269,6 +275,10 @@ fn main() {
     let relay = Arc::new(ProgressRelay::new(events.clone()));
     let discovery = arrangia_mcp::discovery::path(&paths);
     let state: Shared = Arc::new(AppState::new(paths, relay.clone(), dialogs.clone()));
+    // The real app always uploads to the production stores (no env overrides).
+    state
+        .upload()
+        .set_config(arrangia_gui::upload::UploadConfig::default());
     // "Test connection" of store accounts uses the real store clients (read-only).
     state.set_connection_tester(Arc::new(
         arrangia_gui::store_test::StoreClientTester::default(),
@@ -400,6 +410,12 @@ fn main() {
             project_store_get,
             project_store_patch,
             store_config_get,
+            upload_plan,
+            upload_execute,
+            upload_status,
+            upload_cancel,
+            upload_log,
+            upload_confirm,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Arrangia")

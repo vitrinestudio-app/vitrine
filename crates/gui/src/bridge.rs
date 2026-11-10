@@ -298,6 +298,7 @@ fn status_of(code: ErrorCode) -> u16 {
         ErrorCode::OpRejected | ErrorCode::Load => 422,
         ErrorCode::Cancelled => 499,
         ErrorCode::NotImplemented => 501,
+        ErrorCode::NotConfirmed | ErrorCode::Forbidden => 403,
         ErrorCode::Io | ErrorCode::Render | ErrorCode::Keychain | ErrorCode::Internal => 500,
     }
 }
