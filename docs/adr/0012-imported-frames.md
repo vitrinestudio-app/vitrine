@@ -153,10 +153,35 @@ should show its own device; the screenshot fits either bezel (aspects
 differ by < 0.1 %) and the aspect check still warns about wrong devices.
 
 Found → `ResolvedDevice.imported` (files, size, screen, `bezel`, `choice`,
-`automatic`, installed `bezels` for the inspector) and the element height
-follows the bezel's aspect; the colour may be a vendor colour that is not
-in the catalog palette. Missing → parametric `detailed` frame plus info
-`imported_frame_missing` (and a vendor colour name is only an info).
+`automatic`, installed `bezels`, `swatch` and installed `colors` for the
+inspector) and the element height follows the bezel's aspect; the colour
+may be a vendor colour that is not in the catalog palette. A colour that
+is not installed for the model draws the default (else first) installed
+colour with info `imported_color_fallback`. Missing → parametric
+`detailed` frame plus info `imported_frame_missing` (and a vendor colour
+name is only an info; the palette default is drawn).
+
+Colours (user test 2026-11-10): ops accept a device colour that is in the
+model's palette, a `#hex`, or – when the element's effective frame (own
+`frame`, project `styles.frame`, or a variant override's `frame`) is
+`imported:*` – any colour slug (`burgundy`); which colours are installed
+is app-wide, so ops do not check it. Switching the frame source of a
+device (`Editor::patch`) or the project default (`set_default_frame_ops`,
+GUI `styles_patch`) maps the colour to the closest colour of the new
+source in the same undo step (`frame_import::remap_color`: redmean
+distance of the housing colours – measured swatch or catalog body colour –,
+else shared name words, else cleared so the default applies); mapping was
+chosen over clearing because it keeps the light/dark intent. Op order keeps
+every step valid: styles first when entering an imported source, colours
+first when leaving it.
+
+Swatch: at import `analyze::body_swatch` samples scanlines across the
+middle 60 % of each side from the image edge inwards (first opaque pixel
+skipped, then 40 % of the edge-to-screen distance), drops near-black glass
+pixels (luma < 28) when the rest is ≥ 1/12 of the samples, and averages
+the middle half by luma. Stored as `swatch: "#RRGGBB"` per frame in
+`index.yaml`; stores without it are filled in by `FrameStore::
+fill_swatches` (GUI `frames_list`, CLI `frames list`).
 Models no rule covers (browser, Android) silently stay parametric. The
 screenshot aspect check uses the detected screen rect.
 
@@ -180,9 +205,11 @@ list`, `frames remove [--model] [--color] [--orientation] [--bezel]
 `render`/`export`/`validate` load the installed index. GUI: app settings →
 Frame packages (plan table, manual assignment, installed frames with
 thumbnails, remove), commands `frames_import_plan`, `frames_import_apply`,
-`frames_list`, `frames_remove`, `frames_thumbnail`; inspector frame source
-"Apple (imported)" with availability hint and installed colour chips, and a
-"Bezel" picker ("Automatic (iPhone 18 Pro Max for this target)" + the
+`frames_list` (with installed colours + swatches per model),
+`frames_remove`, `frames_thumbnail`; project settings default frame
+Detailed / Stylized / Apple (imported); inspector frame source "Apple
+(imported)" with availability hint, the installed colours as the only
+colour swatches, and a "Bezel" picker ("Auto · 18 Pro Max" + the
 installed vendor models) when a device has several.
 
 ### Tests

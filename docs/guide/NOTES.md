@@ -70,7 +70,11 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - iPhone 18 package (verified 2026-11-10): models Pro and Pro Max; colours Black, Burgundy, Glacier, Silver; screen exactly 1320×2868 (Pro Max) / 1206×2622 (Pro).
 - Frames are stored app-wide (app data dir), never in the project; projects only say `frame: imported:apple`. Missing on another machine → parametric frame + info.
 - CLI: `arrangia frames import <path> [--dry-run -v]`, `frames list`, `frames remove`.
-- (In progress) both Pro and Pro Max bezels are kept; selection by screenshot/target size; manual pin per element.
+- Both Pro and Pro Max bezels are kept; the bezel is picked per target size (else screenshot size), or pinned per device ("Bezel" in the inspector: "Auto · 18 Pro Max").
+- Use them for the whole project: Project settings → General → Frame style → "Apple (imported)" (`styles.frame: imported:apple`); a hint shows when no Apple frames are installed. Per device: inspector → Frame.
+- Colours come from the package (Black, Burgundy, Glacier, Silver for iPhone 18), not from Arrangia's palette. With an Apple frame the inspector shows only the installed colours, as swatches in the real housing colour (measured from each bezel at import: outer metal rim, black glass border excluded; stored as `swatch` in the store's `index.yaml`, filled in for older imports the first time the frame list is shown).
+- Switching the frame source (device or project default) changes the colour too, in the same undo step: the closest colour of the new source by housing colour (Black titanium → Black, Natural titanium → Silver; Burgundy → Black titanium back). Round trips can change the colour (White titanium → Silver → Natural titanium).
+- A colour that is not installed (e.g. project from another machine) → the default/first installed colour is drawn, info `imported_color_fallback`. No Apple frame installed at all → built-in detailed frame with the default colour, info `imported_frame_missing`.
 
 ### Text effects
 - Outline (stroke), glow, shadow on text styles, span styles and elements. Precedence span > element > style. Disable inherited: `width: 0`, `opacity: 0`, `shadow: none`. Sizes in lu (don't shrink with auto-fit).

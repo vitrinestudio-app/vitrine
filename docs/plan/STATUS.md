@@ -8,7 +8,7 @@ current: update after each phase/merge and whenever the user decides something.
 - Phase 3 (languages & import) in progress – see `docs/plan/phase-3.md`.
   - Done: 3.1 language overrides + font fallback, 3.2 hyphenation, 3.3 screenshot import, 3.4 CSV/XLIFF, 3.5 Apple bezel import (base), 3.6 Phase-2 follow-ups.
   - Done: 3.5 follow-up (all bezel sizes kept, auto selection target → screenshot → aspect → largest, `bezel:` pin, SLA guidance, licence notice).
-  - Open: user re-runs the real `Bezel-iPhone-18` package import (expect 16 frames, Pro for ios-iphone-63, Pro Max for ios-iphone-69) → then Phase 3 complete.
+  - Open: user re-checks with the real `Bezel-iPhone-18` frames after the 2026-11-10 colour fixes (project default Apple, colour swatches measured from the real bezels, picking each colour, switching back to parametric) → then Phase 3 complete.
   - 3.7 done except the real-package bezel check: example has fr (+ fr-CA sparse), German override + hyphenation, fr goldens (iPhone 6.9", iPad), scenario test `crates/cli/tests/scenario.rs`, README/CLAUDE.md/NOTES updated.
 - Next phases per KONZEPT §12: 4 MCP, 5 store upload, 6 polish/website, 7 3D.
 
@@ -28,6 +28,7 @@ current: update after each phase/merge and whenever the user decides something.
 - 2026-11-10 Bezel import: keep all sizes (6.3" Pro needed for the required ASC set), auto-select by size, manual pin, clear hint for DMGs with licence agreement, show Apple licence notice.
 - 2026-11-10 Documentation: user guide in **English**, start collecting notes now (not prose); document a lot (also to survive context compression).
 - 2026-11-10 MCP: the GUI hosts the MCP server; no terminal needed; Claude Desktop starts a stdio proxy that connects to the running GUI; changes visible live, undoable, commentable in Claude.
+- 2026-11-10 User test of the real iPhone 18 package → fixes: project-wide default "Apple (imported)" in project settings; vendor colours (Burgundy…) accepted with imported frames (was an op error); one colour row with the installed colours as real swatches (measured at import); colour follows a frame-source switch (closest colour, same undo step); uninstalled colour → default installed colour + info; short bezel/frame labels in the inspector; dialogs collapsed in WebKit (app settings) fixed (`.dlg-body` flex basis auto).
 - License of the project: still open (no LICENSE file, `publish = false`). Swedish hyphenation patterns (LPPL 1.2) wait for this decision.
 
 ## Verified external facts
