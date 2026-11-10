@@ -54,6 +54,8 @@ crates/
   gui/      arrangia-gui      Tauri 2 app; frontend in gui/ui/ (vanilla ES modules,
                               see gui/ui/README.md)
 assets/fonts/           bundled OFL fonts (Inter 4.1, embedded by core::layout)
+assets/hyphenation/     hyph-utf8 hyphenation patterns (permissive licences only,
+                        see LICENSES.md; embedded by core::layout::hyphen)
 tests/fixtures/example/ example project (all target kinds, en + de) and its
                         golden reference images (golden/)
 docs/KONZEPT.md         concept (binding)
@@ -79,7 +81,9 @@ docs/gui/               screenshots of the editor (README)
   styles, diagnostics; ADR 0004).
 - `markup` – inline markup parser; `layout` – parley text layout with
   auto-fit, soft hyphens and layout reports, bundled + project fonts
-  only (ADR 0003).
+  only (ADR 0003); `layout::hyphen` – opt-in pattern hyphenation at
+  `shrink_to`, project font fallbacks, optional system fonts (GUI
+  setting) and per-language text overrides (`langs`, ADR 0009).
 - `validate` – findings per target × language (texts, screenshots, store
   rules; ADR 0005).
 

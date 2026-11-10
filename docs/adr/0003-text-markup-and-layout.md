@@ -58,7 +58,9 @@ parser never fails or panics (proptest). Unknown span names are reported
   `EmergencyBreak { word, line }` (0-based line); `core::validate` (1.8)
   turns it into a warning. It is not an overflow by itself.
 - No automatic pattern hyphenation (Phase 3, opt-in, only used when
-  auto-fit at `shrink_to` is not enough).
+  auto-fit at `shrink_to` is not enough). *Since ADR 0009:* with
+  `hyphenate: true` pattern hyphenation runs at `shrink_to` before the
+  emergency break.
 
 ### Auto-fit
 

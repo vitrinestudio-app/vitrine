@@ -11,14 +11,14 @@ grid, live reload of screenshots.
 Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## 3.1 Per-language text overrides + font fallback (`core`, GUI)
-- [ ] Text elements: optional overrides per language (`langs: {fi: {font_size: 60, box: …, style: …}}`, §5.1), resolved after variant overrides; ops/patch, YAML, validation
-- [ ] Inspector: "only for <lang>" toggle that writes language overrides, marked like variant overrides
-- [ ] Per-family fallback list in project styles (`fonts: {Inter: {fallback: [Noto Sans JP, …]}}`); missing glyphs reported per language; optional app setting to use system fonts as a last resort (off in tests/CI)
+- [x] Text elements: optional overrides per language (`langs: {fi: {font_size: 60, box: …, style: …}}`, §5.1), resolved after variant overrides; ops/patch, YAML, validation
+- [x] Inspector: "only for <lang>" toggle that writes language overrides, marked like variant overrides
+- [x] Per-family fallback list in project styles (`fonts: {Inter: {fallback: [Noto Sans JP, …]}}`); missing glyphs reported per language; optional app setting to use system fonts as a last resort (off in tests/CI)
 
 ## 3.2 Automatic hyphenation (opt-in)
-- [ ] Pattern-based hyphenation per language (pure Rust, e.g. `hyphenation` crate or own Liang implementation), only languages whose pattern licence allows redistribution
-- [ ] Opt-in per text style / element (`hyphenate: true`), used only when auto-fit at `shrink_to` does not fit (decided with the user); soft hyphens keep priority; minimum word/fragment lengths
-- [ ] Inspector + style editor toggle; validation info when hyphenation was used
+- [x] Pattern-based hyphenation per language (pure Rust, e.g. `hyphenation` crate or own Liang implementation), only languages whose pattern licence allows redistribution
+- [x] Opt-in per text style / element (`hyphenate: true`), used only when auto-fit at `shrink_to` does not fit (decided with the user); soft hyphens keep priority; minimum word/fragment lengths
+- [x] Inspector + style editor toggle; validation info when hyphenation was used
 
 ## 3.3 Screenshot import
 - [ ] Import rules: Arrangia folder convention, fastlane snapshot output (`<locale>/<Device Name>-<name>.png`), configurable device-name → variant and locale → language maps (stored in project.yaml)
@@ -39,10 +39,10 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] Tests with a synthetic bezel package (generated PNGs + names); real package verified by the user
 
 ## 3.6 Follow-ups from Phase 2
-- [ ] Project settings: styles list must not collapse after each edit
-- [ ] Persist the home-page lock (model field) instead of UI-only state
-- [ ] New string key: optionally create in all languages
-- [ ] Renaming a used colour/style updates element references
+- [x] Project settings: styles list must not collapse after each edit
+- [x] Persist the home-page lock (model field) instead of UI-only state
+- [x] New string key: optionally create in all languages
+- [x] Renaming a used colour/style updates element references
 
 ## 3.7 Verification + docs
 - [ ] Example project gets a third language (e.g. `fr` with partial translations + fallbacks), one per-language override, one hyphenated text; golden tests updated

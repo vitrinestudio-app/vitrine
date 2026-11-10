@@ -88,6 +88,10 @@ for byte, tested).
 - Text effects (ADR 0003, *Text effects*): text styles, span styles and
   text elements take `stroke: {color, width, position?, join?}`,
   `glow: {color, radius, opacity?, spread?}` and `shadow: <preset>`.
+- ADR 0009: text elements take `langs: {<lang>: patch}` (per-language
+  overrides, written last) and `hyphenate`; text styles `hyphenate`;
+  every element `lock_page: true` (after `page`); `styles.fonts:
+  {<family>: {fallback: [...]}}`.
 
 ### Elements
 
