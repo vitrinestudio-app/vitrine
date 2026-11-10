@@ -34,7 +34,7 @@ use arrangia_core::model::StoreKind;
 use arrangia_publish::{ClientOptions, PollPolicy, RetryPolicy};
 use serde::{Deserialize, Serialize};
 
-pub use exec::{RunHandle, RunReport, RunState, SetRun, SetRunStatus};
+pub use exec::{RunHandle, RunReport, RunState, SetRun, SetRunStatus, StoreFailure};
 pub use plan::PlanArgs;
 
 /// Events of the upload.
@@ -185,6 +185,14 @@ pub struct PlanSet {
     /// Images in the store now (remote check only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote_count: Option<usize>,
+    /// Of the planned images, Apple is still processing this many
+    /// (remote check, or the last run ended while Apple was processing).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub processing: Option<usize>,
+    /// Planned images the store already holds; the run keeps them instead
+    /// of uploading them again (remote check, Apple).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reusable: Option<usize>,
     pub images: Vec<PlanImage>,
     pub bytes: u64,
     pub problems: Vec<Problem>,
@@ -222,6 +230,12 @@ pub struct Problem {
     pub code: String,
     pub message: String,
     pub blocking: bool,
+    /// Values for a localized message (`upload.problem.<code>` in the GUI).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vars: Option<serde_json::Value>,
+    /// A page that fixes it (opened with `open_url`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link: Option<String>,
 }
 
 impl Problem {
@@ -231,6 +245,8 @@ impl Problem {
             code: code.to_owned(),
             message: message.into(),
             blocking: true,
+            vars: None,
+            link: None,
         }
     }
 
@@ -240,7 +256,23 @@ impl Problem {
             code: code.to_owned(),
             message: message.into(),
             blocking: false,
+            vars: None,
+            link: None,
         }
+    }
+
+    /// Adds values for the localized message.
+    #[must_use]
+    pub fn with_vars(mut self, vars: serde_json::Value) -> Self {
+        self.vars = Some(vars);
+        self
+    }
+
+    /// Adds the page that fixes it.
+    #[must_use]
+    pub fn with_link(mut self, link: impl Into<String>) -> Self {
+        self.link = Some(link.into());
+        self
     }
 
     pub fn info(code: &str, message: impl Into<String>) -> Self {
@@ -249,6 +281,8 @@ impl Problem {
             code: code.to_owned(),
             message: message.into(),
             blocking: false,
+            vars: None,
+            link: None,
         }
     }
 }
@@ -300,6 +334,18 @@ pub struct UploadConfig {
     pub rate_limit_retries: u32,
     /// How long an MCP upload waits for the GUI confirmation.
     pub confirm_timeout: Duration,
+    /// Apple: how long a set waits for Apple's processing of its images
+    /// (all polled together). Images still processing afterwards are not
+    /// failures: the set ends `uploaded_processing`.
+    pub processing_budget: Duration,
+    /// Watchdog: a running (not paused) run without any progress for this
+    /// long is cancelled and ends `failed`.
+    pub stall_timeout: Duration,
+    /// Watchdog: after cancelling a stalled run, how long to wait for the
+    /// executor before the run is ended without it.
+    pub stall_grace: Duration,
+    /// Watchdog tick: heartbeat in the log, stall check.
+    pub heartbeat_interval: Duration,
 }
 
 impl Default for UploadConfig {
@@ -318,6 +364,10 @@ impl Default for UploadConfig {
             default_rate_limit_pause: Duration::from_mins(1),
             rate_limit_retries: 2,
             confirm_timeout: Duration::from_mins(5),
+            processing_budget: Duration::from_mins(15),
+            stall_timeout: Duration::from_mins(10),
+            stall_grace: Duration::from_secs(30),
+            heartbeat_interval: Duration::from_secs(30),
         }
     }
 }

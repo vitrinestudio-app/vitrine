@@ -391,11 +391,21 @@ fn open_url_only_opens_help_links() {
         "http://appstoreconnect.apple.com/access/integrations/api",
         "https://appstoreconnect.apple.com/access/integrations/api?x=1",
         "file:///etc/passwd",
+        "https://appstoreconnect.apple.com/apps/12a/distribution",
+        "https://appstoreconnect.apple.com/apps//distribution",
+        "https://appstoreconnect.apple.com/apps/123/distribution/../x",
     ] {
         let e = fail(&app, "open_url", json!({ "url": bad }));
         assert_eq!(e.code, ErrorCode::Forbidden, "{bad}");
     }
     assert_eq!(opened.lock().unwrap().len(), HELP_URLS.len());
+    // An app's version page in App Store Connect (no editable version).
+    call(
+        &app,
+        "open_url",
+        json!({ "url": "https://appstoreconnect.apple.com/apps/6757819650/distribution" }),
+    );
+    assert_eq!(opened.lock().unwrap().len(), HELP_URLS.len() + 1);
     // Without a browser (NoDialogs) the GUI is told so.
     let plain = state(&tmp.path().join("app2"));
     let e = fail(&plain, "open_url", json!({ "url": HELP_URLS[0] }));

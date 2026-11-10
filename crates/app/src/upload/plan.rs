@@ -390,6 +390,8 @@ pub(crate) fn build_local(
                     reason: None,
                     steps: Vec::new(),
                     remote_count: None,
+                    processing: None,
+                    reusable: None,
                     images: Vec::new(),
                     bytes: 0,
                     problems: Vec::new(),
@@ -500,10 +502,22 @@ pub(crate) fn build_local(
                 } else if let (Some(app), Some(loc)) = (&sp.app, &set.locale) {
                     let hashes: Vec<String> = set.images.iter().map(|i| i.sha256.clone()).collect();
                     match log.last_success(store.as_str(), app, loc, slot)? {
-                        Some((h, at)) if h == hashes && !args.force => {
+                        Some(last) if last.hashes == hashes && !args.force => {
                             set.action = SetAction::Unchanged;
-                            set.reason =
-                                Some(format!("same images as the upload at {}", fmt_time(at)));
+                            set.reason = Some(if last.processing {
+                                format!(
+                                    "uploaded at {}; Apple was still processing some images then – check the store state to confirm",
+                                    fmt_time(last.at)
+                                )
+                            } else {
+                                format!("same images as the upload at {}", fmt_time(last.at))
+                            });
+                            if last.processing {
+                                set.problems.push(Problem::info(
+                                    "processing_unconfirmed",
+                                    "Apple was still processing images of this set after the upload – \"Check store state\" (plan --remote) confirms it",
+                                ));
+                            }
                         }
                         Some(_) => set.action = SetAction::Replace,
                         None => set.action = SetAction::New,
@@ -621,27 +635,89 @@ pub(crate) fn check_remote(
             StoreKind::Google => remote::block_on(check_google(&config, &secret, sp, force))?,
         };
         sp.remote = Some(info);
+        if let Some(p) = sp.problems.iter().find(|p| p.code == "no_editable_version") {
+            plan.readiness.ready = false;
+            plan.readiness.steps.push(super::readiness::ReadinessStep {
+                code: p.code.clone(),
+                store: Some(sp.store),
+                message: p.message.clone(),
+                fix: super::readiness::Fix::AppStoreConnect,
+                blocking: true,
+                vars: p.vars.clone(),
+                link: p.link.clone(),
+            });
+        }
     }
     finish_totals(plan);
     Ok(())
 }
 
-fn refine(set: &mut PlanSet, count: usize, same: bool, steps: Vec<String>, force: bool) {
-    set.remote_count = Some(count);
-    set.steps = steps;
+/// What the remote check found for one set.
+#[derive(Debug, Clone, Default)]
+struct Found {
+    count: usize,
+    same: bool,
+    steps: Vec<String>,
+    /// Apple: of the same images, still processing.
+    processing: usize,
+    /// Apple: planned images already in the store (kept by the run).
+    reusable: Option<usize>,
+}
+
+fn refine(set: &mut PlanSet, found: Found, force: bool) {
+    set.remote_count = Some(found.count);
+    set.steps = found.steps;
+    set.problems.retain(|p| p.code != "processing_unconfirmed");
+    set.processing = (found.processing > 0).then_some(found.processing);
+    set.reusable = found.reusable.filter(|&n| n > 0 && !force);
     if !set.action.uploads() && set.action != SetAction::Unchanged {
         return;
     }
-    set.action = if same && !force {
-        set.reason = Some("the store already holds these images in this order".into());
+    set.action = if found.same && !force {
+        set.reason = Some(if found.processing > 0 {
+            format!(
+                "the store holds these images in this order; Apple is still processing {} of them – check again later",
+                found.processing
+            )
+        } else {
+            "the store already holds these images in this order".into()
+        });
         SetAction::Unchanged
-    } else if count > 0 {
-        set.reason = None;
+    } else if found.count > 0 {
+        set.reason = set.reusable.map(|n| {
+            format!(
+                "{n} of {} image(s) are already in the store and are kept; the others are uploaded",
+                set.images.len()
+            )
+        });
         SetAction::Replace
     } else {
         set.reason = None;
         SetAction::New
     };
+}
+
+/// The store-level problem "no editable App Store version": short message,
+/// values for the localized text, link to the app's versions page.
+pub(crate) fn no_editable_version_problem(
+    e: &arrangia_publish::Error,
+    app_id: Option<&str>,
+) -> Option<Problem> {
+    let info = arrangia_publish::apple::no_editable_version(e)?;
+    let mut p = Problem::blocking(
+        "no_editable_version",
+        remote::store_message(StoreKind::Apple, e),
+    )
+    .with_vars(serde_json::json!({
+        "latest": info.latest.as_ref().map(|(v, _)| v),
+        "state": info.latest.as_ref().map(|(_, s)| arrangia_publish::apple::version_state_label(s)),
+        "suggestion": info.suggestion,
+        "platform": info.platform,
+    }));
+    if let Some(link) = app_id.and_then(crate::commands::os::app_store_connect_app_url) {
+        p = p.with_link(link);
+    }
+    Some(p)
 }
 
 async fn check_apple(
@@ -680,6 +756,15 @@ async fn check_apple(
     let target = match flow.open(&client, &app_ref, platform).await {
         Ok(t) => t,
         Err(e) => {
+            if let Some(p) = no_editable_version_problem(&e, sp.app.as_deref()) {
+                let info = RemoteInfo {
+                    ok: false,
+                    error: Some(p.message.clone()),
+                    ..RemoteInfo::default()
+                };
+                sp.problems.push(p);
+                return info;
+            }
             let code = if e.kind() == arrangia_publish::ErrorKind::Conflict {
                 "no_editable_version"
             } else {
@@ -700,7 +785,17 @@ async fn check_apple(
             .inspect(&client, &target, &locale, &set.slot, &set.images)
             .await
         {
-            Ok(r) => refine(set, r.count, r.same, r.steps, force),
+            Ok(r) => refine(
+                set,
+                Found {
+                    count: r.count,
+                    same: r.same,
+                    steps: r.steps,
+                    processing: r.processing,
+                    reusable: Some(r.reusable),
+                },
+                force,
+            ),
             Err(e) => {
                 ok = false;
                 set.problems.push(Problem::warn(
@@ -769,7 +864,16 @@ async fn check_google(
                     steps.push("delete_existing".to_owned());
                 }
                 steps.push("upload".to_owned());
-                refine(set, images.len(), same, steps, force);
+                refine(
+                    set,
+                    Found {
+                        count: images.len(),
+                        same,
+                        steps,
+                        ..Found::default()
+                    },
+                    force,
+                );
             }
             Err(e) => {
                 ok = false;

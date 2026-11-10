@@ -98,6 +98,10 @@ struct Asc {
     seen: Vec<String>,
     /// Reservations per locale.
     reserves: BTreeMap<String, u32>,
+    /// Files (by name) Apple never finishes processing (`UPLOAD_COMPLETE`).
+    stuck: Vec<String>,
+    /// Files (by name) Apple fails to process (`FAILED` with errors).
+    failing: Vec<String>,
 }
 
 impl Asc {
@@ -115,10 +119,16 @@ impl Asc {
         } else {
             Value::Null
         };
+        let errors = if s.state == "FAILED" {
+            json!([{"code": "IMAGE_INCORRECT_DIMENSIONS",
+                    "description": "The dimensions of one or more screenshots are wrong."}])
+        } else {
+            json!([])
+        };
         json!({"type": "appScreenshots", "id": id, "attributes": {
             "fileName": s.file_name, "fileSize": s.size,
             "sourceFileChecksum": s.checksum,
-            "assetDeliveryState": {"state": s.state, "errors": []},
+            "assetDeliveryState": {"state": s.state, "errors": errors},
             "uploadOperations": ops}})
     }
 
@@ -167,6 +177,64 @@ impl Asc {
             },
         );
         self.order.insert(set, vec![shot]);
+    }
+
+    /// Ids of `locale`'s set of `display_type`, in order.
+    fn ids(&self, locale: &str, display_type: &str) -> Vec<String> {
+        let Some((loc, _)) = self.locs.iter().find(|(_, l)| l == locale) else {
+            return Vec::new();
+        };
+        self.sets
+            .iter()
+            .find(|(_, l, d)| l == loc && d == display_type)
+            .map(|(set, ..)| self.order[set].clone())
+            .unwrap_or_default()
+    }
+
+    /// Lets Apple finish processing everything.
+    fn finish_processing(&mut self) {
+        self.stuck.clear();
+        for s in self.shots.values_mut() {
+            if s.state == "UPLOAD_COMPLETE" {
+                s.state = "COMPLETE".into();
+            }
+        }
+    }
+
+    /// Puts a processed screenshot with `checksum` into `locale`'s set.
+    fn seed_shot(&mut self, locale: &str, display_type: &str, checksum: &str) -> String {
+        if self.ids(locale, display_type).is_empty() && !self.locs.iter().any(|(_, l)| l == locale)
+        {
+            self.seed(locale, display_type);
+        }
+        let loc = self
+            .locs
+            .iter()
+            .find(|(_, l)| l == locale)
+            .unwrap()
+            .0
+            .clone();
+        let set = self
+            .sets
+            .iter()
+            .find(|(_, l, d)| *l == loc && d == display_type)
+            .unwrap()
+            .0
+            .clone();
+        let id = self.id("shot-");
+        self.shots.insert(
+            id.clone(),
+            Shot {
+                set: set.clone(),
+                file_name: "kept.png".into(),
+                size: 10,
+                checksum: Some(checksum.to_owned()),
+                state: "COMPLETE".into(),
+                received: 10,
+            },
+        );
+        self.order.get_mut(&set).unwrap().push(id.clone());
+        id
     }
 }
 
@@ -302,12 +370,20 @@ impl Respond for FakeAsc {
                 let checksum = body["data"]["attributes"]["sourceFileChecksum"]
                     .as_str()
                     .map(str::to_owned);
-                let Some(s) = a.shots.get_mut(*id) else {
+                let Some(name) = a.shots.get(*id).map(|s| s.file_name.clone()) else {
                     return ResponseTemplate::new(404);
                 };
+                let state = if a.stuck.contains(&name) {
+                    "UPLOAD_COMPLETE"
+                } else if a.failing.contains(&name) {
+                    "FAILED"
+                } else {
+                    "COMPLETE"
+                };
+                let s = a.shots.get_mut(*id).unwrap();
                 assert_eq!(s.received, s.size, "all bytes before the commit");
                 s.checksum = checksum;
-                s.state = "COMPLETE".into();
+                s.state = state.into();
                 ok(json!({ "data": a.shot_doc(id) }))
             }
             ("GET", ["v1", "appScreenshots", id]) => match a.shots.contains_key(*id) {
@@ -1106,4 +1182,370 @@ async fn mcp_headless_uploads_are_off_by_default() {
         panic!()
     };
     assert_eq!(out["run"]["status"], "completed");
+}
+
+// ----- Apple processing (first real upload: hang after image 2) ------------------------
+
+fn short_budget(e: &Env, budget: Duration) {
+    let mut cfg = e.app.upload().config();
+    cfg.processing_budget = budget;
+    e.app.upload().set_config(cfg);
+}
+
+fn log_events(app: &AppState) -> Vec<Value> {
+    call(app, "upload_log", json!({"events": true, "limit": 1}))["runs"][0]["events"]
+        .as_array()
+        .unwrap()
+        .clone()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn apple_processing_does_not_block_the_run() {
+    let e = env().await;
+    let p = plan(&e.app, json!({ "store": "apple" }));
+    let en_names = plan_images(&p, "iphone", "en", "file_name");
+    e.asc.lock().unwrap().stuck = vec![en_names[0].clone()];
+    short_budget(&e, Duration::from_millis(1300));
+    let t0 = std::time::Instant::now();
+    let run = execute(&e.app, &p["confirm_token"]);
+    assert!(t0.elapsed() < Duration::from_secs(8), "no hang");
+    assert_eq!(run["status"], "completed", "{run:#}");
+    assert_eq!(run["images_processing"], 1);
+    let sets = run["sets"].as_array().unwrap();
+    let by_lang = |l: &str| sets.iter().find(|s| s["lang"] == l).unwrap().clone();
+    let en = by_lang("en");
+    assert_eq!(en["status"], "uploaded_processing", "{en:#}");
+    assert_eq!(
+        (en["files_done"].as_u64(), en["files_processing"].as_u64()),
+        (Some(1), Some(1))
+    );
+    assert!(
+        en["note"]
+            .as_str()
+            .unwrap()
+            .contains("still processing 1 image")
+    );
+    assert_eq!(by_lang("de")["status"], "done");
+    assert!(
+        run["message"]
+            .as_str()
+            .unwrap()
+            .contains("still processing 1 image")
+    );
+    // All images are in the store in plan order (the stuck one too).
+    assert_eq!(
+        e.asc.lock().unwrap().checksums("en-US", "APP_IPHONE_67"),
+        plan_images(&p, "iphone", "en", "md5")
+    );
+    // Progress shows the processing step with the state and the time.
+    let progress = e.events.named("upload-progress");
+    let proc = progress
+        .iter()
+        .find(|v| v["step"] == "processing")
+        .expect("processing event");
+    assert_eq!(proc["file"]["state"], "UPLOAD_COMPLETE");
+    assert!(proc["file"]["elapsed_secs"].is_u64());
+    for step in [
+        "file_started",
+        "transfer",
+        "file_uploaded",
+        "file_done",
+        "set_order",
+    ] {
+        assert!(progress.iter().any(|v| v["step"] == step), "missing {step}");
+    }
+
+    // The log: set + file states, transitions instead of every poll, and
+    // the real time of each event (not one flush time).
+    let log = call(&e.app, "upload_log", json!({"events": true, "limit": 1}));
+    let run_log = &log["runs"][0];
+    assert_eq!(run_log["status"], "completed");
+    let en_log = run_log["sets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["lang"] == "en")
+        .unwrap();
+    assert_eq!(en_log["status"], "uploaded_processing");
+    let statuses: Vec<&str> = en_log["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["status"].as_str().unwrap())
+        .collect();
+    assert_eq!(statuses, ["processing", "done"]);
+    let events = log_events(&e.app);
+    let polls = events
+        .iter()
+        .filter(|v| {
+            let m = v["message"].as_str().unwrap();
+            m.starts_with("GET ") && m.contains("/v1/appScreenshots/")
+        })
+        .count();
+    assert_eq!(polls, 0, "successful polls are not logged one by one");
+    assert!(events.iter().any(|v| {
+        v["message"]
+            .as_str()
+            .unwrap()
+            .contains("UPLOAD_COMPLETE after")
+    }));
+    let at: Vec<u64> = events.iter().map(|v| v["at"].as_u64().unwrap()).collect();
+    assert!(at.windows(2).all(|w| w[0] <= w[1]), "{at:?}");
+    assert!(
+        at.last().unwrap() > at.first().unwrap(),
+        "events carry their own time: {at:?}"
+    );
+
+    // Re-plan (local): the processing set is not uploaded again.
+    let p2 = plan(&e.app, json!({ "store": "apple" }));
+    let en2 = set(&p2, "iphone", "en");
+    assert_eq!(en2["action"], "unchanged", "{en2:#}");
+    assert!(en2["reason"].as_str().unwrap().contains("still processing"));
+    assert_eq!(en2["problems"][0]["code"], "processing_unconfirmed");
+    // Remote, still processing: unchanged, with the count.
+    let r = plan(&e.app, json!({ "store": "apple", "remote": true }));
+    let en3 = set(&r, "iphone", "en");
+    assert_eq!(en3["action"], "unchanged", "{en3:#}");
+    assert_eq!(en3["processing"], 1);
+    assert!(en3["problems"].as_array().unwrap().is_empty());
+    // Apple finished: plain unchanged.
+    e.asc.lock().unwrap().finish_processing();
+    let r = plan(&e.app, json!({ "store": "apple", "remote": true }));
+    let en4 = set(&r, "iphone", "en");
+    assert_eq!(en4["action"], "unchanged");
+    assert!(en4.get("processing").is_none());
+    assert_eq!(r["totals"]["upload_sets"], 0);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn apple_failed_processing_fails_the_set_with_details() {
+    let e = env().await;
+    let p = plan(&e.app, json!({ "store": "apple" }));
+    let de_names = plan_images(&p, "iphone", "de", "file_name");
+    e.asc.lock().unwrap().failing = vec![de_names[1].clone()];
+    let run = execute(&e.app, &p["confirm_token"]);
+    assert_eq!(run["status"], "partial", "{run:#}");
+    let de = run["sets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["lang"] == "de")
+        .unwrap();
+    assert_eq!(de["status"], "failed");
+    let err = de["error"].as_str().unwrap();
+    assert!(err.contains("IMAGE_INCORRECT_DIMENSIONS"), "{err}");
+    assert!(err.contains(&de_names[1]), "{err}");
+    // The failed asset is deleted; the good one stays.
+    assert_eq!(e.asc.lock().unwrap().ids("de-DE", "APP_IPHONE_67").len(), 1);
+    let log = call(&e.app, "upload_log", json!({"limit": 1}));
+    let files = log["runs"][0]["sets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["lang"] == "de")
+        .unwrap()["files"]
+        .clone();
+    assert!(
+        files
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["status"] == "failed" && f["error"].as_str().unwrap().contains("dimensions"))
+    );
+    // Next run: the good image is kept, only the failed one is uploaded.
+    e.asc.lock().unwrap().failing.clear();
+    let before = e.asc.lock().unwrap().reserves["de-DE"];
+    let p2 = plan(&e.app, json!({ "store": "apple", "remote": true }));
+    let de2 = set(&p2, "iphone", "de");
+    assert_eq!(de2["action"], "replace");
+    assert_eq!(de2["reusable"], 1);
+    let run = execute(&e.app, &p2["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    assert_eq!(e.asc.lock().unwrap().reserves["de-DE"], before + 1);
+    assert_eq!(
+        e.asc.lock().unwrap().checksums("de-DE", "APP_IPHONE_67"),
+        plan_images(&p2, "iphone", "de", "md5")
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cancel_works_while_apple_is_processing() {
+    let e = env().await;
+    let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
+    let names = plan_images(&p, "iphone", "en", "file_name");
+    e.asc.lock().unwrap().stuck = names.clone();
+    short_budget(&e, Duration::from_secs(60));
+    call(
+        &e.app,
+        "upload_execute",
+        json!({"token": p["confirm_token"]}),
+    );
+    let mut waited = 0;
+    while !e
+        .events
+        .named("upload-progress")
+        .iter()
+        .any(|v| v["step"] == "processing")
+    {
+        std::thread::sleep(Duration::from_millis(20));
+        waited += 1;
+        assert!(waited < 500, "never reached processing");
+    }
+    let t0 = std::time::Instant::now();
+    assert_eq!(call(&e.app, "upload_cancel", json!({}))["cancelled"], true);
+    let run = arrangia_app::commands::upload_wait(&e.app, Some(Duration::from_secs(10))).unwrap();
+    assert!(t0.elapsed() < Duration::from_secs(3), "cancel is immediate");
+    let run = serde_json::to_value(run).unwrap();
+    assert_eq!(run["status"], "cancelled", "{run:#}");
+    // Re-plan with the remote check: the uploaded images are kept.
+    e.asc.lock().unwrap().finish_processing();
+    let r = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    assert_eq!(set(&r, "iphone", "en")["action"], "unchanged", "{r:#}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn replan_keeps_images_already_in_the_store() {
+    let e = env().await;
+    let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
+    let md5 = plan_images(&p, "iphone", "en", "md5");
+    // The store holds image 1 (done) and an old one; image 2 is missing.
+    let kept = e
+        .asc
+        .lock()
+        .unwrap()
+        .seed_shot("en-US", "APP_IPHONE_67", &md5[0]);
+    let r = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    let s = set(&r, "iphone", "en");
+    assert_eq!(s["action"], "replace");
+    assert_eq!(s["reusable"], 1);
+    assert!(
+        s["reason"]
+            .as_str()
+            .unwrap()
+            .contains("already in the store")
+    );
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    assert!(run["sets"][0]["note"].as_str().unwrap().contains("kept"));
+    let asc = e.asc.lock().unwrap();
+    assert_eq!(
+        asc.reserves["en-US"], 1,
+        "only the missing image is uploaded"
+    );
+    assert_eq!(asc.checksums("en-US", "APP_IPHONE_67"), md5);
+    assert_eq!(asc.ids("en-US", "APP_IPHONE_67")[0], kept);
+    drop(asc);
+    // --force uploads everything again.
+    let f = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true, "force": true }),
+    );
+    assert!(set(&f, "iphone", "en").get("reusable").is_none());
+    execute(&e.app, &f["confirm_token"]);
+    assert_eq!(e.asc.lock().unwrap().reserves["en-US"], 3);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn stale_running_run_is_interrupted() {
+    let e = env().await;
+    let log = arrangia_app::upload::log::UploadLog::open(&e.dir).unwrap();
+    let old = log.start_run("upl_x", 1_000).unwrap();
+    log.start_set(old, "apple", "1", "de-DE", "S", "iphone", "de", &[], 1_000)
+        .unwrap();
+    drop(log);
+    let runs = call(&e.app, "upload_log", json!({}));
+    let r = &runs["runs"][0];
+    assert_eq!(r["status"], "interrupted", "{r:#}");
+    assert_eq!(r["sets"][0]["status"], "interrupted");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn watchdog_stops_a_run_without_progress() {
+    let e = env().await;
+    e.asc.lock().unwrap().part_delay = Some(Duration::from_secs(4));
+    let mut cfg = e.app.upload().config();
+    cfg.stall_timeout = Duration::from_millis(400);
+    cfg.heartbeat_interval = Duration::from_millis(50);
+    cfg.stall_grace = Duration::from_secs(5);
+    e.app.upload().set_config(cfg);
+    let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
+    let t0 = std::time::Instant::now();
+    let run = execute(&e.app, &p["confirm_token"]);
+    assert!(t0.elapsed() < Duration::from_secs(3), "{:?}", t0.elapsed());
+    assert_eq!(run["status"], "failed", "{run:#}");
+    assert!(
+        run["message"].as_str().unwrap().contains("no progress"),
+        "{run:#}"
+    );
+    let log = call(&e.app, "upload_log", json!({"events": true, "limit": 1}));
+    assert_eq!(log["runs"][0]["status"], "failed");
+    assert!(
+        log["runs"][0]["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v["message"].as_str().unwrap().starts_with("watchdog:"))
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn no_editable_version_is_reported_once() {
+    let e = env().await;
+    e.asc.lock().unwrap().editable = false;
+    // Remote plan: one store-level problem with values and a link, and a
+    // readiness step.
+    let r = plan(&e.app, json!({ "store": "apple", "remote": true }));
+    let probs = r["stores"][0]["problems"].as_array().unwrap();
+    let p = probs
+        .iter()
+        .find(|x| x["code"] == "no_editable_version")
+        .unwrap();
+    assert_eq!(
+        p["message"],
+        "App Store Connect: No editable App Store version. Create a new version (e.g. 1.0.1) in App Store Connect, then plan again. Latest version: 1.0 (Ready for Distribution)."
+    );
+    assert_eq!(p["vars"]["latest"], "1.0");
+    assert_eq!(p["vars"]["state"], "Ready for Distribution");
+    assert_eq!(p["vars"]["suggestion"], "1.0.1");
+    assert_eq!(
+        p["link"],
+        "https://appstoreconnect.apple.com/apps/1234567890/distribution"
+    );
+    let step = r["readiness"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["code"] == "no_editable_version")
+        .unwrap();
+    assert_eq!(step["fix"], "app_store_connect");
+    assert_eq!(r["readiness"]["ready"], false);
+    for s in r["stores"][0]["sets"].as_array().unwrap() {
+        assert!(
+            s["problems"].as_array().unwrap().is_empty(),
+            "not per set: {s:#}"
+        );
+    }
+    // Execution (local plan): fail the store once, sets skipped.
+    let p = plan(&e.app, json!({ "store": "apple" }));
+    let run = execute(&e.app, &p["confirm_token"]);
+    assert_eq!(run["status"], "failed", "{run:#}");
+    let fails = run["store_failures"].as_array().unwrap();
+    assert_eq!(fails.len(), 1);
+    assert_eq!(fails[0]["code"], "no_editable_version");
+    for s in run["sets"].as_array().unwrap() {
+        assert_eq!(s["status"], "skipped");
+        assert_eq!(s["error"], "no editable App Store version");
+    }
+    let text = run.to_string();
+    assert_eq!(
+        text.matches("Latest version").count(),
+        2,
+        "message + summary only: {text}"
+    );
 }

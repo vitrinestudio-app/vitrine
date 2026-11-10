@@ -26,7 +26,7 @@ mod export;
 mod frames;
 mod inspect;
 mod mcp;
-mod os;
+pub(crate) mod os;
 mod project;
 mod project_settings;
 mod render;

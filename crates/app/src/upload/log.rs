@@ -8,9 +8,15 @@
 //! | `files` | one per image upload: set, position, file name, SHA-256, bytes, store id, status, error |
 //! | `events` | redacted HTTP events and notes per run (method + path + status; never tokens, keys, signed URLs) |
 //!
-//! A set with status `done` is what the next plan compares against
-//! ([`UploadLog::last_success`]): same store, app, locale, slot and the
-//! same image hashes in the same order → `unchanged`.
+//! A set with status `done` or `uploaded_processing` (in the store, Apple
+//! was still processing some images) is what the next plan compares
+//! against ([`UploadLog::last_success`]): same store, app, locale, slot and
+//! the same image hashes in the same order → `unchanged`.
+//!
+//! **Stale runs.** A run's watchdog writes `heartbeat_at` every few seconds
+//! while it runs. Opening the log marks runs still `running`/`paused`
+//! without a heartbeat for [`STALE_RUN_AFTER`] as `interrupted` (the app
+//! was closed or crashed during the upload), and their running sets too.
 
 use std::path::{Path, PathBuf};
 
@@ -21,6 +27,19 @@ use crate::error::{CmdResult, CommandError};
 
 /// File name below `<project>/.cache/`.
 pub const LOG_FILE: &str = "uploads.sqlite";
+
+/// A run without heartbeat for this long is `interrupted` (seconds).
+pub const STALE_RUN_AFTER: u64 = 180;
+
+/// The last upload of a set that reached the store.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LastUpload {
+    pub hashes: Vec<String>,
+    /// Unix seconds.
+    pub at: u64,
+    /// Apple was still processing images when the run ended.
+    pub processing: bool,
+}
 
 #[allow(clippy::needless_pass_by_value)] // used as `map_err(db_error)`
 fn db_error(e: rusqlite::Error) -> CommandError {
@@ -163,7 +182,74 @@ impl UploadLog {
             );",
         )
         .map_err(db_error)?;
-        Ok(Self { db })
+        let has_heartbeat = db
+            .prepare("SELECT 1 FROM pragma_table_info('runs') WHERE name = 'heartbeat_at'")
+            .and_then(|mut st| st.exists([]))
+            .map_err(db_error)?;
+        if !has_heartbeat {
+            db.execute_batch("ALTER TABLE runs ADD COLUMN heartbeat_at INTEGER;")
+                .map_err(db_error)?;
+        }
+        let log = Self { db };
+        log.recover_stale(super::now_secs())?;
+        Ok(log)
+    }
+
+    /// Marks runs without a heartbeat for [`STALE_RUN_AFTER`] as
+    /// `interrupted` (and their unfinished sets). Returns how many runs.
+    pub fn recover_stale(&self, now: u64) -> CmdResult<usize> {
+        let limit = i(now.saturating_sub(STALE_RUN_AFTER));
+        let tx = self.db.unchecked_transaction().map_err(db_error)?;
+        tx.execute(
+            "UPDATE sets SET status = 'interrupted',
+                 error = COALESCE(error, 'the app was closed or stopped during the upload'),
+                 finished_at = ?1
+             WHERE status IN ('running', 'paused') AND run_id IN (
+                 SELECT id FROM runs WHERE status IN ('running', 'paused')
+                 AND COALESCE(heartbeat_at, started_at) < ?2)",
+            params![i(now), limit],
+        )
+        .map_err(db_error)?;
+        let n = tx
+            .execute(
+                "UPDATE runs SET status = 'interrupted', finished_at = ?1
+                 WHERE status IN ('running', 'paused') AND COALESCE(heartbeat_at, started_at) < ?2",
+                params![i(now), limit],
+            )
+            .map_err(db_error)?;
+        tx.commit().map_err(db_error)?;
+        Ok(n)
+    }
+
+    /// The run is alive (watchdog tick).
+    pub fn heartbeat(&self, run: i64, at: u64) -> CmdResult<()> {
+        self.db
+            .execute(
+                "UPDATE runs SET heartbeat_at = ?2 WHERE id = ?1",
+                params![run, i(at)],
+            )
+            .map_err(db_error)?;
+        Ok(())
+    }
+
+    /// Status of a run (`None` = unknown id).
+    pub fn run_status(&self, run: i64) -> CmdResult<Option<String>> {
+        self.db
+            .query_row("SELECT status FROM runs WHERE id = ?1", [run], |r| r.get(0))
+            .optional()
+            .map_err(db_error)
+    }
+
+    /// Ends the unfinished sets of a run (watchdog, crash).
+    pub fn finish_open_sets(&self, run: i64, status: &str, error: &str, at: u64) -> CmdResult<()> {
+        self.db
+            .execute(
+                "UPDATE sets SET status = ?2, error = COALESCE(error, ?3), finished_at = ?4
+                 WHERE run_id = ?1 AND status IN ('running', 'paused')",
+                params![run, status, error, i(at)],
+            )
+            .map_err(db_error)?;
+        Ok(())
     }
 
     // ---- plans ---------------------------------------------------------------------
@@ -296,7 +382,7 @@ impl UploadLog {
         store_id: Option<&str>,
         status: &str,
         error: Option<&str>,
-    ) -> CmdResult<()> {
+    ) -> CmdResult<i64> {
         self.db
             .execute(
                 "INSERT INTO files (set_id, idx, file_name, sha256, bytes, store_id, status, error)
@@ -313,6 +399,17 @@ impl UploadLog {
                 ],
             )
             .map_err(db_error)?;
+        Ok(self.db.last_insert_rowid())
+    }
+
+    /// Updates a file row (processing → done / failed).
+    pub fn update_file(&self, file: i64, status: &str, error: Option<&str>) -> CmdResult<()> {
+        self.db
+            .execute(
+                "UPDATE files SET status = ?2, error = ?3 WHERE id = ?1",
+                params![file, status, error],
+            )
+            .map_err(db_error)?;
         Ok(())
     }
 
@@ -326,30 +423,31 @@ impl UploadLog {
         Ok(())
     }
 
-    /// Image hashes of the last successful upload of a set.
+    /// The last upload of a set that reached the store (`done`, or
+    /// `uploaded_processing`: Apple was still processing).
     pub fn last_success(
         &self,
         store: &str,
         app: &str,
         locale: &str,
         slot: &str,
-    ) -> CmdResult<Option<(Vec<String>, u64)>> {
-        let row: Option<(String, i64)> = self
+    ) -> CmdResult<Option<LastUpload>> {
+        let row: Option<(String, i64, String)> = self
             .db
             .query_row(
-                "SELECT hashes, COALESCE(finished_at, started_at) FROM sets
-                 WHERE store = ?1 AND app = ?2 AND locale = ?3 AND slot = ?4 AND status = 'done'
+                "SELECT hashes, COALESCE(finished_at, started_at), status FROM sets
+                 WHERE store = ?1 AND app = ?2 AND locale = ?3 AND slot = ?4
+                   AND status IN ('done', 'uploaded_processing')
                  ORDER BY id DESC LIMIT 1",
                 params![store, app, locale, slot],
-                |r| Ok((r.get(0)?, r.get(1)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
             )
             .optional()
             .map_err(db_error)?;
-        Ok(row.map(|(h, at)| {
-            (
-                serde_json::from_str(&h).unwrap_or_default(),
-                u64::try_from(at).unwrap_or(0),
-            )
+        Ok(row.map(|(h, at, status)| LastUpload {
+            hashes: serde_json::from_str(&h).unwrap_or_default(),
+            at: u64::try_from(at).unwrap_or(0),
+            processing: status == "uploaded_processing",
         }))
     }
 
@@ -520,14 +618,40 @@ mod tests {
         log.finish_set(set, "done", None, 12).unwrap();
         log.event(run, "info", "PUT /v1/x 200", 12).unwrap();
         log.finish_run(run, "completed", 13, "{}").unwrap();
-        let (h, at) = log
+        let last = log
             .last_success("apple", "123", "de-DE", "APP_IPHONE_67")
             .unwrap()
             .unwrap();
-        assert_eq!((h, at), (hashes, 12));
+        assert_eq!((last.hashes, last.at, last.processing), (hashes, 12, false));
         let runs = log.runs(5, true).unwrap();
         assert_eq!(runs.len(), 1);
         assert_eq!(runs[0].sets[0].files[0].store_id.as_deref(), Some("s1"));
         assert_eq!(runs[0].events.len(), 1);
+    }
+
+    #[test]
+    fn stale_runs_are_interrupted_on_open() {
+        let tmp = tempfile::tempdir().unwrap();
+        let now = crate::upload::now_secs();
+        let log = UploadLog::open(tmp.path()).unwrap();
+        let old = log.start_run("t1", now - 3600).unwrap();
+        let set = log
+            .start_set(old, "apple", "1", "de-DE", "S", "t", "de", &[], now - 3600)
+            .unwrap();
+        log.file(set, 1, "01.png", "a", 5, Some("s1"), "done", None)
+            .unwrap();
+        // Alive: a fresh heartbeat keeps an old run running.
+        let alive = log.start_run("t2", now - 3600).unwrap();
+        log.heartbeat(alive, now).unwrap();
+        let fresh = log.start_run("t3", now).unwrap();
+        drop(log);
+        let log = UploadLog::open(tmp.path()).unwrap();
+        assert_eq!(log.run_status(old).unwrap().as_deref(), Some("interrupted"));
+        assert_eq!(log.run_status(alive).unwrap().as_deref(), Some("running"));
+        assert_eq!(log.run_status(fresh).unwrap().as_deref(), Some("running"));
+        let runs = log.runs(5, false).unwrap();
+        let r = runs.iter().find(|r| r.id == old).unwrap();
+        assert_eq!(r.sets[0].status, "interrupted");
+        assert!(r.finished_at.is_some());
     }
 }

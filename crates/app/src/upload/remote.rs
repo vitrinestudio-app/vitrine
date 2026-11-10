@@ -11,11 +11,12 @@
 //! plan, executor and UI only see the flow's name (`StorePlan.flow`).
 
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use arrangia_core::model::{ApplePlatform, Project, StoreKind};
 use arrangia_publish::apple::{self, AppRef, AppStoreVersion, DeliveryState, Platform};
 use arrangia_publish::credentials::Secret;
-use arrangia_publish::{ClientOptions, Error, ProgressFn, Result, google};
+use arrangia_publish::{ClientOptions, Error, PollPolicy, ProgressFn, Result, google};
 use serde::{Deserialize, Serialize};
 
 use super::{PlanImage, UploadConfig};
@@ -163,8 +164,13 @@ pub(crate) struct RemoteSet {
     pub steps: Vec<String>,
     /// Images in the store now.
     pub count: usize,
-    /// The store holds exactly the planned images in this order.
+    /// The store holds exactly the planned images in this order (Apple:
+    /// each `COMPLETE` or still processing).
     pub same: bool,
+    /// Of those, Apple is still processing this many (`UPLOAD_COMPLETE`).
+    pub processing: usize,
+    /// Planned images the store already holds (kept by the next run).
+    pub reusable: usize,
 }
 
 /// One image to upload, with its bytes.
@@ -174,16 +180,53 @@ pub(crate) struct UploadFile {
     pub bytes: Vec<u8>,
 }
 
-/// Callbacks of one set upload.
+/// Callbacks of one set upload (positions are 0-based).
 pub(crate) trait SetHooks: Sync {
-    /// A file starts (0-based position).
+    /// A file starts (Apple: the reservation is requested).
     fn file_started(&self, index: usize);
-    /// Progress of the current file.
+    /// Progress of the current file (reserve/transfer/commit).
     fn progress(&self, index: usize, p: &arrangia_publish::Progress);
-    /// A file is in the store.
+    /// Apple: the file is committed; Apple processes it now.
+    fn file_uploaded(&self, _index: usize, _store_id: &str) {}
+    /// Apple: the store already holds this file (same checksum), it is kept.
+    fn file_kept(&self, _index: usize, _store_id: &str, _processing: bool) {}
+    /// Apple: the delivery state of a file changed (log transitions only).
+    fn file_state(&self, _index: usize, _state: &str, _elapsed: Duration) {}
+    /// Apple: one polling round; `pending` = (position, state) still processing.
+    fn processing(&self, _pending: &[(usize, String)], _elapsed: Duration) {}
+    /// A file is in the store (Apple: `COMPLETE`).
     fn file_done(&self, index: usize, store_id: &str);
+    /// Apple: processing failed (`FAILED`, with Apple's errors).
+    fn file_failed(&self, _index: usize, _store_id: &str, _message: &str) {}
     /// A step of the flow (`delete_existing`, `set_order`, …).
     fn step(&self, step: &str);
+}
+
+/// How [`AppleUploadFlow::replace`] treats processing and existing images.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ReplaceOptions {
+    /// Keep screenshots the store already holds with the same checksum
+    /// (`COMPLETE` or still processing) instead of uploading them again.
+    pub reuse: bool,
+    /// How long to wait for Apple's processing of the whole set; images
+    /// still processing afterwards are not failures.
+    pub budget: Duration,
+    /// Poll intervals (the timeout is not used; `budget` is).
+    pub poll: PollPolicy,
+}
+
+/// What [`AppleUploadFlow::replace`] achieved.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ReplaceOutcome {
+    /// Store ids in plan order.
+    pub ids: Vec<String>,
+    /// Images Apple was still processing when the budget ran out.
+    pub processing: usize,
+    /// Images kept from the store (not uploaded again).
+    pub kept: usize,
+    /// Something the user should know (e.g. the order could not be
+    /// confirmed while Apple was processing).
+    pub note: Option<String>,
 }
 
 /// How screenshots get into App Store Connect. Executor and plan only call
@@ -209,8 +252,10 @@ pub(crate) trait AppleUploadFlow {
         images: &[PlanImage],
     ) -> Result<RemoteSet>;
 
-    /// Replaces the set with `files` in this order and verifies the result;
-    /// returns the store ids in order.
+    /// Makes the set hold `files` in this order (keeping what the store
+    /// already has with `reuse`), waits up to `opts.budget` for Apple's
+    /// processing and verifies the order.
+    #[allow(clippy::too_many_arguments)]
     async fn replace(
         &self,
         client: &apple::Client,
@@ -218,8 +263,9 @@ pub(crate) trait AppleUploadFlow {
         locale: &str,
         display_type: &str,
         files: &[UploadFile],
+        opts: ReplaceOptions,
         hooks: &dyn SetHooks,
-    ) -> Result<Vec<String>>;
+    ) -> Result<ReplaceOutcome>;
 }
 
 /// The set-based flow (ADR 0017): localization → set → delete old → upload
@@ -303,7 +349,7 @@ impl AppleUploadFlow for ScreenshotSetFlow {
             return Ok(RemoteSet {
                 steps: steps.into_iter().map(str::to_owned).collect(),
                 count: 0,
-                same: false,
+                ..RemoteSet::default()
             });
         };
         let set = client
@@ -316,17 +362,35 @@ impl AppleUploadFlow for ScreenshotSetFlow {
             return Ok(RemoteSet {
                 steps: steps.into_iter().map(str::to_owned).collect(),
                 count: 0,
-                same: false,
+                ..RemoteSet::default()
             });
         };
         let shots = client.list_screenshots(&set.id).await?;
+        let usable = |s: &apple::AppScreenshot| {
+            matches!(
+                s.delivery_state,
+                Some(DeliveryState::Complete | DeliveryState::UploadComplete)
+            )
+        };
         let same = shots.len() == images.len()
             && shots.iter().zip(images).all(|(s, i)| {
                 s.source_file_checksum
                     .as_deref()
                     .is_some_and(|c| c.eq_ignore_ascii_case(&i.md5))
-                    && s.delivery_state == Some(DeliveryState::Complete)
+                    && usable(s)
             });
+        let processing = if same {
+            shots
+                .iter()
+                .filter(|s| s.delivery_state == Some(DeliveryState::UploadComplete))
+                .count()
+        } else {
+            0
+        };
+        let reusable = match_existing(&shots, images.iter().map(|i| i.md5.as_str()))
+            .iter()
+            .filter(|m| m.is_some())
+            .count();
         if !shots.is_empty() {
             steps.push("delete_existing");
         }
@@ -335,9 +399,12 @@ impl AppleUploadFlow for ScreenshotSetFlow {
             steps: steps.into_iter().map(str::to_owned).collect(),
             count: shots.len(),
             same,
+            processing,
+            reusable,
         })
     }
 
+    #[allow(clippy::too_many_lines, clippy::too_many_arguments)] // one linear flow
     async fn replace(
         &self,
         client: &apple::Client,
@@ -345,33 +412,127 @@ impl AppleUploadFlow for ScreenshotSetFlow {
         locale: &str,
         display_type: &str,
         files: &[UploadFile],
+        opts: ReplaceOptions,
         hooks: &dyn SetHooks,
-    ) -> Result<Vec<String>> {
+    ) -> Result<ReplaceOutcome> {
         let loc = Self::localization_id(client, target, locale, true)
             .await?
             .unwrap_or_default();
         let set = client.ensure_set(&loc, display_type).await?;
-        // Replace the whole set: also removes leftovers of an aborted run.
+        // 1. Keep what the store already holds (same checksum, not failed),
+        //    delete everything else (old images, leftovers of an aborted run).
         let old = client.list_screenshots(&set.id).await?;
-        if !old.is_empty() {
+        let kept = if opts.reuse {
+            match_existing(&old, files.iter().map(|f| f.image.md5.as_str()))
+        } else {
+            vec![None; files.len()]
+        };
+        let keep_ids: Vec<&str> = kept.iter().flatten().map(|&k| old[k].id.as_str()).collect();
+        let delete: Vec<&apple::AppScreenshot> = old
+            .iter()
+            .filter(|s| !keep_ids.contains(&s.id.as_str()))
+            .collect();
+        if !delete.is_empty() {
             hooks.step("delete_existing");
         }
-        for s in &old {
+        for s in delete {
             client.delete_screenshot(&s.id).await?;
         }
-        let mut ids = Vec::with_capacity(files.len());
+        // 2. Reserve/upload/commit every missing file; nobody waits for
+        //    Apple's processing here.
+        let mut ids: Vec<Option<String>> = vec![None; files.len()];
+        let mut pending: Vec<(usize, String, Option<String>)> = Vec::new();
+        let mut outcome = ReplaceOutcome::default();
         for (i, f) in files.iter().enumerate() {
+            if let Some(k) = kept[i] {
+                let s = &old[k];
+                let processing = s.delivery_state != Some(DeliveryState::Complete);
+                hooks.file_kept(i, &s.id, processing);
+                if processing {
+                    pending.push((i, s.id.clone(), None));
+                }
+                ids[i] = Some(s.id.clone());
+                outcome.kept += 1;
+                continue;
+            }
             hooks.file_started(i);
             let progress = |p: &arrangia_publish::Progress| hooks.progress(i, p);
             let progress: ProgressFn<'_> = &progress;
             let shot = client
-                .upload_screenshot(&set.id, &f.image.file_name, f.bytes.clone(), progress)
+                .upload_screenshot_committed(&set.id, &f.image.file_name, f.bytes.clone(), progress)
                 .await?;
-            hooks.file_done(i, &shot.id);
-            ids.push(shot.id);
+            hooks.file_uploaded(i, &shot.id);
+            ids[i] = Some(shot.id.clone());
+            pending.push((i, shot.id, None));
         }
+        // 3. Poll all of them together, up to the budget.
+        let started = Instant::now();
+        let mut interval = opts.poll.initial_interval;
+        let mut failures: Vec<(usize, String, Vec<arrangia_publish::ApiErrorDetail>)> = Vec::new();
+        let cancel = client.options().cancel.clone();
+        while !pending.is_empty() {
+            let mut still = Vec::new();
+            for (i, id, last) in pending {
+                let shot = client.screenshot(&id).await?;
+                let state = shot
+                    .delivery_state
+                    .as_ref()
+                    .map_or("UNKNOWN", DeliveryState::as_str)
+                    .to_owned();
+                if last.as_deref() != Some(state.as_str()) {
+                    hooks.file_state(i, &state, started.elapsed());
+                }
+                match shot.delivery_state {
+                    Some(DeliveryState::Complete) => hooks.file_done(i, &id),
+                    Some(DeliveryState::Failed) => {
+                        let msg = if shot.delivery_errors.is_empty() {
+                            "Apple reported FAILED without details".to_owned()
+                        } else {
+                            shot.delivery_errors
+                                .iter()
+                                .map(ToString::to_string)
+                                .collect::<Vec<_>>()
+                                .join("; ")
+                        };
+                        hooks.file_failed(i, &id, &msg);
+                        // Apple recommends deleting failed assets.
+                        let _ = client.delete_screenshot(&id).await;
+                        ids[i] = None;
+                        failures.push((i, id, shot.delivery_errors));
+                    }
+                    _ => still.push((i, id, Some(state))),
+                }
+            }
+            pending = still;
+            let elapsed = started.elapsed();
+            let states: Vec<(usize, String)> = pending
+                .iter()
+                .map(|(i, _, s)| (*i, s.clone().unwrap_or_default()))
+                .collect();
+            hooks.processing(&states, elapsed);
+            if pending.is_empty() || elapsed >= opts.budget {
+                break;
+            }
+            let wait = interval.min(opts.budget.saturating_sub(elapsed));
+            tokio::select! {
+                () = cancel.cancelled() => return Err(Error::Cancelled),
+                () = tokio::time::sleep(wait) => {}
+            }
+            interval = (interval * 2).min(opts.poll.max_interval.max(opts.poll.initial_interval));
+        }
+        outcome.processing = pending.len();
+        // 4. Order (also while some are processing; reservations are appended
+        //    in upload order anyway) and verify.
+        let order: Vec<String> = ids.iter().flatten().cloned().collect();
         hooks.step("set_order");
-        client.reorder(&set.id, &ids).await?;
+        if let Err(e) = client.reorder(&set.id, &order).await {
+            if outcome.processing == 0 || matches!(e, Error::Cancelled) {
+                return Err(e);
+            }
+            outcome.note = Some(format!(
+                "the order could not be set while Apple is processing ({e}); check the store state later"
+            ));
+        }
         hooks.step("verify");
         let now: Vec<String> = client
             .list_screenshots(&set.id)
@@ -379,18 +540,62 @@ impl AppleUploadFlow for ScreenshotSetFlow {
             .into_iter()
             .map(|s| s.id)
             .collect();
-        if now != ids {
-            return Err(Error::Conflict {
-                message: format!(
-                    "the set holds {} screenshot(s) in another order than uploaded ({} expected)",
-                    now.len(),
-                    ids.len()
-                ),
-                details: Vec::new(),
+        if now != order {
+            if outcome.processing == 0 {
+                return Err(Error::Conflict {
+                    message: format!(
+                        "the set holds {} screenshot(s) in another order than uploaded ({} expected)",
+                        now.len(),
+                        order.len()
+                    ),
+                    details: Vec::new(),
+                });
+            }
+            outcome.note.get_or_insert_with(|| {
+                "the order is not confirmed yet while Apple is processing; check the store state later"
+                    .to_owned()
             });
         }
-        Ok(ids)
+        if let Some((_, id, _)) = failures.first() {
+            let details = failures.iter().flat_map(|(.., d)| d.clone()).collect();
+            let names: Vec<&str> = failures
+                .iter()
+                .map(|(i, ..)| files[*i].image.file_name.as_str())
+                .collect();
+            return Err(Error::Processing {
+                asset_id: format!("{} ({id})", names.join(", ")),
+                details,
+            });
+        }
+        outcome.ids = order;
+        Ok(outcome)
     }
+}
+
+/// For each wanted checksum (in order) the index of a store screenshot
+/// with that checksum that is `COMPLETE` or still processing; each store
+/// screenshot is used once.
+pub(crate) fn match_existing<'a>(
+    shots: &[apple::AppScreenshot],
+    wanted: impl Iterator<Item = &'a str>,
+) -> Vec<Option<usize>> {
+    let mut used = vec![false; shots.len()];
+    wanted
+        .map(|md5| {
+            let k = shots.iter().enumerate().position(|(k, s)| {
+                !used[k]
+                    && matches!(
+                        s.delivery_state,
+                        Some(DeliveryState::Complete | DeliveryState::UploadComplete)
+                    )
+                    && s.source_file_checksum
+                        .as_deref()
+                        .is_some_and(|c| c.eq_ignore_ascii_case(md5))
+            })?;
+            used[k] = true;
+            Some(k)
+        })
+        .collect()
 }
 
 /// The flow in use (one today; the user's decision on the App Asset
@@ -412,6 +617,9 @@ pub(crate) fn store_message(store: StoreKind, e: &Error) -> String {
             "{name}: the key has no permission for this app (check its role / Play Console access)"
         ),
         Error::Auth { .. } => format!("{name} rejected the key ({e})"),
+        Error::Conflict { message, .. } if apple::no_editable_version(e).is_some() => {
+            format!("{name}: {message}")
+        }
         Error::Transport { status: None, .. } => {
             format!("cannot reach {name} – offline or blocked by a proxy/firewall?")
         }

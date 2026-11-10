@@ -156,11 +156,7 @@ pub fn upload_execute(app: &AppState, args: UploadExecuteArgs) -> CmdResult<Uplo
         handle: handle.clone(),
         changes_not_sent_for_review: args.changes_not_sent_for_review,
     };
-    std::thread::Builder::new()
-        .name(format!("upload-{run_id}"))
-        .spawn(move || {
-            exec::run(&job);
-        })
+    exec::spawn(job)
         .map_err(|e| CommandError::internal(format!("cannot start the upload: {e}")))?;
     let run = if args.wait {
         handle.wait(None)

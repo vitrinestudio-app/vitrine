@@ -67,10 +67,28 @@ pub struct OpenUrlArgs {
     pub url: String,
 }
 
-/// Opens one of the [`HELP_URLS`] in the system browser; anything else is
-/// refused (`forbidden`).
+/// The App Store Connect page of an app's versions
+/// (`https://appstoreconnect.apple.com/apps/<numeric app id>/distribution`).
+pub fn app_store_connect_app_url(app_id: &str) -> Option<String> {
+    (!app_id.is_empty() && app_id.bytes().all(|b| b.is_ascii_digit()))
+        .then(|| format!("https://appstoreconnect.apple.com/apps/{app_id}/distribution"))
+}
+
+/// A link `open_url` may open: one of the [`HELP_URLS`] or an app's page
+/// in App Store Connect ([`app_store_connect_app_url`]).
+pub fn is_allowed_url(url: &str) -> bool {
+    HELP_URLS.contains(&url)
+        || url
+            .strip_prefix("https://appstoreconnect.apple.com/apps/")
+            .and_then(|rest| rest.strip_suffix("/distribution"))
+            .and_then(app_store_connect_app_url)
+            .is_some()
+}
+
+/// Opens an allowed link ([`is_allowed_url`]) in the system browser;
+/// anything else is refused (`forbidden`).
 pub fn open_url(app: &AppState, args: OpenUrlArgs) -> CmdResult<()> {
-    if !HELP_URLS.contains(&args.url.as_str()) {
+    if !is_allowed_url(&args.url) {
         return Err(CommandError::new(
             crate::error::ErrorCode::Forbidden,
             format!("`{}` is not an allowed help link", args.url),

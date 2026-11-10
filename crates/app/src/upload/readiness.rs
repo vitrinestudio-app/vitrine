@@ -31,6 +31,8 @@ pub enum Fix {
     ProjectSettingsStores,
     /// Targets editor (store slots).
     Targets,
+    /// App Store Connect in the browser (`link`; e.g. create a version).
+    AppStoreConnect,
 }
 
 impl Fix {
@@ -40,6 +42,7 @@ impl Fix {
             Self::AppSettingsStores => "App settings → Stores",
             Self::ProjectSettingsStores => "Project settings → Stores",
             Self::Targets => "the targets editor (Targets → store slot)",
+            Self::AppStoreConnect => "App Store Connect",
         }
     }
 }
@@ -57,6 +60,12 @@ pub struct ReadinessStep {
     pub fix: Fix,
     /// `false` = a warning (e.g. a language without store locale is skipped).
     pub blocking: bool,
+    /// Values for the localized message (GUI `upload.ready.<code>`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vars: Option<serde_json::Value>,
+    /// Page to open (`fix: app_store_connect`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link: Option<String>,
 }
 
 /// The checklist (`ready` = no blocking step).
@@ -129,6 +138,8 @@ pub fn readiness(
             message: msg,
             fix,
             blocking,
+            vars: None,
+            link: None,
         });
     };
     let of_kind = |s: StoreKind| accounts.iter().filter(move |a| a.kind == s);

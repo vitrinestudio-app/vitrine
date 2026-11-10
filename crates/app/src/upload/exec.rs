@@ -19,11 +19,32 @@
 //!   `paused`, `Retry-After` or one minute, at most
 //!   [`super::UploadConfig::max_rate_limit_pause`]) and retries it
 //!   [`super::UploadConfig::rate_limit_retries`] times.
-//! - **Log**: runs, sets, files, redacted HTTP events → `uploads.sqlite`.
+//! - **Apple processing** (ADR 0018, "Processing"): all images of a set are
+//!   reserved/uploaded/committed first, then polled together for up to
+//!   [`super::UploadConfig::processing_budget`]. Images Apple is still
+//!   processing afterwards are no failure: the set ends
+//!   `uploaded_processing` (file status `processing`), the next plan with
+//!   the remote check confirms them; `FAILED` fails the set with Apple's
+//!   errors. Images the store already holds (same checksum) are kept.
+//! - **Store-level failures** (no editable App Store version, app not
+//!   reachable) are reported once per store ([`RunState::store_failures`]);
+//!   its sets are `skipped` (no editable version) or `failed` with a short
+//!   pointer, never the full message per set.
+//! - **Watchdog** ([`spawn`]): writes the run's heartbeat to the log, and a
+//!   run (not paused) without progress for
+//!   [`super::UploadConfig::stall_timeout`] is cancelled and ends `failed`;
+//!   if the executor does not return within `stall_grace` (or panics) the
+//!   run is ended without it. Runs of a closed/crashed app are
+//!   `interrupted` when the log is opened next ([`super::log`]).
+//! - **Log**: runs, sets, files, redacted HTTP events (with the time they
+//!   happened; Apple's poll requests only as state transitions) →
+//!   `uploads.sqlite`.
 
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use arrangia_core::model::StoreKind;
 use arrangia_publish::apple::{AppRef, Platform};
@@ -35,7 +56,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::log::UploadLog;
-use super::remote::{self, AppleUploadFlow as _, SetHooks, UploadFile};
+use super::remote::{self, AppleUploadFlow as _, ReplaceOptions, SetHooks, UploadFile};
 use super::{
     PlanSet, StorePlan, UPLOAD_FINISHED, UPLOAD_PROGRESS, UploadConfig, UploadPlan, now_secs,
     sha256_hex,
@@ -58,6 +79,22 @@ pub enum RunStatus {
     Cancelled,
 }
 
+/// A store that could not be used at all (reported once, not per set).
+#[derive(Debug, Clone, Serialize)]
+pub struct StoreFailure {
+    pub store: StoreKind,
+    /// `no_editable_version`, `app_not_reachable`, `credentials`.
+    pub code: String,
+    /// Short, human message (the details are in the log).
+    pub message: String,
+    /// Values for the localized message (GUI `upload.problem.<code>`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vars: Option<serde_json::Value>,
+    /// Page that fixes it (`open_url`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub link: Option<String>,
+}
+
 /// Status of one set in a run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -66,6 +103,9 @@ pub enum SetRunStatus {
     Running,
     Paused,
     Done,
+    /// In the store, but Apple was still processing some images when the
+    /// processing budget ran out (not a failure; re-check later).
+    UploadedProcessing,
     Failed,
     Cancelled,
     /// `unchanged` / `skip` in the plan.
@@ -82,10 +122,17 @@ pub struct SetRun {
     pub locale: Option<String>,
     pub slot: String,
     pub status: SetRunStatus,
+    /// Images in the store (Apple: `COMPLETE`; kept ones included).
     pub files_done: usize,
     pub files_total: usize,
+    /// Apple: images committed and still processing.
+    #[serde(default)]
+    pub files_processing: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Something to know that is not an error (processing, kept images).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 /// Snapshot of a run (`upload_status`, `upload-finished`).
@@ -105,8 +152,14 @@ pub struct RunState {
     pub sets: Vec<SetRun>,
     pub images_done: usize,
     pub images_total: usize,
+    /// Apple: images uploaded and still being processed.
+    #[serde(default)]
+    pub images_processing: usize,
     pub bytes_done: u64,
     pub bytes_total: u64,
+    /// Stores that could not be used at all (once per store).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub store_failures: Vec<StoreFailure>,
 }
 
 /// The final state.
@@ -125,6 +178,12 @@ pub struct RunHandle {
     cancel: CancellationToken,
     state: Mutex<RunState>,
     finished: Condvar,
+    /// Last progress (watchdog).
+    activity: Mutex<Instant>,
+    /// The watchdog stopped the run (no progress).
+    stalled: AtomicBool,
+    /// The final report is written (by the executor or the watchdog).
+    finalized: AtomicBool,
 }
 
 impl RunHandle {
@@ -149,7 +208,9 @@ impl RunHandle {
                 } else {
                     0
                 },
+                files_processing: 0,
                 error: None,
+                note: None,
             })
             .collect();
         Self {
@@ -165,10 +226,15 @@ impl RunHandle {
                 sets,
                 images_done: 0,
                 images_total: plan.totals.images,
+                images_processing: 0,
                 bytes_done: 0,
                 bytes_total: plan.totals.bytes,
+                store_failures: Vec::new(),
             }),
             finished: Condvar::new(),
+            activity: Mutex::new(Instant::now()),
+            stalled: AtomicBool::new(false),
+            finalized: AtomicBool::new(false),
         }
     }
 
@@ -192,7 +258,7 @@ impl RunHandle {
     /// Waits until the run ended (or `timeout`); returns the state.
     pub fn wait(&self, timeout: Option<Duration>) -> RunState {
         let mut g = self.lock();
-        let deadline = timeout.map(|t| std::time::Instant::now() + t);
+        let deadline = timeout.map(|t| Instant::now() + t);
         while !g.is_finished() {
             match deadline {
                 None => {
@@ -202,7 +268,7 @@ impl RunHandle {
                         .unwrap_or_else(PoisonError::into_inner);
                 }
                 Some(d) => {
-                    let now = std::time::Instant::now();
+                    let now = Instant::now();
                     if now >= d {
                         break;
                     }
@@ -219,6 +285,18 @@ impl RunHandle {
 
     fn set_mut<R>(&self, key: &str, f: impl FnOnce(&mut SetRun) -> R) -> Option<R> {
         self.lock().sets.iter_mut().find(|s| s.key == key).map(f)
+    }
+
+    /// Records progress (watchdog).
+    fn touch(&self) {
+        *self.activity.lock().unwrap_or_else(PoisonError::into_inner) = Instant::now();
+    }
+
+    fn idle_for(&self) -> Duration {
+        self.activity
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .elapsed()
     }
 }
 
@@ -246,8 +324,9 @@ pub(crate) struct GoogleJob {
     pub package: String,
 }
 
-/// Redacted HTTP events, buffered until the log writer flushes them.
-type EventBuffer = Arc<Mutex<Vec<(String, String)>>>;
+/// Redacted HTTP events with the time they happened, buffered until the
+/// runner flushes them (on every progress step).
+type EventBuffer = Arc<Mutex<Vec<(u64, String, String)>>>;
 
 struct Runner<'a> {
     job: &'a Job,
@@ -263,6 +342,8 @@ impl Runner<'_> {
 
     #[allow(clippy::needless_pass_by_value)] // call sites build the value inline
     fn emit(&self, step: &str, set: Option<&SetRun>, file: Option<serde_json::Value>) {
+        self.job.handle.touch();
+        self.flush_http();
         let s = self.job.handle.state();
         self.job.events.emit(
             UPLOAD_PROGRESS,
@@ -274,6 +355,7 @@ impl Runner<'_> {
                 "file": file,
                 "images_done": s.images_done,
                 "images_total": s.images_total,
+                "images_processing": s.images_processing,
                 "bytes_done": s.bytes_done,
                 "bytes_total": s.bytes_total,
                 "paused_until": s.paused_until,
@@ -288,8 +370,12 @@ impl Runner<'_> {
     fn flush_http(&self) {
         let events: Vec<_> =
             std::mem::take(&mut *self.http.lock().unwrap_or_else(PoisonError::into_inner));
-        for (level, msg) in events {
-            self.note(&level, &msg);
+        if events.is_empty() {
+            return;
+        }
+        let log = self.log();
+        for (at, level, msg) in events {
+            let _ = log.event(self.run_id, &level, &msg, at);
         }
     }
 
@@ -308,6 +394,13 @@ impl Runner<'_> {
             observer: Some(Arc::new(move |e: &HttpEvent| {
                 let (level, msg) = match &e.kind {
                     HttpEventKind::Request => return,
+                    // Apple's processing polls: only state transitions are
+                    // logged (by the hooks), not every request.
+                    HttpEventKind::Response { status, .. }
+                        if *status < 400 && e.method == "GET" && is_screenshot_poll(&e.url) =>
+                    {
+                        return;
+                    }
                     HttpEventKind::Response { status, elapsed } => (
                         if *status >= 400 { "warn" } else { "http" },
                         format!(
@@ -331,9 +424,11 @@ impl Runner<'_> {
                         ),
                     ),
                 };
-                buf.lock()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .push((level.to_owned(), msg));
+                buf.lock().unwrap_or_else(PoisonError::into_inner).push((
+                    now_secs(),
+                    level.to_owned(),
+                    msg,
+                ));
             })),
             ..self.job.config.options.clone()
         }
@@ -382,7 +477,9 @@ impl Runner<'_> {
     fn finish_set(&self, row: i64, key: &str, status: SetRunStatus, error: Option<String>) {
         let s = match status {
             SetRunStatus::Done => "done",
+            SetRunStatus::UploadedProcessing => "uploaded_processing",
             SetRunStatus::Cancelled => "cancelled",
+            SetRunStatus::Skipped => "skipped",
             _ => "failed",
         };
         let _ = self.log().finish_set(row, s, error.as_deref(), now_secs());
@@ -430,29 +527,87 @@ impl Runner<'_> {
 
     // ---- Apple ---------------------------------------------------------------------
 
+    /// The store cannot be used at all: one report, its sets are `skipped`
+    /// (`skip_reason`) or `failed` with a short pointer.
+    fn store_failed(
+        &self,
+        sp: &StorePlan,
+        sets: &[&PlanSet],
+        failure: StoreFailure,
+        skip_reason: Option<&str>,
+    ) {
+        self.note(
+            "error",
+            &format!("{}: {} ({})", sp.store, failure.message, failure.code),
+        );
+        let short = format!("not uploaded: {}", failure.message);
+        self.job.handle.lock().store_failures.push(failure);
+        for s in sets {
+            if let Some(reason) = skip_reason {
+                let snap = self.set_status(&s.key, SetRunStatus::Skipped, Some(reason.to_owned()));
+                self.emit("set_finished", snap.as_ref(), None);
+            } else {
+                let row = self.start_set(sp, s);
+                self.finish_set(row, &s.key, SetRunStatus::Failed, Some(short.clone()));
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_lines)] // one linear flow
     async fn apple(&self, sp: &StorePlan, job: &AppleJob) {
         let sets: Vec<&PlanSet> = sp.sets.iter().filter(|s| s.action.uploads()).collect();
         if sets.is_empty() {
             return;
         }
         let flow = remote::apple_flow();
-        let fail_all = |msg: &str| {
-            for s in &sets {
-                let row = self.start_set(sp, s);
-                self.finish_set(row, &s.key, SetRunStatus::Failed, Some(msg.to_owned()));
-            }
+        let failure = |code: &str, e: &Error| StoreFailure {
+            store: StoreKind::Apple,
+            code: code.to_owned(),
+            message: remote::store_message(StoreKind::Apple, e),
+            vars: None,
+            link: None,
         };
         let client =
             match remote::apple_client(&self.job.config, &job.account, &job.secret, self.options())
             {
                 Ok(c) => c,
-                Err(e) => return fail_all(&remote::store_message(StoreKind::Apple, &e)),
+                Err(e) => return self.store_failed(sp, &sets, failure("credentials", &e), None),
             };
         self.emit("prepare", None, Some(json!({ "store": "apple" })));
         let target = match flow.open(&client, &job.app, job.platform).await {
             Ok(t) => t,
             Err(Error::Cancelled) => return self.cancel_rest(sp),
-            Err(e) => return fail_all(&remote::store_message(StoreKind::Apple, &e)),
+            Err(e) => {
+                if let Some(p) = super::plan::no_editable_version_problem(&e, sp.app.as_deref()) {
+                    // The full version list goes to the log only.
+                    let versions: Vec<String> = e
+                        .details()
+                        .iter()
+                        .skip(1)
+                        .map(|d| format!("{} {}", d.title, d.detail))
+                        .collect();
+                    self.note("info", &format!("apple: versions: {}", versions.join(", ")));
+                    let f = StoreFailure {
+                        store: StoreKind::Apple,
+                        code: p.code,
+                        message: p.message,
+                        vars: p.vars,
+                        link: p.link,
+                    };
+                    return self.store_failed(sp, &sets, f, Some("no editable App Store version"));
+                }
+                let code = if e.kind() == arrangia_publish::ErrorKind::Auth {
+                    "credentials"
+                } else {
+                    "app_not_reachable"
+                };
+                return self.store_failed(sp, &sets, failure(code, &e), None);
+            }
+        };
+        let opts = ReplaceOptions {
+            reuse: !self.job.plan.selection.force,
+            budget: self.job.config.processing_budget,
+            poll: self.job.config.options.poll,
         };
         for set in sets {
             if self.job.handle.cancel.is_cancelled() {
@@ -471,13 +626,9 @@ impl Runner<'_> {
             let locale = set.locale.clone().unwrap_or_default();
             let mut attempt = 0;
             let result = loop {
-                let hooks = Hooks {
-                    runner: self,
-                    set,
-                    row,
-                };
+                let hooks = Hooks::new(self, set, row);
                 match flow
-                    .replace(&client, &target, &locale, &set.slot, &files, &hooks)
+                    .replace(&client, &target, &locale, &set.slot, &files, opts, &hooks)
                     .await
                 {
                     Err(Error::RateLimited { retry_after })
@@ -490,14 +641,43 @@ impl Runner<'_> {
                 }
             };
             match result {
-                Ok(_) => self.finish_set(row, &set.key, SetRunStatus::Done, None),
+                Ok(out) => {
+                    let mut notes = Vec::new();
+                    if out.kept > 0 {
+                        notes.push(format!(
+                            "{} image(s) were already in the store and kept",
+                            out.kept
+                        ));
+                    }
+                    if let Some(n) = &out.note {
+                        notes.push(n.clone());
+                    }
+                    let status = if out.processing > 0 {
+                        notes.insert(
+                            0,
+                            format!(
+                                "Apple is still processing {} image(s) – check the store state later (plan with remote check)",
+                                out.processing
+                            ),
+                        );
+                        SetRunStatus::UploadedProcessing
+                    } else {
+                        SetRunStatus::Done
+                    };
+                    if !notes.is_empty() {
+                        let note = notes.join("; ");
+                        self.note("info", &format!("{}: {note}", set.key));
+                        self.job.handle.set_mut(&set.key, |s| s.note = Some(note));
+                    }
+                    self.finish_set(row, &set.key, status, None);
+                }
                 Err(Error::Cancelled) => {
                     self.finish_set(
                         row,
                         &set.key,
                         SetRunStatus::Cancelled,
                         Some(
-                            "cancelled – the set may be incomplete; the next run replaces it"
+                            "cancelled – the set may be incomplete; the next run completes it"
                                 .into(),
                         ),
                     );
@@ -516,7 +696,10 @@ impl Runner<'_> {
     }
 
     fn reset_files(&self, key: &str) {
-        self.job.handle.set_mut(key, |s| s.files_done = 0);
+        self.job.handle.set_mut(key, |s| {
+            s.files_done = 0;
+            s.files_processing = 0;
+        });
     }
 
     /// Marks the store's pending sets cancelled.
@@ -622,11 +805,7 @@ impl Runner<'_> {
             let locale = set.locale.clone().unwrap_or_default();
             let mut attempt = 0;
             let result = loop {
-                let hooks = Hooks {
-                    runner: self,
-                    set,
-                    row: *row,
-                };
+                let hooks = Hooks::new(self, set, *row);
                 match self
                     .google_set(&client, &edit.id, &locale, kind, &files, &hooks)
                     .await
@@ -724,71 +903,372 @@ impl Runner<'_> {
     }
 }
 
+/// Whether a redacted URL is Apple's processing poll (`GET
+/// …/v1/appScreenshots/<id>`).
+fn is_screenshot_poll(url: &str) -> bool {
+    let path = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let segs: Vec<&str> = path.split('/').collect();
+    segs.len() >= 3
+        && segs[segs.len() - 3] == "v1"
+        && segs[segs.len() - 2] == "appScreenshots"
+        && !segs[segs.len() - 1].is_empty()
+}
+
+fn mmss(d: Duration) -> String {
+    let s = d.as_secs();
+    format!("{}:{:02}", s / 60, s % 60)
+}
+
 /// [`SetHooks`] of one set: state, events, file log.
 struct Hooks<'a> {
     runner: &'a Runner<'a>,
     set: &'a PlanSet,
     row: i64,
+    /// Position → file row in the log.
+    files: Mutex<HashMap<usize, i64>>,
+    /// Positions whose bytes are counted.
+    counted: Mutex<HashSet<usize>>,
+    /// Positions counted as processing.
+    processing: Mutex<HashSet<usize>>,
 }
 
-impl SetHooks for Hooks<'_> {
-    fn file_started(&self, index: usize) {
-        let img = &self.set.images[index];
-        let snap = self.runner.job.handle.set_mut(&self.set.key, |s| s.clone());
-        self.runner.emit(
-            "file_started",
-            snap.as_ref(),
-            Some(json!({"index": img.index, "file_name": img.file_name, "bytes_sent": 0, "bytes_total": img.bytes})),
-        );
-    }
-
-    fn progress(&self, index: usize, p: &Progress) {
-        if p.step != UploadStep::Transfer {
-            return;
+impl<'a> Hooks<'a> {
+    fn new(runner: &'a Runner<'a>, set: &'a PlanSet, row: i64) -> Self {
+        Self {
+            runner,
+            set,
+            row,
+            files: Mutex::new(HashMap::new()),
+            counted: Mutex::new(HashSet::new()),
+            processing: Mutex::new(HashSet::new()),
         }
-        let img = &self.set.images[index];
-        let snap = self.runner.job.handle.set_mut(&self.set.key, |s| s.clone());
-        self.runner.emit(
-            "transfer",
-            snap.as_ref(),
-            Some(json!({"index": img.index, "file_name": img.file_name,
-                        "bytes_sent": p.bytes_sent, "bytes_total": p.bytes_total})),
-        );
     }
 
-    fn file_done(&self, index: usize, store_id: &str) {
+    fn file_json(&self, index: usize, extra: serde_json::Value) -> serde_json::Value {
         let img = &self.set.images[index];
-        let _ = self.runner.log().file(
+        let mut v = json!({"index": img.index, "file_name": img.file_name,
+                           "bytes_total": img.bytes});
+        if let (Some(o), serde_json::Value::Object(e)) = (v.as_object_mut(), extra) {
+            o.extend(e);
+        }
+        v
+    }
+
+    fn snap(&self) -> Option<SetRun> {
+        self.runner.job.handle.set_mut(&self.set.key, |s| s.clone())
+    }
+
+    /// Counts the bytes of a file once.
+    fn count_bytes(&self, index: usize) {
+        if self
+            .counted
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(index)
+        {
+            self.runner.job.handle.lock().bytes_done += self.set.images[index].bytes;
+        }
+    }
+
+    fn set_processing(&self, index: usize, on: bool) {
+        let mut p = self
+            .processing
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        let changed = if on {
+            p.insert(index)
+        } else {
+            p.remove(&index)
+        };
+        if changed {
+            let delta = |v: &mut usize| {
+                if on {
+                    *v += 1;
+                } else {
+                    *v = v.saturating_sub(1);
+                }
+            };
+            delta(&mut self.runner.job.handle.lock().images_processing);
+            self.runner
+                .job
+                .handle
+                .set_mut(&self.set.key, |s| delta(&mut s.files_processing));
+        }
+    }
+
+    fn log_file(&self, index: usize, store_id: &str, status: &str, error: Option<&str>) {
+        let img = &self.set.images[index];
+        let mut files = self.files.lock().unwrap_or_else(PoisonError::into_inner);
+        let log = self.runner.log();
+        if let Some(id) = files.get(&index) {
+            let _ = log.update_file(*id, status, error);
+        } else if let Ok(id) = log.file(
             self.row,
             img.index,
             &img.file_name,
             &img.sha256,
             img.bytes,
             Some(store_id),
-            "done",
-            None,
-        );
-        {
-            let mut s = self.runner.job.handle.lock();
-            s.images_done += 1;
-            s.bytes_done += img.bytes;
+            status,
+            error,
+        ) {
+            files.insert(index, id);
         }
+    }
+}
+
+impl SetHooks for Hooks<'_> {
+    fn file_started(&self, index: usize) {
+        self.runner.emit(
+            "file_started",
+            self.snap().as_ref(),
+            Some(self.file_json(index, json!({"bytes_sent": 0}))),
+        );
+    }
+
+    fn progress(&self, index: usize, p: &Progress) {
+        let step = match p.step {
+            UploadStep::Transfer if p.bytes_sent >= p.bytes_total && p.bytes_total > 0 => {
+                "file_commit"
+            }
+            UploadStep::Transfer => "transfer",
+            UploadStep::Reserve => "file_reserved",
+            _ => return,
+        };
+        self.runner.emit(
+            step,
+            self.snap().as_ref(),
+            Some(self.file_json(index, json!({"bytes_sent": p.bytes_sent}))),
+        );
+    }
+
+    fn file_uploaded(&self, index: usize, store_id: &str) {
+        self.count_bytes(index);
+        self.set_processing(index, true);
+        self.log_file(index, store_id, "processing", None);
+        self.runner.emit(
+            "file_uploaded",
+            self.snap().as_ref(),
+            Some(self.file_json(
+                index,
+                json!({"bytes_sent": self.set.images[index].bytes, "store_id": store_id}),
+            )),
+        );
+    }
+
+    fn file_kept(&self, index: usize, store_id: &str, processing: bool) {
+        self.count_bytes(index);
+        let img = &self.set.images[index];
+        self.runner.note(
+            "info",
+            &format!(
+                "{} #{} {}: already in the store ({store_id}), kept",
+                self.set.key, img.index, img.file_name
+            ),
+        );
+        if processing {
+            self.set_processing(index, true);
+            self.log_file(index, store_id, "processing", None);
+        } else {
+            self.file_done(index, store_id);
+        }
+    }
+
+    fn file_state(&self, index: usize, state: &str, elapsed: Duration) {
+        let img = &self.set.images[index];
+        self.runner.note(
+            "info",
+            &format!(
+                "{} #{} {}: {state} after {}",
+                self.set.key,
+                img.index,
+                img.file_name,
+                mmss(elapsed)
+            ),
+        );
+    }
+
+    fn processing(&self, pending: &[(usize, String)], elapsed: Duration) {
+        if pending.is_empty() {
+            return;
+        }
+        let (first, state) = &pending[0];
+        self.runner.emit(
+            "processing",
+            self.snap().as_ref(),
+            Some(self.file_json(
+                *first,
+                json!({"pending": pending.len(), "state": state,
+                       "elapsed_secs": elapsed.as_secs()}),
+            )),
+        );
+    }
+
+    fn file_done(&self, index: usize, store_id: &str) {
+        self.count_bytes(index);
+        self.set_processing(index, false);
+        self.log_file(index, store_id, "done", None);
+        self.runner.job.handle.lock().images_done += 1;
         let snap = self.runner.job.handle.set_mut(&self.set.key, |s| {
             s.files_done += 1;
             s.clone()
         });
+        let img = &self.set.images[index];
         self.runner.emit(
             "file_done",
             snap.as_ref(),
-            Some(json!({"index": img.index, "file_name": img.file_name,
-                        "bytes_sent": img.bytes, "bytes_total": img.bytes})),
+            Some(self.file_json(
+                index,
+                json!({"bytes_sent": img.bytes, "store_id": store_id}),
+            )),
+        );
+    }
+
+    fn file_failed(&self, index: usize, store_id: &str, message: &str) {
+        self.set_processing(index, false);
+        self.log_file(index, store_id, "failed", Some(message));
+        let img = &self.set.images[index];
+        self.runner.note(
+            "error",
+            &format!(
+                "{} #{} {}: Apple could not process it: {message}",
+                self.set.key, img.index, img.file_name
+            ),
+        );
+        self.runner.emit(
+            "file_failed",
+            self.snap().as_ref(),
+            Some(self.file_json(index, json!({"error": message}))),
         );
     }
 
     fn step(&self, step: &str) {
-        let snap = self.runner.job.handle.set_mut(&self.set.key, |s| s.clone());
-        self.runner.emit(step, snap.as_ref(), None);
+        self.runner.emit(step, self.snap().as_ref(), None);
     }
+}
+
+/// Starts the run on its own thread plus its watchdog (heartbeat, stall
+/// detection, panic safety net).
+pub(crate) fn spawn(job: Job) -> std::io::Result<()> {
+    let run_id = job.handle.state().run_id;
+    let handle = job.handle.clone();
+    let events = job.events.clone();
+    let dir = job.dir.clone();
+    let config = job.config.clone();
+    std::thread::Builder::new()
+        .name(format!("upload-{run_id}"))
+        .spawn(move || {
+            let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(&job)));
+            if caught.is_err() {
+                end_without_executor(
+                    &job.dir,
+                    &job.handle,
+                    &*job.events,
+                    "internal error: the upload task crashed – plan again to resume",
+                );
+            }
+        })?;
+    std::thread::Builder::new()
+        .name(format!("upload-{run_id}-watchdog"))
+        .spawn(move || watchdog(&dir, &handle, &*events, &config))?;
+    Ok(())
+}
+
+/// Heartbeat + stall detection until the run is finished.
+fn watchdog(
+    dir: &std::path::Path,
+    handle: &RunHandle,
+    events: &dyn EventSink,
+    config: &UploadConfig,
+) {
+    let run_id = handle.state().run_id;
+    let log = UploadLog::open(dir).ok();
+    let mut cancelled_at: Option<Instant> = None;
+    loop {
+        if handle.wait(Some(config.heartbeat_interval)).is_finished() {
+            return;
+        }
+        if let Some(log) = &log {
+            let _ = log.heartbeat(run_id, now_secs());
+        }
+        match cancelled_at {
+            None => {
+                let paused = handle.lock().status == RunStatus::Paused;
+                if !paused && handle.idle_for() >= config.stall_timeout {
+                    handle.stalled.store(true, Ordering::SeqCst);
+                    if let Some(log) = &log {
+                        let _ = log.event(
+                            run_id,
+                            "error",
+                            &format!(
+                                "watchdog: no progress for {} s – stopping the run",
+                                config.stall_timeout.as_secs()
+                            ),
+                            now_secs(),
+                        );
+                    }
+                    handle.cancel();
+                    cancelled_at = Some(Instant::now());
+                }
+            }
+            Some(at) if at.elapsed() >= config.stall_grace => {
+                end_without_executor(dir, handle, events, &stall_message(config.stall_timeout));
+                return;
+            }
+            Some(_) => {}
+        }
+    }
+}
+
+fn stall_message(timeout: Duration) -> String {
+    format!(
+        "the upload stopped: no progress for {} s (network or store not responding) – plan again to resume",
+        timeout.as_secs()
+    )
+}
+
+/// Ends the run when the executor cannot (panic, hang): state, log, event.
+fn end_without_executor(
+    dir: &std::path::Path,
+    handle: &RunHandle,
+    events: &dyn EventSink,
+    message: &str,
+) {
+    if handle.finalized.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let report = {
+        let mut s = handle.lock();
+        for x in &mut s.sets {
+            if matches!(
+                x.status,
+                SetRunStatus::Pending | SetRunStatus::Running | SetRunStatus::Paused
+            ) {
+                x.status = SetRunStatus::Failed;
+                x.error.get_or_insert_with(|| message.to_owned());
+            }
+        }
+        s.status = RunStatus::Failed;
+        s.paused_until = None;
+        s.message = Some(message.to_owned());
+        s.finished_at = Some(now_secs());
+        s.clone()
+    };
+    if let Ok(log) = UploadLog::open(dir) {
+        let _ = log.event(report.run_id, "error", message, now_secs());
+        let _ = log.finish_open_sets(report.run_id, "failed", message, now_secs());
+        let _ = log.finish_run(
+            report.run_id,
+            "failed",
+            now_secs(),
+            &serde_json::to_string(&report).unwrap_or_default(),
+        );
+    }
+    handle.finished.notify_all();
+    events.emit(
+        UPLOAD_FINISHED,
+        serde_json::to_value(&report).unwrap_or_default(),
+    );
 }
 
 /// Runs the job to the end (blocking; called on the run's thread).
@@ -818,6 +1298,11 @@ pub(crate) fn run(job: &Job) -> RunReport {
         runner.flush_http();
         Ok(())
     })();
+    if job.handle.finalized.swap(true, Ordering::SeqCst) {
+        // The watchdog already ended the run.
+        return job.handle.state();
+    }
+    let stalled = job.handle.stalled.load(Ordering::SeqCst);
     let report = {
         let mut s = job.handle.lock();
         let uploading: Vec<&SetRun> = s
@@ -828,20 +1313,28 @@ pub(crate) fn run(job: &Job) -> RunReport {
         let total = uploading.len();
         let done = uploading
             .iter()
-            .filter(|x| x.status == SetRunStatus::Done)
+            .filter(|x| {
+                matches!(
+                    x.status,
+                    SetRunStatus::Done | SetRunStatus::UploadedProcessing
+                )
+            })
             .count();
         let cancelled = job.handle.cancel.is_cancelled()
             || uploading
                 .iter()
                 .any(|x| x.status == SetRunStatus::Cancelled);
+        let store_failed = !s.store_failures.is_empty();
         if let Err(e) = &outcome {
             s.message = Some(e.clone());
+        } else if stalled {
+            s.message = Some(stall_message(job.config.stall_timeout));
         }
-        s.status = if outcome.is_err() {
+        s.status = if outcome.is_err() || stalled {
             RunStatus::Failed
         } else if cancelled {
             RunStatus::Cancelled
-        } else if done == total {
+        } else if done == total && total > 0 && !store_failed {
             RunStatus::Completed
         } else if done > 0 {
             RunStatus::Partial
@@ -883,13 +1376,47 @@ pub(crate) fn run(job: &Job) -> RunReport {
 }
 
 fn summary(s: &RunState) -> String {
+    use std::fmt::Write as _;
     let count = |st: SetRunStatus| s.sets.iter().filter(|x| x.status == st).count();
-    format!(
+    let mut out = String::new();
+    for f in &s.store_failures {
+        out.push_str(&f.message);
+        out.push(' ');
+    }
+    let _ = write!(
+        out,
         "{} set(s) uploaded, {} failed, {} cancelled, {} skipped; {} image(s)",
-        count(SetRunStatus::Done),
+        count(SetRunStatus::Done) + count(SetRunStatus::UploadedProcessing),
         count(SetRunStatus::Failed),
         count(SetRunStatus::Cancelled),
         count(SetRunStatus::Skipped),
         s.images_done
-    )
+    );
+    if s.images_processing > 0 {
+        let _ = write!(
+            out,
+            ". Apple is still processing {} image(s) – check the store state later (\"Check store state\" / plan --remote); they are not uploaded again",
+            s.images_processing
+        );
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn poll_urls_are_recognised() {
+        assert!(is_screenshot_poll(
+            "https://api.appstoreconnect.apple.com/v1/appScreenshots/9d80-0a47"
+        ));
+        assert!(!is_screenshot_poll(
+            "https://api.appstoreconnect.apple.com/v1/appScreenshots"
+        ));
+        assert!(!is_screenshot_poll(
+            "https://api.appstoreconnect.apple.com/v1/appScreenshotSets/x/appScreenshots"
+        ));
+        assert_eq!(mmss(Duration::from_secs(151)), "2:31");
+    }
 }
