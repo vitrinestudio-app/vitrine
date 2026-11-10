@@ -4,6 +4,10 @@
 //! - `store_accounts_list`, `store_account_import {kind, path, label,
 //!   issuer_id?, key_id?}`, `store_account_remove {id}`,
 //!   `store_account_test {id}`;
+//! - `store_apps_list {account, refresh?}`: the Apple apps a key can see
+//!   (app picker, cached for the app session), `store_package_check
+//!   {account, package_name}`: does Play know the package and may the
+//!   service account edit it (temporary edit, deleted again);
 //! - `project_store_get`, `project_store_patch` (one `set_store` op);
 //! - `store_config_get`: read-only overview for MCP (no secrets).
 //!
@@ -222,6 +226,7 @@ pub fn store_account_remove(
     let mut settings = store.load()?;
     settings.store_accounts.retain(|a| a.id != account.id);
     store.save(&settings)?;
+    app.cache_store_apps(&account.id, None);
     Ok(StoreAccountRemoved { id: account.id })
 }
 
@@ -268,6 +273,151 @@ pub fn store_account_test(app: &AppState, args: StoreAccountIdArgs) -> CmdResult
         Err(e) => Err(CommandError::new(ErrorCode::Io, e.message)
             .with_details(serde_json::json!({ "reason": e.reason }))),
     }
+}
+
+// ----- app picker (Apple) and package check (Google) ---------------------------------
+
+/// Client options of the interactive store calls (short timeout, one retry;
+/// like the connection test).
+fn interactive_options() -> arrangia_publish::ClientOptions {
+    crate::store_test::StoreClientTester::default().options
+}
+
+fn store_failure(store: StoreKind, e: &arrangia_publish::Error) -> CommandError {
+    let e = crate::store_test::map_error(store, e);
+    CommandError::new(ErrorCode::Io, e.message)
+        .with_details(serde_json::json!({ "reason": e.reason }))
+}
+
+/// An account of `kind` with its secret from the keychain.
+fn account_with_secret(
+    app: &AppState,
+    id: &str,
+    kind: StoreKind,
+) -> CmdResult<(StoreAccount, Secret)> {
+    let account = find_account(app, id)?;
+    if account.kind != kind {
+        return Err(CommandError::invalid(format!(
+            "store account `{id}` is a {} account, not {kind}",
+            account.kind
+        )));
+    }
+    let secret = app
+        .secret_store()?
+        .get(&account.id, account.kind)
+        .map_err(keychain_error)?;
+    Ok((account, secret))
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StoreAppsListArgs {
+    /// Apple account id.
+    pub account: String,
+    /// Ask App Store Connect again instead of using this session's list.
+    #[serde(default)]
+    pub refresh: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct StoreAppsList {
+    pub account: String,
+    /// Sorted by name; `id` is the numeric Apple ID.
+    pub apps: Vec<arrangia_publish::apple::AppSummary>,
+    /// Answered from this session's cache (no network).
+    pub cached: bool,
+}
+
+/// The apps an Apple key can see (read-only `GET /v1/apps`, all pages).
+/// Cached per account for the app session; `refresh` asks again. Errors
+/// like the connection test (`io` with `details.reason`).
+pub fn store_apps_list(app: &AppState, args: StoreAppsListArgs) -> CmdResult<StoreAppsList> {
+    if !args.refresh
+        && let Some(apps) = app.cached_store_apps(&args.account)
+    {
+        return Ok(StoreAppsList {
+            account: args.account,
+            apps,
+            cached: true,
+        });
+    }
+    let (account, secret) = account_with_secret(app, &args.account, StoreKind::Apple)?;
+    let config = app.upload().config();
+    let apps = crate::upload::remote::block_on(async {
+        let client =
+            crate::upload::remote::apple_client(&config, &account, &secret, interactive_options())?;
+        client.list_apps().await
+    })?
+    .map_err(|e| store_failure(StoreKind::Apple, &e))?;
+    app.cache_store_apps(&account.id, Some(apps.clone()));
+    Ok(StoreAppsList {
+        account: account.id,
+        apps,
+        cached: false,
+    })
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StorePackageCheckArgs {
+    /// Google account id.
+    pub account: String,
+    pub package_name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct StorePackageCheck {
+    pub package_name: String,
+    /// Title of the default listing, if Play returned one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_language: Option<String>,
+}
+
+/// `com.example.app`: two or more segments of letters, digits and `_`,
+/// each starting with a letter.
+pub fn is_valid_package_name(name: &str) -> bool {
+    let parts: Vec<&str> = name.split('.').collect();
+    parts.len() >= 2
+        && parts.iter().all(|p| {
+            p.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+                && p.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        })
+}
+
+/// Checks a Play package with the account's service account. Google has no
+/// "list my apps" call and no edit-free read covered by the store-listing
+/// permission, so this opens a temporary edit, reads the app details and
+/// deletes the edit again (never committed – nothing changes in Play).
+/// The GUI calls it only on the user's "Check" click.
+pub fn store_package_check(
+    app: &AppState,
+    args: StorePackageCheckArgs,
+) -> CmdResult<StorePackageCheck> {
+    let package = args.package_name.trim().to_owned();
+    if !is_valid_package_name(&package) {
+        return Err(CommandError::invalid(format!(
+            "`{package}` is not a package name (like com.example.app)"
+        )));
+    }
+    let (_, secret) = account_with_secret(app, &args.account, StoreKind::Google)?;
+    let config = app.upload().config();
+    let info = crate::upload::remote::block_on(async {
+        let client = crate::upload::remote::google_client(
+            &config,
+            &secret,
+            &package,
+            interactive_options(),
+        )?;
+        client.check_package().await
+    })?
+    .map_err(|e| store_failure(StoreKind::Google, &e))?;
+    Ok(StorePackageCheck {
+        package_name: package,
+        title: info.title,
+        default_language: info.default_language,
+    })
 }
 
 // ----- project mapping ----------------------------------------------------------------

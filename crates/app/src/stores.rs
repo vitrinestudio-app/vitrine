@@ -158,6 +158,8 @@ pub enum ConnectionFailure {
     Timeout,
     /// The stored key cannot be used by the client.
     InvalidKey,
+    /// The app / package is unknown to the store or not visible to the key.
+    NotFound,
     /// Anything else.
     Other,
 }

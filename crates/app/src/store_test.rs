@@ -195,8 +195,9 @@ pub(crate) fn is_loopback_url(url: &str) -> bool {
         .any(|p| url.starts_with(p))
 }
 
-/// Client error → user-facing message.
-fn map_error(store: StoreKind, e: &Error) -> ConnectionError {
+/// Client error → user-facing message (also used by the app picker and the
+/// Play package check, `commands::stores`).
+pub(crate) fn map_error(store: StoreKind, e: &Error) -> ConnectionError {
     use ConnectionFailure as F;
     let name = match store {
         StoreKind::Apple => "App Store Connect",
@@ -210,6 +211,21 @@ fn map_error(store: StoreKind, e: &Error) -> ConnectionError {
             "key accepted, but it has no access to the App Store Connect API (check the key's \
              role, e.g. App Manager)"
                 .to_owned(),
+        ),
+        Error::Auth {
+            status: Some(403), ..
+        } => (
+            F::NoPermission,
+            "Google accepted the service account, but it has no permission for this app – \
+             invite it in Play Console → Users and permissions"
+                .to_owned(),
+        ),
+        Error::NotFound { message } if store == StoreKind::Google => (
+            F::NotFound,
+            format!(
+                "Google Play does not know this package, or the service account has no access \
+                 to it in Play Console ({message})"
+            ),
         ),
         Error::Auth { message, .. } => (
             F::KeyRejected,

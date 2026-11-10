@@ -1,6 +1,8 @@
 //! Store upload commands (Phase 5.2/5.5, ADR 0018; logic in
 //! [`crate::upload`]):
 //!
+//! - `upload_readiness {store?}` → the setup checklist (no rendering, no
+//!   network): accounts, project mapping, target slots, each with `fix`;
 //! - `upload_plan {store?, targets?, langs?, remote?, force?}` → the plan
 //!   with its confirm token (dry run, nothing is uploaded);
 //! - `upload_execute {token, wait?, changes_not_sent_for_review?}` → starts
@@ -23,6 +25,24 @@ pub use crate::upload::plan::PlanArgs;
 use crate::upload::plan::{self as plan_mod};
 use crate::upload::policy::{self, ConfirmRequest};
 use crate::upload::{UploadPlan, remote};
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UploadReadinessArgs {
+    /// Only this store (the dialog's tab); default: both.
+    #[serde(default)]
+    pub store: Option<StoreKind>,
+}
+
+/// What is missing before an upload, in order, with the place to fix it.
+pub fn upload_readiness(
+    app: &AppState,
+    args: UploadReadinessArgs,
+) -> CmdResult<crate::upload::readiness::Readiness> {
+    let session = app.session()?;
+    let accounts = app.settings_store().load()?.store_accounts;
+    Ok(session.with_project(|p| crate::upload::readiness::readiness(p, &accounts, args.store)))
+}
 
 /// Builds the plan (renders the images incrementally; `remote` reads the
 /// store state with the project's account).

@@ -372,6 +372,7 @@ fn settings_and_dialogs() {
             folder: Some(dir.clone()),
             files: vec![dir.join("assets/logo.svg")],
             save: None,
+            ..FixedDialogs::default()
         }),
     )
     .without_watcher();

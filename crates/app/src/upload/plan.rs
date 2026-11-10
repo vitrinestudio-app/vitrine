@@ -251,6 +251,7 @@ pub(crate) fn build_local(
         selection,
         stores: Vec::new(),
         problems: Vec::new(),
+        readiness: super::readiness::readiness(&project, &accounts, args.store),
         totals: Totals::default(),
         blocked: false,
     };
@@ -340,7 +341,7 @@ pub(crate) fn build_local(
         };
         match &sp.account {
             None => sp.problems.push(Problem::blocking(
-                "no_account",
+                "account_not_selected",
                 format!("no {store} account selected (Project settings → Stores)"),
             )),
             Some(id) => match accounts.iter().find(|a| &a.id == id) {

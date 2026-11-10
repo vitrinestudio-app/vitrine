@@ -9,6 +9,8 @@
 //!          (set-based today, App Asset Library later) and the Google edit helpers
 //! exec     the executor: Apple per set, Google one edit; progress, cancel,
 //!          resume (completed sets are `unchanged` in the next plan), rate limits
+//! readiness  setup checklist (accounts → project mapping → target slots)
+//!          with the place to fix each step; shown before the plan
 //! policy   who may execute: the user directly; MCP only with a GUI
 //!          confirmation click (GUI-hosted) or an opt-in setting (headless)
 //! ```
@@ -22,6 +24,7 @@ pub mod exec;
 pub mod log;
 pub mod plan;
 pub mod policy;
+pub mod readiness;
 pub mod remote;
 
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
@@ -62,6 +65,9 @@ pub struct UploadPlan {
     pub stores: Vec<StorePlan>,
     /// Problems not tied to a store (e.g. the project is not mapped).
     pub problems: Vec<Problem>,
+    /// Setup checklist (what to do where, in order; see [`readiness`]).
+    #[serde(default)]
+    pub readiness: readiness::Readiness,
     pub totals: Totals,
     /// A blocking problem exists: the plan cannot be executed.
     pub blocked: bool,

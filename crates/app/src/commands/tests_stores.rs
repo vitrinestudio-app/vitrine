@@ -256,3 +256,188 @@ fn project_store_get_and_patch() {
     assert!(c["project"]["locales"].is_null());
     assert_eq!(c["project"]["store"]["apple"]["app_id"], "1234567890");
 }
+
+fn codes(r: &Value) -> Vec<String> {
+    r["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["code"].as_str().unwrap().to_owned())
+        .collect()
+}
+
+#[test]
+fn readiness_walks_from_app_settings_to_targets() {
+    let (tmp, dir) = example_copy();
+    let app = &state(&tmp.path().join("app"));
+    call(app, "project_open", json!({ "dir": dir }));
+
+    // Nothing set up: app settings first, then the project.
+    let r = call(app, "upload_readiness", json!({}));
+    assert_eq!(r["ready"], false);
+    assert_eq!(codes(&r), ["no_account", "project_not_mapped"]);
+    assert_eq!(r["steps"][0]["fix"], "app_settings_stores");
+    assert_eq!(r["steps"][1]["fix"], "project_settings_stores");
+    assert!(r["steps"][0]["store"].is_null());
+
+    // An Apple key on this machine: only the project step is left.
+    let p8 = tmp.path().join("AuthKey_2X9R4HXF34.p8");
+    std::fs::write(&p8, sample_p8_for_tests()).unwrap();
+    call(
+        app,
+        "store_account_import",
+        json!({"kind": "apple", "path": p8, "label": "Team", "issuer_id": ISSUER}),
+    );
+    let r = call(app, "upload_readiness", json!({"store": "apple"}));
+    assert_eq!(codes(&r), ["project_not_mapped"]);
+    assert_eq!(r["steps"][0]["store"], "apple");
+
+    // Mapped without account/app → the project step names both.
+    call(app, "project_store_patch", json!({"apple": {}}));
+    let r = call(app, "upload_readiness", json!({"store": "apple"}));
+    assert_eq!(codes(&r), ["project_not_mapped"]);
+    let msg = r["steps"][0]["message"].as_str().unwrap();
+    assert!(
+        msg.contains("the account") && msg.contains("Apple ID"),
+        "{msg}"
+    );
+
+    // An account id that is not on this machine.
+    call(
+        app,
+        "project_store_patch",
+        json!({"apple": {"account": "apple-elsewhere", "app_id": "1234567890"}}),
+    );
+    let r = call(app, "upload_readiness", json!({"store": "apple"}));
+    assert_eq!(codes(&r), ["account_missing_for_project"]);
+    assert_eq!(r["steps"][0]["fix"], "app_settings_stores");
+
+    // Fully mapped: ready (the example has Apple slots).
+    call(
+        app,
+        "project_store_patch",
+        json!({"apple": {"account": "apple-team", "app_id": "1234567890"}}),
+    );
+    let r = call(app, "upload_readiness", json!({"store": "apple"}));
+    assert_eq!(r["ready"], true, "{r:#}");
+
+    // Two languages on one store language → project settings.
+    call(
+        app,
+        "project_store_patch",
+        json!({"locales": {"apple": {"fr-CA": "fr-FR"}}}),
+    );
+    let r = call(app, "upload_readiness", json!({"store": "apple"}));
+    assert_eq!(codes(&r), ["store_locale_conflict"]);
+    call(
+        app,
+        "project_store_patch",
+        json!({"locales": {"apple": {}}}),
+    );
+
+    // Google mapped, but no Google account and no Google slot left.
+    call(
+        app,
+        "project_store_patch",
+        json!({"google": {"package_name": "com.example.app"}}),
+    );
+    let targets: Vec<String> = call(app, "project_get", json!({}))["project"]["targets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|t| t["store"]["google"].is_object())
+        .map(|t| t["id"].as_str().unwrap().to_owned())
+        .collect();
+    assert_ne!(targets.len(), 0, "the example has Google targets");
+    for t in &targets {
+        call(
+            app,
+            "target_patch",
+            json!({"id": t, "patch": {"store": null}}),
+        );
+    }
+    let r = call(app, "upload_readiness", json!({"store": "google"}));
+    assert_eq!(
+        codes(&r),
+        ["no_account", "project_not_mapped", "no_store_slots"],
+        "{r:#}"
+    );
+    assert_eq!(r["steps"][2]["fix"], "targets");
+
+    // The plan carries the same checklist.
+    let plan = call(app, "upload_plan", json!({"store": "google"}));
+    assert_eq!(codes(&plan["readiness"]), codes(&r));
+}
+
+#[test]
+fn open_url_only_opens_help_links() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dialogs = crate::dialogs::FixedDialogs::default();
+    let opened = dialogs.opened.clone();
+    let app = AppState::new(
+        AppPaths::in_dir(&tmp.path().join("app")),
+        Arc::new(RecordingSink::default()),
+        Arc::new(dialogs),
+    )
+    .with_secret_store(SecretStore::mock())
+    .without_watcher();
+    for url in HELP_URLS {
+        assert!(url.starts_with("https://"));
+        call(&app, "open_url", json!({ "url": url }));
+    }
+    assert_eq!(opened.lock().unwrap().len(), HELP_URLS.len());
+    for bad in [
+        "https://example.com",
+        "http://appstoreconnect.apple.com/access/integrations/api",
+        "https://appstoreconnect.apple.com/access/integrations/api?x=1",
+        "file:///etc/passwd",
+    ] {
+        let e = fail(&app, "open_url", json!({ "url": bad }));
+        assert_eq!(e.code, ErrorCode::Forbidden, "{bad}");
+    }
+    assert_eq!(opened.lock().unwrap().len(), HELP_URLS.len());
+    // Without a browser (NoDialogs) the GUI is told so.
+    let plain = state(&tmp.path().join("app2"));
+    let e = fail(&plain, "open_url", json!({ "url": HELP_URLS[0] }));
+    assert_eq!(e.code, ErrorCode::NotImplemented);
+}
+
+#[test]
+fn app_picker_and_package_check_check_their_arguments() {
+    assert!(is_valid_package_name("com.example.app"));
+    assert!(is_valid_package_name("de.looking4cache.app_2"));
+    for bad in [
+        "app",
+        "com..x",
+        "1com.x",
+        "com.example-app",
+        "com.example.",
+        "",
+    ] {
+        assert!(!is_valid_package_name(bad), "{bad}");
+    }
+    let tmp = tempfile::tempdir().unwrap();
+    let app = &state(&tmp.path().join("app"));
+    let e = fail(app, "store_apps_list", json!({"account": "nope"}));
+    assert_eq!(e.code, ErrorCode::NotFound);
+    let p8 = tmp.path().join("AuthKey_2X9R4HXF34.p8");
+    std::fs::write(&p8, sample_p8_for_tests()).unwrap();
+    call(
+        app,
+        "store_account_import",
+        json!({"kind": "apple", "path": p8, "label": "Team", "issuer_id": ISSUER}),
+    );
+    // An Apple account cannot check a Play package (no network reached).
+    let e = fail(
+        app,
+        "store_package_check",
+        json!({"account": "apple-team", "package_name": "com.example.app"}),
+    );
+    assert_eq!(e.code, ErrorCode::InvalidArgs);
+    let e = fail(
+        app,
+        "store_package_check",
+        json!({"account": "apple-team", "package_name": "not a package"}),
+    );
+    assert_eq!(e.code, ErrorCode::InvalidArgs);
+}

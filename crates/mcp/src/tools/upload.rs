@@ -62,9 +62,42 @@ pub struct UploadLogParams {
     pub limit: Option<usize>,
 }
 
+/// The plan's setup checklist as numbered lines with the place to fix each
+/// step (the same steps the upload dialog shows).
+fn readiness_lines(p: &Value) -> String {
+    let steps = p["readiness"]["steps"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if steps.is_empty() {
+        return String::new();
+    }
+    let lines: Vec<String> = steps
+        .iter()
+        .enumerate()
+        .map(|(n, s)| {
+            format!(
+                "{}. {}{}",
+                n + 1,
+                s["message"].as_str().unwrap_or_default(),
+                if s["blocking"] == true {
+                    ""
+                } else {
+                    " (warning)"
+                }
+            )
+        })
+        .collect();
+    format!(
+        "\nBefore uploading, the user has to set this up in the Arrangia app (store keys \
+         and the project's store mapping cannot be changed over MCP):\n{}",
+        lines.join("\n")
+    )
+}
+
 fn plan_line(p: &Value) -> String {
     let t = &p["totals"];
-    format!(
+    let line = format!(
         "{} set(s) to upload ({} image(s)), {} unchanged, {} skipped, {} blocked{}; confirm_token {}",
         t["upload_sets"],
         t["images"],
@@ -77,7 +110,8 @@ fn plan_line(p: &Value) -> String {
             ""
         },
         p["confirm_token"].as_str().unwrap_or_default()
-    )
+    );
+    line + &readiness_lines(p)
 }
 
 #[tool_router(router = upload_tools, vis = "pub(crate)")]

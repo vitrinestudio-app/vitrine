@@ -1,5 +1,5 @@
-//! Folder picker and "show in Finder/Explorer" (`std::process`, so the web
-//! view keeps `core:default`).
+//! Folder picker, "show in Finder/Explorer" and help links (`std::process`,
+//! so the web view keeps `core:default`).
 
 use std::path::PathBuf;
 
@@ -48,6 +48,38 @@ pub fn reveal_path(app: &AppState, args: RevealPathArgs) -> CmdResult<()> {
     cmd.spawn()
         .map_err(|e| CommandError::io(format!("cannot open the file manager: {e}")))?;
     Ok(())
+}
+
+/// The only URLs `open_url` opens: setup help for store keys (App settings
+/// → Stores). Exact matches, https only.
+pub const HELP_URLS: &[&str] = &[
+    "https://appstoreconnect.apple.com/access/integrations/api",
+    "https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api",
+    "https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com",
+    "https://console.cloud.google.com/iam-admin/serviceaccounts",
+    "https://play.google.com/console",
+    "https://developers.google.com/android-publisher/getting_started",
+];
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OpenUrlArgs {
+    pub url: String,
+}
+
+/// Opens one of the [`HELP_URLS`] in the system browser; anything else is
+/// refused (`forbidden`).
+pub fn open_url(app: &AppState, args: OpenUrlArgs) -> CmdResult<()> {
+    if !HELP_URLS.contains(&args.url.as_str()) {
+        return Err(CommandError::new(
+            crate::error::ErrorCode::Forbidden,
+            format!("`{}` is not an allowed help link", args.url),
+        ));
+    }
+    app.dialogs().open_url(&args.url).map_err(|e| {
+        CommandError::new(crate::error::ErrorCode::NotImplemented, e)
+            .with_details(serde_json::json!({ "url": args.url }))
+    })
 }
 
 #[cfg(target_os = "macos")]

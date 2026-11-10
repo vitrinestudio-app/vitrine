@@ -105,6 +105,8 @@ pub struct AppState {
     connection_tester: OnceLock<Arc<dyn ConnectionTester>>,
     /// Store upload: config, running run, MCP confirmations (ADR 0018).
     upload: crate::upload::UploadState,
+    /// Apple apps per account id for the app picker (this app session).
+    store_apps: Mutex<std::collections::HashMap<String, Vec<arrangia_publish::apple::AppSummary>>>,
 }
 
 impl std::fmt::Debug for AppState {
@@ -135,6 +137,7 @@ impl AppState {
             secrets: OnceLock::new(),
             connection_tester: OnceLock::new(),
             upload: crate::upload::UploadState::default(),
+            store_apps: Mutex::new(std::collections::HashMap::new()),
         }
     }
 
@@ -172,6 +175,38 @@ impl AppState {
     /// Store upload state (config, run, MCP confirmations).
     pub fn upload(&self) -> &crate::upload::UploadState {
         &self.upload
+    }
+
+    /// Cached app list of an Apple account (app picker).
+    pub(crate) fn cached_store_apps(
+        &self,
+        account: &str,
+    ) -> Option<Vec<arrangia_publish::apple::AppSummary>> {
+        self.store_apps
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(account)
+            .cloned()
+    }
+
+    /// Stores (`Some`) or forgets (`None`) the app list of an account.
+    pub(crate) fn cache_store_apps(
+        &self,
+        account: &str,
+        apps: Option<Vec<arrangia_publish::apple::AppSummary>>,
+    ) {
+        let mut cache = self
+            .store_apps
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        match apps {
+            Some(a) => {
+                cache.insert(account.to_owned(), a);
+            }
+            None => {
+                cache.remove(account);
+            }
+        }
     }
 
     /// Uses `path` as Claude Desktop's config file instead of the real one
@@ -373,8 +408,9 @@ command_table! {
         view_get, view_set,
         mcp_status, mcp_set_enabled, claude_desktop_plan, claude_desktop_install,
         store_accounts_list, store_account_import, store_account_remove, store_account_test,
+        store_apps_list, store_package_check, open_url,
         project_store_get, project_store_patch, store_config_get,
-        upload_plan, upload_execute, upload_status, upload_cancel, upload_log, upload_confirm,
+        upload_readiness, upload_plan, upload_execute, upload_status, upload_cancel, upload_log, upload_confirm,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,

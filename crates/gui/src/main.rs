@@ -100,6 +100,10 @@ impl Dialogs for TauriDialogs {
         }
         dialog.blocking_save_file().and_then(|p| p.into_path().ok())
     }
+
+    fn open_url(&self, url: &str) -> Result<(), String> {
+        arrangia_gui::dialogs::open_in_browser(url)
+    }
 }
 
 /// Runs a command on a blocking worker thread.
@@ -236,9 +240,13 @@ json_commands! {
     store_account_import: commands::StoreAccountImportArgs,
     store_account_remove: commands::StoreAccountIdArgs,
     store_account_test: commands::StoreAccountIdArgs,
+    store_apps_list: commands::StoreAppsListArgs,
+    store_package_check: commands::StorePackageCheckArgs,
+    open_url: commands::OpenUrlArgs,
     project_store_get: commands::NoArgs,
     project_store_patch: commands::ProjectStorePatchArgs,
     store_config_get: commands::NoArgs,
+    upload_readiness: commands::UploadReadinessArgs,
     upload_plan: commands::PlanArgs,
     upload_execute: commands::UploadExecuteArgs,
     upload_status: commands::NoArgs,
@@ -407,9 +415,13 @@ fn main() {
             store_account_import,
             store_account_remove,
             store_account_test,
+            store_apps_list,
+            store_package_check,
+            open_url,
             project_store_get,
             project_store_patch,
             store_config_get,
+            upload_readiness,
             upload_plan,
             upload_execute,
             upload_status,

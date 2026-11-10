@@ -941,7 +941,7 @@ async fn rule_violations_block_execution() {
             .as_array()
             .unwrap()
             .iter()
-            .any(|x| x["code"] == "no_account")
+            .any(|x| x["code"] == "account_not_selected")
     );
     let err = fail(
         &e.app,

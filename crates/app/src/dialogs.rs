@@ -27,6 +27,27 @@ pub trait Dialogs: Send + Sync {
     ) -> Option<PathBuf> {
         None
     }
+
+    /// Opens an (already allow-listed) https URL in the system browser.
+    /// Default: not available (dev bridge, tests); the Tauri app uses
+    /// [`open_in_browser`].
+    fn open_url(&self, _url: &str) -> Result<(), String> {
+        Err("opening links is not available here".to_owned())
+    }
+}
+
+/// Opens `url` with the platform's opener (`open`, `explorer`, `xdg-open`).
+pub fn open_in_browser(url: &str) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let mut cmd = std::process::Command::new("open");
+    #[cfg(target_os = "windows")]
+    let mut cmd = std::process::Command::new("explorer");
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let mut cmd = std::process::Command::new("xdg-open");
+    cmd.arg(url)
+        .spawn()
+        .map(drop)
+        .map_err(|e| format!("cannot open the browser: {e}"))
 }
 
 /// No dialogs: every dialog is cancelled.
@@ -50,6 +71,8 @@ pub struct FixedDialogs {
     pub files: Vec<PathBuf>,
     /// Answer of the save dialog.
     pub save: Option<PathBuf>,
+    /// URLs passed to `open_url` (recorded, never opened).
+    pub opened: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
 }
 
 impl Dialogs for FixedDialogs {
@@ -63,5 +86,13 @@ impl Dialogs for FixedDialogs {
 
     fn save_file(&self, _: &str, _: &str, _: &[FileFilter]) -> Option<PathBuf> {
         self.save.clone()
+    }
+
+    fn open_url(&self, url: &str) -> Result<(), String> {
+        self.opened
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .push(url.to_owned());
+        Ok(())
     }
 }
