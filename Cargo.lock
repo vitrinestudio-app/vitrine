@@ -109,6 +109,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
+name = "arrangia-app"
+version = "0.0.0"
+dependencies = [
+ "arrangia-core",
+ "arrangia-render",
+ "directories",
+ "imagesize 0.14.0",
+ "notify",
+ "notify-debouncer-full",
+ "png",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tiny-skia",
+]
+
+[[package]]
 name = "arrangia-cli"
 version = "0.0.0"
 dependencies = [
@@ -147,23 +166,17 @@ dependencies = [
 name = "arrangia-gui"
 version = "0.0.0"
 dependencies = [
+ "arrangia-app",
  "arrangia-core",
  "arrangia-gui",
  "arrangia-render",
- "directories",
- "imagesize 0.14.0",
- "notify",
- "notify-debouncer-full",
  "png",
- "rusqlite",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
  "tempfile",
- "thiserror 2.0.21",
- "tiny-skia",
 ]
 
 [[package]]

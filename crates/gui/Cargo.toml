@@ -31,23 +31,18 @@ devbridge = []
 tauri-build.workspace = true
 
 [dependencies]
-arrangia-core.workspace = true
-arrangia-render.workspace = true
+arrangia-app.workspace = true
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-thiserror.workspace = true
-rusqlite.workspace = true
-notify.workspace = true
-notify-debouncer-full.workspace = true
-directories.workspace = true
-png.workspace = true
-tiny-skia.workspace = true
-imagesize.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+# examples/preview_transport.rs
+arrangia-core.workspace = true
+arrangia-render.workspace = true
+png.workspace = true
 # Enables the bridge for the integration tests (`cargo test --all`).
 arrangia-gui = { path = ".", features = ["devbridge"] }
 

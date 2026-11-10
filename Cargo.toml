@@ -17,6 +17,7 @@ arrangia-core = { path = "crates/core" }
 arrangia-render = { path = "crates/render" }
 arrangia-publish = { path = "crates/publish" }
 arrangia-mcp = { path = "crates/mcp" }
+arrangia-app = { path = "crates/app" }
 
 # Serialization (project files are YAML, see docs/KONZEPT.md 3.1)
 serde = { version = "1.0.229", features = ["derive"] }

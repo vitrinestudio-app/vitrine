@@ -1,0 +1,29 @@
+[package]
+name = "arrangia-app"
+description = "Arrangia application layer: session, commands, preview cache, settings (shared by GUI and MCP)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish = false
+
+[dependencies]
+arrangia-core.workspace = true
+arrangia-render.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+rusqlite.workspace = true
+notify.workspace = true
+notify-debouncer-full.workspace = true
+directories.workspace = true
+png.workspace = true
+tiny-skia.workspace = true
+imagesize.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
