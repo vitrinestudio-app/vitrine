@@ -22,9 +22,11 @@ import (fastlane and folder layouts), translation exchange via CSV and
 XLIFF, and imported Apple Product Bezels (still to be verified with the
 real package). Projects can be created, designed, translated, validated
 and exported in the desktop app, or headless with the `arrangia` command
-line tool; store upload and the MCP server are not built yet. The full
+line tool; Claude can work on projects through the MCP server (headless
+for now; hosting inside the desktop app comes next); store upload is not
+built yet. The full
 concept (in German) is in [`docs/KONZEPT.md`](docs/KONZEPT.md), the task
-lists in [`docs/plan/`](docs/plan/) (`phase-1.md` … `phase-3.md`, with
+lists in [`docs/plan/`](docs/plan/) (`phase-1.md` … `phase-4.md`, with
 known gaps under "Follow-ups"), the current state in
 [`docs/plan/STATUS.md`](docs/plan/STATUS.md).
 
@@ -142,6 +144,44 @@ command could not run (usage error, project not loadable, IO error).
 `<project>/.cache/render/`). Colours are used on a terminal unless
 `NO_COLOR` is set.
 
+## MCP server (Claude)
+
+`arrangia mcp` is an [MCP](https://modelcontextprotocol.io) server over
+stdio: Claude can create a project, add devices and texts, translate,
+look at rendered previews (`render_preview` returns a PNG), check the
+layout, validate and export. Every change is one undo step labelled
+`Claude: …`; nothing goes over the network. For now it runs headless on
+a project folder; later the desktop app hosts it so you watch Claude's
+edits live (ADR 0014).
+
+Claude Code:
+
+```sh
+cargo install --path crates/cli
+claude mcp add arrangia -- arrangia mcp --headless --project /path/to/my-app
+# without --project Claude opens or creates projects itself (project_open / project_create)
+```
+
+Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "arrangia": {
+      "command": "/Users/me/.cargo/bin/arrangia",
+      "args": ["mcp", "--headless", "--project", "/Users/me/Screenshots/MyApp"]
+    }
+  }
+}
+```
+
+Example prompts: "Create an Arrangia project in ~/Screens/Fernwood for a
+garden planner app in English and German with three iPhone pages, then
+show me the preview", "Translate all missing texts into French and check
+that nothing overflows", "Make the title on page 2 smaller and move the
+phone down by 100 lu". Tools, resources and the op reference:
+[`docs/guide/NOTES.md`](docs/guide/NOTES.md) (MCP section).
+
 ## Workspace layout
 
 | Path | Crate | Purpose |
@@ -150,7 +190,7 @@ command could not run (usage error, project not loadable, IO error).
 | `crates/render` | `arrangia-render` | Rasterization, parametric device frames, text rendering, export |
 | `crates/publish` | `arrangia-publish` | App Store Connect and Google Play upload, keychain |
 | `crates/app` | `arrangia-app` | Shared application layer: session, commands, preview cache, settings (GUI and MCP) |
-| `crates/mcp` | `arrangia-mcp` | MCP server |
+| `crates/mcp` | `arrangia-mcp` | MCP server (rmcp): tools and resources over the application layer |
 | `crates/cli` | `arrangia-cli` | Command line interface, binary `arrangia` |
 | `crates/gui` | `arrangia-gui` | Tauri 2 desktop app, frontend in plain HTML/CSS/JS |
 | `docs/` | | Concept and architecture decision records (`docs/adr/`) |

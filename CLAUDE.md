@@ -17,7 +17,8 @@ comments, commit messages and repo docs are in English.
 
 Status: pre-alpha. Phase 1 (core + CLI) and Phase 2 (GUI editor) are
 done and reviewed; Phase 3 (languages & import, `docs/plan/phase-3.md`)
-is nearly done; Phase 4 (MCP, `docs/plan/phase-4.md`) has started. Current state and decisions: `docs/plan/STATUS.md`. See
+is nearly done; Phase 4 (MCP, `docs/plan/phase-4.md`) is in progress (headless
+MCP server done, GUI hosting next). Current state and decisions: `docs/plan/STATUS.md`. See
 the roadmap in KONZEPT.md §12.
 
 ## Core ideas
@@ -50,7 +51,7 @@ crates/
   publish/  arrangia-publish  App Store Connect, Google Play, keychain
   app/      arrangia-app      shared application layer (no Tauri): session, commands,
                               preview cache, settings, watcher, events, view state
-  mcp/      arrangia-mcp      MCP server (rmcp) over app/core/render/publish
+  mcp/      arrangia-mcp      MCP server (rmcp 3.9, exact pin) over arrangia-app (ADR 0014)
   cli/      arrangia-cli      binary `arrangia` (clap)
   gui/      arrangia-gui      Tauri 2 app + dev bridge over `app`; frontend in gui/ui/
                               (vanilla ES modules, see gui/ui/README.md)
@@ -96,7 +97,8 @@ of `core::layout` results; `export` – page/banner files, gallery previews,
 incremental manifest; plus `paint`/`blur`/`raster` helpers.
 
 `cli` – `arrangia new|render|export|validate|strings|import|frames` on
-top of `core` + `render` (templates in `core::templates`).
+top of `core` + `render` (templates in `core::templates`), plus `arrangia
+mcp` (stdio server from `arrangia-mcp`).
 
 `core::frame_import` (ADR 0012) – Apple Product Bezels imported by the
 user: package (folder/zip/DMG), name rules in
@@ -123,7 +125,20 @@ per thread with `Actor::scope` / `dispatch_as`), `view` (`ViewState`:
 strip/target/lang/variant/selection pushed by the GUI via `view_set`,
 read via `view_get`), `preview` (binary preview payload + cache),
 `settings` (settings.yaml + recent projects in SQLite), `events`,
-`dialogs`. `gui` – Tauri binary (`main.rs`: wrappers, Tauri `EventSink`/
+`dialogs`. `mcp` (ADR 0014) – `ArrangiaMcp` over an `Arc<AppState>` (headless: own
+state; GUI, 4.3b: the live one via feature `http` → `http::service`). Tools
+live in `tools/<area>.rs`, one `#[tool_router(router = <area>_tools)]` impl
+block each (combined in `ArrangiaMcp::new`); arguments are
+`schemars::JsonSchema` structs (doc comments = schema descriptions,
+`deny_unknown_fields`). Every tool body runs in `ArrangiaMcp::run`
+(`spawn_blocking`, `Actor::Claude {client}`, `sync_with_disk`) and calls
+`arrangia_app::commands` by name (`server::cmd` / `image_cmd`), never the
+model; results via `output::ToolOutput` (structuredContent + text, PNG
+image blocks), errors via `output::error_result`. A new tool: add it to
+the matching `tools/*.rs` block and to the tool list in
+`docs/guide/NOTES.md`; the server `instructions` are
+`crates/mcp/src/instructions.md`, the op reference `crates/mcp/src/ops.md`.
+`gui` – Tauri binary (`main.rs`: wrappers, Tauri `EventSink`/
 `Dialogs`) and `bridge` (dev HTTP bridge, feature `devbridge`); its library
 re-exports the `app` modules (`arrangia_gui::commands` …). UI transport
 shim: `ui/js/transport.js` (`invoke`/`listen` over Tauri or the bridge).
@@ -199,6 +214,10 @@ cargo run -p arrangia-cli --release -- --project tests/fixtures/example validate
 cargo run -p arrangia-cli --release -- --project tests/fixtures/example export
 cargo run -p arrangia-cli --release -- --project tests/fixtures/example render --target ios-iphone-69 --gallery --max-edge 800 -o /path/to/gallery.png
 
+# MCP server over stdio (headless; for Claude Code: claude mcp add arrangia -- arrangia mcp --headless --project <dir>)
+cargo run -p arrangia-cli -- mcp --headless --project tests/fixtures/example --app-dir /tmp/arrangia-mcp
+cargo test -p arrangia-cli --test mcp          # drives the binary over stdio (JSON-RPC)
+
 # regenerate the example screenshots (deterministic fake app UI)
 cargo run -p arrangia-render --release --example screens -- tests/fixtures/example/screenshots
 ```
@@ -215,8 +234,10 @@ CLI usage (`--project <DIR>`, default the current folder): `new <dir>
 A=B] [--dry-run] [--save-mapping]`, `frames import <path> [--dry-run]`, `frames
 list`, `frames remove [--model] [--color] [--orientation] [--bezel] [--all]`
 (synthetic test package: `cargo run -p arrangia-core --example
-synthetic_bezels -- [--full-size] <dir|file.zip>`). Exit codes: 0 ok, 1 project problems, 2 could
-not run.
+synthetic_bezels -- [--full-size] <dir|file.zip>`), `mcp [--app-dir DIR]
+[--headless]` (MCP over stdio; opens `--project` when it holds a
+`project.yaml`; never print to stdout there). Exit codes: 0 ok, 1 project
+problems, 2 could not run.
 
 Golden tests (`crates/render/tests/golden.rs`) render every output image
 of every target of `tests/fixtures/example` (en, plus `EXTRA_LANGS`: de

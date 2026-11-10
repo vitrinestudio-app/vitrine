@@ -86,6 +86,20 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Files: `export/<target>/<lang>/<nn>_<page-id>.png`, grouped `<nn>_<id1>+<id2>`, `banner.png`, `_gallery.png`.
 - Always opaque (no alpha), sRGB. Incremental: unchanged images are skipped (`--force` to re-render).
 
+### Claude / MCP (Phase 4, headless server)
+- `arrangia mcp [--project DIR] [--app-dir DIR] [--headless]`: MCP server over stdio. Opens `--project` (default `.`) at start if it holds a `project.yaml`; otherwise Claude uses `project_open` / `project_create`. Until the GUI hosts the server (next step) every run is headless.
+- Claude Code: `claude mcp add arrangia -- arrangia mcp --headless --project /path/to/app`. Claude Desktop: `mcpServers.arrangia = {command: "<path>/arrangia", args: ["mcp", "--headless", "--project", "<dir>"]}` in `claude_desktop_config.json`.
+- Every change by Claude is one undo step labelled `Claude: …` (history shared with the GUI later); `history_undo` / `history_redo`.
+- Claude sees the result: `render_preview` returns a PNG (view `image` = one exported image, `canvas` = whole strip with hatched gaps, `gallery` = store gallery; `max_edge` default 1200) plus the errors/warnings of that target × language.
+- External edits (text editor, git checkout, the GUI) are picked up before every tool call; a `project.yaml` that does not load gives error `load` and nothing is written.
+- No network; files are written only inside the project folder and to paths given explicitly (`export.out_dir`, `strings_export.path`). Installed device frames are read-only for Claude (`frames_list`).
+- Coordinates for Claude: lu, page 1000 lu wide; `element_move` x/y = element centre relative to the top-left of a page (default: home page), or `dx/dy`. Rotation degrees, positive = clockwise.
+- Edit scope: `base` (default, all targets/languages), `variant` (format override, e.g. iPad landscape), `lang` (per-language text override).
+- Tools: project_open, project_create, project_summary, view_get, selection_get · catalog_devices, catalog_targets, catalog_galleries, catalog_fonts · strip_add, strip_update, strip_variant, target_add, target_update, target_remove, language_add, language_remove · element_list, element_get, element_add, element_update, element_remove, element_move, element_resize, element_rotate, element_reorder, element_group, element_ungroup, element_rename, apply_ops · strings_get, strings_set, strings_missing, string_key_rename, strings_export, strings_import · styles_get, styles_update · assets_list, assets_import, screenshots_import, frames_list · render_preview, layout_report, validate, export · history_undo, history_redo, history_state.
+- Resources: `arrangia://project/project.yaml`, `arrangia://project/i18n/<lang>.yaml`, `arrangia://catalog/devices`, `arrangia://catalog/targets`, `arrangia://docs/ops` (op reference for `apply_ops`).
+- `export` sends MCP progress notifications (one per file) when the client passes a progress token.
+- Example prompts: "Create an Arrangia project in ~/Screens/Fernwood (en, de) for a garden planner, three iPhone pages with headline + phone each, show me the gallery"; "Translate everything missing into French, then check page 2 in French for overflows"; "Select the title in the app and say: make this 20 % smaller" (needs the GUI-hosted server); "Export iPhone and iPad for all languages".
+
 ## 4. Reference notes
 - CLI exit codes: 0 ok, 1 project problems (validation errors / export errors), 2 command could not run.
 - `validate --strict` fails on warnings; `--preview` treats missing screenshots as warnings.

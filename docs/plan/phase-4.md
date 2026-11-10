@@ -52,34 +52,36 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       `view_set` (GUI pushes, debounced) / `view_get`
 
 ## 4.2 MCP server skeleton
-- [ ] `crates/mcp` with rmcp: tool router usable over Streamable HTTP (hosted
+- [x] `crates/mcp` with rmcp: tool router usable over Streamable HTTP (hosted
       by the GUI, against its live session) and stdio (proxy to the GUI, or
       headless with its own session); server info/instructions (short guide to
       Arrangia concepts for the model: canvas, home page, lu, gaps, anchors,
-      variants, targets, markup), `arrangia mcp` CLI subcommand
-- [ ] Project handling: `project_open`, `project_create` (templates),
+      variants, targets, markup), `arrangia mcp` CLI subcommand (ADR 0014;
+      headless now, `discover_gui` + feature `http` (`http::service`) are the
+      seams for 4.3b)
+- [x] Project handling: `project_open`, `project_create` (templates),
       `project_summary` (compact: strips, pages, elements, languages, targets,
       revision)
-- [ ] Resources: `project.yaml`, `i18n/<lang>.yaml`, device catalog, target
+- [x] Resources: `project.yaml`, `i18n/<lang>.yaml`, device catalog, target
       presets (read-only)
 
 ## 4.3 Tools (KONZEPT §8.2 + what Phases 1–3 added)
-- [ ] Catalog: `catalog_devices`, `catalog_targets`, `catalog_fonts`,
+- [x] Catalog: `catalog_devices`, `catalog_targets`, `catalog_fonts`,
       `catalog_galleries`
-- [ ] Strips/targets: `strip_add`, `strip_update`, `target_add` (from preset),
+- [x] Strips/targets: `strip_add`, `strip_update`, `target_add` (from preset),
       `target_update`, `target_remove`
-- [ ] Elements: `element_add`, `element_update` (patch; base/variant/language
+- [x] Elements: `element_add`, `element_update` (patch; base/variant/language
       scope), `element_remove`, `element_list`, `element_move`/`resize`/
       `rotate` via core edit intents, `apply_ops` (atomic, one undo step)
-- [ ] Strings: `strings_get`, `strings_set` (batch), `strings_missing`
+- [x] Strings: `strings_get`, `strings_set` (batch), `strings_missing`
       (for "translate everything missing into fr"), key rename
-- [ ] Assets: `assets_list`, `screenshots_import` (folder/fastlane plan +
+- [x] Assets: `assets_list`, `screenshots_import` (folder/fastlane plan +
       apply), `frames_list` (imported bezels, read-only)
-- [ ] Output: `render_preview` (page/image, canvas, store gallery; target,
+- [x] Output: `render_preview` (page/image, canvas, store gallery; target,
       language, max edge) → PNG image content; `layout_report` (boxes, font
       sizes, overflows, hyphenation as text/JSON); `validate`; `export`
-- [ ] Exchange: `strings_export`/`strings_import` (CSV/XLIFF) optional
-- [ ] Undo/redo tools (`history_undo`, `history_redo`) for the MCP session
+- [x] Exchange: `strings_export`/`strings_import` (CSV/XLIFF) optional
+- [x] Undo/redo tools (`history_undo`, `history_redo`) for the MCP session
 
 ## 4.3b GUI hosting + Claude Desktop integration
 - [ ] In-app HTTP MCP endpoint bound to the GUI session; token, origin checks,
@@ -92,12 +94,12 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       elements, activity list, `selection_get`, `view_get`
 
 ## 4.4 Tests
-- [ ] Integration test: start `arrangia mcp` as a subprocess, speak MCP over
+- [x] Integration test: start `arrangia mcp` as a subprocess, speak MCP over
       stdio (initialize, list tools, call tools), create a project, add device
       + text, set strings in two languages, render a preview (valid PNG),
       validate, export – all in a temp dir
-- [ ] Concurrency test: external edit between calls → reload, conflict
-      handling
+- [x] Concurrency test: external edit between calls → reload, conflict
+      handling (`crates/cli/tests/mcp.rs`, `crates/mcp/src/server.rs` tests)
 
 ## 4.5 Real-world check with Claude
 - [ ] Register the server in Claude Code (`claude mcp add arrangia -- arrangia mcp --project …`)
@@ -107,5 +109,6 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       iPhone + iPad, translate, export" – judge the rendered result; fix tool
       ergonomics (descriptions, defaults, error messages) based on what the
       model struggles with
-- [ ] Docs: ADR (app crate + MCP design), CLAUDE.md, README, `docs/guide/NOTES.md`
-      (setup snippets, tool list, example prompts)
+- [~] Docs: ADR (app crate + MCP design), CLAUDE.md, README, `docs/guide/NOTES.md`
+      (setup snippets, tool list, example prompts) – headless part done
+      (ADR 0013, 0014); GUI hosting docs follow with 4.3b
