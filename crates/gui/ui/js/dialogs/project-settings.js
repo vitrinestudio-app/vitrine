@@ -19,7 +19,7 @@ const FRAMES = ['detailed', 'stylized', 'imported:apple'];
 const WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900];
 const BUILTIN_SHADOWS = ['soft', 'hard', 'none'];
 
-export function openProjectSettings(tab = 'general') {
+export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) {
   const err = errorLine();
   const tabs = h('div', { class: 'dlg-tabs', role: 'tablist' });
   const pane = h('div', { class: 'ps-pane' });
@@ -196,7 +196,7 @@ export function openProjectSettings(tab = 'general') {
       );
     });
     let newLang = '';
-    const add = input({ placeholder: t('project.lang.add.placeholder'), cls: 'num-wide', oninput: (v) => (newLang = v.trim()) });
+    const add = input({ placeholder: t('project.lang.add.placeholder'), cls: 'num-wide lang-add', oninput: (v) => (newLang = v.trim()) });
     const doAdd = () => newLang && commit(() => api.languageAdd(newLang));
     add.addEventListener('keydown', (e) => e.key === 'Enter' && doAdd());
     return h(
@@ -468,7 +468,7 @@ export function openProjectSettings(tab = 'general') {
   }
 
   renderTabs();
-  render();
+  render().then(() => focusAdd && pane.querySelector('.lang-add')?.focus());
   return m;
 }
 

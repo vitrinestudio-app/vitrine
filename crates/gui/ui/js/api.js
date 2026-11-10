@@ -156,8 +156,21 @@ export const api = {
   stripGet: (strip) => invoke('strip_get', { strip }),
   /** `patch`: any of `{ aspect: 'w:h', count, ids: [..], backgrounds: [fill] }`. */
   stripPatch: (strip, patch) => invoke('strip_patch', { strip, ...patch }),
-  /** `change`: `{ action: 'add'|'remove'|'rename'|'scale', id, to?, content_scale? }`. */
+  /**
+   * `change`: `{ action: 'add'|'remove'|'rename'|'scale', id, to?, content_scale? }`;
+   * add also takes `from` (variant to copy) and `targets` (they show it).
+   * Removing detaches the targets showing it.
+   */
   stripVariant: (strip, change) => invoke('strip_variant', { strip, change }),
+  /**
+   * New strip (one undo step): `{ id?, aspect?, count?, start: 'empty'|'starter',
+   * target_preset?, target_size?, duplicate_of?, copy_targets?, copy_strings? }`
+   * → `{ strip, targets, … }`.
+   */
+  stripAdd: (args) => invoke('strip_add', args),
+  stripRename: (strip, to) => invoke('strip_rename', { strip, to }),
+  /** Removes the strip with its elements and the targets showing it. */
+  stripRemove: (strip) => invoke('strip_remove', { strip }),
   catalogDevices: () => invoke('catalog_devices'),
   catalogTargets: () => invoke('catalog_targets'),
 

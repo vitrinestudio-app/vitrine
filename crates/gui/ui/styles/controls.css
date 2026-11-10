@@ -264,6 +264,14 @@
   white-space: nowrap;
 }
 
+/* Buttons below a sidebar list (e.g. "New strip…"). */
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 16px;
+}
+
 .section-title {
   font-size: var(--fs-small);
   font-weight: 600;

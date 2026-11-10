@@ -47,7 +47,10 @@ js/assistant.js       AI assistants over MCP (ADR 0015): status, top-bar indicat
                       trigger, projects opened by an assistant
 js/dialogs/modal.js   <dialog> helper (openModal, choiceDialog, confirmDialog,
                       promptDialog) + form controls (row, input, select…)
-js/dialogs/*.js       targets editor, validation popover, export, project
+js/dialogs/*.js       targets.js = strips & targets editor (strip pane: new /
+                      rename / duplicate / remove, variants; target add and
+                      form), variants.js = "New variant" dialog + remove
+                      confirmation, validation popover, export, project
                       and app settings; stores.js = store accounts (app
                       settings) + store mapping tab (project settings);
                       upload.js = "Upload to stores…" (plan table → confirm →
@@ -103,6 +106,13 @@ builds the ops (e.g. `target_patch`, `styles_patch`) and then
 - **Theme**: only CSS variables from `styles/base.css`; define new
   colours there for both themes (light default, dark via
   `prefers-color-scheme` or `data-theme`).
+- **Top-bar pickers** (strip, target, language, variant) end with a
+  "+ …" entry (value `__add__`) that opens the place where that thing is
+  created (`addStrip`/`addTarget`/`addLanguage`/`addVariant` actions
+  passed from `main.js` to `mountShell`); keep the four consistent.
+- **Strips/targets/variants** removed or renamed (also by undo/redo):
+  `editor.apply` re-validates the view context (`validContext` in
+  `editor.js`) before fetching the overlay, so dialogs need not fix it.
 - **Strings**: every visible string via `t('key')`; add keys to both
   `i18n/en.json` and `i18n/de.json`.
 - **Icons**: add path data to `ICONS` in `js/dom.js` (16×16, stroked).
