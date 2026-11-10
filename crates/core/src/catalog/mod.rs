@@ -9,6 +9,7 @@
 
 mod devices;
 mod galleries;
+mod store_locales;
 mod targets;
 
 use std::sync::LazyLock;
@@ -19,6 +20,7 @@ pub use devices::{
     Stand, StandFoot,
 };
 pub use galleries::{Basis, CornerRadius, GalleriesFile, GalleryProfile, Measured};
+pub use store_locales::{LocaleSource, StoreLocale, StoreLocales, StoreLocalesFile, store_locales};
 pub use targets::{
     Count, Platform, PresetSizes, PresetStatus, Requirement, SizePolicy, Source, SourceKind, Store,
     StoreRules, StoreSlots, TargetPreset, TargetsFile,

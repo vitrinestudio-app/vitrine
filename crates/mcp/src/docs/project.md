@@ -45,6 +45,10 @@ targets:
   screenshots: ios-phone
   gallery: appstore-iphone
   store: {apple: {display_type: APP_IPHONE_67}}
+store:                      # store mapping (read-only over MCP: store_config_get)
+  apple: {account: team-a, app_id: "1234567890", bundle_id: com.example.app}
+  google: {account: play, package_name: com.example.app}
+  locales: {apple: {en: en-GB}}   # language → store locale; others use built-in defaults
 import:                     # screenshot import mappings (screenshots_import save_mapping)
   fastlane:
     devices: {"iPhone 16 Pro Max": ios-phone}

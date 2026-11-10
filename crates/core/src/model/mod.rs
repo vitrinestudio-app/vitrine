@@ -12,6 +12,7 @@ mod fill;
 pub(crate) mod fmt;
 mod ids;
 mod import;
+mod store;
 mod strip;
 mod style;
 mod target;
@@ -31,6 +32,9 @@ pub use element::{
 pub use fill::{Fill, GradientStop, ImageFillMode};
 pub use ids::{ElementId, Lang, StringKey, StripId, TargetId, VariantId, is_valid_id};
 pub use import::{ImportMapping, ImportSettings};
+pub use store::{
+    ApplePlatform, AppleStore, GoogleStore, StoreKind, StoreLocaleMaps, StoreSettings,
+};
 pub use strip::{PageSpec, Strip, Variant};
 pub use style::{
     BUILTIN_SHADOWS, FontSettings, FrameStyle, Glow, ShadowLayer, ShadowPreset, SpanStyle,
@@ -64,6 +68,9 @@ pub struct Project {
     pub strips: Vec<Strip>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub targets: Vec<Target>,
+    /// Store mapping: apps, account references, locale map (Phase 5).
+    #[serde(default, skip_serializing_if = "StoreSettings::is_empty")]
+    pub store: StoreSettings,
     /// Screenshot import mappings (`core::import`).
     #[serde(default, skip_serializing_if = "ImportSettings::is_empty")]
     pub import: ImportSettings,
@@ -140,6 +147,7 @@ impl Project {
             styles: Styles::default(),
             strips: Vec::new(),
             targets: Vec::new(),
+            store: StoreSettings::default(),
             import: ImportSettings::default(),
             strings: Strings::new(),
             dropped_override_nulls: Vec::new(),
@@ -217,6 +225,7 @@ impl Project {
             }
             t.check()?;
         }
+        self.store.check()?;
         self.import.check()?;
         Ok(())
     }

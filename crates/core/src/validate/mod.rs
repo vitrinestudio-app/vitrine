@@ -19,6 +19,7 @@
 //! only consume the report.
 
 mod checks;
+mod store;
 #[cfg(test)]
 mod tests;
 
@@ -169,6 +170,19 @@ finding_codes! {
     StoreCount = "store_count",
     /// Export format not accepted by the store.
     StoreFormat = "store_format",
+    // ---- store mapping (`store:` in project.yaml)
+    /// An explicit `store.locales` code is not a locale of that store.
+    StoreLocaleUnknown = "store_locale_unknown",
+    /// A `store.locales` entry names a language the project does not have (info).
+    StoreLocaleUnused = "store_locale_unused",
+    /// A language to upload has no store locale (explicit or default).
+    StoreLocaleMissing = "store_locale_missing",
+    /// Several languages map to the same store locale.
+    StoreLocaleDuplicate = "store_locale_duplicate",
+    /// The project is mapped to a store but no target has a slot for it.
+    StoreNoSlot = "store_no_slot",
+    /// Two targets fill the same store slot for the same language.
+    StoreSlotDuplicate = "store_slot_duplicate",
     // ---- layout
     /// Target page height deviates strongly from the strip: suggest a variant.
     VariantSuggested = "variant_suggested",
@@ -442,6 +456,7 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
             }
         });
     }
+    store::store_checks(project, &mut out);
     for target in &project.targets {
         if options
             .targets

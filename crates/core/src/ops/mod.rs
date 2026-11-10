@@ -29,8 +29,9 @@ pub use patch::{StripPatch, TargetPatch};
 use crate::catalog;
 use crate::model::{
     ColorRef, DeviceProps, Element, ElementId, ElementKind, ElementPatch, FrameStyle,
-    ImportSettings, Lang, Languages, Project, Region, StoreSlot, StringKey, Strip, StripId,
-    StyleKind, Styles, Target, TargetId, Variant, VariantId, is_valid_id,
+    ImportSettings, Lang, Languages, Project, Region, StoreKind, StoreSettings, StoreSlot,
+    StringKey, Strip, StripId, StyleKind, Styles, Target, TargetId, Variant, VariantId,
+    is_valid_id,
 };
 
 /// Overrides of removed elements, by variant, so that removal can be undone.
@@ -52,6 +53,10 @@ pub enum Op {
     /// Replace the screenshot import mappings (`import:` in `project.yaml`).
     SetImport {
         import: ImportSettings,
+    },
+    /// Replace the store mapping (`store:` in `project.yaml`).
+    SetStore {
+        store: StoreSettings,
     },
     /// Set (`Some`) or remove (`None`) a translation.
     SetString {
@@ -401,6 +406,11 @@ impl Project {
                 import.check().map_err(invalid)?;
                 let old = std::mem::replace(&mut self.import, import);
                 Ok(Op::SetImport { import: old })
+            }
+            Op::SetStore { store } => {
+                check_store(&store)?;
+                let old = std::mem::replace(&mut self.store, store);
+                Ok(Op::SetStore { store: old })
             }
             Op::SetString { lang, key, value } => {
                 if !self.languages.is_available(lang.as_str()) {
@@ -1235,6 +1245,24 @@ fn check_target_catalog_refs(t: &Target) -> Result<(), OpError> {
                 "target `{}`: unknown Google Play image type `{}`",
                 t.id, g.image_type
             )));
+        }
+    }
+    Ok(())
+}
+
+/// Format checks plus: explicit locale codes must be store codes, and the
+/// map keys valid language tags.
+fn check_store(store: &StoreSettings) -> Result<(), OpError> {
+    store.check().map_err(invalid)?;
+    let lists = catalog::store_locales();
+    for kind in StoreKind::ALL {
+        for (lang, code) in store.locales.get(kind) {
+            Lang::parse(lang).map_err(|e| invalid(format!("store.locales.{kind}: {e}")))?;
+            if !lists.store(kind).is_known(code) {
+                return Err(invalid(format!(
+                    "store.locales.{kind}: `{code}` is not a {kind} store locale"
+                )));
+            }
         }
     }
     Ok(())

@@ -13,7 +13,7 @@ import { checkbox, confirmDialog, errorLine, input, openModal, row, segmented, s
 
 /** Finding codes shown as hints in the targets editor. */
 const HINT_CODES = new Set([
-  'store_size', 'store_count', 'store_format', 'unknown_store_slot', 'unverified_store_slot',
+  'store_size', 'store_count', 'store_format', 'unknown_store_slot', 'unverified_store_slot', 'store_slot_duplicate',
   'unknown_gallery', 'no_gallery', 'unknown_screenshot_variant', 'unknown_mapped_device',
   'region_out_of_range', 'partial_image', 'variant_suggested', 'unknown_variant',
 ]);

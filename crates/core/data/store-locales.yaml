@@ -1,0 +1,197 @@
+# Store locale codes and the default mapping project language → store locale
+# (KONZEPT §7.2, Phase 5.1). Loaded by `arrangia_core::catalog::store_locales`
+# (embedded at build time).
+#
+# A project language resolves to a store locale in this order:
+#   1. the project's explicit map (`store.locales.<store>` in project.yaml)
+#   2. the language itself when it is a store code (case-insensitive: `pt-BR`)
+#   3. `defaults` below for the full tag (`zh-Hans`, `es-419`)
+#   4. `defaults` for the primary subtag (`de-AT` → `de` → `de-DE`)
+# Otherwise the language has no store locale (validation warns).
+#
+# Field reference
+#   checked     date the lists were last verified (YYYY-MM-DD)
+#   sources     key → {url, kind, note}
+#   <store>     apple | google
+#     source    source key of the code list
+#     locales   every code the store accepts: {code, name}
+#     defaults  project language tag → store code (must be one of `locales`)
+
+checked: 2026-11-10
+
+sources:
+  AL:
+    url: https://developer.apple.com/documentation/appstoreconnectapi/managing-metadata-in-your-app-by-using-locale-shortcodes
+    kind: primary
+    note: >-
+      "Locale shortcodes" table (50 languages), read 2026-11-10 via the
+      page's documentation JSON. Language names only also on
+      https://developer.apple.com/help/app-store-connect/reference/app-store-localizations
+  GL:
+    url: https://support.google.com/googleplay/android-developer/answer/9844778?hl=en
+    kind: primary
+    note: >-
+      "View list of available languages" (86 codes), read 2026-11-10.
+      Hebrew uses the legacy code iw-IL. These codes are the `language`
+      parameter of the Android Publisher API v3 edits.listings / edits.images.
+
+apple:
+  source: AL
+  locales:
+    - {code: ar-SA, name: Arabic}
+    - {code: bn-BD, name: Bengali}
+    - {code: ca, name: Catalan}
+    - {code: zh-Hans, name: Chinese (Simplified)}
+    - {code: zh-Hant, name: Chinese (Traditional)}
+    - {code: hr, name: Croatian}
+    - {code: cs, name: Czech}
+    - {code: da, name: Danish}
+    - {code: nl-NL, name: Dutch}
+    - {code: en-AU, name: English (Australia)}
+    - {code: en-CA, name: English (Canada)}
+    - {code: en-GB, name: English (U.K.)}
+    - {code: en-US, name: English (U.S.)}
+    - {code: fi, name: Finnish}
+    - {code: fr-FR, name: French}
+    - {code: fr-CA, name: French (Canada)}
+    - {code: de-DE, name: German}
+    - {code: el, name: Greek}
+    - {code: gu-IN, name: Gujarati}
+    - {code: he, name: Hebrew}
+    - {code: hi, name: Hindi}
+    - {code: hu, name: Hungarian}
+    - {code: id, name: Indonesian}
+    - {code: it, name: Italian}
+    - {code: ja, name: Japanese}
+    - {code: kn-IN, name: Kannada}
+    - {code: ko, name: Korean}
+    - {code: ms, name: Malay}
+    - {code: ml-IN, name: Malayalam}
+    - {code: mr-IN, name: Marathi}
+    - {code: 'no', name: Norwegian}
+    - {code: or-IN, name: Oriya}
+    - {code: pl, name: Polish}
+    - {code: pt-BR, name: Portuguese (Brazil)}
+    - {code: pt-PT, name: Portuguese (Portugal)}
+    - {code: pa-IN, name: Punjabi}
+    - {code: ro, name: Romanian}
+    - {code: ru, name: Russian}
+    - {code: sk, name: Slovak}
+    - {code: sl-SI, name: Slovenian}
+    - {code: es-MX, name: Spanish (Mexico)}
+    - {code: es-ES, name: Spanish (Spain)}
+    - {code: sv, name: Swedish}
+    - {code: ta-IN, name: Tamil}
+    - {code: te-IN, name: Telugu}
+    - {code: th, name: Thai}
+    - {code: tr, name: Turkish}
+    - {code: uk, name: Ukrainian}
+    - {code: ur-PK, name: Urdu}
+    - {code: vi, name: Vietnamese}
+  defaults: {
+    ar: ar-SA, bn: bn-BD, de: de-DE, en: en-US, es: es-ES, es-419: es-MX, fr: fr-FR,
+    gu: gu-IN, iw: he, kn: kn-IN, ml: ml-IN, mr: mr-IN, nb: 'no', nn: 'no', nl: nl-NL,
+    or: or-IN, pa: pa-IN, pt: pt-BR, sl: sl-SI, ta: ta-IN, te: te-IN, ur: ur-PK,
+    zh: zh-Hans, zh-CN: zh-Hans, zh-SG: zh-Hans, zh-TW: zh-Hant, zh-HK: zh-Hant,
+    zh-MO: zh-Hant,
+  }
+
+google:
+  source: GL
+  locales:
+    - {code: af, name: Afrikaans}
+    - {code: sq, name: Albanian}
+    - {code: am, name: Amharic}
+    - {code: ar, name: Arabic}
+    - {code: hy-AM, name: Armenian}
+    - {code: az-AZ, name: Azerbaijani}
+    - {code: bn-BD, name: Bangla}
+    - {code: eu-ES, name: Basque}
+    - {code: be, name: Belarusian}
+    - {code: bg, name: Bulgarian}
+    - {code: my-MM, name: Burmese}
+    - {code: ca, name: Catalan}
+    - {code: zh-HK, name: Chinese (Hong Kong)}
+    - {code: zh-CN, name: Chinese (Simplified)}
+    - {code: zh-TW, name: Chinese (Traditional)}
+    - {code: hr, name: Croatian}
+    - {code: cs-CZ, name: Czech}
+    - {code: da-DK, name: Danish}
+    - {code: nl-NL, name: Dutch}
+    - {code: en-AU, name: English (Australia)}
+    - {code: en-CA, name: English (Canada)}
+    - {code: en-US, name: English (United States)}
+    - {code: en-GB, name: English (United Kingdom)}
+    - {code: en-IN, name: English (India)}
+    - {code: en-SG, name: English (Singapore)}
+    - {code: en-ZA, name: English (South Africa)}
+    - {code: et, name: Estonian}
+    - {code: fil, name: Filipino}
+    - {code: fi-FI, name: Finnish}
+    - {code: fr-CA, name: French (Canada)}
+    - {code: fr-FR, name: French (France)}
+    - {code: gl-ES, name: Galician}
+    - {code: ka-GE, name: Georgian}
+    - {code: de-DE, name: German}
+    - {code: el-GR, name: Greek}
+    - {code: gu, name: Gujarati}
+    - {code: iw-IL, name: Hebrew}
+    - {code: hi-IN, name: Hindi}
+    - {code: hu-HU, name: Hungarian}
+    - {code: is-IS, name: Icelandic}
+    - {code: id, name: Indonesian}
+    - {code: it-IT, name: Italian}
+    - {code: ja-JP, name: Japanese}
+    - {code: kn-IN, name: Kannada}
+    - {code: kk, name: Kazakh}
+    - {code: km-KH, name: Khmer}
+    - {code: ko-KR, name: Korean}
+    - {code: ky-KG, name: Kyrgyz}
+    - {code: lo-LA, name: Lao}
+    - {code: lv, name: Latvian}
+    - {code: lt, name: Lithuanian}
+    - {code: mk-MK, name: Macedonian}
+    - {code: ms-MY, name: Malay (Malaysia)}
+    - {code: ms, name: Malay}
+    - {code: ml-IN, name: Malayalam}
+    - {code: mr-IN, name: Marathi}
+    - {code: mn-MN, name: Mongolian}
+    - {code: ne-NP, name: Nepali}
+    - {code: no-NO, name: Norwegian}
+    - {code: fa, name: Persian}
+    - {code: fa-AE, name: Persian (UAE)}
+    - {code: fa-AF, name: Persian (Afghanistan)}
+    - {code: fa-IR, name: Persian (Iran)}
+    - {code: pl-PL, name: Polish}
+    - {code: pt-BR, name: Portuguese (Brazil)}
+    - {code: pt-PT, name: Portuguese (Portugal)}
+    - {code: pa, name: Punjabi}
+    - {code: ro, name: Romanian}
+    - {code: rm, name: Romansh}
+    - {code: ru-RU, name: Russian}
+    - {code: sr, name: Serbian}
+    - {code: si-LK, name: Sinhala}
+    - {code: sk, name: Slovak}
+    - {code: sl, name: Slovenian}
+    - {code: es-419, name: Spanish (Latin America)}
+    - {code: es-ES, name: Spanish (Spain)}
+    - {code: es-US, name: Spanish (United States)}
+    - {code: sw, name: Swahili}
+    - {code: sv-SE, name: Swedish}
+    - {code: ta-IN, name: Tamil}
+    - {code: te-IN, name: Telugu}
+    - {code: th, name: Thai}
+    - {code: tr-TR, name: Turkish}
+    - {code: uk, name: Ukrainian}
+    - {code: ur, name: Urdu}
+    - {code: vi, name: Vietnamese}
+  defaults: {
+    az: az-AZ, cs: cs-CZ, da: da-DK, de: de-DE, el: el-GR, en: en-US, es: es-ES,
+    es-MX: es-419, eu: eu-ES, fi: fi-FI, fr: fr-FR, gl: gl-ES, he: iw-IL, hi: hi-IN,
+    hu: hu-HU, hy: hy-AM, is: is-IS, it: it-IT, iw: iw-IL, ja: ja-JP, ka: ka-GE,
+    km: km-KH, ko: ko-KR, ky: ky-KG, lo: lo-LA, mk: mk-MK, ml: ml-IN, mn: mn-MN,
+    mr: mr-IN, my: my-MM, nb: no-NO, ne: ne-NP, nl: nl-NL, nn: no-NO, 'no': no-NO,
+    pl: pl-PL, pt: pt-BR, ru: ru-RU, si: si-LK, sv: sv-SE, ta: ta-IN, te: te-IN,
+    tl: fil, tr: tr-TR, zh: zh-CN, zh-Hans: zh-CN, zh-Hant: zh-TW, zh-SG: zh-CN,
+    zh-MO: zh-HK, kn: kn-IN,
+  }
