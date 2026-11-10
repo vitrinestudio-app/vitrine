@@ -5,12 +5,13 @@ use std::collections::BTreeMap;
 
 use super::Diags;
 use super::scene::{
-    DiagnosticCode, ResolvedFill, ResolvedShadowLayer, ResolvedSpanStyle, ResolvedStop,
-    ResolvedStroke, ResolvedTextStyle,
+    DiagnosticCode, ResolvedFill, ResolvedGlow, ResolvedShadowLayer, ResolvedSpanStyle,
+    ResolvedStop, ResolvedStroke, ResolvedTextStroke, ResolvedTextStyle,
 };
 use crate::geometry::Vec2;
 use crate::model::{
-    ColorRef, Fill, ImageFillMode, Rgba, ShadowLayer, Stroke, Styles, TextProps, TextTransform,
+    ColorRef, Fill, Glow, ImageFillMode, Rgba, ShadowLayer, Stroke, StrokeJoin, Styles, TextProps,
+    TextTransform,
 };
 
 /// Shown for colour references that do not resolve (loud on purpose).
@@ -31,6 +32,8 @@ pub fn default_text_style() -> ResolvedTextStyle {
         color: Rgba::rgb(0, 0, 0),
         transform: TextTransform::None,
         shadow: Vec::new(),
+        stroke: None,
+        glow: None,
     }
 }
 
@@ -120,6 +123,28 @@ impl<'a> StyleResolver<'a> {
         ResolvedStroke {
             color: self.color(&s.color, d),
             width: s.width,
+            // Shapes keep sharp corners unless asked otherwise.
+            join: s.join.unwrap_or(StrokeJoin::Miter),
+        }
+    }
+
+    /// A text outline (lengths clamped to ≥ 0).
+    pub fn text_stroke(&self, s: &Stroke, d: &mut Diags) -> ResolvedTextStroke {
+        ResolvedTextStroke {
+            color: self.color(&s.color, d),
+            width: s.width.max(0.0),
+            position: s.position.unwrap_or_default(),
+            join: s.join.unwrap_or_default(),
+        }
+    }
+
+    /// A text glow (lengths clamped to ≥ 0, opacity to 0..1).
+    pub fn glow(&self, g: &Glow, d: &mut Diags) -> ResolvedGlow {
+        ResolvedGlow {
+            color: self.color(&g.color, d),
+            radius: g.radius.max(0.0),
+            opacity: g.opacity.unwrap_or(1.0).clamp(0.0, 1.0),
+            spread: g.spread.unwrap_or(0.0).max(0.0),
         }
     }
 
@@ -151,7 +176,7 @@ impl<'a> StyleResolver<'a> {
     }
 
     /// Text style of a text element: defaults ← named style ← element
-    /// overrides (`color`, `font_size`).
+    /// overrides (`color`, `font_size`, `stroke`, `glow`, `shadow`).
     pub fn text_style(&self, t: &TextProps, d: &mut Diags) -> ResolvedTextStyle {
         let mut out = default_text_style();
         if let Some(name) = &t.style {
@@ -170,6 +195,8 @@ impl<'a> StyleResolver<'a> {
                     }
                     out.transform = s.transform.unwrap_or(out.transform);
                     out.shadow = self.shadow(s.shadow.as_deref(), d);
+                    out.stroke = s.stroke.as_ref().map(|v| self.text_stroke(v, d));
+                    out.glow = s.glow.as_ref().map(|v| self.glow(v, d));
                 }
                 None => d.warn(
                     DiagnosticCode::UnknownTextStyle,
@@ -182,6 +209,15 @@ impl<'a> StyleResolver<'a> {
         }
         if let Some(s) = t.font_size {
             out.size = s;
+        }
+        if let Some(s) = &t.stroke {
+            out.stroke = Some(self.text_stroke(s, d));
+        }
+        if let Some(g) = &t.glow {
+            out.glow = Some(self.glow(g, d));
+        }
+        if t.shadow.is_some() {
+            out.shadow = self.shadow(t.shadow.as_deref(), d);
         }
         out
     }
@@ -200,6 +236,9 @@ impl<'a> StyleResolver<'a> {
                         italic: s.italic,
                         color: s.color.as_ref().map(|c| self.color(c, d)),
                         background: s.background.as_ref().map(|c| self.color(c, d)),
+                        stroke: s.stroke.as_ref().map(|v| self.text_stroke(v, d)),
+                        glow: s.glow.as_ref().map(|v| self.glow(v, d)),
+                        shadow: s.shadow.as_deref().map(|name| self.shadow(Some(name), d)),
                     },
                 )
             })
@@ -249,6 +288,9 @@ mod tests {
             fit: None,
             color: None,
             font_size: None,
+            stroke: None,
+            glow: None,
+            shadow: None,
         }
     }
 
@@ -273,6 +315,64 @@ mod tests {
         let st = r.text_style(&text(Some("nope")), &mut d);
         assert_eq!(st, default_text_style());
         assert_eq!(d.items[0].code, DiagnosticCode::UnknownTextStyle);
+    }
+
+    #[test]
+    fn text_effects_cascade_style_element_span() {
+        use crate::model::{Glow, SpanStyle, StrokeJoin, StrokePosition};
+        let mut s = styles();
+        let headline = s.text.get_mut("headline").unwrap();
+        headline.stroke = Some(Stroke::new(ColorRef::parse("@text").unwrap(), 3.0));
+        headline.glow = Some(Glow {
+            color: ColorRef::parse("#FF000080").unwrap(),
+            radius: 10.0,
+            opacity: None,
+            spread: Some(-1.0),
+        });
+        s.spans.insert(
+            "pop".into(),
+            SpanStyle {
+                stroke: Some(Stroke {
+                    position: Some(StrokePosition::Center),
+                    join: Some(StrokeJoin::Bevel),
+                    ..Stroke::new(ColorRef::parse("@nope").unwrap(), 2.0)
+                }),
+                shadow: Some("none".into()),
+                ..SpanStyle::default()
+            },
+        );
+        let r = StyleResolver::new(&s);
+        let mut d = Diags::default();
+        let mut t = text(Some("headline"));
+        let st = r.text_style(&t, &mut d);
+        let stroke = st.stroke.unwrap();
+        assert_eq!(
+            (stroke.color, stroke.width, stroke.position, stroke.join),
+            (
+                Rgba::rgb(1, 2, 3),
+                3.0,
+                StrokePosition::Outside,
+                StrokeJoin::Round
+            )
+        );
+        let glow = st.glow.unwrap();
+        assert_eq!((glow.opacity, glow.spread), (1.0, 0.0), "defaults, clamped");
+        assert_eq!(st.shadow.len(), 1);
+        // Element overrides win over the style.
+        t.stroke = Some(Stroke::new(ColorRef::parse("#FFFFFF").unwrap(), 0.0));
+        t.shadow = Some("none".into());
+        let st = r.text_style(&t, &mut d);
+        assert!(!st.stroke.unwrap().is_visible());
+        assert_eq!(st.shadow.len(), 0);
+        assert!(st.glow.is_some(), "not overridden");
+        assert_eq!(d.items.len(), 0);
+        // Span styles carry their own effects; unknown colours are reported.
+        let spans = r.spans(&mut d);
+        let pop = &spans["pop"];
+        assert_eq!(pop.stroke.unwrap().join, StrokeJoin::Bevel);
+        assert_eq!(pop.stroke.unwrap().color, UNKNOWN_COLOR);
+        assert_eq!(pop.shadow.as_deref(), Some(&[][..]));
+        assert_eq!(d.items[0].code, DiagnosticCode::UnknownColor);
     }
 
     #[test]

@@ -104,6 +104,10 @@ pub struct OverlayText {
     pub content: Rect,
     /// `content` rotated with the element: nw, ne, se, sw.
     pub content_quad: [Vec2; 4],
+    /// `content` grown by outline, glow and shadow (unrotated), when the
+    /// text has such effects.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub visual: Option<Rect>,
     pub lines: usize,
     /// Font size after auto-fit, lu.
     pub font_size: f64,
@@ -173,6 +177,8 @@ impl Editor<'_> {
                         auto_height: t.frame.auto_height,
                         content,
                         content_quad: rect_quad(content).map(to_canvas),
+                        visual: (placed.layout.effect_outsets().1 > 0.0)
+                            .then(|| placed.visual_rect()),
                         lines: placed.layout.lines.len(),
                         font_size: f64::from(placed.layout.font_size),
                         overflow: placed.layout.overflow,

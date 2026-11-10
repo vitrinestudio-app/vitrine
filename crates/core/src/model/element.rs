@@ -22,7 +22,7 @@ use super::common::{AnchorY, Clip, FitMode, Point, VisibleIn};
 use super::fill::Fill;
 use super::fmt::{double_option, flow_style, num};
 use super::ids::{ElementId, StringKey, is_valid_id};
-use super::style::FrameStyle;
+use super::style::{FrameStyle, Glow};
 
 /// An element on a strip.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -111,6 +111,12 @@ pub struct TextProps {
     pub color: Option<ColorRef>,
     /// Overrides the style size, lu.
     pub font_size: Option<f64>,
+    /// Overrides the style outline.
+    pub stroke: Option<Stroke>,
+    /// Overrides the style glow.
+    pub glow: Option<Glow>,
+    /// Overrides the style shadow preset.
+    pub shadow: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -188,6 +194,9 @@ impl ElementKindTag {
                 "fit",
                 "color",
                 "font_size",
+                "stroke",
+                "glow",
+                "shadow",
             ],
             Self::Image => &["asset", "fit", "shadow"],
             Self::Shape => &["shape", "radius", "fill", "stroke", "shadow"],
@@ -304,15 +313,58 @@ pub struct TextFit {
 }
 flow_style!(TextFit);
 
-/// Shape outline.
+/// Outline of a shape or of text glyphs (`stroke: { color: "@ink", width: 4 }`).
+/// Width in lu; `0` draws nothing (and switches off a text style's outline
+/// in an element or span override).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(remote = "Self", deny_unknown_fields)]
 pub struct Stroke {
     pub color: ColorRef,
     #[serde(serialize_with = "num")]
     pub width: f64,
+    /// Text only: where the outline sits relative to the glyph edge
+    /// (default `outside`). Shapes always stroke centred on the path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<StrokePosition>,
+    /// Corner join (default `round` for text, `miter` for shapes).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub join: Option<StrokeJoin>,
 }
 flow_style!(Stroke);
+
+impl Stroke {
+    /// A stroke with default position and join.
+    pub fn new(color: ColorRef, width: f64) -> Self {
+        Self {
+            color,
+            width,
+            position: None,
+            join: None,
+        }
+    }
+}
+
+/// Position of a text outline.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StrokePosition {
+    /// Entirely outside the glyph: drawn behind the fill with twice the
+    /// width, so the glyph shapes stay intact.
+    #[default]
+    Outside,
+    /// Centred on the glyph edge, drawn over the fill.
+    Center,
+}
+
+/// Corner join of an outline.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StrokeJoin {
+    #[default]
+    Round,
+    Miter,
+    Bevel,
+}
 
 /// Value of the `fit` field: a fit mode for devices/images
 /// (`fit: contain`), auto-fit settings for text (`fit: { shrink_to: 52 }`).
@@ -499,6 +551,8 @@ element_fields! {
     #[serde(serialize_with = "num")]
     radius: f64,
     stroke: Stroke,
+    // text
+    glow: Glow,
     // shared kind-specific
     fill: Fill,
     fit: FitValue,
@@ -558,6 +612,11 @@ impl TryFrom<ElementWire> for Element {
         if let Some(s) = &w.shadow {
             check_name("shadow preset", s)?;
         }
+        if let Some(st) = &w.stroke
+            && !(st.width >= 0.0 && st.width.is_finite())
+        {
+            return Err(format!("element `{}`: stroke width must be ≥ 0", w.id));
+        }
         if let Some(o) = w.opacity
             && !(0.0..=1.0).contains(&o)
         {
@@ -606,6 +665,9 @@ impl TryFrom<ElementWire> for Element {
                 if let Some(s) = &w.style {
                     check_name("text style", s)?;
                 }
+                if let Some(g) = &w.glow {
+                    g.check().map_err(|e| format!("element `{}`: {e}", w.id))?;
+                }
                 ElementKind::Text(TextProps {
                     text: w.text.clone().ok_or_else(|| missing("text"))?,
                     style: w.style.clone(),
@@ -620,6 +682,9 @@ impl TryFrom<ElementWire> for Element {
                         .transpose()
                         .map_err(|e| format!("element `{}`: {e}", w.id))?,
                     font_size: w.font_size,
+                    stroke: w.stroke.clone(),
+                    glow: w.glow.clone(),
+                    shadow: w.shadow.clone(),
                 })
             }
             ElementKindTag::Image => ElementKind::Image(ImageProps {
@@ -627,6 +692,12 @@ impl TryFrom<ElementWire> for Element {
                 fit: fit_mode(w.fit.clone())?,
                 shadow: w.shadow.clone(),
             }),
+            ElementKindTag::Shape if w.stroke.as_ref().is_some_and(|s| s.position.is_some()) => {
+                return Err(format!(
+                    "element `{}`: stroke `position` applies to text only",
+                    w.id
+                ));
+            }
             ElementKindTag::Shape => ElementKind::Shape(ShapeProps {
                 shape: w.shape.ok_or_else(|| missing("shape"))?,
                 radius: w.radius,
@@ -689,6 +760,7 @@ impl From<Element> for ElementWire {
             shape: None,
             radius: None,
             stroke: None,
+            glow: None,
             fill: None,
             fit: None,
             shadow: None,
@@ -727,6 +799,9 @@ impl From<Element> for ElementWire {
                 w.fit = p.fit.map(FitValue::Text);
                 w.color = p.color.map(|c| c.to_string());
                 w.font_size = p.font_size;
+                w.stroke = p.stroke;
+                w.glow = p.glow;
+                w.shadow = p.shadow;
             }
             ElementKind::Image(p) => {
                 w.kind = ElementKindTag::Image;
@@ -815,7 +890,12 @@ impl Element {
     pub fn color_refs(&self) -> Vec<&ColorRef> {
         match &self.kind {
             ElementKind::Background(p) => p.fill.colors(),
-            ElementKind::Text(p) => p.color.iter().collect(),
+            ElementKind::Text(p) => {
+                let mut v: Vec<&ColorRef> = p.color.iter().collect();
+                v.extend(p.stroke.as_ref().map(|s| &s.color));
+                v.extend(p.glow.as_ref().map(|g| &g.color));
+                v
+            }
             ElementKind::Shape(p) => {
                 let mut v: Vec<&ColorRef> = p.fill.iter().flat_map(Fill::colors).collect();
                 v.extend(p.stroke.as_ref().map(|s| &s.color));
@@ -831,6 +911,7 @@ impl Element {
             ElementKind::Device(p) => p.shadow.as_deref(),
             ElementKind::Image(p) => p.shadow.as_deref(),
             ElementKind::Shape(p) => p.shadow.as_deref(),
+            ElementKind::Text(p) => p.shadow.as_deref(),
             _ => None,
         }
     }
@@ -881,6 +962,37 @@ mod tests {
         assert!(err.contains("needs `model`"), "{err}");
         let err = parse("id: d\nkind: device\nmodel: x\nmdoel: y\n").unwrap_err();
         assert!(err.contains("unknown field `mdoel`"), "{err}");
+    }
+
+    #[test]
+    fn text_effects_fields() {
+        let y = "id: t\nkind: text\npage: 0\ntext: a.b\nstroke: {color: \"@ink\", width: 4, position: center}\nglow: {color: \"#FFFFFF\", radius: 12, opacity: 0.5}\nshadow: soft\n";
+        let e = parse(y).unwrap();
+        let ElementKind::Text(t) = &e.kind else {
+            panic!()
+        };
+        assert_eq!(
+            t.stroke.as_ref().unwrap().position,
+            Some(StrokePosition::Center)
+        );
+        assert_eq!(t.glow.as_ref().unwrap().opacity, Some(0.5));
+        assert_eq!(e.shadow(), Some("soft"));
+        assert_eq!(e.color_refs().len(), 2);
+        assert_eq!(crate::io::to_yaml(&e).unwrap(), y);
+        let err =
+            parse("id: t\nkind: text\ntext: a\nglow: {color: \"#FFF\", radius: 1, opacity: 2}\n")
+                .unwrap_err();
+        assert!(err.contains("glow opacity"), "{err}");
+        let err = parse("id: s\nkind: shape\nshape: rect\nstroke: {color: \"#000\", width: 1, position: outside}\n")
+            .unwrap_err();
+        assert!(err.contains("text only"), "{err}");
+        let err = parse("id: s\nkind: shape\nshape: rect\nstroke: {color: \"#000\", width: -1}\n")
+            .unwrap_err();
+        assert!(err.contains("stroke width"), "{err}");
+        assert!(
+            parse("id: i\nkind: image\nasset: a.png\nglow: {color: \"#000\", radius: 1}\n")
+                .is_err()
+        );
     }
 
     #[test]

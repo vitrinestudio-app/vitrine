@@ -217,29 +217,22 @@ fn apply_rename(styles: &mut Styles, r: &StyleRename) -> CmdResult<()> {
     match r.kind {
         StyleKind::Color => {
             rename_key(&mut styles.colors, from, to)?;
-            for t in styles.text.values_mut() {
-                if let Some(c) = &mut t.color {
-                    rename_color_ref(c, from, to);
-                }
-            }
-            for s in styles.spans.values_mut() {
-                for c in [&mut s.color, &mut s.background].into_iter().flatten() {
-                    rename_color_ref(c, from, to);
-                }
-            }
-            for p in styles.shadows.values_mut() {
-                for l in &mut p.layers {
-                    rename_color_ref(&mut l.color, from, to);
-                }
+            for c in styles.color_refs_mut() {
+                rename_color_ref(c, from, to);
             }
         }
         StyleKind::Text => rename_key(&mut styles.text, from, to)?,
         StyleKind::Span => rename_key(&mut styles.spans, from, to)?,
         StyleKind::Shadow => {
             rename_key(&mut styles.shadows, from, to)?;
-            for t in styles.text.values_mut() {
-                if t.shadow.as_deref() == Some(from) {
-                    t.shadow = Some(to.to_owned());
+            let refs = styles
+                .text
+                .values_mut()
+                .map(|t| &mut t.shadow)
+                .chain(styles.spans.values_mut().map(|s| &mut s.shadow));
+            for r in refs {
+                if r.as_deref() == Some(from) {
+                    *r = Some(to.to_owned());
                 }
             }
         }

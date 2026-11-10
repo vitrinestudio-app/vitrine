@@ -7,6 +7,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 use super::color::{ColorRef, Rgba};
+use super::element::Stroke;
 use super::fmt::{flow_style, is_zero, num, string_serde};
 
 /// Built-in shadow preset names that are always available, even when not
@@ -50,15 +51,72 @@ impl Styles {
         let mut out = Vec::new();
         for t in self.text.values() {
             out.extend(t.color.as_ref());
+            out.extend(t.stroke.as_ref().map(|s| &s.color));
+            out.extend(t.glow.as_ref().map(|g| &g.color));
         }
         for s in self.spans.values() {
             out.extend(s.color.as_ref());
             out.extend(s.background.as_ref());
+            out.extend(s.stroke.as_ref().map(|s| &s.color));
+            out.extend(s.glow.as_ref().map(|g| &g.color));
         }
         for p in self.shadows.values() {
             out.extend(p.layers.iter().map(|l| &l.color));
         }
         out
+    }
+
+    /// Mutable access to every colour reference inside the style
+    /// definitions (renaming a palette colour).
+    pub fn color_refs_mut(&mut self) -> Vec<&mut ColorRef> {
+        let mut out = Vec::new();
+        for t in self.text.values_mut() {
+            out.extend(t.color.as_mut());
+            out.extend(t.stroke.as_mut().map(|s| &mut s.color));
+            out.extend(t.glow.as_mut().map(|g| &mut g.color));
+        }
+        for s in self.spans.values_mut() {
+            out.extend(s.color.as_mut());
+            out.extend(s.background.as_mut());
+            out.extend(s.stroke.as_mut().map(|s| &mut s.color));
+            out.extend(s.glow.as_mut().map(|g| &mut g.color));
+        }
+        for p in self.shadows.values_mut() {
+            out.extend(p.layers.iter_mut().map(|l| &mut l.color));
+        }
+        out
+    }
+
+    /// Shadow preset names referenced by text and span styles.
+    pub fn shadow_refs(&self) -> impl Iterator<Item = &str> {
+        self.text
+            .values()
+            .filter_map(|t| t.shadow.as_deref())
+            .chain(self.spans.values().filter_map(|s| s.shadow.as_deref()))
+    }
+
+    /// Checks value ranges of the text effects (outline width, glow).
+    pub fn check_effects(&self) -> Result<(), String> {
+        let named = self
+            .text
+            .iter()
+            .map(|(n, t)| (n, t.stroke.as_ref(), t.glow.as_ref()))
+            .chain(
+                self.spans
+                    .iter()
+                    .map(|(n, s)| (n, s.stroke.as_ref(), s.glow.as_ref())),
+            );
+        for (name, stroke, glow) in named {
+            if let Some(s) = stroke
+                && !(s.width >= 0.0 && s.width.is_finite())
+            {
+                return Err(format!("style `{name}`: stroke width must be ≥ 0"));
+            }
+            if let Some(g) = glow {
+                g.check().map_err(|e| format!("style `{name}`: {e}"))?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -107,6 +165,12 @@ pub struct TextStyle {
     /// Shadow preset name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shadow: Option<String>,
+    /// Glyph outline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stroke: Option<Stroke>,
+    /// Soft glow around the glyphs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow: Option<Glow>,
 }
 flow_style!(TextStyle);
 
@@ -125,8 +189,61 @@ pub struct SpanStyle {
     /// Highlight colour behind the span.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background: Option<ColorRef>,
+    /// Glyph outline of the span (replaces the text's outline).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stroke: Option<Stroke>,
+    /// Glow of the span (replaces the text's glow).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glow: Option<Glow>,
+    /// Shadow preset of the span (replaces the text's shadow).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shadow: Option<String>,
 }
 flow_style!(SpanStyle);
+
+/// Soft glow around text glyphs: the glyph shapes, dilated by `spread`,
+/// blurred with `radius` (Gaussian sigma) and tinted with `color` ×
+/// `opacity`. Lengths in lu. `opacity: 0` switches off a style's glow in an
+/// element or span override.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(remote = "Self", deny_unknown_fields)]
+pub struct Glow {
+    pub color: ColorRef,
+    #[serde(serialize_with = "num")]
+    pub radius: f64,
+    /// `0..=1`, default 1 (multiplied with the colour's alpha).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "num"
+    )]
+    pub opacity: Option<f64>,
+    /// Dilation of the glyph shapes before blurring, default 0.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "num"
+    )]
+    pub spread: Option<f64>,
+}
+flow_style!(Glow);
+
+impl Glow {
+    /// Range checks (`radius`, `spread` ≥ 0, `opacity` within 0..1).
+    pub fn check(&self) -> Result<(), String> {
+        let nonneg = |v: f64| v >= 0.0 && v.is_finite();
+        if !nonneg(self.radius) {
+            return Err("glow radius must be ≥ 0".into());
+        }
+        if self.spread.is_some_and(|v| !nonneg(v)) {
+            return Err("glow spread must be ≥ 0".into());
+        }
+        if self.opacity.is_some_and(|v| !(0.0..=1.0).contains(&v)) {
+            return Err("glow opacity must be within 0..1".into());
+        }
+        Ok(())
+    }
+}
 
 /// A shadow preset made of one or more layers (e.g. ambient + contact).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

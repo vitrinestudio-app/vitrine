@@ -1,6 +1,5 @@
 ---
 source: crates/core/tests/edit.rs
-assertion_line: 676
 expression: v
 ---
 canvas:
@@ -215,6 +214,11 @@ elements:
       lines: 2
       margins: true
       overflow: false
+      visual:
+        h: 231.52
+        w: 673.516
+        x: 163.242
+        y: 52
     z: 0
   - aspect_locked: false
     groups:

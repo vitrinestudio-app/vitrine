@@ -21,6 +21,7 @@ impl From<&resolve::ResolvedTextStyle> for ResolvedTextStyle {
             tracking: s.tracking as f32,
             color: s.color,
             transform: s.transform,
+            effects: s.effects(),
         }
     }
 }
@@ -33,6 +34,9 @@ impl From<&resolve::ResolvedSpanStyle> for ResolvedSpanStyle {
             italic: s.italic,
             color: s.color,
             background: s.background,
+            stroke: s.stroke,
+            glow: s.glow,
+            shadow: s.shadow.clone(),
         }
     }
 }
@@ -66,6 +70,20 @@ impl PlacedText {
         )
     }
 
+    /// [`Self::content_rect`] grown by the hard-edged text outline: what
+    /// visibly ends at a sharp edge (validation of clipping and gaps).
+    pub fn ink_rect(&self) -> Rect {
+        let (ink, _) = self.layout.effect_outsets();
+        outset(self.content_rect(), f64::from(ink))
+    }
+
+    /// [`Self::content_rect`] grown by outline, glow and shadow extents:
+    /// everything the text paints (render bounds, overlay).
+    pub fn visual_rect(&self) -> Rect {
+        let (_, visual) = self.layout.effect_outsets();
+        outset(self.content_rect(), f64::from(visual))
+    }
+
     /// Union of the line boxes on the canvas (unrotated).
     pub fn content_rect(&self) -> Rect {
         let c = self.layout.content;
@@ -76,6 +94,13 @@ impl PlacedText {
             f64::from(c.h),
         )
     }
+}
+
+fn outset(r: Rect, m: f64) -> Rect {
+    if m <= 0.0 {
+        return r;
+    }
+    Rect::new(r.x - m, r.y - m, r.w + 2.0 * m, r.h + 2.0 * m)
 }
 
 /// Content rect of `text` laid out with `layouter` (see

@@ -1,6 +1,5 @@
 ---
 source: crates/core/tests/resolve.rs
-assertion_line: 105
 expression: snapshot_value(&s)
 ---
 backgrounds:
@@ -110,10 +109,20 @@ elements:
       style:
         color: "#1D1D1F"
         font: Inter
+        glow:
+          color: "#E8A33D"
+          opacity: 0.6
+          radius: 12
+          spread: 2
         italic: false
         line_height: 1.08
         shadow: []
         size: 72
+        stroke:
+          color: "#FFFFFF"
+          join: round
+          position: outside
+          width: 3
         tracking: 0
         transform: none
         weight: 800
@@ -159,10 +168,24 @@ elements:
       style:
         color: "#1D1D1F"
         font: Inter
+        glow:
+          color: "#FFFFFF"
+          opacity: 1
+          radius: 8
+          spread: 0
         italic: false
         line_height: 1.25
-        shadow: []
+        shadow:
+          - blur: 4
+            color: "#00000059"
+            x: 0
+            y: 16
         size: 38
+        stroke:
+          color: "#2F6B3A"
+          join: round
+          position: outside
+          width: 0
         tracking: 0
         transform: none
         weight: 500
@@ -216,6 +239,7 @@ elements:
       shape: ellipse
       stroke:
         color: "#2F6B3A"
+        join: miter
         width: 6
     rotation: 0
     size:
@@ -436,6 +460,20 @@ lang: de
 spans:
   accent:
     color: "#E8A33D"
+    shadow:
+      - blur: 48
+        color: "#0000006B"
+        x: 0
+        y: 46
+      - blur: 10
+        color: "#0000004D"
+        x: 0
+        y: 10
+    stroke:
+      color: "#1D1D1F"
+      join: miter
+      position: center
+      width: 2
 strip: phone
 target: ios-phone-69
 variant: ~

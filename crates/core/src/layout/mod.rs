@@ -36,6 +36,7 @@ pub use report::LayoutReport;
 pub use scene::{PlacedText, layout_text, measure_with_bundled_fonts, span_styles};
 
 use crate::model::{Align, ColorRef, Rgba, SpanStyle, TextFit, TextStyle, TextTransform, VAlign};
+pub use crate::resolve::{ResolvedGlow, ResolvedShadowLayer, ResolvedTextStroke, TextEffects};
 
 /// Auto-fit step in lu: chosen sizes are `shrink_to + k · FIT_STEP`.
 pub const FIT_STEP: f32 = 0.25;
@@ -54,6 +55,9 @@ pub struct ResolvedTextStyle {
     pub tracking: f32,
     pub color: Rgba,
     pub transform: TextTransform,
+    /// Outline, glow and shadow of the text (spans may replace them). They
+    /// never change line breaking.
+    pub effects: TextEffects,
 }
 
 impl Default for ResolvedTextStyle {
@@ -67,6 +71,7 @@ impl Default for ResolvedTextStyle {
             tracking: 0.0,
             color: Rgba::rgb(0, 0, 0),
             transform: TextTransform::None,
+            effects: TextEffects::default(),
         }
     }
 }
@@ -81,8 +86,11 @@ fn resolve_color(c: Option<&ColorRef>, colors: &BTreeMap<String, Rgba>) -> Optio
 impl ResolvedTextStyle {
     /// Resolves a model style; missing values (and unknown colour
     /// references, which `core::validate` reports) fall back to the defaults.
+    /// Shadow presets are not resolved here (no preset table): use
+    /// `resolve::StyleResolver` for complete styles.
     pub fn from_model(style: &TextStyle, colors: &BTreeMap<String, Rgba>) -> Self {
         let d = Self::default();
+        let black = Rgba::rgb(0, 0, 0);
         Self {
             font: style.font.clone().unwrap_or(d.font),
             weight: style.weight.unwrap_or(d.weight),
@@ -92,6 +100,21 @@ impl ResolvedTextStyle {
             tracking: style.tracking.map_or(d.tracking, |v| v as f32),
             color: resolve_color(style.color.as_ref(), colors).unwrap_or(d.color),
             transform: style.transform.unwrap_or(d.transform),
+            effects: TextEffects {
+                stroke: style.stroke.as_ref().map(|s| ResolvedTextStroke {
+                    color: resolve_color(Some(&s.color), colors).unwrap_or(black),
+                    width: s.width.max(0.0),
+                    position: s.position.unwrap_or_default(),
+                    join: s.join.unwrap_or_default(),
+                }),
+                glow: style.glow.as_ref().map(|g| ResolvedGlow {
+                    color: resolve_color(Some(&g.color), colors).unwrap_or(black),
+                    radius: g.radius.max(0.0),
+                    opacity: g.opacity.unwrap_or(1.0).clamp(0.0, 1.0),
+                    spread: g.spread.unwrap_or(0.0).max(0.0),
+                }),
+                shadow: Vec::new(),
+            },
         }
     }
 }
@@ -105,17 +128,39 @@ pub struct ResolvedSpanStyle {
     pub color: Option<Rgba>,
     /// Highlight colour drawn behind the span.
     pub background: Option<Rgba>,
+    /// Replace the text's outline / glow / shadow within the span.
+    pub stroke: Option<ResolvedTextStroke>,
+    pub glow: Option<ResolvedGlow>,
+    pub shadow: Option<Vec<ResolvedShadowLayer>>,
 }
 
 impl ResolvedSpanStyle {
+    /// Like [`ResolvedTextStyle::from_model`]: outline and glow are
+    /// resolved, shadow presets are not.
     pub fn from_model(style: &SpanStyle, colors: &BTreeMap<String, Rgba>) -> Self {
+        let base = ResolvedTextStyle::from_model(
+            &TextStyle {
+                stroke: style.stroke.clone(),
+                glow: style.glow.clone(),
+                ..TextStyle::default()
+            },
+            colors,
+        );
         Self {
             font: style.font.clone(),
             weight: style.weight,
             italic: style.italic,
             color: resolve_color(style.color.as_ref(), colors),
             background: resolve_color(style.background.as_ref(), colors),
+            stroke: base.effects.stroke,
+            glow: base.effects.glow,
+            shadow: None,
         }
+    }
+
+    /// Does the span replace any text effect?
+    pub fn has_effects(&self) -> bool {
+        self.stroke.is_some() || self.glow.is_some() || self.shadow.is_some()
     }
 }
 
@@ -205,6 +250,8 @@ pub struct GlyphRun {
     /// Font size in lu.
     pub size: f32,
     pub color: Rgba,
+    /// Index into [`TextLayout::effects`].
+    pub effects: u16,
     /// Synthetic oblique angle in degrees (italic requested, no italic face).
     pub skew: Option<f32>,
     /// Synthetic bold requested (weight far above the face's).
@@ -219,6 +266,8 @@ pub struct GlyphRun {
 pub struct Highlight {
     pub rect: Rect,
     pub color: Rgba,
+    /// Index into [`TextLayout::effects`] (only its shadow applies).
+    pub effects: u16,
 }
 
 /// Why a line ends.
@@ -327,6 +376,10 @@ pub struct TextLayout {
     pub lines: Vec<TextLine>,
     pub runs: Vec<GlyphRun>,
     pub highlights: Vec<Highlight>,
+    /// Effect sets referenced by runs and highlights: `[0]` is the text
+    /// style's, further entries come from span styles that replace an
+    /// effect. Never empty.
+    pub effects: Vec<TextEffects>,
     /// The text does not fit its box/`max_lines` even at `shrink_to`.
     pub overflow: bool,
     pub diagnostics: Vec<TextDiagnostic>,
@@ -345,6 +398,17 @@ impl TextLayout {
             s.push('-');
         }
         s
+    }
+
+    /// How far outline / glow / shadow reach beyond the glyphs, lu:
+    /// `(ink, visual)` where `ink` counts only the hard-edged outline.
+    pub fn effect_outsets(&self) -> (f32, f32) {
+        self.effects.iter().fold((0.0, 0.0), |(i, v), e| {
+            (
+                i.max(e.ink_outset() as f32),
+                v.max(e.visual_outset() as f32),
+            )
+        })
     }
 
     /// Serializable summary (§8 `layout_report`, validation).

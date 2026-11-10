@@ -14,8 +14,8 @@ use skrifa::raw::types::F2Dot14;
 use skrifa::{FontRef, MetadataProvider};
 
 use super::{
-    Glyph, GlyphRun, Highlight, LineEnd, Rect, ResolvedSpanStyle, TextDiagnostic, TextInput,
-    TextLayout, TextLine, bolder, fonts::FontId, fonts::FontLibrary,
+    Glyph, GlyphRun, Highlight, LineEnd, Rect, ResolvedSpanStyle, TextDiagnostic, TextEffects,
+    TextInput, TextLayout, TextLine, bolder, fonts::FontId, fonts::FontLibrary,
 };
 use crate::markup::{self, SOFT_HYPHEN};
 use crate::model::{Align, Rgba, TextTransform, VAlign};
@@ -28,6 +28,8 @@ const EPS: f32 = 0.01;
 struct Paint {
     color: [u8; 4],
     background: Option<[u8; 4]>,
+    /// Index into [`Prepared::effects`].
+    fx: u16,
 }
 
 fn rgba(c: [u8; 4]) -> Rgba {
@@ -58,6 +60,8 @@ struct Prepared {
     text: String,
     base: RangeStyle,
     ranges: Vec<(std::ops::Range<usize>, RangeStyle)>,
+    /// Effect sets: `[0]` from the text style, more from span styles.
+    effects: Vec<TextEffects>,
     size: f32,
     line_height: f32,
     tracking: f32,
@@ -105,8 +109,10 @@ fn prepare(
         paint: Paint {
             color: arr(style.color),
             background: None,
+            fx: 0,
         },
     };
+    let mut effects = vec![style.effects.clone()];
     let mut unknown_spans = BTreeSet::new();
     let empty = BTreeMap::new();
     let span_styles = input.spans.unwrap_or(&empty);
@@ -131,6 +137,21 @@ fn prepare(
                 rs.paint.color = arr(c);
             }
             rs.paint.background = n.background.map(arr);
+            if n.has_effects() {
+                let fx = TextEffects {
+                    stroke: n.stroke.or(style.effects.stroke),
+                    glow: n.glow.or(style.effects.glow),
+                    shadow: n
+                        .shadow
+                        .clone()
+                        .unwrap_or_else(|| style.effects.shadow.clone()),
+                };
+                let i = effects.iter().position(|e| *e == fx).unwrap_or_else(|| {
+                    effects.push(fx);
+                    effects.len() - 1
+                });
+                rs.paint.fx = u16::try_from(i).unwrap_or(0);
+            }
         }
         if span.bold {
             rs.weight = bolder(rs.weight);
@@ -155,6 +176,7 @@ fn prepare(
         text,
         base,
         ranges,
+        effects,
         size: finite_pos(style.size, 48.0),
         line_height: finite_pos(style.line_height, 1.2),
         tracking: if style.tracking.is_finite() {
@@ -486,6 +508,7 @@ impl TextLayouter {
                     match out.highlights.last_mut() {
                         Some(h)
                             if h.color == rgba(bg)
+                                && h.effects == paint.fx
                                 && (h.rect.y - rect.y).abs() < EPS
                                 && (h.rect.right() - rect.x).abs() < EPS =>
                         {
@@ -494,6 +517,7 @@ impl TextLayouter {
                         _ => out.highlights.push(Highlight {
                             rect,
                             color: rgba(bg),
+                            effects: paint.fx,
                         }),
                     }
                 }
@@ -501,6 +525,7 @@ impl TextLayouter {
                     font,
                     size: run.font_size(),
                     color: rgba(paint.color),
+                    effects: paint.fx,
                     skew: synth.skew(),
                     embolden: synth.embolden(),
                     coords: run
@@ -653,6 +678,7 @@ fn finish(
         lines: a.lines,
         runs: a.runs,
         highlights: a.highlights,
+        effects: p.effects.clone(),
         overflow,
         diagnostics,
     }

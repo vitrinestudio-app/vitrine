@@ -883,13 +883,12 @@ impl Project {
         for c in styles.color_refs() {
             check_color(c, styles)?;
         }
-        for t in styles.text.values() {
-            if let Some(s) = &t.shadow
-                && !styles.has_shadow(s)
-            {
-                return Err(OpError::UnknownShadow(s.clone()));
+        for s in styles.shadow_refs() {
+            if !styles.has_shadow(s) {
+                return Err(OpError::UnknownShadow(s.to_owned()));
             }
         }
+        styles.check_effects().map_err(invalid)?;
         for strip in &self.strips {
             for b in &strip.backgrounds {
                 for c in b.colors() {

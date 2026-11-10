@@ -12,10 +12,10 @@ styles:
     primary: "#2F6B3A"
     text: "#1D1D1F"
   text:
-    headline: {font: Inter, weight: 800, size: 72, line_height: 1.08, color: "@text"}
+    headline: {font: Inter, weight: 800, size: 72, line_height: 1.08, color: "@text", stroke: {color: "#FFFFFF", width: 3}, glow: {color: "@accent", radius: 12, opacity: 0.6, spread: 2}}
     sub: {font: Inter, weight: 500, size: 38, line_height: 1.25, color: "@text"}
   spans:
-    accent: {color: "@accent"}
+    accent: {color: "@accent", stroke: {color: "@text", width: 2, position: center, join: miter}, shadow: soft}
   shadows:
     soft:
       layers:
@@ -57,6 +57,9 @@ strips:
     style: sub
     box: {top: 420, left: 80, right: 80}
     align: center
+    stroke: {color: "@primary", width: 0}
+    glow: {color: "#FFFFFF", radius: 8}
+    shadow: hard
   - id: band
     kind: shape
     page: 1

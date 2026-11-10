@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use proptest::prelude::*;
 
@@ -459,4 +459,65 @@ proptest! {
         prop_assert!(out.font_size <= 64.0);
         prop_assert_eq!(out.overflow, out.diagnostics.iter().any(TextDiagnostic::is_overflow));
     }
+}
+
+#[test]
+fn span_effects_replace_the_text_effects_without_changing_lines() {
+    use crate::model::{StrokeJoin, StrokePosition};
+    let mut l = layouter();
+    let stroke = |w: f64| ResolvedTextStroke {
+        color: Rgba::rgb(255, 255, 255),
+        width: w,
+        position: StrokePosition::Outside,
+        join: StrokeJoin::Round,
+    };
+    let plain = headline(60.0);
+    let style = ResolvedTextStyle {
+        effects: TextEffects {
+            stroke: Some(stroke(4.0)),
+            ..TextEffects::default()
+        },
+        ..headline(60.0)
+    };
+    let glow = ResolvedGlow {
+        color: Rgba::rgb(255, 0, 0),
+        radius: 10.0,
+        opacity: 0.5,
+        spread: 2.0,
+    };
+    let mut spans = BTreeMap::new();
+    spans.insert(
+        "pop".to_owned(),
+        ResolvedSpanStyle {
+            glow: Some(glow),
+            ..ResolvedSpanStyle::default()
+        },
+    );
+    spans.insert(
+        "bare".to_owned(),
+        ResolvedSpanStyle {
+            stroke: Some(stroke(0.0)),
+            ..ResolvedSpanStyle::default()
+        },
+    );
+    let text = "Mehr [pop]Ernte[/] im [bare]Beet[/] und [pop]Garten[/]";
+    let input = |s| TextInput {
+        spans: Some(&spans),
+        ..TextInput::new(text, s, 400.0)
+    };
+    let a = l.layout(&input(&style));
+    let b = l.layout(&input(&plain));
+    assert_eq!(texts(&a), texts(&b), "effects never change line breaking");
+    // [0] = style, [1] = pop (outline inherited + glow), [2] = bare.
+    assert_eq!(a.effects.len(), 3);
+    assert_eq!(a.effects[0].stroke, Some(stroke(4.0)));
+    assert_eq!(a.effects[1].stroke, Some(stroke(4.0)));
+    assert_eq!(a.effects[1].glow, Some(glow));
+    assert_eq!(a.effects[2].stroke, Some(stroke(0.0)));
+    assert!(a.effects[2].is_empty());
+    let used: BTreeSet<u16> = a.runs.iter().map(|r| r.effects).collect();
+    assert_eq!(used, BTreeSet::from([0, 1, 2]));
+    // Outsets: ink = outline 4, visual = glow 2 + 3 · 10.
+    assert_eq!(a.effect_outsets(), (4.0, 32.0));
+    assert_eq!(b.effect_outsets(), (0.0, 32.0));
 }

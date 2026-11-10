@@ -24,13 +24,13 @@ pub use common::{AnchorY, Aspect, Clip, FitMode, PixelSize, Point, VisibleIn};
 pub use element::{
     Align, Appearance, BackgroundProps, Chrome, DeviceProps, Element, ElementKind, ElementKindTag,
     ElementPatch, ElementWire, FitValue, GroupProps, ImageProps, Orientation, ShapeKind,
-    ShapeProps, Stroke, TextBox, TextFit, TextProps, VAlign,
+    ShapeProps, Stroke, StrokeJoin, StrokePosition, TextBox, TextFit, TextProps, VAlign,
 };
 pub use fill::{Fill, GradientStop, ImageFillMode};
 pub use ids::{ElementId, Lang, StringKey, StripId, TargetId, VariantId, is_valid_id};
 pub use strip::{PageSpec, Strip, Variant};
 pub use style::{
-    BUILTIN_SHADOWS, FrameStyle, ShadowLayer, ShadowPreset, SpanStyle, Styles, TextStyle,
+    BUILTIN_SHADOWS, FrameStyle, Glow, ShadowLayer, ShadowPreset, SpanStyle, Styles, TextStyle,
     TextTransform,
 };
 pub use target::{

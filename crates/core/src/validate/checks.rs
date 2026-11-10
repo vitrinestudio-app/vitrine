@@ -390,7 +390,9 @@ fn text_checks(
     if content.w <= 0.0 || content.h <= 0.0 {
         return None;
     }
-    let bounds = rotated_bounds(content, e);
+    // The hard-edged outline counts; soft glows and shadows fading out at
+    // a page edge or into a gap are not reported.
+    let bounds = rotated_bounds(placed.ink_rect(), e);
     let visible = match e.clip {
         Some(clip) => {
             if !inside(&bounds, &clip) {

@@ -10,8 +10,8 @@ use crate::catalog::{ColorVariant, Device};
 use crate::geometry::{CanvasLayout, Rect, Vec2, Viewport};
 use crate::model::{
     Align, Appearance, Chrome, ElementId, FitMode, FrameStyle, ImageFillMode, Lang, Orientation,
-    PixelSize, Rgba, ShapeKind, StringKey, StripId, TargetId, TargetKind, TextTransform, VAlign,
-    VariantId,
+    PixelSize, Rgba, ShapeKind, StringKey, StripId, StrokeJoin, StrokePosition, TargetId,
+    TargetKind, TextTransform, VAlign, VariantId,
 };
 
 /// A target × language, resolved.
@@ -273,6 +273,118 @@ pub struct ResolvedTextStyle {
     pub color: Rgba,
     pub transform: TextTransform,
     pub shadow: Vec<ResolvedShadowLayer>,
+    /// Glyph outline (style ← element override).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stroke: Option<ResolvedTextStroke>,
+    /// Glow around the glyphs (style ← element override).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub glow: Option<ResolvedGlow>,
+}
+
+impl ResolvedTextStyle {
+    /// Outline, glow and shadow of the text as one value.
+    pub fn effects(&self) -> TextEffects {
+        TextEffects {
+            stroke: self.stroke,
+            glow: self.glow,
+            shadow: self.shadow.clone(),
+        }
+    }
+}
+
+/// A text outline in lu. `width <= 0` draws nothing.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct ResolvedTextStroke {
+    pub color: Rgba,
+    pub width: f64,
+    pub position: StrokePosition,
+    pub join: StrokeJoin,
+}
+
+impl ResolvedTextStroke {
+    pub fn is_visible(&self) -> bool {
+        self.width > 0.0 && self.color.a > 0
+    }
+
+    /// How far the outline reaches beyond the glyph edge, lu.
+    pub fn outset(&self) -> f64 {
+        if !self.is_visible() {
+            return 0.0;
+        }
+        match self.position {
+            StrokePosition::Outside => self.width,
+            StrokePosition::Center => self.width / 2.0,
+        }
+    }
+}
+
+/// A text glow in lu: glyph shapes dilated by `spread`, blurred with sigma
+/// `radius`, tinted with `color` at `opacity`. `opacity <= 0` draws nothing.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct ResolvedGlow {
+    pub color: Rgba,
+    pub radius: f64,
+    pub opacity: f64,
+    pub spread: f64,
+}
+
+impl ResolvedGlow {
+    pub fn is_visible(&self) -> bool {
+        self.opacity > 0.0 && self.color.a > 0
+    }
+
+    /// How far the glow visibly reaches beyond the glyph edge, lu.
+    pub fn outset(&self) -> f64 {
+        if self.is_visible() {
+            self.spread + 3.0 * self.radius
+        } else {
+            0.0
+        }
+    }
+}
+
+impl ResolvedShadowLayer {
+    /// How far the blurred, offset shadow reaches beyond the silhouette, lu.
+    pub fn outset(&self) -> f64 {
+        3.0 * self.blur + self.x.abs().max(self.y.abs())
+    }
+}
+
+/// Effects drawn with a run of glyphs, behind/around the fill: shadow →
+/// glow → outline → fill (ADR 0003).
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+pub struct TextEffects {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stroke: Option<ResolvedTextStroke>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub glow: Option<ResolvedGlow>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub shadow: Vec<ResolvedShadowLayer>,
+}
+
+impl TextEffects {
+    /// Does any effect draw something?
+    pub fn is_empty(&self) -> bool {
+        !self.stroke.is_some_and(|s| s.is_visible())
+            && !self.glow.is_some_and(|g| g.is_visible())
+            && self.shadow.is_empty()
+    }
+
+    /// Hard-edged extent beyond the glyphs (the outline), lu.
+    pub fn ink_outset(&self) -> f64 {
+        self.stroke.map_or(0.0, |s| s.outset())
+    }
+
+    /// Visible extent beyond the glyphs including glow and shadow, lu.
+    pub fn visual_outset(&self) -> f64 {
+        let glow = self.glow.map_or(0.0, |g| g.outset());
+        let shadow = self
+            .shadow
+            .iter()
+            .map(ResolvedShadowLayer::outset)
+            .fold(0.0, f64::max);
+        self.ink_outset().max(glow).max(shadow)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -287,6 +399,15 @@ pub struct ResolvedSpanStyle {
     pub color: Option<Rgba>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub background: Option<Rgba>,
+    /// Replaces the text's outline (`width: 0` = none).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stroke: Option<ResolvedTextStroke>,
+    /// Replaces the text's glow (`opacity: 0` = none).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub glow: Option<ResolvedGlow>,
+    /// Replaces the text's shadow (empty = preset `none`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shadow: Option<Vec<ResolvedShadowLayer>>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -313,6 +434,7 @@ pub struct ResolvedShape {
 pub struct ResolvedStroke {
     pub color: Rgba,
     pub width: f64,
+    pub join: StrokeJoin,
 }
 
 /// A fill with concrete colours.

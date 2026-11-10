@@ -188,7 +188,7 @@ Mit [accent]Mischkultur[/] zu mehr Ernte
 Projektweite Tokens, damit Änderungen zentral bleiben:
 
 - **Farben**: benannte Farben (`primary`, `accent`, `text`), referenziert mit `@name`
-- **Textstile**: Schrift, Gewicht, Größe, Zeilenhöhe, Laufweite, Farbe, Groß-/Kleinschreibung, Schatten
+- **Textstile**: Schrift, Gewicht, Größe, Zeilenhöhe, Laufweite, Farbe, Groß-/Kleinschreibung, Schatten, Kontur (Outline), Leuchten (Glow); Span-Stile können Kontur, Leuchten und Schatten eigens setzen
 - **Schatten-Presets**: `soft`, `hard`, `none`
 - Element-Eigenschaften überschreiben Stilwerte.
 

@@ -1,6 +1,5 @@
 ---
 source: crates/core/tests/resolve.rs
-assertion_line: 164
 expression: snapshot_value(&s)
 ---
 backgrounds:
@@ -122,10 +121,20 @@ elements:
       style:
         color: "#1D1D1F"
         font: Inter
+        glow:
+          color: "#E8A33D"
+          opacity: 0.6
+          radius: 12
+          spread: 2
         italic: false
         line_height: 1.08
         shadow: []
         size: 72
+        stroke:
+          color: "#FFFFFF"
+          join: round
+          position: outside
+          width: 3
         tracking: 0
         transform: none
         weight: 800
@@ -179,6 +188,7 @@ elements:
       shape: ellipse
       stroke:
         color: "#2F6B3A"
+        join: miter
         width: 6
     rotation: 0
     size:
@@ -335,6 +345,20 @@ lang: fr
 spans:
   accent:
     color: "#E8A33D"
+    shadow:
+      - blur: 48
+        color: "#0000006B"
+        x: 0
+        y: 46
+      - blur: 10
+        color: "#0000004D"
+        x: 0
+        y: 10
+    stroke:
+      color: "#1D1D1F"
+      join: miter
+      position: center
+      width: 2
 strip: phone
 target: ios-ipad-13-landscape
 variant: tablet-landscape
