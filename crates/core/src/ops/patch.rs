@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::fmt::double_option;
 use crate::model::{
-    Aspect, BannerFit, Fill, GalleryRef, Gaps, ImageFormat, Lang, PixelSize, Region, StoreSlot,
-    Strip, StripId, Target, TargetKind, VariantId,
+    Aspect, BannerFit, Fill, GalleryRef, Gaps, ImageFormat, Lang, PixelSize, Region, SafeArea,
+    StoreSlot, Strip, StripId, Target, TargetKind, VariantId,
 };
 
 /// Swap patch values into the target and record the old values in `inv`.
@@ -141,6 +141,14 @@ pub struct TargetPatch {
         skip_serializing_if = "Option::is_none"
     )]
     pub store: Option<Option<StoreSlot>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub screenshot_only: Option<bool>,
+    #[serde(
+        default,
+        deserialize_with = "double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub safe_area: Option<Option<SafeArea>>,
 }
 
 impl TargetPatch {
@@ -149,7 +157,7 @@ impl TargetPatch {
         let mut inv = TargetPatch::default();
         swap_fields!(self, t, inv;
             kind, strip, variant, group, size, screenshots, gallery, device_map,
-            region, fit, gaps, format, quality, langs, store);
+            region, fit, gaps, format, quality, langs, store, screenshot_only, safe_area);
         inv
     }
 }

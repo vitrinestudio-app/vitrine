@@ -5,7 +5,9 @@ use std::collections::BTreeMap;
 use serde::Deserialize;
 
 use super::Catalog;
-use crate::model::{Aspect, ImageFormat, PixelSize, StoreSlot, TargetKind, is_valid_id};
+use crate::model::{
+    Aspect, BannerFit, ImageFormat, PixelSize, Region, SafeArea, StoreSlot, TargetKind, is_valid_id,
+};
 
 /// `targets.yaml`.
 #[derive(Debug, Clone, Deserialize)]
@@ -74,6 +76,10 @@ pub enum Platform {
     Macos,
     Android,
     Chromeos,
+    /// Apple Watch.
+    Watchos,
+    /// Wear OS watches.
+    Wearos,
     Web,
 }
 
@@ -120,10 +126,19 @@ pub struct StoreRules {
     /// Maximum file size in bytes (`None` = not documented).
     #[serde(default)]
     pub max_file_size: Option<u64>,
+    /// `false` = the store wants the bare app UI: no device frames, texts,
+    /// backgrounds or other graphics (Wear OS). Validation reports
+    /// decorations unless the target is `screenshot_only`.
+    #[serde(default = "yes")]
+    pub decorations: bool,
     #[serde(default)]
     pub note: Option<String>,
     #[serde(default)]
     pub sources: Vec<String>,
+}
+
+fn yes() -> bool {
+    true
 }
 
 /// Tolerance for `aspects` (pixel rounding, e.g. 1080x1920 vs 16:9 exact).
@@ -245,6 +260,20 @@ pub struct TargetPreset {
     /// Rule set id in `rules`.
     #[serde(default)]
     pub rules: Option<String>,
+    /// New targets export each page's screenshot alone (watch, Wear OS).
+    #[serde(default)]
+    pub screenshot_only: bool,
+    /// Safe area of the output images (insets in %), `None` = unknown /
+    /// not published.
+    #[serde(default)]
+    pub safe_area: Option<SafeArea>,
+    /// Banner presets: default region of the strip (`None` = whole strip;
+    /// page ranges are clamped to the strip when a target is added).
+    #[serde(default)]
+    pub region: Option<Region>,
+    /// Banner presets: default fit.
+    #[serde(default)]
+    pub fit: Option<BannerFit>,
     #[serde(default)]
     pub requirement: Option<Requirement>,
     pub status: PresetStatus,
@@ -309,8 +338,9 @@ pub(super) fn check(c: &Catalog, errors: &mut Vec<String>) {
         if p.default_size().is_none() {
             errors.push(format!("{what}: no sizes"));
         }
+        // Square sizes (Wear OS) are listed as portrait.
         for s in &p.sizes.portrait {
-            if s.w >= s.h {
+            if s.w > s.h {
                 errors.push(format!("{what}: {}x{} is not portrait", s.w, s.h));
             }
         }
@@ -347,6 +377,7 @@ pub(super) fn check(c: &Catalog, errors: &mut Vec<String>) {
             None => {}
         }
         check_slot(p, file, errors);
+        check_defaults(p, file, errors);
         check_sources(&what, &p.sources, file, errors);
         if p.status != PresetStatus::Convention && p.sources.is_empty() {
             errors.push(format!("{what}: needs sources"));
@@ -355,6 +386,33 @@ pub(super) fn check(c: &Catalog, errors: &mut Vec<String>) {
             && p.note.as_deref().is_none_or(str::is_empty)
         {
             errors.push(format!("{what}: {:?} status needs a note", p.status));
+        }
+    }
+}
+
+/// Defaults a preset gives new targets (`screenshot_only`, `safe_area`,
+/// banner `region`/`fit`).
+fn check_defaults(p: &TargetPreset, file: &TargetsFile, errors: &mut Vec<String>) {
+    let what = format!("preset {}", p.id);
+    {
+        if p.kind != TargetKind::Banner && (p.region.is_some() || p.fit.is_some()) {
+            errors.push(format!("{what}: `region`/`fit` are for banner presets"));
+        }
+        if p.screenshot_only && p.kind != TargetKind::Pages {
+            errors.push(format!("{what}: `screenshot_only` is for pages presets"));
+        }
+        if let Some(a) = &p.safe_area
+            && let Err(e) = a.check()
+        {
+            errors.push(format!("{what}: {e}"));
+        }
+        if let Some(rules) = p.rules.as_deref().and_then(|r| file.rules.get(r))
+            && !rules.decorations
+            && !p.screenshot_only
+        {
+            errors.push(format!(
+                "{what}: rules forbid decorations, the preset must be `screenshot_only`"
+            ));
         }
     }
 }
@@ -372,6 +430,12 @@ fn check_slot(p: &TargetPreset, file: &TargetsFile, errors: &mut Vec<String>) {
     };
     if store != p.store {
         errors.push(format!("{what}: slot is for another store"));
+    }
+    let creative = slot.apple.as_ref().is_some_and(|a| a.placement.is_some());
+    if creative != (p.kind == TargetKind::Banner && store == Store::Apple) {
+        errors.push(format!(
+            "{what}: App Store banner presets (and only they) need a creative `placement`"
+        ));
     }
     if !known.contains(value) && p.status != PresetStatus::Unverified {
         errors.push(format!(

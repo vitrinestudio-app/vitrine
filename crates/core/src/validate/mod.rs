@@ -155,6 +155,8 @@ finding_codes! {
     TextInGap = "text_in_gap",
     /// Text extends beyond its page and is cut off (`clip: page`).
     TextClipped = "text_clipped",
+    /// Text lies (partly) outside the target's `safe_area`.
+    TextOutsideSafeArea = "text_outside_safe_area",
     // ---- screenshots
     ScreenshotMissing = "screenshot_missing",
     /// The screenshot comes from a fallback language.
@@ -163,6 +165,8 @@ finding_codes! {
     ScreenshotAspect = "screenshot_aspect",
     /// The screenshot is enlarged beyond [`Thresholds::max_upscale`].
     ScreenshotUpscale = "screenshot_upscale",
+    /// A page of a `screenshot_only` target has no device (empty image).
+    ScreenshotOnlyEmpty = "screenshot_only_empty",
     // ---- store rules
     /// Target size not accepted for the store slot.
     StoreSize = "store_size",
@@ -170,6 +174,9 @@ finding_codes! {
     StoreCount = "store_count",
     /// Export format not accepted by the store.
     StoreFormat = "store_format",
+    /// The store wants the bare app UI (Wear OS) but the target draws
+    /// frames, texts or backgrounds (info; `screenshot_only` avoids it).
+    StoreDecorations = "store_decorations",
     // ---- store mapping (`store:` in project.yaml)
     /// An explicit `store.locales` code is not a locale of that store.
     StoreLocaleUnknown = "store_locale_unknown",

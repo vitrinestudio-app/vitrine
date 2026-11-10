@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use serde::Deserialize;
 
 use super::{Catalog, aspect_matches, oriented_ratio};
-use crate::model::{Aspect, Orientation, PixelSize, Rgba, is_valid_id};
+use crate::model::{Aspect, Fold, Orientation, PixelSize, Rgba, is_valid_id};
 
 /// `devices.yaml`.
 #[derive(Debug, Clone, Deserialize)]
@@ -110,7 +110,40 @@ pub enum DeviceClass {
     Laptop,
     Desktop,
     Browser,
+    /// Smartwatch: drawn like a handheld, with a crown.
+    Watch,
     None,
+}
+
+/// Where a foldable's hinge shows (`hinge:` in `devices.yaml`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HingeAt {
+    /// Vertical hinge through the body centre (natural orientation): a
+    /// crease line on the display and hinge marks in the top and bottom
+    /// bezel (open book-style foldable).
+    Center,
+    /// Spine along the left body edge (closed book-style foldable).
+    Left,
+}
+
+/// Hinge of a foldable (model units).
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Hinge {
+    pub at: HingeAt,
+    /// Width of the hinge band / crease.
+    pub w: f64,
+}
+
+/// The other fold state of a foldable: the catalog model drawn instead.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FoldLink {
+    /// This model's own state.
+    pub state: Fold,
+    /// Model id of the other state.
+    pub other: String,
 }
 
 /// Width, height and corner radius (model units).
@@ -231,11 +264,26 @@ pub enum Edge {
     Bottom,
 }
 
+/// How a button is drawn.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ButtonStyle {
+    /// Flat key.
+    #[default]
+    Plain,
+    /// Watch crown: a ribbed cylinder.
+    Crown,
+    /// Raised part of the housing (crown guard), body colour.
+    Guard,
+}
+
 /// A hardware button on the body edge.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Button {
     pub name: String,
+    #[serde(default)]
+    pub style: ButtonStyle,
     pub edge: Edge,
     /// Start along the edge, from the top (left/right edges) or left
     /// (top/bottom edges) body corner.
@@ -332,6 +380,13 @@ pub struct Device {
     /// The body is a browser window drawn with `browser_chrome`.
     #[serde(default)]
     pub browser: bool,
+    /// Foldables: hinge band / crease.
+    #[serde(default)]
+    pub hinge: Option<Hinge>,
+    /// Foldables: this model's fold state and the model of the other one
+    /// (`fold:` on a device element switches between them).
+    #[serde(default)]
+    pub fold: Option<FoldLink>,
     #[serde(default)]
     pub colors: Vec<String>,
     #[serde(default)]
@@ -426,6 +481,13 @@ impl Device {
         self.orientations.contains(&orientation)
     }
 
+    /// The model id to draw for the element setting `fold` (`None` = the
+    /// model as it is): the linked model of the other state, if any.
+    pub fn fold_model(&self, fold: Option<Fold>) -> Option<&str> {
+        let link = self.fold.as_ref()?;
+        (fold? != link.state).then_some(link.other.as_str())
+    }
+
     /// Is `color` one of the model's colour variants?
     pub fn has_color(&self, color: &str) -> bool {
         self.colors.iter().any(|c| c == color)
@@ -455,6 +517,7 @@ pub(super) fn check(c: &Catalog, errors: &mut Vec<String>) {
         }
         check_geometry(d, errors);
         check_class_parts(d, chrome, errors);
+        check_fold(d, c, errors);
         check_colors(d, file, errors);
         check_screenshot(d, c, errors);
     }
@@ -547,6 +610,38 @@ fn check_class_parts(d: &Device, chrome: &BrowserChrome, errors: &mut Vec<String
             errors.push(format!(
                 "{id}: browser content must start below the chrome ({expected}) and fill the rest"
             ));
+        }
+    }
+}
+
+fn check_fold(d: &Device, c: &Catalog, errors: &mut Vec<String>) {
+    let id = &d.id;
+    if let Some(h) = &d.hinge {
+        let max = match h.at {
+            HingeAt::Center => d.display.w / 4.0,
+            HingeAt::Left => d.display.x,
+        };
+        if h.w <= 0.0 || h.w > max {
+            errors.push(format!("{id}: hinge width out of range"));
+        }
+    }
+    let Some(link) = &d.fold else { return };
+    match c.device(&link.other) {
+        None => errors.push(format!("{id}: unknown fold model `{}`", link.other)),
+        Some(o) => {
+            let back = o.fold.as_ref();
+            if back.is_none_or(|b| b.other != *id || b.state == link.state) {
+                errors.push(format!(
+                    "{id}: fold model `{}` must link back with the other state",
+                    link.other
+                ));
+            }
+            if o.colors != d.colors || o.default_color != d.default_color {
+                errors.push(format!(
+                    "{id}: fold model `{}` must have the same colours",
+                    link.other
+                ));
+            }
         }
     }
 }
