@@ -38,6 +38,7 @@ current: update after each phase/merge and whenever the user decides something.
 - Build for the user's manual tests: `cargo build -p arrangia-cli -p arrangia-gui` (Claude Desktop config points to `target/debug/arrangia mcp`).
 - The user runs the real GUI themselves; agents must never touch the real app data dir, the real Claude Desktop config or the user's running app. Use `ARRANGIA_APP_DIR`, `ARRANGIA_CLAUDE_DESKTOP_CONFIG`, dev bridge `--app-dir`.
 - The user's real app data dir contains the imported Apple iPhone 18 bezels (16 frames).
+- Long checks (cross-clippy, full test runs) must use a separate `CARGO_TARGET_DIR` (e.g. `target/coord-check`, `target/cross`) so they never hold the cargo lock on `target/` while the user builds/runs the GUI.
 - Subagents sometimes leave a background process; stop finished agents with TaskStop and check `ps aux | grep arrangia`.
 
 ## How we work

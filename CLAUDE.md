@@ -257,8 +257,8 @@ cargo fmt --all
 # cross-clippy for the CI's other OSes (one-time: brew install zig mingw-w64,
 # cargo install cargo-zigbuild, rustup target add x86_64-unknown-linux-gnu
 # x86_64-pc-windows-gnu); Linux excludes the GUI (needs the GTK sysroot)
-cargo zigbuild clippy --target x86_64-pc-windows-gnu --workspace --all-targets --all-features -- -D warnings
-cargo zigbuild clippy --target x86_64-unknown-linux-gnu --workspace --exclude arrangia-gui --all-targets --all-features -- -D warnings
+CARGO_TARGET_DIR=target/cross cargo zigbuild clippy --target x86_64-pc-windows-gnu --workspace --all-targets --all-features -- -D warnings
+CARGO_TARGET_DIR=target/cross cargo zigbuild clippy --target x86_64-unknown-linux-gnu --workspace --exclude arrangia-gui --all-targets --all-features -- -D warnings
 cargo run -p arrangia-cli -- --help          # CLI (binary `arrangia`)
 cargo run -p arrangia-gui                    # start the GUI (start screen)
 cargo run -p arrangia-gui -- <project-dir>   # … opening a project
