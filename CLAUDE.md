@@ -221,6 +221,12 @@ targets macOS, Windows, Linux.
 - **All model changes go through the Operations API in `core`**
   (`Op` → `Project::apply` → inverse op for undo). GUI, CLI and MCP never
   modify model fields directly.
+- **Platform-gated code must be lint-clean on every OS** (CI runs clippy on
+  macOS, Linux and Windows). Keep `cfg` branches symmetric: an item, enum
+  variant, import or helper used only inside a `#[cfg(target_os = "macos")]`
+  (or `unix`) branch is gated the same way, otherwise it is dead code
+  elsewhere and `-D warnings` fails. Check other targets from the Mac with
+  the cross-clippy commands under Commands when touching `cfg` code.
 - No `unsafe` (workspace lint `unsafe_code = "forbid"`).
 - Golden-image tests use only the bundled OFL fonts, never system fonts.
 - No vendor graphics (Apple/Google device images etc.) in the repo. Built-in
@@ -245,6 +251,11 @@ cargo build                                  # build everything
 cargo test --all                             # all tests
 cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all
+# cross-clippy for the CI's other OSes (one-time: brew install zig mingw-w64,
+# cargo install cargo-zigbuild, rustup target add x86_64-unknown-linux-gnu
+# x86_64-pc-windows-gnu); Linux excludes the GUI (needs the GTK sysroot)
+cargo zigbuild clippy --target x86_64-pc-windows-gnu --workspace --all-targets --all-features -- -D warnings
+cargo zigbuild clippy --target x86_64-unknown-linux-gnu --workspace --exclude arrangia-gui --all-targets --all-features -- -D warnings
 cargo run -p arrangia-cli -- --help          # CLI (binary `arrangia`)
 cargo run -p arrangia-gui                    # start the GUI (start screen)
 cargo run -p arrangia-gui -- <project-dir>   # … opening a project

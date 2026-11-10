@@ -30,7 +30,11 @@ pub struct PackageEntry {
 enum Source {
     Folder(PathBuf),
     Zip(Mutex<zip::ZipArchive<fs::File>>),
-    Dmg { mount: PathBuf },
+    /// A disk image attached by `hdiutil` (macOS only); detached on drop.
+    #[cfg(target_os = "macos")]
+    Dmg {
+        mount: PathBuf,
+    },
 }
 
 /// Why a package cannot be opened.
@@ -364,10 +368,9 @@ impl Package {
     /// The bytes of `entry`.
     pub fn read(&self, entry: &PackageEntry) -> Result<Vec<u8>, String> {
         match &self.source {
-            Source::Folder(root) | Source::Dmg { mount: root } => {
-                let p = entry.path.split('/').fold(root.clone(), |p, c| p.join(c));
-                fs::read(&p).map_err(|e| format!("{}: {e}", p.display()))
-            }
+            Source::Folder(root) => read_below(root, entry),
+            #[cfg(target_os = "macos")]
+            Source::Dmg { mount } => read_below(mount, entry),
             Source::Zip(archive) => {
                 let mut a = archive
                     .lock()
@@ -409,6 +412,16 @@ impl Package {
     }
 }
 
+/// The bytes of `entry` below the folder `root`.
+fn read_below(root: &Path, entry: &PackageEntry) -> Result<Vec<u8>, String> {
+    let p = entry
+        .path
+        .split('/')
+        .fold(root.to_owned(), |p, c| p.join(c));
+    fs::read(&p).map_err(|e| format!("{}: {e}", p.display()))
+}
+
+#[cfg(target_os = "macos")]
 impl Drop for Package {
     fn drop(&mut self) {
         if let Source::Dmg { mount } = &self.source {
