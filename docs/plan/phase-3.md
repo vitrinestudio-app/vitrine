@@ -31,12 +31,13 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] CLI `arrangia strings export|import`; GUI buttons in the translations panel
 
 ## 3.5 Apple Design Resources import
-- [ ] Importer: DMG (macOS `hdiutil attach -readonly -nobrowse`), zip or extracted folder; recognise device/colour/orientation from file names via `crates/core/data/frame-import/apple.yaml` (data, not code)
-- [ ] Screen rect + corner mask detection (transparent interior via flood fill from the centre); manual assignment for unknown files
-- [ ] App-wide frame store (app data dir, never in project or repo); project stores only `frame: imported:apple` (+ model/colour); missing package → parametric frame + validation info
-- [ ] Renderer: draw imported PNG frames (screenshot under the frame through the detected mask), correct scaling per element width
-- [ ] GUI: app settings → frame packages (import, list, remove, unmatched files); inspector frame source picker
-- [ ] Tests with a synthetic bezel package (generated PNGs + names); real package verified by the user
+- [x] Importer: DMG (macOS `hdiutil attach -readonly -nobrowse`), zip or extracted folder; recognise device/colour/orientation from file names via `crates/core/data/frame-import/apple.yaml` (data, not code)
+- [x] Screen rect + corner mask detection (transparent interior via flood fill from the centre); manual assignment for unknown files
+- [x] App-wide frame store (app data dir, never in project or repo); project stores only `frame: imported:apple` (+ model/colour); missing package → parametric frame + validation info
+- [x] Renderer: draw imported PNG frames (screenshot under the frame through the detected mask), correct scaling per element width
+- [x] GUI: app settings → frame packages (import, list, remove, unmatched files); inspector frame source picker
+- [x] Tests with a synthetic bezel package (generated PNGs + names) (ADR 0009)
+- [ ] Real package verified by the user (rules in `apple.yaml` are `verified: false`)
 
 ## 3.6 Follow-ups from Phase 2
 - [ ] Project settings: styles list must not collapse after each edit

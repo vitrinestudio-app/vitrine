@@ -89,8 +89,15 @@ device frames and browser chrome from the catalog; `text` – glyph outlines
 of `core::layout` results; `export` – page/banner files, gallery previews,
 incremental manifest; plus `paint`/`blur`/`raster` helpers.
 
-`cli` – `arrangia new|render|export|validate` on top of `core` + `render`
-(templates in `core::templates`).
+`cli` – `arrangia new|render|export|validate|frames` on top of `core` +
+`render` (templates in `core::templates`).
+
+`core::frame_import` (ADR 0009) – Apple Product Bezels imported by the
+user: package (folder/zip/DMG), name rules in
+`data/frame-import/apple.yaml`, screen detection, app-wide store
+`<app data>/frames/` (`ARRANGIA_APP_DIR` overrides the app folder, GUI and
+CLI); `frame: imported:apple` resolves to it or falls back to the
+parametric frame (info `imported_frame_missing`).
 
 `gui` (Phase 2, ADR 0008) – library + Tauri binary: `commands` (plain
 functions `fn(&AppState, Args) -> Result<T, CommandError>`, `dispatch` by
@@ -181,7 +188,10 @@ CLI usage (`--project <DIR>`, default the current folder): `new <dir>
 [--preview] [--strict] [--format json]`, `render [--target] [--lang]
 [--page N | --image N | --canvas | --gallery] [--width|--max-edge|--scale]
 [-o file]`, `export [--target] [--lang] [--out dir] [--no-gallery]
-[--force] [--format json]`. Exit codes: 0 ok, 1 project problems, 2 could
+[--force] [--format json]`, `frames import <path> [--dry-run]`, `frames
+list`, `frames remove [--model] [--color] [--orientation] [--all]`
+(synthetic test package: `cargo run -p arrangia-core --example
+synthetic_bezels -- <dir|file.zip>`). Exit codes: 0 ok, 1 project problems, 2 could
 not run.
 
 Golden tests (`crates/render/tests/golden.rs`) render every output image
