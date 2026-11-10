@@ -1,0 +1,205 @@
+/* Layers panel (task 2.6): element tree of the current strip. */
+
+.layers {
+  list-style: none;
+  margin: 0;
+  padding: 2px 6px 12px;
+}
+
+.layer {
+  --depth: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 4px 0 calc(2px + var(--depth) * 14px);
+  border-radius: var(--radius);
+  outline: none;
+}
+
+.layer:hover {
+  background: var(--bg-hover);
+}
+
+.layer:focus-visible {
+  box-shadow: inset var(--focus);
+}
+
+.layer[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.layer[aria-selected="true"] .layer-label,
+.layer[aria-selected="true"] .layer-page,
+.layer[aria-selected="true"] .layer-eye,
+.layer[aria-selected="true"] .layer-twisty {
+  color: rgb(255 255 255 / 80%);
+}
+
+.layer.hidden-layer .layer-name,
+.layer.hidden-layer .layer-icon {
+  opacity: 0.45;
+}
+
+.layer.dragging {
+  opacity: 0.4;
+}
+
+.layer.drop-above::before,
+.layer.drop-below::after {
+  content: "";
+  position: absolute;
+  left: calc(8px + var(--depth) * 14px);
+  right: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.layer.drop-above::before {
+  top: -1px;
+}
+
+.layer.drop-below::after {
+  bottom: -1px;
+}
+
+.layer.drop-into {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.layer-twisty {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layer-twisty svg.icon {
+  width: 11px;
+  height: 11px;
+  transition: transform 0.12s;
+}
+
+.layer-twisty.closed svg.icon {
+  transform: rotate(-90deg);
+}
+
+.layer-icon {
+  flex: none;
+  display: inline-flex;
+}
+
+.layer-icon svg.icon {
+  width: 14px;
+  height: 14px;
+}
+
+.layer-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.layer-id {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layer-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg-faint);
+  font-size: var(--fs-small);
+}
+
+.layer-rename {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--fg);
+  font-size: var(--fs-small);
+  padding: 0 4px;
+  outline: none;
+}
+
+.layer-over {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--override);
+}
+
+.layer[aria-selected="true"] .layer-over {
+  box-shadow: 0 0 0 1.5px #fff;
+}
+
+.layer-page {
+  flex: none;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--bg-active);
+  color: var(--fg-muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.layer[aria-selected="true"] .layer-page {
+  background: rgb(255 255 255 / 20%);
+}
+
+.layer-eye {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-faint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+
+.layer:hover .layer-eye,
+.layer.hidden-layer .layer-eye,
+.layer-eye:focus-visible {
+  opacity: 1;
+}
+
+.layer-eye:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.layer-eye svg.icon {
+  width: 14px;
+  height: 14px;
+}

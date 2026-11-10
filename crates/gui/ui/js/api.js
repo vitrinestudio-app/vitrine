@@ -59,4 +59,27 @@ export const api = {
   group: (view, ids) => invoke('edit_group', { ...view, ids }),
   ungroup: (view, ids) => invoke('edit_ungroup', { ...view, ids }),
   resetOverride: (view, id, field) => invoke('edit_reset_override', { ...view, id, field }),
+
+  // ----- inspector, layers, strip settings (task 2.6) -----
+  /** One element: `{ base, override, effective, overridden, text, … }`. */
+  elementGet: (view, id) => invoke('element_get', { ...view, id }),
+  /**
+   * Sets fields of `ids` (string or array; YAML names, `null` = default);
+   * core writes the base or the view's variant override. `strings`:
+   * `[{ lang, key, value }]` set in the same undo step.
+   */
+  elementPatch: (view, ids, patch, strings = []) =>
+    invoke('element_patch', { ...view, ids: [ids].flat(), patch, strings }),
+  rename: (id, to) => invoke('edit_rename', { id, to }),
+  /** Into group `parent` (null = top level) at `index` (null = top). */
+  arrange: (view, id, parent, index) => invoke('edit_arrange', { ...view, id, parent, index }),
+  stripGet: (strip) => invoke('strip_get', { strip }),
+  /** `patch`: any of `{ aspect: 'w:h', count, ids: [..], backgrounds: [fill] }`. */
+  stripPatch: (strip, patch) => invoke('strip_patch', { strip, ...patch }),
+  /** `change`: `{ action: 'add'|'remove'|'rename'|'scale', id, to?, content_scale? }`. */
+  stripVariant: (strip, change) => invoke('strip_variant', { strip, change }),
+  catalogDevices: () => invoke('catalog_devices'),
+  catalogTargets: () => invoke('catalog_targets'),
+  assetsList: () => invoke('assets_list'),
+  stringsGet: (lang) => invoke('strings_get', { lang }),
 };

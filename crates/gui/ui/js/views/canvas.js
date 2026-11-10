@@ -340,7 +340,7 @@ export function mountCanvas(root) {
     drag.delta = raw;
     drag.guides = guides;
     drag.ghosts = drag.quads.map((q) => q.map((pt) => add(pt, raw)));
-    drag.edit = { kind: 'move_by', ids: drag.ids, dx: raw.x, dy: raw.y };
+    drag.edit = { kind: 'move_by', ids: drag.ids, dx: raw.x, dy: raw.y, keep_page: keepPage(drag.ids) };
     // Home page follows the reference point (single element/group).
     const o = store.get().overlay;
     const mp = movePointOf(drag.ids[0]);
@@ -474,6 +474,12 @@ export function mountCanvas(root) {
     store.set({ selection: [...new Set([...drag.base, ...hits])] });
   }
 
+  /** Home page locked in the inspector for any of `ids`. */
+  function keepPage(ids) {
+    const locks = store.get().pageLocks ?? [];
+    return ids.some((id) => locks.includes(id));
+  }
+
   async function commit() {
     const d = drag;
     if (!d) return;
@@ -484,7 +490,7 @@ export function mountCanvas(root) {
     const v = viewArgs();
     let call = null;
     if (d.type === 'move' || d.type === 'nudge') {
-      if (d.delta.x || d.delta.y) call = api.moveBy(v, d.ids, d.delta.x, d.delta.y);
+      if (d.delta.x || d.delta.y) call = api.moveBy(v, d.ids, d.delta.x, d.delta.y, keepPage(d.ids));
     } else if (d.type === 'resize' && d.edit) {
       call = api.resize(v, d.id, { width: d.edit.width, height: d.edit.height }, d.fixed);
     } else if (d.type === 'rotate' && Math.abs(d.angle - d.r0) > 1e-9) {
@@ -702,7 +708,7 @@ export function mountCanvas(root) {
     d.delta = { x: d.delta.x + dx, y: d.delta.y + dy };
     d.ghosts = d.quads.map((q) => q.map((p) => add(p, d.delta)));
     d.hideSelection = true;
-    d.edit = { kind: 'move_by', ids: d.ids, dx: d.delta.x, dy: d.delta.y };
+    d.edit = { kind: 'move_by', ids: d.ids, dx: d.delta.x, dy: d.delta.y, keep_page: keepPage(d.ids) };
     clearTimeout(d.timer);
     d.timer = setTimeout(() => {
       if (drag === d) commit();

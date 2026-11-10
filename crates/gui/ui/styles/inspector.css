@@ -1,0 +1,758 @@
+/* Inspector, its form controls and the strip settings (task 2.6). */
+
+/* A little more room for the inspector than the shell default. */
+.app {
+  grid-template-columns: 232px minmax(0, 1fr) 288px;
+}
+
+.insp-sub {
+  font-weight: 500;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.insp-sub.variant {
+  color: var(--override);
+}
+
+.insp {
+  padding-bottom: 24px;
+}
+
+body.scrubbing,
+body.scrubbing * {
+  cursor: ew-resize !important;
+}
+
+/* Head: kind icon + id + kind. */
+.insp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 8px;
+}
+
+.insp-head .insp-text {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.insp-kind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+
+.insp-count {
+  flex: 1;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.insp-idlist {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px 6px;
+  color: var(--fg-muted);
+  max-height: 96px;
+  overflow: auto;
+}
+
+.insp-variant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: rgb(191 90 242 / 12%);
+  color: var(--override);
+  font-size: var(--fs-small);
+}
+
+.insp-variant .grow {
+  flex: 1;
+}
+
+.insp-note {
+  margin: 0;
+  padding: 0 16px 8px;
+  line-height: 1.45;
+}
+
+/* Collapsible sections. */
+.insp-section {
+  border-top: 1px solid var(--border);
+}
+
+.insp-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 12px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  text-align: left;
+  outline: none;
+}
+
+.insp-section-title:hover {
+  color: var(--fg);
+}
+
+.insp-section-title:focus-visible {
+  box-shadow: inset var(--focus);
+}
+
+.insp-section-title svg.icon {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.12s;
+}
+
+.insp-section.closed .insp-section-title svg.icon {
+  transform: rotate(-90deg);
+}
+
+.insp-section.closed .insp-section-body {
+  display: none;
+}
+
+.insp-section-body {
+  padding: 0 0 8px;
+}
+
+/* Rows: label | controls | reset. */
+.insp-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 20px;
+  align-items: center;
+  column-gap: 6px;
+  padding: 3px 8px 3px 16px;
+  min-height: 30px;
+}
+
+.insp-row.wide {
+  grid-template-columns: 1fr 20px;
+}
+
+.insp-row.wide .insp-label {
+  grid-column: 1 / -1;
+  padding-bottom: 2px;
+}
+
+.insp-row.wide .insp-controls {
+  grid-column: 1;
+}
+
+.insp-label {
+  color: var(--fg-muted);
+  font-size: var(--fs-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.insp-row.is-overridden .insp-label {
+  color: var(--override);
+  font-weight: 600;
+}
+
+.insp-row.is-overridden .insp-label::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--override);
+  margin: 0 5px 1px 0;
+  vertical-align: middle;
+}
+
+.insp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.insp-controls > .num,
+.insp-controls > .insp-select,
+.insp-controls > .insp-text,
+.insp-controls > .insp-text-wrap {
+  flex: 1 1 0;
+  width: auto;
+}
+
+.insp-hint {
+  grid-column: 2 / -1;
+  padding: 2px 0 0 2px;
+  line-height: 1.35;
+}
+
+.insp-row.wide .insp-hint {
+  grid-column: 1 / -1;
+}
+
+.insp-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.insp-derived {
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.insp-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: 100%;
+}
+
+.insp-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px 4px;
+}
+
+.insp-actions .insp-text {
+  flex: 1;
+}
+
+/* Inputs. */
+.num {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--bg-input);
+}
+
+.num:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--focus);
+}
+
+.num-scrub {
+  flex: none;
+  min-width: 18px;
+  padding: 0 3px 0 6px;
+  color: var(--fg-faint);
+  font-size: var(--fs-small);
+  cursor: ew-resize;
+  text-align: center;
+}
+
+.num-scrub:hover {
+  color: var(--accent);
+}
+
+.num-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 22px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+}
+
+.num-input::placeholder,
+.insp-text::placeholder,
+.insp-textarea::placeholder {
+  color: var(--fg-faint);
+  font-style: italic;
+}
+
+.num-unit {
+  flex: none;
+  color: var(--fg-faint);
+  font-size: var(--fs-small);
+  padding-right: 6px;
+}
+
+.insp-text,
+.insp-select,
+.insp-textarea {
+  height: 24px;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--bg-input);
+  color: var(--fg);
+  font: inherit;
+  padding: 0 6px;
+  outline: none;
+}
+
+.insp-text.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+}
+
+.insp-text-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.insp-select {
+  padding: 0 2px;
+}
+
+.insp-text:focus,
+.insp-select:focus,
+.insp-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--focus);
+}
+
+.insp-text.invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgb(229 72 77 / 25%);
+}
+
+.insp-textarea {
+  height: auto;
+  min-height: 54px;
+  padding: 5px 6px;
+  resize: vertical;
+  line-height: 1.4;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.insp-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.insp-check input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* Segmented buttons (align, box mode). */
+.insp-seg {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--radius);
+  background: var(--bg-active);
+}
+
+.insp-seg button {
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: var(--fs-small);
+  height: 20px;
+  min-width: 26px;
+  padding: 0 7px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.insp-seg button:hover {
+  color: var(--fg);
+}
+
+.insp-seg button[aria-pressed="true"] {
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 0.5px 2px rgb(0 0 0 / 18%);
+}
+
+.insp-seg button:focus-visible {
+  box-shadow: var(--focus);
+}
+
+.insp-seg svg.icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Small icon buttons (reset, lock, reorder). */
+.mini-btn {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  outline: none;
+}
+
+.mini-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.mini-btn:focus-visible {
+  box-shadow: var(--focus);
+}
+
+.mini-btn:disabled {
+  opacity: 0.3;
+}
+
+.mini-btn.on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.mini-btn.reset {
+  color: var(--override);
+}
+
+.mini-btn svg.icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* Chips toggling targets / languages. */
+.insp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.toggle-chip {
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg-faint);
+  font: inherit;
+  font-size: var(--fs-small);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  outline: none;
+}
+
+.toggle-chip.on {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.toggle-chip:focus-visible {
+  box-shadow: var(--focus);
+}
+
+/* Colours. */
+.color-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.color-swatch,
+.dev-swatch {
+  --swatch: transparent;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--border-strong);
+  background:
+    linear-gradient(var(--swatch), var(--swatch)),
+    repeating-conic-gradient(#d8d8dc 0 25%, #fff 0 50%) 0 0 / 8px 8px;
+  outline: none;
+}
+
+.color-swatch.empty {
+  background: linear-gradient(135deg, transparent 45%, var(--danger) 45% 55%, transparent 55%), var(--bg-input);
+}
+
+.color-swatch:focus-visible,
+.dev-swatch:focus-visible {
+  box-shadow: var(--focus);
+}
+
+.color-text {
+  flex: 1;
+}
+
+.color-pop {
+  position: absolute;
+  z-index: 50;
+  top: 26px;
+  left: 0;
+  width: 220px;
+  max-height: 300px;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: var(--shadow-pop);
+}
+
+.pop-title {
+  padding: 6px 4px 2px;
+  color: var(--fg-muted);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.pop-swatch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+}
+
+.pop-swatch:hover,
+.pop-swatch.current {
+  background: var(--bg-hover);
+}
+
+.pop-chip {
+  --swatch: transparent;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+  background: var(--swatch);
+  flex: none;
+}
+
+.pop-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-mark {
+  color: var(--fg-faint);
+  font-size: 10px;
+}
+
+.pop-custom {
+  padding: 2px 4px 4px;
+}
+
+.pop-native {
+  width: 100%;
+  height: 26px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.pop-none {
+  margin: 4px;
+}
+
+.insp-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+}
+
+.dev-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+}
+
+.dev-swatch.default {
+  background: var(--bg-input);
+  color: var(--fg-muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.dev-swatch.current {
+  box-shadow: 0 0 0 2px var(--bg-panel), 0 0 0 4px var(--accent);
+}
+
+/* Fill editor. */
+.fill-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.fill-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fill-preview {
+  flex: none;
+  width: 40px;
+  height: 22px;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--border-strong);
+}
+
+.fill-geo {
+  display: flex;
+  gap: 4px;
+}
+
+.fill-geo .num {
+  flex: 1 1 0;
+}
+
+.stops {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
+  gap: 4px;
+  align-items: center;
+}
+
+.stop-btns {
+  display: inline-flex;
+}
+
+.fill-editor > .btn {
+  align-self: flex-start;
+}
+
+/* Text: computed state. */
+.insp-computed {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.insp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-small);
+}
+
+.insp-status svg.icon {
+  width: 13px;
+  height: 13px;
+}
+
+.insp-status.ok {
+  color: var(--success);
+}
+
+.insp-status.warn {
+  color: var(--warning);
+}
+
+.insp-status.error {
+  color: var(--danger);
+}
+
+/* Strip settings. */
+.page-ids {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: 100%;
+}
+
+.page-id {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.page-no {
+  width: 14px;
+  text-align: right;
+  flex: none;
+}
+
+.bg-item,
+.variant-item {
+  margin: 4px 12px 8px 16px;
+  padding: 6px 8px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.bg-item-head,
+.variant-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.bg-item-head .grow {
+  flex: 1;
+}
+
+.variant-head .insp-text {
+  flex: 1;
+}
+
+.variant-item .insp-row {
+  padding: 2px 0;
+}
+
+.variant-item .insp-note {
+  padding: 2px 0 0;
+}

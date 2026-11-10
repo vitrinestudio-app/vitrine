@@ -75,6 +75,20 @@ const ICONS = {
   shape: 'M3 3h10v10H3z',
   group: 'M2 2h5v5H2zM9 9h5v5H9zM7 4.5h2.5a1 1 0 0 1 1 1V9',
   background: 'M2 2.5h12v11H2zM2 9.5l12-5',
+  eye: 'M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8ZM8 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z',
+  'eye-off': 'M2.5 2.5l11 11M6.6 4C7 3.7 7.5 3.5 8 3.5c4 0 6.5 4.5 6.5 4.5s-.7 1.3-2 2.5M10 12.1c-.6.3-1.3.4-2 .4-4 0-6.5-4.5-6.5-4.5s.9-1.6 2.5-3',
+  lock: 'M4 7.5h8v6H4zM5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5',
+  unlock: 'M4 7.5h8v6H4zM5.5 7.5V5a2.5 2.5 0 0 1 4.8-1',
+  up: 'M8 12.5v-9M4.5 7 8 3.5 11.5 7',
+  down: 'M8 3.5v9M4.5 9 8 12.5 11.5 9',
+  trash: 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9',
+  'chevron-right': 'M6.5 4.5 10 8l-3.5 3.5',
+  'align-left': 'M2.5 4h11M2.5 7h7M2.5 10h11M2.5 13h7',
+  'align-center': 'M2.5 4h11M4.5 7h7M2.5 10h11M4.5 13h7',
+  'align-right': 'M2.5 4h11M6.5 7h7M2.5 10h11M6.5 13h7',
+  'valign-top': 'M2.5 2.5h11M5 5.5h6M5 8h6',
+  'valign-center': 'M2.5 8h11M5 5h6M5 11h6',
+  'valign-bottom': 'M2.5 13.5h11M5 8h6M5 10.5h6',
 };
 
 /** An inline SVG icon by name. */

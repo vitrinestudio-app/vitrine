@@ -44,6 +44,8 @@ export const initialState = {
   sidebarTab: 'strips',
   /** Short status line (bottom bar). */
   status: '',
+  /** Element ids whose home page is locked while dragging (UI only, task 2.6). */
+  pageLocks: [],
 };
 
 function same(a, b) {

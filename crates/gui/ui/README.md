@@ -14,6 +14,8 @@ styles/base.css       design tokens (CSS variables), light/dark themes, base
 styles/controls.css   buttons, pickers, segmented control, tabs, lists, badges
 styles/shell.css      app grid
 styles/canvas.css     canvas view, SVG overlay classes, pages/gallery views
+styles/inspector.css  inspector rows, form controls, fill editor, strip settings
+styles/layers.css     layers tree
 i18n/{en,de}.json     UI strings (flat key → string; keep both in sync)
 js/main.js            entry: theme, i18n, load project, shell, shortcuts
 js/transport.js       invoke/listen over Tauri IPC or the dev bridge
@@ -30,6 +32,8 @@ js/views/overlay.js   SVG overlay drawing (pure function of a model)
 js/views/snap.js      snapping lines/box/angle
 js/views/{pages,gallery,languages}.js   other centre views
 js/panels/*.js        sidebar/inspector panels (see below)
+js/panels/fields.js   form controls: scrub numbers, colours, selects, fill editor
+js/panels/strip-settings.js  strip settings (inspector with no selection)
 ```
 
 ## Conventions
@@ -80,6 +84,17 @@ the shell mounts the active tab's panel into the sidebar body and calls
 `unmount()` when switching. The inspector (`panels/inspector.js`) is
 mounted once into the right sidebar. Panels use the shared classes
 `section-title`, `list`/`list-item`, `props` (dl grid), `placeholder`,
-`btn`, `chip`. Current placeholders: layers (2.6), assets (2.8),
-translations (2.7); the inspector shows the selection and variant
-overrides until 2.6.
+`btn`, `chip`. Current placeholders: assets (2.8), translations (2.7).
+
+The inspector (`panels/inspector.js`) reads one element with
+`api.elementGet` (base / override / effective values) and writes with
+`api.elementPatch(view, ids, patch, strings)`: plain YAML field values,
+core decides base vs variant override; never build override ops in JS.
+Rows take the YAML field name so overridden fields are marked and get a
+reset button. Controls from `panels/fields.js` commit on Enter/blur
+(arrow keys and label scrubbing for numbers) and carry a `data-key`, so a
+re-render after an edit keeps focus and unsaved typing. With nothing
+selected it shows the strip settings. Layers (`panels/layers.js`)
+reorders with `api.arrange` (HTML5 drag & drop) and renames with
+`api.rename`. `store.pageLocks` lists elements whose home page stays put
+while dragging on the canvas (UI state only).

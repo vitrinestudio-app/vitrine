@@ -1,85 +1,677 @@
-// Inspector panel (right sidebar). Minimal until task 2.6: shows the
-// selection (id, kind, home page, size, rotation) and, in a variant view,
-// the overridden fields with reset buttons.
+// Inspector panel (right sidebar, task 2.6).
+//
+// - One element: common fields (id, home page + lock, position, size,
+//   rotation, pivot, opacity, z, anchor, clip, visibility) and the
+//   kind's own fields (device, text, image, shape, background). Values
+//   come from `element_get` (base, variant override, effective); edits go
+//   through `element_patch`, which writes the base or – in a variant
+//   view – the variant's override (decided in core). Overridden fields
+//   are marked and resettable.
+// - Several elements: the common fields opacity, rotation, z, visibility.
+// - Nothing selected: the strip settings (panels/strip-settings.js).
+//
+// Re-rendered after every edit (overlay refresh); focus and unsaved
+// typing are kept by `data-key`.
 
 import { h, icon } from '../dom.js';
-import { effectiveVariant } from '../store.js';
+import { currentStrip, effectiveVariant } from '../store.js';
+import {
+  checkInput,
+  colorInput,
+  fillEditor,
+  fmtNum,
+  numberInput,
+  segmentedInput,
+  selectInput,
+  textInput,
+} from './fields.js';
+import { renderStripSettings } from './strip-settings.js';
 
-const fmt = (v) => (Math.round(v * 10) / 10).toLocaleString();
+const KIND_ICON = { device: 'device', text: 'text', image: 'image', shape: 'shape', group: 'group', background: 'background' };
+const BUILTIN_SHADOWS = ['soft', 'hard', 'none'];
+const collapsed = new Set(JSON.parse(safeGet('arrangia.inspector.collapsed') ?? '[]'));
+
+function safeGet(k) {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
+  }
+}
+function safeSet(k, v) {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Cached lookups shared by renders (catalog, assets, string keys). */
+function createCache(api) {
+  let devices = null;
+  let targets = null;
+  let assets = null;
+  let assetsAt = 0;
+  const keys = new Map();
+  return {
+    devices: () => (devices ??= api.catalogDevices().catch(() => [])),
+    targets: () => (targets ??= api.catalogTargets().catch(() => [])),
+    assets() {
+      if (!assets || performance.now() - assetsAt > 5000) {
+        assetsAt = performance.now();
+        assets = api.assetsList().catch(() => ({ screenshots: [], assets: [], fonts: [] }));
+      }
+      return assets;
+    },
+    keys(lang, fresh) {
+      if (fresh || !keys.has(lang)) keys.set(lang, api.stringsGet(lang).then((r) => r.keys).catch(() => []));
+      return keys.get(lang);
+    },
+    invalidate() {
+      assets = null;
+      keys.clear();
+    },
+  };
+}
 
 /** @param {HTMLElement} el  @param {import('./index.js').PanelContext} ctx */
-export function mount(el, { store, editor, api, t, viewArgs }) {
-  const header = h('div', { class: 'panel-header' }, t('panel.inspector'));
-  const body = h('div', { class: 'panel-body' });
+export function mount(el, ctx) {
+  const { store, editor, api, t, viewArgs } = ctx;
+  const title = h('span', {}, t('panel.inspector'));
+  const sub = h('span', { class: 'insp-sub muted small' });
+  const header = h('div', { class: 'panel-header' }, title, sub);
+  const body = h('div', { class: 'panel-body insp' });
   el.append(header, body);
+  const cache = createCache(api);
+  let seq = 0;
 
-  function row(label, value) {
-    return [h('dt', {}, label), h('dd', { title: String(value) }, value)];
+  // ----- render plumbing ---------------------------------------------------------------
+
+  /** Replace the body, keeping focus and unsaved typing (by data-key). */
+  function swap(nodes) {
+    const a = document.activeElement;
+    const keep = a && body.contains(a) && a.dataset?.key ? { key: a.dataset.key, value: a.value, dirty: a.dataset.dirty, s: a.selectionStart, e: a.selectionEnd } : null;
+    const scroll = body.scrollTop;
+    body.replaceChildren(...nodes);
+    body.scrollTop = scroll;
+    if (keep) {
+      const n = body.querySelector(`[data-key="${CSS.escape(keep.key)}"]`);
+      if (n) {
+        if (keep.dirty && 'value' in n) {
+          n.value = keep.value;
+          n.dataset.dirty = '1';
+        }
+        n.focus({ preventScroll: true });
+        try {
+          if (keep.s != null) n.setSelectionRange(keep.s, keep.e);
+        } catch {
+          /* not a text input */
+        }
+      }
+    }
   }
 
-  function render() {
-    const st = store.get();
-    const o = st.overlay;
-    const sel = st.selection;
-    if (!o || !sel.length) {
-      body.replaceChildren(h('p', { class: 'placeholder' }, t('inspector.none')));
-      return;
-    }
-    if (sel.length > 1) {
-      body.replaceChildren(
-        h('div', { class: 'section-title' }, `${sel.length} ${t('inspector.selected')}`),
-        h('ul', { class: 'list' }, ...sel.map((id) => h('li', { class: 'list-item' }, h('span', { class: 'grow mono small' }, id)))),
-      );
-      return;
-    }
-    const id = sel[0];
-    const e = o.elements.find((x) => x.id === id);
-    const g = o.groups.find((x) => x.id === id);
-    const page = o.pages.find((p) => p.index === (e?.page ?? -1));
-    const props = h('dl', { class: 'props' });
-    props.append(...row(t('inspector.id'), id));
-    props.append(...row(t('inspector.kind'), e ? t(`kind.${e.kind}`) : t('kind.group')));
-    if (e) {
-      props.append(...row(t('inspector.page'), page ? `${page.index + 1} · ${page.id}` : e.page + 1));
-      props.append(...row(t('inspector.size'), `${fmt(e.rect.w)} × ${fmt(e.rect.h)} lu`));
-      props.append(...row(t('inspector.center'), `${fmt(e.move_point.x)}, ${fmt(e.move_point.y)}`));
-      props.append(...row(t('inspector.rotation'), `${fmt(e.rotation)}°`));
-      if (e.text) {
-        props.append(...row(t('inspector.lines'), e.text.lines));
-        props.append(...row(t('inspector.font_size'), `${fmt(e.text.font_size)} lu`));
-        if (e.text.overflow) props.append(...row(t('inspector.status'), t('inspector.overflow')));
-        else if (e.text.emergency_breaks?.length) props.append(...row(t('inspector.status'), t('inspector.emergency')));
-      }
-      if (e.in_gap) props.append(...row(t('inspector.status'), t('inspector.in_gap')));
-    } else if (g) {
-      props.append(...row(t('inspector.members'), g.members.length));
-      props.append(...row(t('inspector.size'), `${fmt(g.bounds.w)} × ${fmt(g.bounds.h)} lu`));
-    }
-    const parts = [h('div', { class: 'section-title' }, t('inspector.element')), props];
+  function section(id, label, ...content) {
+    const open = !collapsed.has(id);
+    const sec = h('section', { class: `insp-section${open ? '' : ' closed'}` });
+    const toggle = () => {
+      if (collapsed.has(id)) collapsed.delete(id);
+      else collapsed.add(id);
+      safeSet('arrangia.inspector.collapsed', JSON.stringify([...collapsed]));
+      sec.classList.toggle('closed');
+    };
+    sec.append(
+      h('button', { type: 'button', class: 'insp-section-title', 'aria-expanded': String(open), onclick: toggle }, icon('chevron'), h('span', {}, label)),
+      h('div', { class: 'insp-section-body' }, ...content.flat()),
+    );
+    return sec;
+  }
 
+  /**
+   * A labelled row. `field`: YAML field name(s) for the override marker
+   * and reset; `hint`: small text under the controls.
+   */
+  function row(label, controls, { field, info, hint, wide } = {}) {
+    const fields = [field].flat().filter(Boolean);
+    const over = info ? fields.filter((f) => info.overridden.includes(f)) : [];
+    const r = h('div', { class: `insp-row${over.length ? ' is-overridden' : ''}${wide ? ' wide' : ''}` });
+    r.append(h('span', { class: 'insp-label', title: over.length ? t('inspector.overridden') : label }, label));
+    r.append(h('div', { class: 'insp-controls' }, ...[controls].flat().filter(Boolean)));
+    if (over.length) {
+      r.append(
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'mini-btn reset',
+            title: `${t('inspector.reset_field')}: ${over.join(', ')}`,
+            onclick: async () => {
+              for (const f of over) await editor.apply(api.resetOverride(viewArgs(), info.id, f), { touched: [info.id] });
+            },
+          },
+          icon('reset'),
+        ),
+      );
+    } else r.append(h('span'));
+    if (hint) r.append(h('div', { class: 'insp-hint muted small' }, hint));
+    return r;
+  }
+
+  const palette = () => store.get().summary?.styles.colors ?? {};
+
+  // ----- refresh -------------------------------------------------------------------------
+
+  async function refresh() {
+    const st = store.get();
+    const my = ++seq;
+    const sel = st.selection;
     const variant = effectiveVariant(st);
-    const overridden = (e ?? g)?.overridden ?? [];
+    sub.textContent = variant ? `${t('status.variant')}: ${variant}` : '';
+    sub.classList.toggle('variant', !!variant);
+    if (!st.summary || !st.overlay) {
+      swap([h('p', { class: 'placeholder' }, t('inspector.none'))]);
+      return;
+    }
+    try {
+      if (!sel.length) {
+        title.textContent = t('strip.title');
+        const nodes = await renderStripSettings(ctx, { section, row, cache, palette });
+        if (my === seq) swap(nodes);
+        return;
+      }
+      title.textContent = t('panel.inspector');
+      if (sel.length > 1) {
+        const infos = await Promise.all(sel.slice(0, 40).map((id) => api.elementGet(viewArgs(), id).catch(() => null)));
+        if (my === seq) swap(renderMulti(sel, infos.filter(Boolean)));
+        return;
+      }
+      const info = await api.elementGet(viewArgs(), sel[0]);
+      const extra = await loadExtras(info, st);
+      if (my === seq) swap(renderElement(info, extra));
+    } catch (e) {
+      if (my === seq) swap([h('p', { class: 'placeholder' }, `${t('error.edit')}: ${e.message}`)]);
+    }
+  }
+
+  async function loadExtras(info, st) {
+    const out = {};
+    if (info.kind === 'device') {
+      [out.devices, out.assets] = await Promise.all([cache.devices(), cache.assets()]);
+    } else if (info.kind === 'text') {
+      out.keys = await cache.keys(st.lang);
+    } else if (info.kind === 'image' || info.kind === 'shape' || info.kind === 'background') {
+      out.assets = await cache.assets();
+    }
+    return out;
+  }
+
+  // ----- edits ---------------------------------------------------------------------------
+
+  const patch = (ids, fields, strings) =>
+    editor.apply(api.elementPatch(viewArgs(), ids, fields, strings), { touched: [ids].flat() });
+
+  // ----- one element ---------------------------------------------------------------------
+
+  function renderElement(info, extra) {
+    const st = store.get();
+    const e = info.effective;
+    const id = info.id;
+    const o = st.overlay;
+    const oe = o.elements.find((x) => x.id === id);
+    const og = o.groups.find((x) => x.id === id);
+    const set = (fields, strings) => patch(id, fields, strings);
+    const kind = info.kind;
+    const isMarginText = kind === 'text' && e.box != null;
+    const nodes = [];
+
+    // Head: kind icon, id (rename), kind name.
+    const idInput = textInput({
+      key: 'id',
+      value: id,
+      mono: true,
+      title: t('inspector.id'),
+      validate: (v) => (/^[a-z0-9][a-z0-9_-]*$/i.test(v) ? null : t('inspector.id.invalid')),
+      onCommit: (v) => editor.apply(api.rename(id, v), { touched: [id], select: [v] }),
+    });
+    nodes.push(
+      h('div', { class: 'insp-head' }, h('span', { class: 'insp-kind', title: t(`kind.${kind}`) }, icon(KIND_ICON[kind] ?? 'shape')), idInput, h('span', { class: 'muted small' }, t(`kind.${kind}`))),
+    );
+
+    const variant = info.variant;
     if (variant) {
-      const reset = (field) =>
-        editor.apply(api.resetOverride(viewArgs(), id, field), { touched: [id] });
-      parts.push(h('div', { class: 'section-title' }, `${t('inspector.overrides')} · ${variant}`));
-      if (overridden.length) {
-        parts.push(
-          h(
-            'div',
-            { class: 'props-chips' },
-            ...overridden.map((f) =>
-              h('span', { class: 'chip' }, f, h('button', { type: 'button', title: t('inspector.reset_field'), onclick: () => reset(f) }, icon('close'))),
-            ),
-            h('button', { class: 'btn btn-small', type: 'button', onclick: () => reset(undefined) }, icon('reset'), t('inspector.reset_all')),
+      nodes.push(
+        h(
+          'div',
+          { class: 'insp-variant' },
+          h('span', { class: 'grow' }, `${t('inspector.variant_edit')} ${variant}`),
+          info.overridden.length
+            ? h('button', { type: 'button', class: 'btn btn-small', onclick: () => editor.apply(api.resetOverride(viewArgs(), id, undefined), { touched: [id] }) }, icon('reset'), t('inspector.reset_all'))
+            : null,
+        ),
+      );
+    }
+
+    // ----- layout -----
+    const layout = [];
+    if (kind !== 'group') {
+      const strip = currentStrip(st);
+      const locked = st.pageLocks.includes(id);
+      const pages = (strip?.page.ids ?? []).map((pid, i) => ({ value: String(i), label: `${i + 1} · ${pid}` }));
+      const lock = h(
+        'button',
+        {
+          type: 'button',
+          class: `mini-btn${locked ? ' on' : ''}`,
+          title: locked ? t('inspector.page.unlock') : t('inspector.page.lock'),
+          'aria-pressed': String(locked),
+          onclick: () => {
+            const l = store.get().pageLocks;
+            store.set({ pageLocks: locked ? l.filter((x) => x !== id) : [...l, id] });
+            refresh();
+          },
+        },
+        icon(locked ? 'lock' : 'unlock'),
+      );
+      layout.push(
+        row(
+          t('inspector.page'),
+          [selectInput({ key: 'page', options: pages, value: String(e.page ?? 0), title: t('inspector.page'), onChange: (v) => editor.apply(api.setPage(viewArgs(), id, Number(v), true), { touched: [id] }) }), lock],
+          { field: 'page', info, hint: locked ? t('inspector.page.locked') : null },
+        ),
+      );
+    }
+    if (kind !== 'background' && !isMarginText) {
+      const at = e.at ?? { x: 0, y: 0 };
+      const mp = oe?.move_point ?? og?.move_point;
+      layout.push(
+        row(
+          kind === 'group' ? t('inspector.offset') : t('inspector.position'),
+          [
+            numberInput({ key: 'at.x', label: 'X', value: at.x, precision: 1, onCommit: (v) => set({ at: { x: v, y: at.y } }) }).el,
+            numberInput({ key: 'at.y', label: 'Y', value: at.y, precision: 1, onCommit: (v) => set({ at: { x: at.x, y: v } }) }).el,
+          ],
+          { field: 'at', info, hint: mp ? `${t('inspector.canvas')} ${fmtNum(mp.x, 0)}, ${fmtNum(mp.y, 0)}` : null },
+        ),
+      );
+    }
+    if (kind === 'device') {
+      layout.push(
+        row(t('inspector.size'), [
+          numberInput({ key: 'width', label: 'W', value: e.width ?? null, optional: true, placeholder: '800', min: 1, precision: 1, onCommit: (v) => set({ width: v }) }).el,
+          h('span', { class: 'muted small insp-derived' }, oe ? `H ${fmtNum(oe.rect.h, 0)}` : ''),
+        ], { field: 'width', info }),
+      );
+    } else if (kind === 'image' || kind === 'shape' || (kind === 'text' && !isMarginText)) {
+      layout.push(
+        row(t('inspector.size'), [
+          numberInput({ key: 'width', label: 'W', value: e.width ?? null, optional: true, placeholder: kind === 'text' ? '840' : '', min: 0, precision: 1, onCommit: (v) => set({ width: v }) }).el,
+          numberInput({ key: 'height', label: 'H', value: e.height ?? null, optional: true, placeholder: t('inspector.auto'), min: 0, precision: 1, onCommit: (v) => set({ height: v }) }).el,
+        ], { field: ['width', 'height'], info }),
+      );
+    }
+    if (kind !== 'background') {
+      const pv = e.pivot ?? null;
+      layout.push(
+        row(t('inspector.rotation'), numberInput({ key: 'rotation', label: '∠', value: e.rotation ?? 0, unit: '°', precision: 2, step: 1, big: 15, onCommit: (v) => set({ rotation: v === 0 ? null : v }) }).el, { field: 'rotation', info }),
+      );
+      if (kind !== 'group' || pv) {
+        layout.push(
+          row(
+            t('inspector.pivot'),
+            [
+              numberInput({ key: 'pivot.x', label: 'X', value: pv?.x ?? null, optional: true, placeholder: '0', precision: 1, onCommit: (v) => set({ pivot: v == null && !pv?.y ? null : { x: v ?? 0, y: pv?.y ?? 0 } }) }).el,
+              numberInput({ key: 'pivot.y', label: 'Y', value: pv?.y ?? null, optional: true, placeholder: '0', precision: 1, onCommit: (v) => set({ pivot: v == null && !pv?.x ? null : { x: pv?.x ?? 0, y: v ?? 0 } }) }).el,
+            ],
+            { field: 'pivot', info, hint: kind === 'text' && !e.height && !e.box?.bottom ? t('inspector.pivot.text') : t('inspector.pivot.hint') },
           ),
         );
-      } else parts.push(h('p', { class: 'placeholder' }, t('inspector.no_overrides')));
+      }
     }
-    body.replaceChildren(...parts);
+    if (layout.length) nodes.push(section('layout', t('inspector.layout'), layout));
+
+    // ----- kind specific -----
+    if (kind === 'device') nodes.push(deviceSection(info, e, extra, set));
+    if (kind === 'text') nodes.push(textSection(info, e, extra, set, oe));
+    if (kind === 'image') nodes.push(imageSection(info, e, extra, set));
+    if (kind === 'shape') nodes.push(shapeSection(info, e, extra, set));
+    if (kind === 'background') {
+      nodes.push(section('fill', t('inspector.fill'), row(t('inspector.fill'), fillEditor({ key: 'fill', fill: e.fill, palette: palette(), images: imagePaths(extra), t, onError: (m) => editor.toast(m, true), onCommit: (f) => set({ fill: f }) }), { field: 'fill', info, wide: true })));
+    }
+    if (kind === 'group') {
+      nodes.push(section('group', t('kind.group'), row(t('inspector.members'), h('span', { class: 'insp-value' }, String(info.children?.length ?? 0)))));
+    }
+
+    // ----- appearance & visibility -----
+    nodes.push(section('appearance', t('inspector.appearance'), commonRows(info, e, set)));
+    return nodes;
   }
 
-  const unsub = store.select((s) => [s.selection, s.overlay, s.variant], render);
-  render();
-  return { unmount: () => unsub() };
+  function commonRows(info, e, set) {
+    const st = store.get();
+    const rows = [
+      row(t('inspector.opacity'), numberInput({ key: 'opacity', label: 'α', value: e.opacity ?? 1, scale: 100, unit: '%', precision: 0, min: 0, max: 1, step: 0.01, big: 0.1, onCommit: (v) => set({ opacity: v === 1 ? null : v }) }).el, { field: 'opacity', info }),
+      row(t('inspector.z'), numberInput({ key: 'z', label: 'Z', value: e.z ?? 0, precision: 0, step: 1, big: 10, onCommit: (v) => set({ z: v === 0 ? null : Math.round(v) }) }).el, { field: 'z', info }),
+    ];
+    if (info.kind !== 'group' && info.kind !== 'background') {
+      const anchors = [{ value: '', label: t('inspector.default') }, ...['top', 'bottom', 'center', 'stretch'].map((a) => ({ value: a, label: t(`inspector.anchor.${a}`) }))];
+      rows.push(row(t('inspector.anchor'), selectInput({ key: 'anchor_y', options: anchors, value: e.anchor_y ?? '', title: t('inspector.anchor'), onChange: (v) => set({ anchor_y: v || null }) }), { field: 'anchor_y', info }));
+    }
+    if (info.kind !== 'group') {
+      const def = info.kind === 'text' ? t('inspector.clip.page') : t('inspector.clip.none');
+      const clips = [{ value: '', label: `${t('inspector.default')} (${def})` }, { value: 'none', label: t('inspector.clip.none') }, { value: 'page', label: t('inspector.clip.page') }];
+      rows.push(row(t('inspector.clip'), selectInput({ key: 'clip', options: clips, value: e.clip ?? '', title: t('inspector.clip'), onChange: (v) => set({ clip: v || null }) }), { field: 'clip', info }));
+    }
+    rows.push(row(t('inspector.visible'), checkInput({ key: 'visible', checked: e.visible !== false, label: t('inspector.visible.on'), onChange: (v) => set({ visible: v ? null : false }) }), { field: 'visible', info }));
+
+    // visible_in: chips per target of the strip and per language (none = all).
+    const vi = e.visible_in ?? {};
+    const toggleIn = (dim, value, all) => {
+      const cur = vi[dim]?.length ? [...vi[dim]] : [];
+      const next = cur.includes(value) ? cur.filter((x) => x !== value) : [...cur, value];
+      const norm = next.length === all.length ? [] : next;
+      const out = { ...vi, [dim]: norm };
+      if (!out.targets?.length) delete out.targets;
+      if (!out.langs?.length) delete out.langs;
+      set({ visible_in: Object.keys(out).length ? out : null });
+    };
+    const chips = (dim, all) =>
+      h(
+        'div',
+        { class: 'insp-chips' },
+        ...all.map((v) => {
+          const on = !vi[dim]?.length || vi[dim].includes(v);
+          return h('button', { type: 'button', class: `toggle-chip${on ? ' on' : ''}`, 'aria-pressed': String(on), title: v, onclick: () => toggleIn(dim, v, all) }, v);
+        }),
+      );
+    const targets = st.summary.targets.filter((x) => x.strip === st.strip).map((x) => x.id);
+    rows.push(row(t('inspector.visible_in.targets'), chips('targets', targets), { field: 'visible_in', info, wide: true }));
+    rows.push(row(t('inspector.visible_in.langs'), chips('langs', st.summary.languages.available), { field: 'visible_in', info, wide: true }));
+    return rows;
+  }
+
+  function shadowSelect(info, e, set) {
+    const project = store.get().summary.styles.shadows ?? [];
+    const names = [...new Set([...BUILTIN_SHADOWS, ...project])];
+    const options = [{ value: '', label: t('inspector.shadow.off') }, ...names.map((n) => ({ value: n, label: n }))];
+    return row(t('inspector.shadow'), selectInput({ key: 'shadow', options, value: e.shadow ?? '', title: t('inspector.shadow'), onChange: (v) => set({ shadow: v || null }) }), { field: 'shadow', info });
+  }
+
+  function deviceSection(info, e, extra, set) {
+    const devices = extra.devices ?? [];
+    const dev = devices.find((d) => d.id === e.model);
+    const rows = [];
+    const models = devices.map((d) => ({ value: d.id, label: d.label, group: t(`inspector.class.${d.class}`) }));
+    if (!dev) models.unshift({ value: e.model, label: e.model });
+    rows.push(row(t('inspector.model'), selectInput({ key: 'model', options: models, value: e.model, title: t('inspector.model'), onChange: (v) => set({ model: v }) }), { field: 'model', info }));
+    const frameDefault = store.get().summary.styles.frame;
+    rows.push(
+      row(
+        t('inspector.frame'),
+        selectInput({
+          key: 'frame',
+          options: [{ value: '', label: `${t('inspector.project_default')} (${t(`inspector.frame.${frameDefault}`)})` }, { value: 'stylized', label: t('inspector.frame.stylized') }, { value: 'detailed', label: t('inspector.frame.detailed') }],
+          value: e.frame ?? '',
+          title: t('inspector.frame'),
+          onChange: (v) => set({ frame: v || null }),
+        }),
+        { field: 'frame', info },
+      ),
+    );
+    // Colour: catalog swatches + custom hex.
+    const swatches = dev?.swatches ?? [];
+    const current = e.color ?? null;
+    const sw = h(
+      'div',
+      { class: 'insp-swatches' },
+      h('button', { type: 'button', class: `dev-swatch default${current == null ? ' current' : ''}`, title: `${t('inspector.default')}${dev?.default_color ? ` (${dev.default_color})` : ''}`, onclick: () => set({ color: null }) }, 'A'),
+      ...swatches.map((s) => {
+        const b = h('button', { type: 'button', class: `dev-swatch${current === s.name ? ' current' : ''}`, title: s.label, onclick: () => set({ color: s.name }) });
+        b.style.setProperty('--swatch', s.hex);
+        return b;
+      }),
+    );
+    const custom = current && current.startsWith('#') ? current : '';
+    rows.push(
+      row(t('inspector.color'), [sw, colorInput({ key: 'color', value: custom, palette: {}, swatches: [], optional: true, placeholder: t('inspector.color.custom'), t, onCommit: (v) => set({ color: v }) })], {
+        field: 'color',
+        info,
+        wide: true,
+      }),
+    );
+    const orients = [{ value: '', label: `${t('inspector.default')}${dev ? ` (${t(`inspector.orientation.${dev.natural}`)})` : ''}` }, ...(dev?.orientations ?? ['portrait', 'landscape']).map((x) => ({ value: x, label: t(`inspector.orientation.${x}`) }))];
+    rows.push(row(t('inspector.orientation'), selectInput({ key: 'orientation', options: orients, value: e.orientation ?? '', title: t('inspector.orientation'), onChange: (v) => set({ orientation: v || null }) }), { field: 'orientation', info }));
+    const keys = [...new Set((extra.assets?.screenshots ?? []).map((s) => s.key))].sort();
+    rows.push(
+      row(t('inspector.screenshot'), textInput({ key: 'screenshot', value: e.screenshot ?? '', list: keys, mono: true, placeholder: t('inspector.screenshot.none'), title: t('inspector.screenshot'), onCommit: (v) => set({ screenshot: v || null }) }), {
+        field: 'screenshot',
+        info,
+        hint: e.screenshot && !keys.includes(e.screenshot) ? t('inspector.screenshot.unknown') : null,
+      }),
+    );
+    rows.push(row(t('inspector.fit'), fitSelect(e.fit, 'cover', (v) => set({ fit: v || null })), { field: 'fit', info }));
+    rows.push(shadowSelect(info, e, set));
+    const computer = dev && (dev.class === 'laptop' || dev.class === 'desktop');
+    if (computer) {
+      rows.push(
+        row(t('inspector.chrome'), selectInput({ key: 'chrome', options: [{ value: '', label: t('inspector.default') }, { value: 'none', label: t('inspector.chrome.none') }, { value: 'browser', label: t('inspector.chrome.browser') }], value: e.chrome ?? '', title: t('inspector.chrome'), onChange: (v) => set({ chrome: v || null }) }), { field: 'chrome', info }),
+      );
+    }
+    if (computer || dev?.browser) {
+      rows.push(row(t('inspector.url'), textInput({ key: 'url', value: e.url ?? '', placeholder: 'example.com', title: t('inspector.url'), onCommit: (v) => set({ url: v || null }) }), { field: 'url', info }));
+      rows.push(
+        row(t('inspector.appearance_mode'), selectInput({ key: 'appearance', options: [{ value: '', label: t('inspector.default') }, { value: 'light', label: t('inspector.appearance.light') }, { value: 'dark', label: t('inspector.appearance.dark') }], value: e.appearance ?? '', title: t('inspector.appearance_mode'), onChange: (v) => set({ appearance: v || null }) }), { field: 'appearance', info }),
+      );
+    }
+    return section('device', t('kind.device'), rows);
+  }
+
+  function fitSelect(value, def, onChange) {
+    const options = [{ value: '', label: `${t('inspector.default')} (${t(`inspector.f.fit.${def}`)})` }, ...['cover', 'contain', 'stretch'].map((x) => ({ value: x, label: t(`inspector.f.fit.${x}`) }))];
+    return selectInput({ key: 'fit', options, value: typeof value === 'string' ? value : '', title: t('inspector.fit'), onChange });
+  }
+
+  function textSection(info, e, extra, set, oe) {
+    const st = store.get();
+    const rows = [];
+    const tx = info.text;
+    const keys = extra.keys ?? [];
+    // Key: pick an existing key or type a new one (created with the current text).
+    rows.push(
+      row(
+        t('inspector.key'),
+        textInput({
+          key: 'text.key',
+          value: e.text,
+          list: keys,
+          mono: true,
+          title: t('inspector.key'),
+          validate: (v) => (/^[a-z0-9][a-z0-9._-]*$/i.test(v) ? null : t('inspector.key.invalid')),
+          onCommit: (v) => {
+            const strings = keys.includes(v) ? [] : [{ lang: st.lang, key: v, value: tx?.value ?? tx?.fallback ?? '' }];
+            cache.keys(st.lang, true);
+            set({ text: v }, strings);
+          },
+        }),
+        { field: 'text', info, hint: tx && !keys.includes(e.text) ? t('inspector.key.new') : null },
+      ),
+    );
+    // Live text of the current language.
+    const area = h('textarea', { class: 'insp-textarea', rows: 3, spellcheck: 'true', dataset: { key: 'text.value' }, placeholder: tx?.fallback ? `${tx.fallback}` : t('inspector.text.empty') });
+    area.value = tx?.value ?? '';
+    const commitText = () => {
+      delete area.dataset.dirty;
+      const v = area.value;
+      if (v === (tx?.value ?? '')) return;
+      set({}, [{ lang: st.lang, key: e.text, value: v === '' ? null : v }]);
+    };
+    area.addEventListener('input', () => {
+      area.dataset.dirty = '1';
+    });
+    area.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) {
+        ev.preventDefault();
+        commitText();
+      } else if (ev.key === 'Escape') {
+        area.value = tx?.value ?? '';
+        delete area.dataset.dirty;
+        area.blur();
+      }
+    });
+    area.addEventListener('blur', () => area.dataset.dirty && commitText());
+    const hint = tx?.value == null ? (tx?.fallback_lang ? `${t('inspector.text.fallback')} ${tx.fallback_lang}` : t('inspector.text.missing')) : t('inspector.text.hint');
+    rows.push(row(`${t('inspector.text')} · ${st.lang}`, area, { hint, wide: true }));
+
+    const styles = st.summary.styles.text;
+    rows.push(row(t('inspector.style'), selectInput({ key: 'style', options: [{ value: '', label: t('inspector.style.none') }, ...styles.map((s) => ({ value: s, label: s }))], value: e.style ?? '', title: t('inspector.style'), onChange: (v) => set({ style: v || null }) }), { field: 'style', info }));
+    const ot = oe?.text;
+    rows.push(
+      row(t('inspector.font_size'), numberInput({ key: 'font_size', label: 'A', unit: 'lu', value: e.font_size ?? null, optional: true, placeholder: ot ? fmtNum(ot.font_size, 1) : t('inspector.auto'), min: 1, precision: 1, onCommit: (v) => set({ font_size: v }) }).el, { field: 'font_size', info }),
+    );
+    rows.push(row(t('inspector.color'), colorInput({ key: 'text.color', value: e.color ?? '', palette: palette(), optional: true, placeholder: t('inspector.style.color'), t, onCommit: (v) => set({ color: v }) }), { field: 'color', info }));
+
+    // Box: page margins or a free box.
+    const margins = e.box != null;
+    const toFree = () => {
+      const b = e.box ?? {};
+      const w = 1000 - (b.left ?? 0) - (b.right ?? 0);
+      const hgt = ot ? ot.content.h : 200;
+      set({ box: null, at: { x: (b.left ?? 0) + w / 2, y: (b.top ?? 0) + hgt / 2 }, width: Math.max(1, w), valign: e.valign ?? 'top' });
+    };
+    const toMargins = () => {
+      const w = e.width ?? 840;
+      const at = e.at ?? { x: 500, y: 0 };
+      const hgt = e.height ?? (oe ? oe.rect.h : 0);
+      set({ box: { top: Math.round(at.y - hgt / 2), left: Math.round(at.x - w / 2), right: Math.round(1000 - at.x - w / 2) }, at: null, width: null, height: null });
+    };
+    rows.push(
+      row(t('inspector.box'), segmentedInput({ options: [{ value: 'margins', label: t('inspector.box.margins') }, { value: 'free', label: t('inspector.box.free') }], value: margins ? 'margins' : 'free', onChange: (v) => (v === 'free' ? toFree() : toMargins()), title: t('inspector.box') }), {
+        field: 'box',
+        info,
+      }),
+    );
+    if (margins) {
+      const b = e.box;
+      const m = (side, label) =>
+        numberInput({
+          key: `box.${side}`,
+          label,
+          title: t(`inspector.box.${side}`),
+          value: b[side] ?? null,
+          optional: true,
+          placeholder: side === 'bottom' ? t('inspector.auto') : '0',
+          precision: 1,
+          onCommit: (v) => {
+            const nb = { ...b, [side]: v };
+            if (v == null) delete nb[side];
+            set({ box: nb });
+          },
+        }).el;
+      rows.push(row(t('inspector.box.margins'), h('div', { class: 'insp-grid2' }, m('top', 'T'), m('bottom', 'B'), m('left', 'L'), m('right', 'R')), { field: 'box', info }));
+    }
+    rows.push(
+      row(t('inspector.align'), segmentedInput({ options: ['left', 'center', 'right'].map((a) => ({ value: a, icon: `align-${a}`, title: t(`inspector.align.${a}`) })), value: e.align ?? 'left', onChange: (v) => set({ align: v === 'left' ? null : v }), title: t('inspector.align') }), {
+        field: 'align',
+        info,
+      }),
+    );
+    rows.push(
+      row(t('inspector.valign'), segmentedInput({ options: ['top', 'center', 'bottom'].map((a) => ({ value: a, icon: `valign-${a}`, title: t(`inspector.valign.${a}`) })), value: e.valign ?? (margins ? 'top' : 'center'), onChange: (v) => set({ valign: v }), title: t('inspector.valign') }), {
+        field: 'valign',
+        info,
+      }),
+    );
+    const fit = typeof e.fit === 'object' && e.fit ? e.fit : {};
+    const setFit = (k, v) => {
+      const nf = { ...fit, [k]: v };
+      if (v == null) delete nf[k];
+      set({ fit: Object.keys(nf).length ? nf : null });
+    };
+    rows.push(
+      row(t('inspector.autofit'), [
+        numberInput({ key: 'fit.shrink_to', label: '↓', title: t('inspector.shrink_to'), value: fit.shrink_to ?? null, optional: true, placeholder: t('inspector.shrink_to.off'), min: 1, precision: 1, onCommit: (v) => setFit('shrink_to', v) }).el,
+        numberInput({ key: 'fit.max_lines', label: '≡', title: t('inspector.max_lines'), value: fit.max_lines ?? null, optional: true, placeholder: '∞', min: 1, precision: 0, onCommit: (v) => setFit('max_lines', v == null ? null : Math.round(v)) }).el,
+      ], { field: 'fit', info }),
+    );
+    if (ot) {
+      const status = ot.overflow ? h('span', { class: 'insp-status error' }, icon('error'), t('inspector.overflow')) : ot.emergency_breaks?.length ? h('span', { class: 'insp-status warn' }, icon('warning'), `${t('inspector.emergency')}: ${ot.emergency_breaks.join(', ')}`) : h('span', { class: 'insp-status ok' }, icon('check'), t('inspector.fits'));
+      rows.push(row(t('inspector.computed'), h('div', { class: 'insp-computed' }, h('span', {}, `${fmtNum(ot.font_size, 1)} lu · ${ot.lines} ${t('inspector.lines_unit')}`), status), { wide: true }));
+    }
+    return section('text', t('kind.text'), rows);
+  }
+
+  function imagePaths(extra) {
+    return (extra.assets?.assets ?? []).map((a) => a.path).filter((p) => /\.(png|jpe?g|svg|webp)$/i.test(p));
+  }
+
+  function imageSection(info, e, extra, set) {
+    const list = imagePaths(extra);
+    return section('image', t('kind.image'), [
+      row(t('inspector.asset'), textInput({ key: 'asset', value: e.asset ?? '', list, mono: true, title: t('inspector.asset'), onCommit: (v) => v && set({ asset: v }) }), { field: 'asset', info, hint: e.asset && !list.includes(e.asset) ? t('inspector.asset.unknown') : null }),
+      row(t('inspector.fit'), fitSelect(e.fit, 'contain', (v) => set({ fit: v || null })), { field: 'fit', info }),
+      shadowSelect(info, e, set),
+    ]);
+  }
+
+  function shapeSection(info, e, extra, set) {
+    const rows = [
+      row(t('inspector.shape'), selectInput({ key: 'shape', options: ['rect', 'ellipse', 'line'].map((x) => ({ value: x, label: t(`inspector.shape.${x}`) })), value: e.shape, title: t('inspector.shape'), onChange: (v) => set({ shape: v }) }), { field: 'shape', info }),
+    ];
+    if (e.shape === 'rect') {
+      rows.push(row(t('inspector.radius'), numberInput({ key: 'radius', label: '◜', value: e.radius ?? null, optional: true, placeholder: '0', min: 0, precision: 1, onCommit: (v) => set({ radius: v }) }).el, { field: 'radius', info }));
+    }
+    rows.push(row(t('inspector.fill'), fillEditor({ key: 'fill', fill: e.fill ?? null, optional: true, palette: palette(), images: imagePaths(extra), t, onError: (m) => editor.toast(m, true), onCommit: (f) => set({ fill: f }) }), { field: 'fill', info, wide: true }));
+    const stroke = e.stroke ?? null;
+    rows.push(
+      row(
+        t('inspector.stroke'),
+        [
+          checkInput({ key: 'stroke.on', checked: !!stroke, onChange: (on) => set({ stroke: on ? { color: '#000000', width: 4 } : null }), title: t('inspector.stroke') }),
+          stroke ? colorInput({ key: 'stroke.color', value: stroke.color, palette: palette(), t, onCommit: (v) => set({ stroke: { ...stroke, color: v ?? '#000000' } }) }) : null,
+          stroke ? numberInput({ key: 'stroke.width', label: 'W', value: stroke.width, min: 0, precision: 1, onCommit: (v) => set({ stroke: { ...stroke, width: v } }) }).el : null,
+        ],
+        { field: 'stroke', info, wide: !!stroke },
+      ),
+    );
+    rows.push(shadowSelect(info, e, set));
+    return section('shape', t('kind.shape'), rows);
+  }
+
+  // ----- several elements -----------------------------------------------------------
+
+  function renderMulti(ids, infos) {
+    const same = (get) => {
+      const vals = infos.map((i) => get(i.effective));
+      return vals.every((v) => v === vals[0]) ? vals[0] : undefined;
+    };
+    const set = (fields) => patch(ids, fields);
+    const mixed = t('inspector.mixed');
+    const op = same((e) => e.opacity ?? 1);
+    const rot = same((e) => e.rotation ?? 0);
+    const z = same((e) => e.z ?? 0);
+    const vis = same((e) => e.visible !== false);
+    const rows = [
+      row(t('inspector.opacity'), numberInput({ key: 'm.opacity', label: 'α', value: op ?? null, placeholder: mixed, scale: 100, unit: '%', precision: 0, min: 0, max: 1, step: 0.01, big: 0.1, onCommit: (v) => set({ opacity: v === 1 ? null : v }) }).el),
+      row(t('inspector.rotation'), numberInput({ key: 'm.rotation', label: '∠', value: rot ?? null, placeholder: mixed, unit: '°', precision: 2, big: 15, onCommit: (v) => set({ rotation: v === 0 ? null : v }) }).el),
+      row(t('inspector.z'), numberInput({ key: 'm.z', label: 'Z', value: z ?? null, placeholder: mixed, precision: 0, onCommit: (v) => set({ z: v === 0 ? null : Math.round(v) }) }).el),
+      row(t('inspector.visible'), checkInput({ key: 'm.visible', checked: vis !== false, label: vis === undefined ? mixed : t('inspector.visible.on'), onChange: (v) => set({ visible: v ? null : false }) })),
+    ];
+    return [
+      h('div', { class: 'insp-head' }, h('span', { class: 'insp-kind' }, icon('layers')), h('span', { class: 'insp-count' }, `${ids.length} ${t('inspector.elements')}`)),
+      h('ul', { class: 'insp-idlist' }, ...ids.map((id) => h('li', { class: 'mono small' }, id))),
+      section('appearance', t('inspector.appearance'), rows),
+    ];
+  }
+
+  // ----- subscriptions --------------------------------------------------------------------
+
+  const unsubs = [
+    store.select((s) => [s.selection, s.overlay, s.variant, s.lang, s.target, s.strip, s.summary], () => refresh()),
+    editor.on('reset', () => cache.invalidate()),
+  ];
+  refresh();
+  return {
+    unmount() {
+      for (const u of unsubs) u();
+    },
+  };
 }

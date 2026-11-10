@@ -79,7 +79,8 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Select (click, shift-click, marquee), move, resize (aspect-locked for
       devices), rotate with snapping (0°, ±5°, ±15°, ±45°, ±90°; shift = free)
 - [x] Snapping to page edges/centres, margins, other elements; guides
-- [~] Home page follows the element centre on drop; manual override
+- [x] Home page follows the element centre on drop; manual override
+      (inspector: home page select + lock toggle → `keep_page` while dragging)
 - [x] Variant view: edits stored as overrides, marked + resettable
 - [x] Arrow-key nudging, delete, duplicate, z-order
 - Commands `overlay`, `edit_*`, `render_preview_edit` (drag feedback:
@@ -90,12 +91,18 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   (`edit_set_page` exists; inspector in 2.6), group rotation handles.
 
 ## 2.6 Inspector + layers
-- [ ] Inspector per element kind (common: page, at, size, rotation, pivot,
+- [x] Inspector per element kind (common: page, at, size, rotation, pivot,
       opacity, z, anchor, clip, visibility; device: model, style, colour,
       orientation, screenshot key, fit, shadow, chrome/url; text: key, style,
       box/margins, align, fit, max lines; image; shape; background stops)
-- [ ] Layers list with drag reorder, visibility, groups
-- [ ] Strip settings (page aspect, count, page ids, backgrounds), variants
+- [x] Layers list with drag reorder, visibility, groups
+- [x] Strip settings (page aspect, count, page ids, backgrounds), variants
+- Core: auto-height texts rotate around their laid-out content (ADR 0004
+  amended; `ResolveOptions::text`). Commands `element_get`,
+  `element_patch` (base vs override decided in core, optional strings in
+  the same step), `edit_rename`, `edit_arrange`, `strip_get`,
+  `strip_patch`, `strip_variant`. Open: the page lock is UI state only
+  (not saved); new keys get the text in the current language only.
 
 ## 2.7 Texts + translations
 - [ ] Double-click edit of the current language's text on canvas
