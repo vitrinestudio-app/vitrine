@@ -37,6 +37,7 @@ js/panels/*.js        sidebar/inspector panels (see below); importer.js =
 js/panels/fields.js   form controls: scrub numbers, colours, selects, fill editor
 js/panels/strip-settings.js  strip settings (inspector with no selection)
 js/menu.js            app menu (top-bar button), ⌘N/⌘O/⌘E/⌘, shortcuts
+js/add-menu.js        top-bar "Add" menu → `element_add` on the visible page
 js/start.js           start screen (#welcome), new-project dialog, folder drop
 js/dialogs/modal.js   <dialog> helper (openModal, choiceDialog, confirmDialog,
                       promptDialog) + form controls (row, input, select…)

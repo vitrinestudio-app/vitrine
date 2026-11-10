@@ -15,12 +15,28 @@ Website: <https://arrangia.app>
 
 ## Status
 
-**Pre-alpha. Phase 1 (core + command line) is complete, pending review.**
-Projects can be created, validated, previewed and exported headless with
-the `arrangia` command line tool; the desktop app (Phase 2), store upload
-and the MCP server are not built yet. The full concept (in German) is in
-[`docs/KONZEPT.md`](docs/KONZEPT.md), the Phase 1 task list in
-[`docs/plan/phase-1.md`](docs/plan/phase-1.md).
+**Pre-alpha. Phase 1 (core + command line) and Phase 2 (desktop editor)
+are complete, pending review.** Projects can be created, designed,
+translated, validated and exported in the desktop app, or headless with
+the `arrangia` command line tool; store upload and the MCP server are not
+built yet. The full concept (in German) is in
+[`docs/KONZEPT.md`](docs/KONZEPT.md), the task lists in
+[`docs/plan/phase-1.md`](docs/plan/phase-1.md) and
+[`docs/plan/phase-2.md`](docs/plan/phase-2.md) (with the known gaps of the
+editor under "Follow-ups").
+
+### Desktop editor
+
+One canvas per strip with the store gaps hatched, direct manipulation
+(move, resize, rotate, snapping), an inspector per element kind, layers,
+assets with drag & drop import, a translations table and inline text
+editing, targets from store presets, a validation panel and an export
+dialog. Every preview is rendered by the same Rust pipeline as the
+export; every change is saved immediately as plain YAML.
+
+![The editor with the example project](docs/gui/editor-dark.jpg)
+
+![A text added from the Add menu and edited on the canvas](docs/gui/text-editing.jpg)
 
 ### Example
 
@@ -66,7 +82,8 @@ Requirements:
 cargo build                          # build everything
 cargo test --all                     # run tests
 cargo run -p arrangia-cli -- --help  # command line interface (binary: arrangia)
-cargo run -p arrangia-gui            # desktop app
+cargo run -p arrangia-gui            # desktop app (start screen)
+cargo run -p arrangia-gui -- tests/fixtures/example   # … opening a project
 ```
 
 ## Command line

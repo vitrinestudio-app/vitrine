@@ -15,8 +15,10 @@ The binding concept is **`docs/KONZEPT.md`** (German). Read it before changing
 the model, renderer or architecture. The user communicates in German; code,
 comments, commit messages and repo docs are in English.
 
-Status: pre-alpha. Phase 1 (core + CLI) is complete pending review
-(`docs/plan/phase-1.md`); Phase 2 (GUI editor) is next. See the roadmap in
+Status: pre-alpha. Phase 1 (core + CLI) and Phase 2 (GUI editor) are
+complete pending review (`docs/plan/phase-1.md`, `docs/plan/phase-2.md`
+with the known GUI gaps under "Follow-ups"); Phase 3 (store upload) is
+next. See the roadmap in
 KONZEPT.md §12.
 
 ## Core ideas
@@ -49,7 +51,8 @@ crates/
   publish/  arrangia-publish  App Store Connect, Google Play, keychain
   mcp/      arrangia-mcp      MCP server (rmcp) over core/render/publish
   cli/      arrangia-cli      binary `arrangia` (clap)
-  gui/      arrangia-gui      Tauri 2 app; frontend in gui/ui/ (vanilla ES modules)
+  gui/      arrangia-gui      Tauri 2 app; frontend in gui/ui/ (vanilla ES modules,
+                              see gui/ui/README.md)
 assets/fonts/           bundled OFL fonts (Inter 4.1, embedded by core::layout)
 tests/fixtures/example/ example project (all target kinds, en + de) and its
                         golden reference images (golden/)
@@ -57,9 +60,10 @@ docs/KONZEPT.md         concept (binding)
 docs/adr/               architecture decision records
 docs/plan/              task lists per phase
 docs/example/           preview images of the example project (README)
+docs/gui/               screenshots of the editor (README)
 ```
 
-### Architecture (Phase 1)
+### Architecture
 
 `core` (no rendering, no network):
 
@@ -90,7 +94,11 @@ incremental manifest; plus `paint`/`blur`/`raster` helpers.
 
 `gui` (Phase 2, ADR 0008) – library + Tauri binary: `commands` (plain
 functions `fn(&AppState, Args) -> Result<T, CommandError>`, `dispatch` by
-name; `main.rs` only wraps them as Tauri commands), `session` (open
+name, one module per area: project, edit, inspect, add, texts, strings,
+assets, targets, project_settings, render, export, catalog, os, system;
+a new command goes into the `command_table!` in `commands/mod.rs` *and*
+the `json_commands!`/`image_commands!` + `generate_handler!` lists in
+`main.rs`, which only wraps them as Tauri commands), `session` (open
 project, apply/undo/redo with atomic save per transaction, revision
 conflicts, live reload via `watch`), `preview` (binary preview payload +
 cache), `settings` (settings.yaml + recent projects in SQLite), `events`,
@@ -98,10 +106,15 @@ cache), `settings` (settings.yaml + recent projects in SQLite), `events`,
 shim: `ui/js/transport.js` (`invoke`/`listen` over Tauri or the bridge).
 Edit gestures go through `overlay` + `edit_*` commands (view context
 `{target, lang, variant}`, one undo step each) and `render_preview_edit`
-(drag previews from a scratch copy, never saved). Frontend structure and
-panel conventions: `crates/gui/ui/README.md` (store, api, editor
-controller, views, panels with `mount(el, ctx)`; `?theme=dark|light`,
-`?lang=` debug params).
+(drag previews from a scratch copy, never saved). New elements come from
+`element_add` (defaults built in Rust). Model changes that need several
+ops are built in Rust commands, never in JS. Frontend structure and
+panel/dialog conventions: **`crates/gui/ui/README.md`** (store, api,
+editor controller, views, panels with `mount(el, ctx)`, dialogs via
+`dialogs/modal.js`, i18n keys in both catalogs; `?theme=dark|light`,
+`?lang=` debug params). The Tauri CSP (`crates/gui/tauri.conf.json`)
+forbids inline styles and scripts; the dev bridge has no CSP, so check
+the real app after touching resource loading.
 
 ## Stack
 
@@ -144,10 +157,13 @@ cargo test --all                             # all tests
 cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all
 cargo run -p arrangia-cli -- --help          # CLI (binary `arrangia`)
-cargo run -p arrangia-gui                    # start the GUI
+cargo run -p arrangia-gui                    # start the GUI (start screen)
+cargo run -p arrangia-gui -- <project-dir>   # … opening a project
 # dev HTTP bridge: the UI + all GUI commands in a normal browser (prints the URL;
-# --port N, --copy = work on a temp copy, --app-dir, --pick-folder/--pick-file; ADR 0008)
-cargo run -p arrangia-gui --features devbridge --bin arrangia-devbridge -- --project tests/fixtures/example
+# --port N, --copy = work on a temp copy, --app-dir, --pick-folder/--pick-file
+# answer the folder/file dialogs; without --project it shows the start screen; ADR 0008)
+cargo run -p arrangia-gui --features devbridge --bin arrangia-devbridge -- --project tests/fixtures/example --copy
+cargo run --release -p arrangia-gui --features devbridge --bin arrangia-devbridge -- --port 7801 --pick-folder /tmp/x
 cargo run -p arrangia-gui --release --example preview_transport   # preview payload measurements
 ARRANGIA_UPDATE_GOLDEN=1 cargo test -p arrangia-render --test golden   # rewrite golden references (review the diff!)
 

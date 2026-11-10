@@ -156,7 +156,52 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   added via the `fonts/` folder).
 
 ## 2.11 Verification + docs
-- [ ] End-to-end scenario via the dev bridge in Chrome: new project → add
+- [x] End-to-end scenario via the dev bridge in Chrome: new project → add
       device/text → translate → export, with screenshots reviewed
-- [ ] Tauri build smoke test on macOS (app starts, renders the example)
-- [ ] ADR(s): GUI architecture, preview transport; CLAUDE.md/README update
+- [x] Tauri build smoke test on macOS (app starts, renders the example)
+- [x] ADR(s): GUI architecture, preview transport (ADR 0008, amended for
+      the bridge server); CLAUDE.md/README update
+- Done: branches of 2.7/2.8 and 2.9/2.10 merged (one modal helper,
+  `dialogs/modal.js`). Missing piece found by the scenario: there was no
+  way to add elements; now the top bar's "Add" menu (`element_add`,
+  defaults built in Rust, centred on the visible page). Scenario run in
+  Chrome on the dev bridge, en + de UI, both themes: start screen → new
+  project (phone template, en + de) → add text, edit inline (live preview)
+  → German in the translations table → add device → import a screenshot
+  (variant detected from the pixel size) → add target `ios-iphone-63` from
+  its preset → validation panel, click → target, zoom, selection → export
+  of 4 targets × 2 languages (26 files, checked visually). Fixed on the
+  way: inspector kept "no screenshot file" after an import, validation
+  badge not refreshed after asset changes, export summary label. Bridge:
+  a reload after an export with pending previews stalled on stylesheets
+  (tiny_http pool starvation, reproduced); replaced by a small
+  `std::net` server (one request per connection). Tauri: the window was
+  blank because the CSP blocked `fetch` of the i18n catalogs
+  (`connect-src` without `'self'`); fixed, the app starts without
+  panics, opens a project given on the command line
+  (`arrangia-gui <dir>`), renders the example via the binary IPC
+  transport (window captured with `screencapture -l`).
+
+## Follow-ups (known gaps, not blocking Phase 2)
+- Home-page lock (`store.pageLocks`) is UI state only, not persisted.
+- A new string key gets its text only in the current language.
+- Margins ↔ free-box conversion of texts in the inspector is approximate.
+- Variants: no preset-on-create (content scale, overrides from a preset).
+- Renaming colours/text styles that elements use is refused (no element
+  rewrite yet).
+- No font import UI (fonts are listed; add files to `fonts/`).
+- Switching the UI language reloads the web view (view context kept).
+- No native menu bar (app menu is a top-bar button).
+- Targets editor: store-slot dropdown limited to the preset's values.
+- Banner page ranges are 0-based in the UI.
+- Translation and asset usage ignore variant overrides.
+- Translations table re-validates all targets after each edit.
+- Drag & drop in Tauri: the code paths start without errors, but a real
+  file drop onto the window (asset import, folder → open project) is
+  untested.
+- Group pivot reference for margin texts (rotation of groups with
+  margin-box texts).
+- Add menu: new texts/devices land centred on the page and may cover
+  existing elements; image needs an asset in `assets/` first.
+- Some WebKit form fields lay out wider than in Chrome (panel bodies now
+  clip horizontally instead of scrolling).
