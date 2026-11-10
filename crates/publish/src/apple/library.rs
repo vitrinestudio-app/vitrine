@@ -225,7 +225,7 @@ impl RefData {
             if display_class.is_some_and(|c| c != g.display_class_id) {
                 continue;
             }
-            if !platforms.is_empty() && !platforms.iter().any(|p| *p == g.platform) {
+            if !platforms.is_empty() && !platforms.contains(&g.platform) {
                 continue;
             }
             if !out

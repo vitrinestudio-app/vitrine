@@ -3,22 +3,25 @@
 //! flow abstraction and the Google edit helpers.
 //!
 //! **Apple flows.** [`AppleUploadFlow`] hides how a set of screenshots gets
-//! into App Store Connect. Today there is one implementation,
-//! [`ScreenshotSetFlow`] (`appScreenshotSets` / `appScreenshots`, deprecated
-//! in ASC API 4.5.1 but still documented; ADR 0017). The App Asset Library
-//! flow (assets + placements + ordering requests) can be added as a second
-//! implementation of the same trait plus a variant of [`AppleFlowKind`];
-//! plan, executor and UI only see the flow's name (`StorePlan.flow`).
+//! into App Store Connect. Two implementations: [`ScreenshotSetFlow`]
+//! (`appScreenshotSets` / `appScreenshots`, deprecated in ASC API 4.5.1;
+//! ADR 0017) and [`super::library::AssetLibraryFlow`] (images + placements
+//! + ordering requests; ADR 0019). [`open_apple`] picks the store's flow
+//! from `store.apple.upload_flow` (`auto` = asset library, set API when the
+//! library is unavailable) and [`route`] the flow of each set (`auto` also
+//! falls back per set when the ref data has no group for it; Duo and
+//! creative assets only go through the library).
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use arrangia_core::model::{ApplePlatform, Project, StoreKind};
+use arrangia_core::model::{ApplePlatform, AppleUploadFlowSetting, Project, StoreKind};
 use arrangia_publish::apple::{self, AppRef, AppStoreVersion, DeliveryState, Platform};
 use arrangia_publish::credentials::Secret;
 use arrangia_publish::{ClientOptions, Error, PollPolicy, ProgressFn, Result, google};
 use serde::{Deserialize, Serialize};
 
+use super::library::AssetLibraryFlow;
 use super::{PlanImage, UploadConfig};
 use crate::commands::AppState;
 use crate::error::{CmdResult, CommandError};
@@ -138,12 +141,15 @@ pub enum AppleFlowKind {
     /// `appScreenshotSets` + `appScreenshots` (ASC API ≤ 4.5.0 resources).
     #[default]
     ScreenshotSets,
+    /// App Asset Library: images + placements + ordering requests (4.5.1).
+    AssetLibrary,
 }
 
 impl AppleFlowKind {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::ScreenshotSets => "screenshot_sets",
+            Self::AssetLibrary => "asset_library",
         }
     }
 }
@@ -155,6 +161,8 @@ pub(crate) struct AppleTarget {
     pub version: AppStoreVersion,
     /// Version localizations (filled lazily, created ones added).
     pub localizations: Mutex<Option<Vec<apple::Localization>>>,
+    /// The App Asset Library (library id, ref data), when the run uses it.
+    pub library: Option<super::library::LibraryContext>,
 }
 
 /// What the store holds for one set (remote check).
@@ -232,8 +240,6 @@ pub(crate) struct ReplaceOutcome {
 /// How screenshots get into App Store Connect. Executor and plan only call
 /// these three methods; a new flow is a new implementation.
 pub(crate) trait AppleUploadFlow {
-    fn kind(&self) -> AppleFlowKind;
-
     /// Finds the app and its editable version (precondition of every run).
     async fn open(
         &self,
@@ -274,7 +280,7 @@ pub(crate) trait AppleUploadFlow {
 pub(crate) struct ScreenshotSetFlow;
 
 impl ScreenshotSetFlow {
-    async fn localization_id(
+    pub(crate) async fn localization_id(
         client: &apple::Client,
         target: &AppleTarget,
         locale: &str,
@@ -316,10 +322,6 @@ impl ScreenshotSetFlow {
 }
 
 impl AppleUploadFlow for ScreenshotSetFlow {
-    fn kind(&self) -> AppleFlowKind {
-        AppleFlowKind::ScreenshotSets
-    }
-
     async fn open(
         &self,
         client: &apple::Client,
@@ -332,6 +334,7 @@ impl AppleUploadFlow for ScreenshotSetFlow {
             app: found,
             version,
             localizations: Mutex::new(None),
+            library: None,
         })
     }
 
@@ -598,10 +601,137 @@ pub(crate) fn match_existing<'a>(
         .collect()
 }
 
-/// The flow in use (one today; the user's decision on the App Asset
-/// Library adds a second, ADR 0017/0018).
-pub(crate) fn apple_flow() -> ScreenshotSetFlow {
-    ScreenshotSetFlow
+// ----- flow selection (ADR 0019) -------------------------------------------------------
+
+/// The project's `store.apple.upload_flow`.
+pub(crate) fn flow_setting(project: &Project) -> AppleUploadFlowSetting {
+    project
+        .store
+        .apple
+        .as_ref()
+        .map(|a| a.upload_flow)
+        .unwrap_or_default()
+}
+
+/// The flow a store starts with (before the store is asked): `auto` and
+/// `asset_library` → the asset library.
+pub(crate) fn preferred_flow(setting: AppleUploadFlowSetting) -> AppleFlowKind {
+    match setting {
+        AppleUploadFlowSetting::ScreenshotSets => AppleFlowKind::ScreenshotSets,
+        AppleUploadFlowSetting::Auto | AppleUploadFlowSetting::AssetLibrary => {
+            AppleFlowKind::AssetLibrary
+        }
+    }
+}
+
+/// An opened App Store Connect app with the flow the store uses.
+#[derive(Debug)]
+pub(crate) struct AppleSession {
+    pub target: AppleTarget,
+    pub kind: AppleFlowKind,
+    pub setting: AppleUploadFlowSetting,
+    /// Why `auto` fell back to the set-based API.
+    pub fallback: Option<String>,
+}
+
+/// Opens the app + editable version and, unless the setting forbids it,
+/// the App Asset Library. `auto` falls back to the set-based API when the
+/// library is not available for this app/key (403/404/400).
+pub(crate) async fn open_apple(
+    client: &apple::Client,
+    app: &AppRef,
+    platform: Platform,
+    setting: AppleUploadFlowSetting,
+) -> Result<AppleSession> {
+    let mut target = ScreenshotSetFlow.open(client, app, platform).await?;
+    if setting == AppleUploadFlowSetting::ScreenshotSets {
+        return Ok(AppleSession {
+            target,
+            kind: AppleFlowKind::ScreenshotSets,
+            setting,
+            fallback: None,
+        });
+    }
+    match AssetLibraryFlow::attach(client, &target.app.id).await {
+        Ok(ctx) => {
+            target.library = Some(ctx);
+            Ok(AppleSession {
+                target,
+                kind: AppleFlowKind::AssetLibrary,
+                setting,
+                fallback: None,
+            })
+        }
+        Err(e) if setting == AppleUploadFlowSetting::Auto && super::library::unavailable(&e) => {
+            Ok(AppleSession {
+                target,
+                kind: AppleFlowKind::ScreenshotSets,
+                setting,
+                fallback: Some(format!(
+                    "the App Asset Library is not available for this app or key ({}) – using the screenshot set API",
+                    store_message(StoreKind::Apple, &e)
+                )),
+            })
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// How one set gets into the store.
+#[derive(Debug, Clone)]
+pub(crate) enum Route {
+    /// The set-based API (`note`: why, when `auto` fell back for this set).
+    Sets { note: Option<String> },
+    /// The asset library with these placements.
+    Library(Vec<super::library::PlacementRoute>),
+}
+
+/// The route of one set: the store's flow, per-set fallback of `auto` to
+/// the set-based API when the ref data lacks a group, or a blocking reason.
+pub(crate) fn route(
+    session: &AppleSession,
+    slot: &str,
+    images: &[PlanImage],
+) -> std::result::Result<Route, String> {
+    let library_only = super::library::asset_library_only(slot);
+    let Some(ctx) = session.target.library.as_ref() else {
+        if library_only {
+            return Err(needs_library_message(slot, session.setting));
+        }
+        return Ok(Route::Sets { note: None });
+    };
+    match super::library::resolve(
+        &ctx.ref_data,
+        slot,
+        images.first().map(|i| (i.width, i.height)),
+    ) {
+        Ok(routes) => Ok(Route::Library(routes)),
+        Err(why) if session.setting == AppleUploadFlowSetting::Auto && !library_only => {
+            Ok(Route::Sets {
+                note: Some(format!("{why}; uploaded with the screenshot set API")),
+            })
+        }
+        Err(why) => Err(why),
+    }
+}
+
+/// The blocking message for a slot only the asset library can upload.
+pub(crate) fn needs_library_message(slot: &str, setting: AppleUploadFlowSetting) -> String {
+    let what = super::library::slot_from_key(slot);
+    let name = if what.is_creative() {
+        format!("the {} asset", what.placement().as_str().replace('_', " "))
+    } else {
+        format!("`{slot}`")
+    };
+    if setting == AppleUploadFlowSetting::ScreenshotSets {
+        format!(
+            "{name} can only be uploaded through the App Asset Library; the project forces the screenshot set API (store.apple.upload_flow: screenshot_sets)"
+        )
+    } else {
+        format!(
+            "{name} can only be uploaded through the App Asset Library, which is not available for this app or key"
+        )
+    }
 }
 
 /// User-facing message of a store error (no secrets in any of them).

@@ -5,8 +5,9 @@
 //!          hash, compare with the upload log (and the store with `remote`),
 //!          store-rule checks, preconditions, totals, confirm token
 //! log      `<project>/.cache/uploads.sqlite`: plans (tokens), runs, sets, files, events
-//! remote   store clients from the account + keychain secret; `AppleUploadFlow`
-//!          (set-based today, App Asset Library later) and the Google edit helpers
+//! remote   store clients from the account + keychain secret; `AppleUploadFlow`,
+//!          flow selection (`store.apple.upload_flow`) and the Google edit helpers
+//! library  the App Asset Library flow (default for Apple, ADR 0019)
 //! exec     the executor: Apple per set, Google one edit; progress, cancel,
 //!          resume (completed sets are `unchanged` in the next plan), rate limits
 //! readiness  setup checklist (accounts → project mapping → target slots)
@@ -21,6 +22,7 @@
 //! and refuses when anything changed or the token expired.
 
 pub mod exec;
+pub mod library;
 pub mod log;
 pub mod plan;
 pub mod policy;
@@ -119,9 +121,16 @@ pub struct StorePlan {
     pub account: Option<String>,
     /// App identity: Apple app id / bundle id, Google package name.
     pub app: Option<String>,
-    /// How the store is written (`screenshot_sets` for Apple today, later
-    /// `asset_library`; `edit` for Google). The only flow-specific field.
+    /// How the store is written: Apple `asset_library` or
+    /// `screenshot_sets` (ADR 0019), Google `edit`.
     pub flow: String,
+    /// Apple: the project's `store.apple.upload_flow` (`auto`,
+    /// `asset_library`, `screenshot_sets`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flow_setting: Option<String>,
+    /// Why the flow differs from the setting (`auto` fell back).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flow_note: Option<String>,
     /// What the remote check found (`None` = not checked).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote: Option<RemoteInfo>,
@@ -174,8 +183,18 @@ pub struct PlanSet {
     pub target: String,
     pub lang: String,
     pub locale: Option<String>,
-    /// Display type / image type.
+    /// Display type / image type (Apple creative assets: the placement
+    /// type, e.g. `PRODUCT_PAGE_HEADER_ASSET`).
     pub slot: String,
+    /// Apple: this set's flow when it differs from the store's (`auto`
+    /// falls back to `screenshot_sets` for a slot the ref data lacks).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flow: Option<String>,
+    /// Apple asset library: placement type → group (after the remote
+    /// check; locally the display class), e.g. `APP_SCREENSHOT →
+    /// IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placement: Option<String>,
     pub action: SetAction,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,

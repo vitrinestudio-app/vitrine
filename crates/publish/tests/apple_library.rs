@@ -2,6 +2,8 @@
 //! (no real network). Response shapes follow Apple's documentation examples
 //! (ADR 0019).
 
+#![allow(clippy::too_many_lines, clippy::assert_is_empty)]
+
 mod common;
 
 use arrangia_publish::apple::library::{
@@ -51,7 +53,7 @@ pub fn ref_data_body() -> Value {
                     "compatiblePlacementTypes": ["APP_SCREENSHOT", "IMESSAGE_APP_SCREENSHOT"],
                     "alphaAllowed": false,
                     "fileExtensions": [".jpg", ".jpeg", ".png"],
-                    "maxFileSize": 524288000,
+                    "maxFileSize": 524_288_000_u64,
                     "mimeTypes": ["image/jpeg", "image/png"],
                     "universalAsset": false
                 }],

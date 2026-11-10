@@ -111,6 +111,7 @@ pub fn upload_execute(app: &AppState, args: UploadExecuteArgs) -> CmdResult<Uplo
                     .map(|a| a.platform)
                     .unwrap_or_default(),
             ),
+            flow: remote::flow_setting(&project),
         })
     } else {
         None
