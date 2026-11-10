@@ -84,6 +84,42 @@ body.scrubbing * {
   flex: 1;
 }
 
+/* "Only for <lang>": edits of texts go into the language override. */
+.insp-lang-scope {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  font-size: var(--fs-small);
+}
+
+.insp-lang-scope.on {
+  background: var(--lang-override-bg);
+  color: var(--lang-override);
+}
+
+.insp-lang-scope .grow {
+  flex: 1;
+}
+
+.insp-row.is-lang-overridden .insp-label {
+  color: var(--lang-override);
+  font-weight: 600;
+}
+
+.insp-row.is-lang-overridden .insp-label::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--lang-override);
+  margin: 0 5px 1px 0;
+  vertical-align: middle;
+}
+
 .insp-note {
   margin: 0;
   padding: 0 16px 8px;
@@ -755,4 +791,8 @@ body.scrubbing * {
 
 .variant-item .insp-note {
   padding: 2px 0 0;
+}
+
+.insp-row.is-lang-overridden .mini-btn.reset {
+  color: var(--lang-override);
 }

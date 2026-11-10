@@ -133,11 +133,29 @@ export function mount(el, ctx) {
    */
   function row(label, controls, { field, info, hint, wide } = {}) {
     const fields = [field].flat().filter(Boolean);
-    const over = info ? fields.filter((f) => info.overridden.includes(f)) : [];
-    const r = h('div', { class: `insp-row${over.length ? ' is-overridden' : ''}${wide ? ' wide' : ''}` });
-    r.append(h('span', { class: 'insp-label', title: over.length ? t('inspector.overridden') : label }, label));
+    const langOver = info ? fields.filter((f) => (info.lang_overridden ?? []).includes(f)) : [];
+    const over = info && !langOver.length ? fields.filter((f) => info.overridden.includes(f)) : [];
+    const cls = langOver.length ? ' is-lang-overridden' : over.length ? ' is-overridden' : '';
+    const langs = (info?.lang_override_langs ?? []).join(', ');
+    const r = h('div', { class: `insp-row${cls}${wide ? ' wide' : ''}` });
+    r.append(h('span', { class: 'insp-label', title: langOver.length ? `${t('langoverride.overridden')} ${langs}` : over.length ? t('inspector.overridden') : label }, label));
     r.append(h('div', { class: 'insp-controls' }, ...[controls].flat().filter(Boolean)));
-    if (over.length) {
+    if (langOver.length) {
+      r.append(
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'mini-btn reset',
+            title: `${t('langoverride.reset_field')} (${langs}): ${langOver.join(', ')}`,
+            onclick: async () => {
+              for (const f of langOver) await editor.apply(api.resetOverride(viewArgs(), info.id, f, true), { touched: [info.id] });
+            },
+          },
+          icon('reset'),
+        ),
+      );
+    } else if (over.length) {
       r.append(
         h(
           'button',
@@ -255,7 +273,7 @@ export function mount(el, ctx) {
     const layout = [];
     if (kind !== 'group') {
       const strip = currentStrip(st);
-      const locked = st.pageLocks.includes(id);
+      const locked = !!e.lock_page;
       const pages = (strip?.page.ids ?? []).map((pid, i) => ({ value: String(i), label: `${i + 1} · ${pid}` }));
       const lock = h(
         'button',
@@ -264,11 +282,7 @@ export function mount(el, ctx) {
           class: `mini-btn${locked ? ' on' : ''}`,
           title: locked ? t('inspector.page.unlock') : t('inspector.page.lock'),
           'aria-pressed': String(locked),
-          onclick: () => {
-            const l = store.get().pageLocks;
-            store.set({ pageLocks: locked ? l.filter((x) => x !== id) : [...l, id] });
-            refresh();
-          },
+          onclick: () => set({ lock_page: locked ? null : true }),
         },
         icon(locked ? 'lock' : 'unlock'),
       );
@@ -276,7 +290,7 @@ export function mount(el, ctx) {
         row(
           t('inspector.page'),
           [selectInput({ key: 'page', options: pages, value: String(e.page ?? 0), title: t('inspector.page'), onChange: (v) => editor.apply(api.setPage(viewArgs(), id, Number(v), true), { touched: [id] }) }), lock],
-          { field: 'page', info, hint: locked ? t('inspector.page.locked') : null },
+          { field: ['page', 'lock_page'], info, hint: locked ? t('inspector.page.locked') : null },
         ),
       );
     }
@@ -475,6 +489,23 @@ export function mount(el, ctx) {
     const rows = [];
     const tx = info.text;
     const keys = extra.keys ?? [];
+    // "Only for <lang>": edits of this text go into its language override.
+    const scoped = !!st.langScope;
+    const langs = info.lang_override_langs ?? [];
+    rows.push(
+      h(
+        'div',
+        { class: `insp-lang-scope${scoped ? ' on' : ''}` },
+        checkInput({ key: 'lang_scope', checked: scoped, label: `${t('langoverride.scope')} ${st.lang}`, title: t('langoverride.scope.hint'), onChange: (v) => {
+          store.set({ langScope: v });
+          refresh();
+        } }),
+        h('span', { class: 'grow muted small' }, langs.length ? `${t('langoverride.list')}: ${langs.join(', ')}` : ''),
+        langs.includes(st.lang)
+          ? h('button', { type: 'button', class: 'btn btn-small', title: t('langoverride.reset_all'), onclick: () => editor.apply(api.resetOverride(viewArgs(), info.id, undefined, true), { touched: [info.id] }) }, icon('reset'), t('inspector.reset_all'))
+          : null,
+      ),
+    );
     // Key: pick an existing key or type a new one (created with the current text).
     rows.push(
       row(
@@ -593,8 +624,32 @@ export function mount(el, ctx) {
         numberInput({ key: 'fit.max_lines', label: '≡', title: t('inspector.max_lines'), value: fit.max_lines ?? null, optional: true, placeholder: '∞', min: 1, precision: 0, onCommit: (v) => setFit('max_lines', v == null ? null : Math.round(v)) }).el,
       ], { field: 'fit', info }),
     );
+    const hy = e.hyphenate;
+    rows.push(
+      row(
+        t('hyphen.label'),
+        selectInput({
+          key: 'hyphenate',
+          options: [
+            { value: '', label: t('hyphen.style') },
+            { value: 'on', label: t('hyphen.on') },
+            { value: 'off', label: t('hyphen.off') },
+          ],
+          value: hy == null ? '' : hy ? 'on' : 'off',
+          title: t('hyphen.hint'),
+          onChange: (v) => set({ hyphenate: v === '' ? null : v === 'on' }),
+        }),
+        { field: 'hyphenate', info, hint: t('hyphen.hint') },
+      ),
+    );
     if (ot) {
-      const status = ot.overflow ? h('span', { class: 'insp-status error' }, icon('error'), t('inspector.overflow')) : ot.emergency_breaks?.length ? h('span', { class: 'insp-status warn' }, icon('warning'), `${t('inspector.emergency')}: ${ot.emergency_breaks.join(', ')}`) : h('span', { class: 'insp-status ok' }, icon('check'), t('inspector.fits'));
+      const status = ot.overflow
+        ? h('span', { class: 'insp-status error' }, icon('error'), t('inspector.overflow'))
+        : ot.emergency_breaks?.length
+          ? h('span', { class: 'insp-status warn' }, icon('warning'), `${t('inspector.emergency')}: ${ot.emergency_breaks.join(', ')}`)
+          : ot.hyphenated?.length
+            ? h('span', { class: 'insp-status ok' }, icon('check'), `${t('hyphen.used')}: ${ot.hyphenated.join(', ')}`)
+            : h('span', { class: 'insp-status ok' }, icon('check'), t('inspector.fits'));
       rows.push(row(t('inspector.computed'), h('div', { class: 'insp-computed' }, h('span', {}, `${fmtNum(ot.font_size, 1)} lu · ${ot.lines} ${t('inspector.lines_unit')}`), status), { wide: true }));
     }
     return section('text', t('kind.text'), rows);

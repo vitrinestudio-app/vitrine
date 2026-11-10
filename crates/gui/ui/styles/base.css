@@ -42,6 +42,9 @@
   --gap-fill: rgb(228 228 231 / 45%);
   --label: #6e6e73;
   --override: #bf5af2;
+  /* fields set by a per-language override (ADR 0009) */
+  --lang-override: #0d9488;
+  --lang-override-bg: rgb(13 148 136 / 12%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -66,6 +69,8 @@
     --hatch: rgb(235 235 245 / 30%);
     --gap-fill: rgb(22 22 24 / 50%);
     --label: #8e8e95;
+    --lang-override: #2dd4bf;
+    --lang-override-bg: rgb(45 212 191 / 14%);
   }
 }
 
@@ -90,6 +95,8 @@
   --hatch: rgb(235 235 245 / 30%);
   --gap-fill: rgb(22 22 24 / 50%);
   --label: #8e8e95;
+  --lang-override: #2dd4bf;
+  --lang-override-bg: rgb(45 212 191 / 14%);
 }
 
 *,

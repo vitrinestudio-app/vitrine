@@ -91,6 +91,34 @@
   padding-left: 22px;
 }
 
+.ps-font-family {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.font-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  padding: 0 2px 0 8px;
+  border-radius: 11px;
+  background: var(--bg-active);
+  font-size: var(--fs-small);
+}
+
+.font-chip.missing {
+  color: var(--warning);
+}
+
+.font-chip .icon-btn {
+  width: 18px;
+  height: 18px;
+}
+
 .impact {
   display: flex;
   flex-direction: column;

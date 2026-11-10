@@ -112,5 +112,10 @@ reset button. Controls from `panels/fields.js` commit on Enter/blur
 re-render after an edit keeps focus and unsaved typing. With nothing
 selected it shows the strip settings. Layers (`panels/layers.js`)
 reorders with `api.arrange` (HTML5 drag & drop) and renames with
-`api.rename`. `store.pageLocks` lists elements whose home page stays put
-while dragging on the canvas (UI state only).
+`api.rename`. The home-page lock is the model field `lock_page` (written
+with `elementPatch`; core keeps the page on drags). `store.langScope`
+(inspector toggle "Only for <lang>") adds `scope: 'lang'` to
+`viewArgs()`: text edits then go into the language override of the view
+language; language-overridden fields (`lang_overridden` from
+`element_get`) are marked teal with their own reset
+(`api.resetOverride(view, id, field, true)`).

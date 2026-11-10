@@ -15,7 +15,7 @@
 // The sidebar widens while this panel is shown (styles/translations.css).
 
 import { h, icon } from '../dom.js';
-import { confirmDialog, promptDialog } from '../dialogs/modal.js';
+import { checkbox, choiceDialog, confirmDialog, promptDialog } from '../dialogs/modal.js';
 
 const SOFT_HYPHEN = '­';
 const VALIDATE_DELAY = 600;
@@ -284,9 +284,13 @@ export function mount(el, { store, editor, api, t }) {
   };
 
   async function addKey() {
-    const key = await promptDialog({ title: t('translations.add_key'), label: t('translations.key'), validate: (v) => keyError(v) });
-    if (!key) return;
-    const r = await editor.apply(api.setString(state.table.default_lang, key, '', `Add text key ${key}`));
+    const res = await newKeyDialog({ t, keyError, langs: state.table.languages ?? [], defaultLang: state.table.default_lang });
+    if (!res) return;
+    const { key, text, all, copy } = res;
+    const def = state.table.default_lang;
+    const ops = [{ op: 'set_string', lang: def, key, value: text }];
+    if (all) for (const l of state.table.languages ?? []) if (l !== def) ops.push({ op: 'set_string', lang: l, key, value: copy ? text : '' });
+    const r = await editor.apply(api.applyOps(ops, `Add text key ${key}`));
     if (r?.applied) {
       state.search = '';
       search.value = '';
@@ -360,4 +364,52 @@ export function mount(el, { store, editor, api, t }) {
       root.remove();
     },
   };
+}
+
+/**
+ * New translation key: key, text in the default language and the option
+ * to create it in every language (copying the text or empty).
+ */
+function newKeyDialog({ t, keyError, langs, defaultLang }) {
+  const key = h('input', { class: 'field mono', type: 'text', spellcheck: 'false', 'aria-label': t('translations.key') });
+  const text = h('input', { class: 'field', type: 'text', 'aria-label': t('inspector.new_key.text') });
+  const error = h('div', { class: 'form-error', role: 'alert', hidden: true });
+  let all = false;
+  let copy = true;
+  const copyBox = checkbox({ label: t('inspector.new_key.copy'), checked: copy, disabled: true, onchange: (v) => (copy = v) });
+  const others = langs.filter((l) => l !== defaultLang);
+  const allBox = checkbox({
+    label: `${t('inspector.new_key.all')} (${others.join(', ') || '–'})`,
+    checked: all,
+    disabled: !others.length,
+    onchange: (v) => {
+      all = v;
+      copyBox.querySelector('input').disabled = !v;
+    },
+  });
+  const check = () => {
+    const msg = keyError(key.value.trim());
+    error.hidden = !msg;
+    error.textContent = msg ?? '';
+    return !msg;
+  };
+  key.addEventListener('input', () => {
+    if (!error.hidden) check();
+  });
+  const body = h(
+    'div',
+    { class: 'stack' },
+    h('label', { class: 'dlg-field' }, h('span', {}, t('translations.key')), key, error),
+    h('label', { class: 'dlg-field' }, h('span', {}, `${t('inspector.new_key.text')} · ${defaultLang}`), text),
+    allBox,
+    copyBox,
+  );
+  return choiceDialog({
+    title: t('translations.add_key'),
+    body,
+    buttons: [
+      { label: t('project.dialog.cancel'), value: null },
+      { label: t('project.dialog.ok'), primary: true, check, value: () => ({ key: key.value.trim(), text: text.value, all, copy }) },
+    ],
+  });
 }

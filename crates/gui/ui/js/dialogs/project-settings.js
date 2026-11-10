@@ -23,6 +23,8 @@ export function openProjectSettings(tab = 'general') {
   let current = tab;
   let styles = null;
   let fonts = null;
+  /** Expanded style entries (`kind:name`), kept across re-renders after edits. */
+  const openStyles = new Set();
 
   const m = openModal({
     title: t('project.settings'),
@@ -74,6 +76,14 @@ export function openProjectSettings(tab = 'general') {
   async function render() {
     const s = store.get().summary;
     if (!s) return;
+    // Keep the scroll position of the dialog body across re-renders.
+    const scroller = pane.closest('.dlg-body') ?? pane.parentElement;
+    const top = scroller?.scrollTop ?? 0;
+    await renderPane(s);
+    if (scroller) scroller.scrollTop = top;
+  }
+
+  async function renderPane(s) {
     if (current === 'general') pane.replaceChildren(general(s));
     else if (current === 'languages') pane.replaceChildren(languages(s));
     else if (current === 'styles') {
@@ -81,9 +91,19 @@ export function openProjectSettings(tab = 'general') {
       fonts ??= await api.catalogFonts();
       pane.replaceChildren(stylesPane(s));
     } else {
+      styles ??= await api.stylesGet();
       fonts ??= await api.catalogFonts();
       pane.replaceChildren(fontsPane());
     }
+  }
+
+  /** A collapsible style entry that stays open across re-renders. */
+  function styleDetails(kind, name, summary, form) {
+    const id = `${kind}:${name}`;
+    const d = h('details', { class: 'ps-style' }, summary, form);
+    d.open = openStyles.has(id);
+    d.addEventListener('toggle', () => (d.open ? openStyles.add(id) : openStyles.delete(id)));
+    return d;
   }
 
   // ----- general --------------------------------------------------------------------
@@ -214,7 +234,16 @@ export function openProjectSettings(tab = 'general') {
     const fontNames = [...fonts.bundled, ...fonts.project];
     const shadowNames = [...new Set([...BUILTIN_SHADOWS, ...Object.keys(styles.shadows ?? {})])];
     const patch = (p) => commit(() => api.stylesPatch(p));
-    const renameInput = (kind, name) => input({ value: name, cls: 'style-name mono', onchange: (v) => v && v !== name && patch({ rename: { kind, from: name, to: v } }) });
+    const renameInput = (kind, name) =>
+      input({
+        value: name,
+        cls: 'style-name mono',
+        onchange: (v) => {
+          if (!v || v === name) return;
+          if (openStyles.delete(`${kind}:${name}`)) openStyles.add(`${kind}:${v}`);
+          patch({ rename: { kind, from: name, to: v } });
+        },
+      });
     const removeBtn = (map, name) => h('button', { class: 'icon-btn', type: 'button', title: t('project.styles.remove'), onclick: () => patch({ [map]: { [name]: null } }) }, icon('close'));
     const addRow = (placeholder, onadd) => {
       let name = '';
@@ -277,9 +306,9 @@ export function openProjectSettings(tab = 'general') {
     // text styles
     const text = Object.entries(styles.text ?? {}).map(([name, st]) => {
       const set = (k, v) => patch({ text: { [name]: clean({ ...st, [k]: v }) } });
-      return h(
-        'details',
-        { class: 'ps-style' },
+      return styleDetails(
+        'text',
+        name,
         h('summary', {}, h('span', { class: 'mono' }, name), h('span', { class: 'muted small' }, ` ${st.font ?? 'Inter'} ${st.weight ?? 400} · ${st.size ?? '–'} lu`)),
         h(
           'div',
@@ -294,6 +323,7 @@ export function openProjectSettings(tab = 'general') {
           row(t('project.styles.transform'), select({ options: [{ value: '', label: t('project.styles.default') }, ...['none', 'uppercase', 'lowercase'].map((v) => ({ value: v, label: t(`project.styles.transform.${v}`) }))], value: st.transform ?? '', onchange: (v) => set('transform', v || null) })),
           row(t('project.styles.shadow'), select({ options: [{ value: '', label: t('project.styles.default') }, ...shadowNames], value: st.shadow ?? '', onchange: (v) => set('shadow', v || null) })),
           ...effectRows(st, set),
+          row(t('hyphen.label'), checkbox({ label: t('hyphen.style_toggle'), checked: !!st.hyphenate, onchange: (v) => set('hyphenate', v || null) }), t('hyphen.hint')),
         ),
       );
     });
@@ -301,9 +331,9 @@ export function openProjectSettings(tab = 'general') {
     // span styles
     const spans = Object.entries(styles.spans ?? {}).map(([name, st]) => {
       const set = (k, v) => patch({ spans: { [name]: clean({ ...st, [k]: v }) } });
-      return h(
-        'details',
-        { class: 'ps-style' },
+      return styleDetails(
+        'span',
+        name,
         h('summary', {}, h('span', { class: 'mono' }, `[${name}]`), h('span', { class: 'muted small' }, ` ${[st.font, st.weight, st.color, st.background].filter(Boolean).join(' · ')}`)),
         h(
           'div',
@@ -323,9 +353,9 @@ export function openProjectSettings(tab = 'general') {
     const shadows = Object.entries(styles.shadows ?? {}).map(([name, preset]) => {
       const setLayers = (layers) => patch({ shadows: { [name]: { layers } } });
       const layers = preset.layers ?? [];
-      return h(
-        'details',
-        { class: 'ps-style' },
+      return styleDetails(
+        'shadow',
+        name,
         h('summary', {}, h('span', { class: 'mono' }, name), h('span', { class: 'muted small' }, ` ${layers.length} ${t('project.styles.layers')}`)),
         h(
           'div',
@@ -371,13 +401,51 @@ export function openProjectSettings(tab = 'general') {
   }
 
   function fontsPane() {
+    const all = [...fonts.bundled, ...fonts.project];
+    const settings = styles.fonts ?? {};
+    const families = [...new Set([...all, ...Object.keys(settings)])];
+    const listId = 'ps-font-names';
+    const datalist = h('datalist', { id: listId }, all.map((f) => h('option', { value: f })));
+    const setFallback = (family, list) => commit(() => api.stylesPatch({ fonts: { [family]: list.length ? { fallback: list } : null } }));
+    const familyRow = (family) => {
+      const list = settings[family]?.fallback ?? [];
+      const source = fonts.bundled.includes(family) ? t('fonts.bundled') : fonts.project.includes(family) ? t('fonts.project') : t('fonts.missing');
+      let adding = '';
+      const add = input({ placeholder: t('fonts.add_fallback'), cls: 'mono', oninput: (v) => (adding = v.trim()) });
+      add.setAttribute('list', listId);
+      const go = () => adding && !list.includes(adding) && adding !== family && setFallback(family, [...list, adding]);
+      add.addEventListener('keydown', (e) => e.key === 'Enter' && go());
+      return h(
+        'div',
+        { class: 'ps-font-family' },
+        h('div', { class: 'inline' }, h('strong', {}, family), h('span', { class: 'muted small' }, ` · ${source}`)),
+        h(
+          'div',
+          { class: 'inline wrap' },
+          h('span', { class: 'muted small' }, t('fonts.fallback')),
+          ...list.map((f, i) =>
+            h(
+              'span',
+              { class: `font-chip${all.includes(f) || fonts.system.includes(f) ? '' : ' missing'}`, title: all.includes(f) ? f : t('fonts.missing') },
+              f,
+              i > 0 ? h('button', { class: 'icon-btn', type: 'button', title: t('fonts.up'), onclick: () => setFallback(family, [...list.slice(0, i - 1), f, list[i - 1], ...list.slice(i + 1)]) }, icon('up')) : null,
+              h('button', { class: 'icon-btn', type: 'button', title: t('project.styles.remove'), onclick: () => setFallback(family, list.filter((x) => x !== f)) }, icon('close')),
+            ),
+          ),
+          add,
+          h('button', { class: 'btn btn-small', type: 'button', onclick: go }, icon('plus'), t('project.styles.add')),
+        ),
+      );
+    };
     return h(
       'div',
       { class: 'stack' },
-      h('div', { class: 'section-title' }, t('project.fonts.bundled')),
-      h('ul', { class: 'ps-fonts' }, fonts.bundled.map((f) => h('li', {}, f))),
-      h('div', { class: 'section-title' }, t('project.fonts.project')),
-      fonts.project.length ? h('ul', { class: 'ps-fonts' }, fonts.project.map((f) => h('li', {}, f))) : h('div', { class: 'placeholder' }, t('project.fonts.none')),
+      datalist,
+      h('div', { class: 'section-title' }, t('fonts.families')),
+      h('p', { class: 'muted small' }, t('fonts.fallback.hint')),
+      ...families.map(familyRow),
+      h('div', { class: 'section-title' }, t('fonts.system')),
+      h('p', { class: 'muted small' }, fonts.system.length ? `${t('fonts.system.loaded')}: ${fonts.system.join(', ')}` : t('fonts.system.off')),
       h('p', { class: 'muted small' }, t('project.fonts.hint')),
     );
   }

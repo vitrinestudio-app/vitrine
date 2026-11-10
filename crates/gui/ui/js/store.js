@@ -46,8 +46,8 @@ export const initialState = {
   sidebarTab: 'strips',
   /** Short status line (bottom bar). */
   status: '',
-  /** Element ids whose home page is locked while dragging (UI only, task 2.6). */
-  pageLocks: [],
+  /** Inspector toggle "only for <lang>": text edits go into the language override. */
+  langScope: false,
 };
 
 function same(a, b) {
@@ -90,10 +90,15 @@ export function createStore(initial = initialState) {
 /** The app-wide store. */
 export const store = createStore();
 
-/** View context `{target, lang, variant}` for commands (variant omitted = target's own). */
+/**
+ * View context `{target, lang, variant, scope?}` for commands (variant
+ * omitted = target's own; `scope: 'lang'` = text edits go into the
+ * language override of `lang`).
+ */
 export function viewArgs(state = store.get()) {
   const args = { target: state.target, lang: state.lang };
   if (state.variant !== undefined) args.variant = state.variant;
+  if (state.langScope) args.scope = 'lang';
   return args;
 }
 

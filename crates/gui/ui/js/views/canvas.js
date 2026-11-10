@@ -475,10 +475,10 @@ export function mountCanvas(root) {
     store.set({ selection: [...new Set([...drag.base, ...hits])] });
   }
 
-  /** Home page locked in the inspector for any of `ids`. */
+  /** Home page locked (`lock_page`) for any of `ids` (core also honours it). */
   function keepPage(ids) {
-    const locks = store.get().pageLocks ?? [];
-    return ids.some((id) => locks.includes(id));
+    const els = store.get().overlay?.elements ?? [];
+    return ids.some((id) => els.find((e) => e.id === id)?.lock_page);
   }
 
   async function commit() {

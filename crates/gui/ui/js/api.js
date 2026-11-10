@@ -91,7 +91,9 @@ export const api = {
   remove: (view, ids) => invoke('edit_remove', { ...view, ids }),
   group: (view, ids) => invoke('edit_group', { ...view, ids }),
   ungroup: (view, ids) => invoke('edit_ungroup', { ...view, ids }),
-  resetOverride: (view, id, field) => invoke('edit_reset_override', { ...view, id, field }),
+  /** `langOverride`: reset the view language's override instead of the variant's. */
+  resetOverride: (view, id, field, langOverride = false) =>
+    invoke('edit_reset_override', { ...view, id, field, ...(langOverride ? { lang_override: true } : {}) }),
 
   // ----- inspector, layers, strip settings (task 2.6) -----
   /** One element: `{ base, override, effective, overridden, text, … }`. */

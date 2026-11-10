@@ -6,7 +6,7 @@
 import { api } from '../api.js';
 import { h } from '../dom.js';
 import { t } from '../i18n.js';
-import { errorLine, input, openModal, row, select } from './modal.js';
+import { checkbox, errorLine, input, openModal, row, select } from './modal.js';
 
 /** Reloads the UI in `lang`, keeping the view context (see main.js). */
 export function reloadInLanguage(lang) {
@@ -68,6 +68,16 @@ export async function openAppSettings() {
             value: settings.default_frame_style,
             onchange: (v) => save({ default_frame_style: v }),
           }),
+        ),
+        row(
+          t('fonts.system_setting'),
+          checkbox({
+            label: t('fonts.system_setting.on'),
+            checked: !!settings.system_font_fallback,
+            // The backend rebuilds the fonts and reports a `fonts` change.
+            onchange: (v) => save({ system_font_fallback: v }),
+          }),
+          t('fonts.system_setting.hint'),
         ),
         row(t('settings.store'), h('span', { class: 'muted' }, t('settings.store.note'))),
         row(t('settings.file'), h('span', { class: 'mono small selectable' }, info.settings_file)),
