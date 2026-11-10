@@ -558,5 +558,5 @@
   "inspector.glow.spread": "Glow spread (lu)",
   "inspector.shadow.style": "As text style",
   "inspector.fx.override": "Override the text style",
-  "inspector.fx.from_style": "From the text style (width/opacity 0 switches it off)"
+  "inspector.fx.from_style": "From the text style"
 }

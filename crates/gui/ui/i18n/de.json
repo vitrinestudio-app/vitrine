@@ -558,5 +558,5 @@
   "inspector.glow.spread": "Leuchtausdehnung (lu)",
   "inspector.shadow.style": "Wie Textstil",
   "inspector.fx.override": "Textstil überschreiben",
-  "inspector.fx.from_style": "Aus dem Textstil (Breite/Deckkraft 0 schaltet ab)"
+  "inspector.fx.from_style": "Aus dem Textstil"
 }
