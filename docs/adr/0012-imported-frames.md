@@ -1,6 +1,7 @@
 # 0012 – Imported device frames (Apple Product Bezels)
 
-- Status: accepted (file-name rules unverified until checked with a real package)
+- Status: accepted (iPhone 15+ rules verified with a real package on
+  2026-11-10; iPad / Mac rules still unverified)
 - Date: 2026-11-10
 
 ## Context
@@ -26,9 +27,27 @@ frame is drawn and validation says so.
 | Licence: mock-ups for Apple-platform apps; no redistribution, no embedding in software, no modification as clip art; use "as is" | high | [licence PDF](https://developer.apple.com/support/downloads/terms/apple-design-resources/Apple-Design-Resources-License-20230621-English.pdf), <https://developer.apple.com/app-store/marketing/guidelines/> |
 
 iPad and Mac name patterns (`iPad Pro 13 - M4 - Space Black - Portrait`,
-`MacBook Pro 14 - M4 - Space Black`) are educated guesses. `apple.yaml`
-has `verified: false`; the importer and GUI say so and offer manual
-assignment for everything the rules miss.
+`MacBook Pro 14 - M4 - Space Black`) are educated guesses. Rules carry
+`verified: <date>` once checked; the importer and GUI warn when a file
+matched an unverified rule and offer manual assignment for everything the
+rules miss.
+
+### Real package (2026-11-10, `Bezel-iPhone-18.dmg`, checked by the user)
+
+- The DMG has a **software licence agreement** (SLA): `hdiutil attach`
+  without an answer on stdin fails with `hdiutil: attach canceled`.
+  Arrangia never accepts it for the user (no piped `Y`).
+- Contents: PNGs `iPhone 18 Pro Max - <Colour> - <Portrait|Landscape>.png`
+  and `iPhone 18 Pro - <Colour> - <Portrait|Landscape>.png`, colours
+  Black, Burgundy, Glacier, Silver; Photoshop files; `License.rtf`
+  (17 non-PNG files in all).
+- Detected screens: Pro Max 1320×2868 at 75,66 (portrait) / 2868×1320 at
+  66,76 (landscape); Pro 1206×2622 at 72,69 / 2622×1206 at 69,72; i.e.
+  offsets of 66–76 px, not the ~100 px of older packages.
+- The first importer kept one file per model × colour × orientation and
+  dropped the 18 Pro as "superseded" by the Pro Max. But the 18 Pro screen
+  (1206×2622) is exactly App Store Connect's required 6.3" size and the
+  Pro Max (1320×2868) the 6.9" size: both are needed.
 
 ## Decision
 
@@ -40,8 +59,10 @@ assignment for everything the rules miss.
 space) with placeholders `{color}` (non-empty, never contains ` - `),
 `{orientation}` (`Portrait`/`Landscape`) and `{*}` (any). Rule fields:
 `model` (catalog id), `orientation` (when the name has none, Macs),
-`priority` (several files for one model × colour × orientation, e.g. 17 Pro
-vs 17 Pro Max: higher priority, then larger image wins), `note`.
+`priority` (tie-break of the automatic bezel choice, and between duplicate
+files of one vendor model), `verified` (date checked against a real
+package), `note`. The **vendor model** (`iPhone 18 Pro`) is the file name
+before ` - <colour>`.
 `color_aliases` map vendor names to ids; otherwise the colour is slugified
 (`Black Titanium` → `black-titanium`). Device generations map onto the
 parametric models: island (14 Pro, 15+, Air), notch (X–13, 14/14 Plus,
@@ -58,28 +79,49 @@ Folder (recursive), `.zip` (`zip` crate, deflate via `flate2` +
 `miniz_oxide`, pure Rust) or `.dmg` (macOS: `hdiutil attach -readonly
 -nobrowse -noautoopen -mountpoint <tmp>`, detached on drop; elsewhere an
 error asking to extract first). Hidden files, `__MACOSX`, `._*` are
-ignored; non-PNGs counted as skipped. Each matched PNG is decoded (`png`)
+ignored; Photoshop files are counted as "ignored", licence files
+(`*licen[cs]e*.rtf|txt|pdf|…`) are listed, other non-PNGs counted as
+skipped. A DMG is checked with `hdiutil imageinfo -plist` first (key
+`Software License Agreement`); with an SLA, or when `attach` reports
+"attach canceled" (stdin is closed), the error `PackageError::
+LicenseAgreement` says: open the image in Finder, accept the licence,
+then import the mounted volume (e.g. `/Volumes/Bezel-iPhone-18`). The
+GUI shows this as guidance with a folder-picker button.
+
+When the package has a licence file, plan, CLI and GUI say: "These frames
+are subject to Apple's licence (License.rtf in the package). They are
+stored only on this computer and never in projects.", with its path; the
+file name is recorded per frame in `index.yaml` (`license`). Each matched PNG is decoded (`png`)
 and analysed: 4-connected flood fill from the image centre over alpha <
 128; the region must not touch the border. Screen rect = bounding box;
 corner radius = mean over the four diagonals (`d / (1 − 1/√2)`); mask =
 region grown by 2 px (the screenshot reaches under the anti-aliased bezel
 edge) plus a 1 px feather at 50 %. Opaque parts inside (island) stay out
 of the mask, the bezel covers them anyway. Sanity check: screen aspect vs
-the catalog's display aspect (±2 %) → warning in the plan. `import(…,
-apply)` returns the plan (dry run) or installs the winners, analysing them
-again one by one to keep memory low.
+the catalog's display aspect (±2 %) → warning in the plan. Every vendor
+model is installed; only duplicates of the same vendor model × colour ×
+orientation are "superseded". `import(…, apply)` returns the plan (dry
+run) or installs, analysing again one by one to keep memory low.
 
 ### App-wide store
 
 ```text
 <app data>/frames/<source>/index.yaml
 <app data>/frames/<source>/user-mapping.yaml
-<app data>/frames/<source>/<model>/<colour>/<orientation>.png       (bezel, unchanged bytes)
-<app data>/frames/<source>/<model>/<colour>/<orientation>.mask.png  (8-bit grey)
+<app data>/frames/<source>/<model>/<colour>/<orientation>/<vendor-model>.png       (bezel, unchanged)
+<app data>/frames/<source>/<model>/<colour>/<orientation>/<vendor-model>.mask.png  (8-bit grey)
+e.g. apple/iphone-island/black/portrait/iphone-18-pro.png
 ```
 
-`index.yaml` records model, colour id + label, orientation, file, mask,
-size, screen rect, radius, source file name, package name, import date.
+`index.yaml` records model, colour id + label, orientation, `apple_model`
+(vendor model name), file, mask, size, screen rect, radius, priority,
+source file name, package name, `license` (licence file name), import
+date. The file name is the vendor-model slug, not the screen size: two
+vendor models can share a screen size (iPhone 17 and 17 Pro) yet differ in
+bezel. Stores of the first layout (`<orientation>.png`, no `apple_model`)
+are read as they are (`apple_model` derived from `source_file`) and moved
+to the new layout by `FrameStore::migrate`, which runs before every
+install / remove; missing files drop out of the index.
 `<app data>` is the GUI's data folder (`directories`), or
 `$ARRANGIA_APP_DIR/data` for GUI and CLI. Never inside a project;
 `.gitignore` also blocks `**/frames/apple/`, `*.dmg`, `Bezel-*/`.
@@ -90,8 +132,28 @@ No new field: `FrameStyle` already has `imported:<source>` (ADR 0002), on
 the device (`frame:`) or as project default (`styles.frame`). Resolve
 (`ResolveOptions.frames`, `ValidateOptions.frames`: an optional
 `FrameIndex`) looks up model × colour × orientation (no colour: the
-model's default colour if installed, else the first installed). Found →
-`ResolvedDevice.imported` (files, size, screen) and the element height
+model's default colour if installed, else the first installed). Among the installed
+vendor models of that slot `select_bezel` picks:
+
+1. the element's `bezel:` (vendor model, case-insensitive or as slug,
+   e.g. `bezel: iPhone 18 Pro`; variant overrides patch it like any
+   field) if installed, else an info `imported_bezel_fallback` and on;
+2. the screen size equal to the target's page size (pages targets; either
+   orientation): 1206×2622 → iPhone 18 Pro, 1320×2868 → Pro Max;
+3. the screen size equal to the screenshot's pixel size;
+4. the closest screen aspect (screenshot, else page) within ±2 %, near-ties
+   (0.1 %) by priority;
+5. the largest screen (info `imported_bezel_fallback` when there was a
+   choice).
+
+Ties: priority, screen area, then name. Target before screenshot (the task
+first proposed the reverse): projects usually render one screenshot set
+(e.g. 1206×2622) into both the 6.9" and the 6.3" slots, and each slot
+should show its own device; the screenshot fits either bezel (aspects
+differ by < 0.1 %) and the aspect check still warns about wrong devices.
+
+Found → `ResolvedDevice.imported` (files, size, screen, `bezel`, `choice`,
+`automatic`, installed `bezels` for the inspector) and the element height
 follows the bezel's aspect; the colour may be a vendor colour that is not
 in the catalog palette. Missing → parametric `detailed` frame plus info
 `imported_frame_missing` (and a vendor colour name is only an info).
@@ -113,30 +175,39 @@ frame files' mtimes.
 ### Front ends
 
 CLI `arrangia frames import <path> [--dry-run] [--format json]`, `frames
-list`, `frames remove [--model] [--color] [--orientation] [--all]`;
+list`, `frames remove [--model] [--color] [--orientation] [--bezel]
+[--all]`;
 `render`/`export`/`validate` load the installed index. GUI: app settings →
 Frame packages (plan table, manual assignment, installed frames with
 thumbnails, remove), commands `frames_import_plan`, `frames_import_apply`,
 `frames_list`, `frames_remove`, `frames_thumbnail`; inspector frame source
-"Apple (imported)" with availability hint and installed colour chips.
+"Apple (imported)" with availability hint and installed colour chips, and a
+"Bezel" picker ("Automatic (iPhone 18 Pro Max for this target)" + the
+installed vendor models) when a device has several.
 
 ### Tests
 
 A synthetic package generator (`frame_import::synthetic`, own PNGs with an
 opaque rounded frame, transparent rounded screen and an opaque island,
-Apple-like names, plus a zip with `__MACOSX` junk) drives tests for
-matching, superseding, unmatched/user mapping, screen detection (±1 px),
-store layout, resolve fallback, validation info, rendering (screenshot
-only inside the mask, island and frame on top) and the GUI commands.
-`cargo run -p arrangia-core --example synthetic_bezels -- <dir|file.zip>`
-writes it for manual tests.
+Apple-like names, two iPhone sizes "16 Pro" / "16 Pro Max" plus a smaller
+duplicate, PSD / licence / other dummy files, plus a zip with `__MACOSX`
+junk) drives tests for matching, both sizes kept, superseding, unmatched /
+user mapping, screen detection (±1 px), store layout and migration, bezel
+selection (target, screenshot, aspect, largest, pin, variant override),
+SLA error mapping, licence notice, resolve fallback, validation info,
+rendering (screenshot only inside the mask, island and frame on top) and
+the GUI and CLI commands. `cargo run -p arrangia-core --example
+synthetic_bezels -- [--full-size] <dir|file.zip>` writes it for manual
+tests (`--full-size`: real screen sizes 1320×2868 / 1206×2622).
 
 ## Consequences
 
 - Vendor images never touch the repo or projects; projects render on any
   machine (parametric fallback).
-- The file-name rules must be verified with a real package (task 3.5
-  "real package verified by the user"); new packages need only YAML.
+- iPhone 15+ rules are verified (iPhone 18 package); iPad / Mac rules
+  still need a real package; new packages need only YAML.
+- Several sizes per device take more disk space (≈ 2 × per family) but
+  give each store slot its own device.
 - Apple Watch / TV / displays need catalog models first.
 - `imported:<source>` other than `apple` (own frame packs, KONZEPT §4.2
   item 3) can reuse store, analysis and render; they need a `frame.yaml`

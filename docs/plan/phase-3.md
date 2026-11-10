@@ -37,7 +37,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Renderer: draw imported PNG frames (screenshot under the frame through the detected mask), correct scaling per element width
 - [x] GUI: app settings → frame packages (import, list, remove, unmatched files); inspector frame source picker
 - [x] Tests with a synthetic bezel package (generated PNGs + names) (ADR 0012)
-- [ ] Real package verified by the user (rules in `apple.yaml` are `verified: false`)
+- [~] Real package verified by the user: iPhone 18 package dry run (2026-11-10) → iPhone rules verified; all bezel sizes kept (Pro for 6.3", Pro Max for 6.9"), automatic choice per target + `bezel:` pin, DMG licence-agreement guidance, licence notice; iPad / Mac rules still unverified; real import + render pending
 
 ## 3.6 Follow-ups from Phase 2
 - [x] Project settings: styles list must not collapse after each edit

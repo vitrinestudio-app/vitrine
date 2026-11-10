@@ -100,7 +100,9 @@ incremental manifest; plus `paint`/`blur`/`raster` helpers.
 user: package (folder/zip/DMG), name rules in
 `data/frame-import/apple.yaml`, screen detection, app-wide store
 `<app data>/frames/` (`ARRANGIA_APP_DIR` overrides the app folder, GUI and
-CLI); `frame: imported:apple` resolves to it or falls back to the
+CLI), one bezel per vendor model (iPhone 18 Pro and Pro Max side by side);
+`frame: imported:apple` resolves to it (bezel picked per target page size,
+screenshot size, aspect, or pinned with `bezel:`) or falls back to the
 parametric frame (info `imported_frame_missing`).
 
 `gui` (Phase 2, ADR 0008) – library + Tauri binary: `commands` (plain
@@ -197,9 +199,9 @@ CLI usage (`--project <DIR>`, default the current folder): `new <dir>
 [--page N | --image N | --canvas | --gallery] [--width|--max-edge|--scale]
 [-o file]`, `export [--target] [--lang] [--out dir] [--no-gallery]
 [--force] [--format json]`, `frames import <path> [--dry-run]`, `frames
-list`, `frames remove [--model] [--color] [--orientation] [--all]`
+list`, `frames remove [--model] [--color] [--orientation] [--bezel] [--all]`
 (synthetic test package: `cargo run -p arrangia-core --example
-synthetic_bezels -- <dir|file.zip>`). Exit codes: 0 ok, 1 project problems, 2 could
+synthetic_bezels -- [--full-size] <dir|file.zip>`). Exit codes: 0 ok, 1 project problems, 2 could
 not run.
 
 Golden tests (`crates/render/tests/golden.rs`) render every output image
