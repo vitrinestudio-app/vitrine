@@ -571,7 +571,22 @@ async fn no_editable_version_is_a_conflict() {
         .await
         .unwrap_err();
     assert_eq!(err.kind(), ErrorKind::Conflict);
-    assert!(err.to_string().contains("1.1 WAITING_FOR_REVIEW"), "{err}");
+    // Short and human; the version list is in the details.
+    assert!(
+        err.to_string().contains(
+            "Create a new version (e.g. 1.1.1) in App Store Connect, then plan again. Latest version: 1.1 (Waiting for Review)."
+        ),
+        "{err}"
+    );
+    assert!(!err.to_string().contains("READY_FOR_DISTRIBUTION"), "{err}");
+    assert_eq!(err.details().len(), 3);
+    let info = arrangia_publish::apple::no_editable_version(&err).unwrap();
+    assert_eq!(info.platform, "IOS");
+    assert_eq!(
+        info.latest,
+        Some(("1.1".to_owned(), "WAITING_FOR_REVIEW".to_owned()))
+    );
+    assert_eq!(info.suggestion.as_deref(), Some("1.1.1"));
 }
 
 #[tokio::test]

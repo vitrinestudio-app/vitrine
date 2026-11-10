@@ -399,19 +399,7 @@ impl Client {
         }) {
             return Ok(v.clone());
         }
-        let found = versions
-            .iter()
-            .map(|v| format!("{} {}", v.version_string, v.state.as_deref().unwrap_or("?")))
-            .collect::<Vec<_>>()
-            .join(", ");
-        Err(Error::Conflict {
-            message: format!(
-                "no editable App Store version for {} (create a new version in App Store Connect; found: {})",
-                platform.as_str(),
-                if found.is_empty() { "none" } else { &found }
-            ),
-            details: Vec::new(),
-        })
+        Err(no_editable_version_error(platform, &versions))
     }
 
     /// Localizations of a version.
@@ -584,7 +572,59 @@ impl Client {
     /// deleted (best effort) before the error is returned, as Apple
     /// recommends. On cancellation or poll timeout it is left in place (the
     /// caller sees it in [`Client::list_screenshots`] and cleans up on resume).
+    ///
+    /// The executor does not use this (it would block on Apple's processing
+    /// per image): it calls [`Client::upload_screenshot_committed`] for every
+    /// image of a set and polls them together (ADR 0018, "Processing").
     pub async fn upload_screenshot(
+        &self,
+        set_id: &str,
+        file_name: &str,
+        bytes: impl Into<Bytes>,
+        progress: ProgressFn<'_>,
+    ) -> Result<AppScreenshot> {
+        let bytes: Bytes = bytes.into();
+        let total = bytes.len() as u64;
+        // Keep the last transfer state (parts) for the processing updates.
+        let last = std::sync::Mutex::new(None::<Progress>);
+        let track = |p: &Progress| {
+            *last
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(p.clone());
+            progress(p);
+        };
+        let committed = self
+            .upload_screenshot_committed(set_id, file_name, bytes, &track)
+            .await?;
+        let id = committed.id;
+        let mut p = last
+            .into_inner()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .unwrap_or_else(|| Progress::new(UploadStep::Processing, total));
+        p.step = UploadStep::Processing;
+        p.asset_id = Some(id.clone());
+        p.bytes_sent = total;
+        match self.wait_processed(&id, &mut p, progress).await {
+            Ok(done) => {
+                p.step = UploadStep::Done;
+                progress(&p);
+                Ok(done)
+            }
+            Err(e @ Error::Processing { .. }) => {
+                let _ = self.delete_screenshot(&id).await;
+                Err(e)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Reserve → upload parts → commit with MD5, without waiting for
+    /// Apple's processing. Returns the screenshot as the commit answered
+    /// (usually `UPLOAD_COMPLETE`); poll it with [`Client::screenshot`].
+    ///
+    /// A failed transfer/commit deletes the reservation (best effort); a
+    /// cancellation leaves it in place.
+    pub async fn upload_screenshot_committed(
         &self,
         set_id: &str,
         file_name: &str,
@@ -624,30 +664,23 @@ impl Client {
         p.parts = Some((0, reserved.upload_operations.len()));
         progress(&p);
 
-        // 2.–4. Transfer, commit, poll; clean up on definite failures.
+        // 2.–3. Transfer and commit; clean up on definite failures.
         match self
             .transfer_and_commit(&reserved, &bytes, &checksum, &mut p, progress)
             .await
         {
-            Ok(()) => {}
+            Ok(committed) => Ok(committed.unwrap_or(AppScreenshot {
+                source_file_checksum: Some(checksum),
+                delivery_state: Some(DeliveryState::UploadComplete),
+                upload_operations: Vec::new(),
+                ..reserved
+            })),
             Err(e) => {
                 if !matches!(e, Error::Cancelled) {
                     let _ = self.delete_screenshot(&id).await;
                 }
-                return Err(e);
-            }
-        }
-        match self.wait_processed(&id, &mut p, progress).await {
-            Ok(done) => {
-                p.step = UploadStep::Done;
-                progress(&p);
-                Ok(done)
-            }
-            Err(e @ Error::Processing { .. }) => {
-                let _ = self.delete_screenshot(&id).await;
                 Err(e)
             }
-            Err(e) => Err(e),
         }
     }
 
@@ -658,7 +691,7 @@ impl Client {
         checksum: &str,
         p: &mut Progress,
         progress: ProgressFn<'_>,
-    ) -> Result<()> {
+    ) -> Result<Option<AppScreenshot>> {
         let ops = &reserved.upload_operations;
         let total = bytes.len() as u64;
         if ops.is_empty() {
@@ -729,16 +762,20 @@ impl Client {
                 "attributes": { "uploaded": true, "sourceFileChecksum": checksum }
             }
         });
-        self.api(
-            Method::PATCH,
-            self.url(&["v1", "appScreenshots", &reserved.id])?,
-            Some(body),
-            Retry::Idempotent,
-        )
-        .await?;
+        let reply = self
+            .api(
+                Method::PATCH,
+                self.url(&["v1", "appScreenshots", &reserved.id])?,
+                Some(body),
+                Retry::Idempotent,
+            )
+            .await?;
         p.step = UploadStep::Commit;
         progress(p);
-        Ok(())
+        // The commit answers with the resource; tolerate an empty body.
+        Ok(parse_json::<Document<Resource<ScreenshotAttrs>>>(&reply)
+            .ok()
+            .map(|d| d.data.into()))
     }
 
     async fn wait_processed(
@@ -782,6 +819,119 @@ impl Client {
             interval = (interval * 2).min(policy.max_interval);
         }
     }
+}
+
+/// `code` of the first detail of the "no editable version" conflict.
+pub const NO_EDITABLE_VERSION: &str = "NO_EDITABLE_VERSION";
+
+/// Facts of a "no editable App Store version" conflict (see
+/// [`no_editable_version`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NoEditableVersion {
+    /// Platform (`IOS`, `MAC_OS`).
+    pub platform: String,
+    /// Highest existing version and its raw state.
+    pub latest: Option<(String, String)>,
+    /// Suggested next version (`2.1.0` → `2.1.1`).
+    pub suggestion: Option<String>,
+}
+
+/// Recognises the conflict [`Client::editable_version`] returns when no
+/// version can be edited; the full version list is in the error details.
+pub fn no_editable_version(e: &Error) -> Option<NoEditableVersion> {
+    let Error::Conflict { details, .. } = e else {
+        return None;
+    };
+    let first = details.first().filter(|d| d.code == NO_EDITABLE_VERSION)?;
+    let latest = details
+        .iter()
+        .skip(1)
+        .find(|d| d.title == first.detail)
+        .map(|d| (d.title.clone(), d.detail.clone()));
+    Some(NoEditableVersion {
+        platform: first.title.clone(),
+        suggestion: latest.as_ref().and_then(|(v, _)| next_version(v)),
+        latest,
+    })
+}
+
+/// Human name of an `appVersionState` (`READY_FOR_DISTRIBUTION` →
+/// `Ready for Distribution`).
+pub fn version_state_label(state: &str) -> String {
+    state
+        .split('_')
+        .filter(|w| !w.is_empty())
+        .enumerate()
+        .map(|(i, w)| {
+            let w = w.to_ascii_lowercase();
+            if i > 0 && matches!(w.as_str(), "for" | "of" | "in" | "to" | "and" | "by") {
+                w
+            } else {
+                let mut c = w.chars();
+                c.next()
+                    .map(|f| f.to_ascii_uppercase().to_string() + c.as_str())
+                    .unwrap_or_default()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn version_key(v: &str) -> Vec<u64> {
+    v.split('.')
+        .map(|p| p.trim().parse().unwrap_or(0))
+        .collect()
+}
+
+/// `2.1.0` → `2.1.1`, `3` → `3.0.1`.
+fn next_version(v: &str) -> Option<String> {
+    let mut parts = version_key(v);
+    if parts.is_empty() || v.trim().is_empty() {
+        return None;
+    }
+    while parts.len() < 3 {
+        parts.push(0);
+    }
+    if let Some(last) = parts.last_mut() {
+        *last += 1;
+    }
+    Some(
+        parts
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("."),
+    )
+}
+
+/// The short conflict (one line; the version list goes to `details`).
+fn no_editable_version_error(platform: Platform, versions: &[AppStoreVersion]) -> Error {
+    let latest = versions
+        .iter()
+        .max_by(|a, b| version_key(&a.version_string).cmp(&version_key(&b.version_string)));
+    let mut details = vec![ApiErrorDetail {
+        code: NO_EDITABLE_VERSION.to_owned(),
+        title: platform.as_str().to_owned(),
+        detail: latest.map(|v| v.version_string.clone()).unwrap_or_default(),
+    }];
+    details.extend(versions.iter().map(|v| ApiErrorDetail {
+        code: "APP_STORE_VERSION".to_owned(),
+        title: v.version_string.clone(),
+        detail: v.state.clone().unwrap_or_default(),
+    }));
+    let message = match latest {
+        Some(v) => format!(
+            "No editable App Store version. Create a new version{} in App Store Connect, then plan again. Latest version: {} ({}).",
+            next_version(&v.version_string)
+                .map(|n| format!(" (e.g. {n})"))
+                .unwrap_or_default(),
+            v.version_string,
+            version_state_label(v.state.as_deref().unwrap_or("unknown"))
+        ),
+        None => "No App Store version yet. Create a version in App Store Connect, then plan again."
+            .to_owned(),
+    };
+    Error::Conflict { message, details }
 }
 
 /// Sends one upload part to the pre-signed URL (no JWT).
@@ -894,6 +1044,39 @@ mod tests {
         let e = map_error(StatusCode::CONFLICT, body);
         assert!(matches!(e, Error::Validation { ref message, .. } if message == "bad size"));
         assert_eq!(e.details()[0].code, "ENTITY_ERROR.ATTRIBUTE.INVALID");
+    }
+
+    #[test]
+    fn version_helpers() {
+        assert_eq!(
+            version_state_label("READY_FOR_DISTRIBUTION"),
+            "Ready for Distribution"
+        );
+        assert_eq!(
+            version_state_label("PREPARE_FOR_SUBMISSION"),
+            "Prepare for Submission"
+        );
+        assert_eq!(next_version("2.1.0").as_deref(), Some("2.1.1"));
+        assert_eq!(next_version("3").as_deref(), Some("3.0.1"));
+        assert_eq!(next_version(""), None);
+        let v = |s: &str, st: &str| AppStoreVersion {
+            id: s.into(),
+            platform: "IOS".into(),
+            version_string: s.into(),
+            state: Some(st.into()),
+        };
+        let e = no_editable_version_error(
+            Platform::Ios,
+            &[
+                v("2.0.10", "READY_FOR_DISTRIBUTION"),
+                v("2.0.9", "READY_FOR_DISTRIBUTION"),
+            ],
+        );
+        let info = no_editable_version(&e).unwrap();
+        assert_eq!(info.latest.unwrap().0, "2.0.10");
+        assert_eq!(info.suggestion.as_deref(), Some("2.0.11"));
+        let none = no_editable_version_error(Platform::Ios, &[]);
+        assert!(no_editable_version(&none).unwrap().latest.is_none());
     }
 
     #[test]
