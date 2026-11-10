@@ -11,6 +11,7 @@ mod element;
 mod fill;
 pub(crate) mod fmt;
 mod ids;
+mod import;
 mod strip;
 mod style;
 mod target;
@@ -28,6 +29,7 @@ pub use element::{
 };
 pub use fill::{Fill, GradientStop, ImageFillMode};
 pub use ids::{ElementId, Lang, StringKey, StripId, TargetId, VariantId, is_valid_id};
+pub use import::{ImportMapping, ImportSettings};
 pub use strip::{PageSpec, Strip, Variant};
 pub use style::{
     BUILTIN_SHADOWS, FrameStyle, Glow, ShadowLayer, ShadowPreset, SpanStyle, Styles, TextStyle,
@@ -61,6 +63,9 @@ pub struct Project {
     pub strips: Vec<Strip>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub targets: Vec<Target>,
+    /// Screenshot import mappings (`core::import`).
+    #[serde(default, skip_serializing_if = "ImportSettings::is_empty")]
+    pub import: ImportSettings,
     /// Translations, stored in `i18n/<lang>.yaml`, not in `project.yaml`.
     #[serde(skip)]
     pub strings: Strings,
@@ -129,6 +134,7 @@ impl Project {
             styles: Styles::default(),
             strips: Vec::new(),
             targets: Vec::new(),
+            import: ImportSettings::default(),
             strings: Strings::new(),
         }
     }
@@ -192,6 +198,7 @@ impl Project {
             }
             t.check()?;
         }
+        self.import.check()?;
         Ok(())
     }
 }

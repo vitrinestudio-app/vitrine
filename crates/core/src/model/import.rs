@@ -1,0 +1,90 @@
+//! Screenshot import mappings stored in `project.yaml` (`import:`, KONZEPT
+//! §5.2, ADR 0009). Used by `core::import` to turn fastlane snapshot
+//! output (`<locale>/<Device Name>-<screen>.png`) into
+//! `screenshots/<lang>/<variant>/<key>.png`.
+//!
+//! ```yaml
+//! import:
+//!   fastlane:
+//!     devices: {iPhone 16 Pro Max: ios-phone, iPad Pro 13-inch (M4): ios-tablet}
+//!     locales: {de-DE: de, en-US: en}
+//!     keys: {01_home: home}
+//! ```
+
+use std::collections::BTreeMap;
+
+use serde::{Deserialize, Serialize};
+
+use super::ids::{Lang, is_valid_id};
+
+/// The `import:` section of `project.yaml`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ImportSettings {
+    #[serde(default, skip_serializing_if = "ImportMapping::is_empty")]
+    pub fastlane: ImportMapping,
+}
+
+impl ImportSettings {
+    pub fn is_empty(&self) -> bool {
+        self.fastlane.is_empty()
+    }
+
+    /// Checks the mapping values (variant ids, languages, keys).
+    pub fn check(&self) -> Result<(), String> {
+        self.fastlane.check()
+    }
+}
+
+/// Name → id maps applied when importing screenshots. Keys are the names
+/// as they appear in the source (device names, locale folders, screen
+/// names); values are project ids.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ImportMapping {
+    /// Device name (fastlane) → screenshot variant (`ios-phone`).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub devices: BTreeMap<String, String>,
+    /// Locale folder (`de-DE`) → project language (`de`).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub locales: BTreeMap<String, Lang>,
+    /// Screen name (`01_home`, as written in the file name) → screenshot key.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub keys: BTreeMap<String, String>,
+}
+
+impl ImportMapping {
+    pub fn is_empty(&self) -> bool {
+        self.devices.is_empty() && self.locales.is_empty() && self.keys.is_empty()
+    }
+
+    /// Adds all entries of `other` (its values win).
+    pub fn merge(&mut self, other: &ImportMapping) {
+        self.devices.extend(other.devices.clone());
+        self.locales.extend(other.locales.clone());
+        self.keys.extend(other.keys.clone());
+    }
+
+    pub fn check(&self) -> Result<(), String> {
+        for (name, v) in &self.devices {
+            if name.trim().is_empty() {
+                return Err("import device names must not be empty".to_owned());
+            }
+            if !is_valid_id(v) {
+                return Err(format!("import: invalid variant `{v}` for device `{name}`"));
+            }
+        }
+        for (name, k) in &self.keys {
+            if name.trim().is_empty() {
+                return Err("import screen names must not be empty".to_owned());
+            }
+            if !is_valid_id(k) {
+                return Err(format!("import: invalid screenshot key `{k}` for `{name}`"));
+            }
+        }
+        if self.locales.keys().any(|l| l.trim().is_empty()) {
+            return Err("import locale names must not be empty".to_owned());
+        }
+        Ok(())
+    }
+}

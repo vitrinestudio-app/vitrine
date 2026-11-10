@@ -39,6 +39,7 @@
 pub mod catalog;
 pub mod edit;
 pub mod geometry;
+pub mod import;
 pub mod io;
 pub mod layout;
 pub mod markup;

@@ -12,8 +12,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
 use arrangia_core::Project;
-use arrangia_core::catalog;
-use arrangia_core::model::{ElementKind, Fill, Lang, PixelSize};
+use arrangia_core::model::{ElementKind, Fill, Lang};
 use arrangia_core::resolve::SCREENSHOT_EXTENSIONS;
 use arrangia_render::raster::{Filter, SourceImage};
 use arrangia_render::scene::Resample;
@@ -134,41 +133,13 @@ pub struct AssetsRemoveArgs {
 
 /// Sanitized file-name stem: lowercase ASCII letters, digits, `-`, `_`.
 pub fn sanitize(name: &str) -> String {
-    let mut out = String::with_capacity(name.len());
-    for c in name.chars() {
-        let c = c.to_ascii_lowercase();
-        if c.is_ascii_alphanumeric() || c == '_' {
-            out.push(c);
-        } else if !out.ends_with('-') {
-            out.push('-');
-        }
-    }
-    let out = out.trim_matches(['-', '_']).to_owned();
-    if out.is_empty() {
-        "file".to_owned()
-    } else {
-        out
-    }
+    arrangia_core::import::slugify(name)
 }
 
 /// Screenshot variants (device catalog) whose typical sizes include
 /// `w × h` in either orientation, in catalog order.
 pub fn variants_for_size(w: u32, h: u32) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    for d in catalog::devices() {
-        let Some(v) = &d.screenshot.variant else {
-            continue;
-        };
-        let hit = d
-            .screenshot
-            .sizes
-            .iter()
-            .any(|s| *s == PixelSize::new(w, h) || *s == PixelSize::new(h, w));
-        if hit && !out.contains(v) {
-            out.push(v.clone());
-        }
-    }
-    out
+    arrangia_core::import::variants_for_size(w, h)
 }
 
 fn dims(path: &Path) -> Option<(u32, u32)> {
