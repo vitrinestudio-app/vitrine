@@ -27,6 +27,8 @@ pub struct StringsTable {
     pub keys: Vec<String>,
     /// lang → key → text.
     pub strings: BTreeMap<String, BTreeMap<String, String>>,
+    /// Key → text elements using it (base elements, all strips).
+    pub used_by: BTreeMap<String, Vec<String>>,
 }
 
 /// A key without text in a language.
@@ -99,6 +101,7 @@ pub fn strings_get(app: &AppState, args: StringsGetArgs) -> CmdResult<StringsTab
             languages,
             keys: all_keys(p).into_iter().collect(),
             strings,
+            used_by: used_keys(p),
         })
     })
 }

@@ -166,6 +166,10 @@ json_commands! {
     dialog_open_project: commands::DialogOpenProjectArgs,
     dialog_pick_files: commands::DialogPickFilesArgs,
     preview_stats: commands::NoArgs,
+    element_info: commands::ElementInfoArgs,
+    markup_check: commands::MarkupCheckArgs,
+    assets_probe: commands::AssetsProbeArgs,
+    assets_upload: commands::AssetsUploadArgs,
 }
 
 image_commands! {
@@ -173,6 +177,8 @@ image_commands! {
     render_canvas: commands::RenderCanvasArgs,
     render_gallery: commands::RenderGalleryArgs,
     render_preview_edit: commands::RenderPreviewEditArgs,
+    render_preview_string: commands::RenderPreviewStringArgs,
+    asset_thumbnail: commands::AssetThumbnailArgs,
 }
 
 fn main() {
@@ -243,6 +249,12 @@ fn main() {
             render_canvas,
             render_gallery,
             render_preview_edit,
+            element_info,
+            markup_check,
+            assets_probe,
+            assets_upload,
+            render_preview_string,
+            asset_thumbnail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Arrangia");

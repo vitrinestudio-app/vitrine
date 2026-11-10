@@ -87,7 +87,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   overlay ghost at once + previews of the affected images from a scratch
   copy, ~10 ms per image in release, self-paced ≤ 15 fps); render
   commands take a `variant`, `render_canvas` a `region` (gaps).
-  Open: "All languages" view (2.7), manual home page lock in the UI
+  Open: manual home page lock in the UI
   (`edit_set_page` exists; inspector in 2.6), group rotation handles.
 
 ## 2.6 Inspector + layers
@@ -105,13 +105,30 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   (not saved); new keys get the text in the current language only.
 
 ## 2.7 Texts + translations
-- [ ] Double-click edit of the current language's text on canvas
-- [ ] Translation table (keys × languages, missing marked), add/rename keys
-- [ ] Overflow and emergency-break markers from validation on the canvas
+- [x] Double-click edit of the current language's text on canvas
+- [x] Translation table (keys × languages, missing marked), add/rename keys
+- [x] Overflow and emergency-break markers from validation on the canvas
+  Done: inline editor (`views/textedit.js`) attached below the text's
+  content quad (same width/rotation, so the live preview stays visible;
+  Enter commits one `set_string`, Shift+Enter = line break, Esc cancels;
+  toolbar `**`, `_`, `[span]…[/]`, `\-`; markup diagnostics via
+  `markup_check`), live preview via `render_preview_string` (scratch copy);
+  `element_info` (resolved element + own string); translations panel
+  (`panels/translations.js`: filter, inline cells, add/rename/delete key,
+  add/remove language, per-cell markers from `validate` of all targets);
+  "All languages" view (`views/languages.js`: languages × output images,
+  overflow markers, click → language + canvas + selection).
 
 ## 2.8 Assets
-- [ ] Assets panel: screenshots per language/variant, images, fonts;
+- [x] Assets panel: screenshots per language/variant, images, fonts;
       drag & drop import (detect variant by pixel size), placeholders listed
+  Done: `panels/assets.js` (thumbnails via `asset_thumbnail`, usage from
+  `assets_list.screenshot_keys`/`asset_usage`, missing keys per strip ×
+  target variant with import, remove with confirmation), import dialog
+  `panels/importer.js` (`assets_probe`: detected variant and candidates,
+  overridable; kind, language, key, replace), drops onto the panel or a
+  device (device → its screenshot key, current language, target variant;
+  Tauri `tauri://drag-drop` paths, browser `File`s via `assets_upload`).
 
 ## 2.9 Targets, validation, export
 - [ ] Targets editor (from presets, size, gallery, group, variant,

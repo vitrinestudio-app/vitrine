@@ -1,0 +1,378 @@
+/* Translations panel (js/panels/translations.js) and the "All languages"
+ * view (js/views/languages.js). */
+
+/* The left sidebar widens while the translations table is shown. */
+.app:has(.tr-panel) {
+  grid-template-columns: minmax(380px, 42vw) minmax(0, 1fr) 256px;
+}
+
+.tr-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.tr-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 8px;
+}
+
+.tr-search {
+  flex: 1 1 140px;
+  min-width: 100px;
+  height: 24px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+}
+
+.tr-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+
+.tr-spacer {
+  flex: 1 0 0;
+}
+
+.tr-toolbar .btn svg.icon {
+  width: 12px;
+  height: 12px;
+}
+
+.tr-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+}
+
+.tr-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  table-layout: fixed;
+  font-size: var(--fs);
+}
+
+.tr-table th,
+.tr-table td {
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tr-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-chrome);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tr-key-col {
+  width: 30%;
+}
+
+.tr-lang.current {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.tr-lang-btn {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tr-default {
+  color: var(--warning);
+  font-size: var(--fs-small);
+}
+
+.tr-missing-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--danger);
+  color: var(--accent-fg);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.tr-icon {
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  width: 18px;
+  height: 18px;
+  padding: 1px;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.tr-icon:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.tr-icon svg.icon {
+  width: 12px;
+  height: 12px;
+}
+
+.tr-key {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-panel);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  font-weight: 400;
+  word-break: break-all;
+}
+
+.tr-key-name {
+  display: block;
+}
+
+.tr-unused {
+  display: inline-block;
+  font-family: var(--font);
+  color: var(--fg-faint);
+  font-size: 10px;
+}
+
+.tr-row-actions {
+  display: none;
+  margin-left: 2px;
+}
+
+.tr-table tr:hover .tr-row-actions,
+.tr-key:focus-within .tr-row-actions {
+  display: inline;
+}
+
+.tr-cell {
+  cursor: text;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--bg);
+}
+
+.tr-cell:hover {
+  background: var(--bg-hover);
+}
+
+.tr-cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.tr-cell.current {
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg));
+}
+
+.tr-cell .tr-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tr-cell.missing {
+  background: repeating-linear-gradient(-45deg, transparent 0 6px, color-mix(in srgb, var(--danger) 7%, transparent) 6px 8px), var(--bg);
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.tr-cell.missing .tr-text {
+  color: var(--fg-faint);
+  font-style: italic;
+}
+
+.tr-cell.m-overflow {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.tr-cell.m-emergency:not(.m-overflow) {
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
+.tr-marker {
+  float: right;
+  color: var(--danger);
+  margin-left: 4px;
+}
+
+.tr-cell.m-emergency:not(.m-overflow) .tr-marker {
+  color: var(--warning);
+}
+
+.tr-marker svg.icon {
+  width: 12px;
+  height: 12px;
+}
+
+.tr-cell.editing {
+  padding: 0;
+}
+
+.tr-input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 0;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  padding: 4px 6px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg-input);
+}
+
+/* ----- All languages view ------------------------------------------------- */
+
+.lg-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-canvas);
+}
+
+.lg-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.lg-spacer {
+  flex: 1;
+}
+
+.lg-grid {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lg-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lg-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.lg-lang strong {
+  font-size: var(--fs-title);
+}
+
+.lg-current {
+  margin-left: 6px;
+  font-size: var(--fs-small);
+  color: var(--accent);
+}
+
+.lg-status svg.icon {
+  width: 12px;
+  height: 12px;
+  vertical-align: -2px;
+}
+
+.lg-bad {
+  color: var(--danger);
+  margin-right: 10px;
+}
+
+.lg-warn {
+  color: var(--warning);
+  margin-right: 10px;
+}
+
+.lg-ok {
+  color: var(--success);
+}
+
+.lg-cells {
+  display: flex;
+  gap: 10px;
+}
+
+.lg-cell {
+  position: relative;
+  margin: 0;
+  flex: none;
+  cursor: pointer;
+}
+
+.lg-cell canvas {
+  display: block;
+  border-radius: 3px;
+  box-shadow: var(--shadow-page);
+  background: var(--bg);
+}
+
+.lg-cell:hover canvas {
+  outline: 2px solid var(--accent);
+}
+
+.lg-cell figcaption {
+  font-size: var(--fs-small);
+  color: var(--label);
+  text-align: center;
+  padding-top: 2px;
+}
+
+.lg-marks {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.lg-overflow,
+.lg-emergency {
+  fill: color-mix(in srgb, var(--danger) 14%, transparent);
+  stroke: var(--danger);
+  stroke-width: 2;
+}
+
+.lg-emergency {
+  stroke-dasharray: 5 3;
+  fill: none;
+}

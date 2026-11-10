@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 use arrangia_core::Project;
 use arrangia_core::geometry::{Rect, Viewport};
-use arrangia_core::model::{TargetKind, VariantId};
+use arrangia_core::model::{Lang, StringKey, TargetKind, VariantId};
+use arrangia_core::ops::Op;
 use arrangia_core::resolve::{FsAssets, ResolvedScene, resolve};
 use arrangia_render::export::{gallery, scene_assets};
 use arrangia_render::scene::{CanvasOptions, Quality, RenderOptions, Scale};
@@ -174,7 +175,7 @@ fn with_variant(
 /// Resolved scene of `project` (default: the session's current project)
 /// for the view; rendering happens on this snapshot, outside the lock.
 #[allow(clippy::option_option)]
-fn scene(
+pub(super) fn scene(
     session: &Session,
     project: Option<&Project>,
     target: Option<String>,
@@ -364,6 +365,81 @@ pub fn render_preview_edit(
         Some(&project),
         args.target.clone(),
         args.lang.clone(),
+        args.variant.as_ref(),
+    )?;
+    let image_args = RenderImageArgs {
+        target: None,
+        lang: None,
+        variant: None,
+        image: args.image,
+        max_edge: args.max_edge,
+        width: args.width,
+        scale: args.scale,
+        quality: PreviewQuality::Preview,
+        interactive: args.interactive,
+        format: args.format,
+    };
+    image_of(&session, &scene, &target, &lang, &image_args, false)
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(clippy::option_option)]
+pub struct RenderPreviewStringArgs {
+    #[serde(default)]
+    pub target: Option<String>,
+    /// Language of the view; the string is set in this language.
+    #[serde(default)]
+    pub lang: Option<String>,
+    #[serde(default, deserialize_with = "double_option")]
+    pub variant: Option<Option<String>>,
+    /// Translation key and its uncommitted raw markup.
+    pub key: String,
+    pub value: String,
+    /// Output image index and size as in `render_image`.
+    #[serde(default)]
+    pub image: u32,
+    #[serde(default)]
+    pub max_edge: Option<u32>,
+    #[serde(default)]
+    pub width: Option<u32>,
+    #[serde(default)]
+    pub scale: Option<f64>,
+    /// Default true: half size, as while typing.
+    #[serde(default = "yes")]
+    pub interactive: bool,
+    #[serde(default)]
+    pub format: PixelFormat,
+}
+
+/// Live typing feedback: output image `image` with translation `key` set to
+/// `value` in the view's language, rendered from a scratch copy of the
+/// project (nothing is saved or cached; the scratch copy is shared by the
+/// images of one keystroke).
+pub fn render_preview_string(
+    app: &AppState,
+    args: RenderPreviewStringArgs,
+) -> CmdResult<Arc<PreviewImage>> {
+    let session = app.session()?;
+    let lang = lang_or_default(&session, args.lang.clone());
+    let lang_id = Lang::parse(&lang).map_err(CommandError::invalid)?;
+    let key = StringKey::parse(&args.key).map_err(CommandError::invalid)?;
+    let cache_key =
+        serde_json::to_string(&("string", &lang, &args.key, &args.value)).unwrap_or_default();
+    let project = session.edit_preview(cache_key, |project| {
+        let mut scratch = project.clone();
+        scratch.apply(Op::SetString {
+            lang: lang_id,
+            key,
+            value: Some(args.value.clone()),
+        })?;
+        Ok(scratch)
+    })?;
+    let (target, lang, scene) = scene(
+        &session,
+        Some(&project),
+        args.target.clone(),
+        Some(lang),
         args.variant.as_ref(),
     )?;
     let image_args = RenderImageArgs {

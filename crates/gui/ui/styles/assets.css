@@ -1,0 +1,411 @@
+/* Assets panel (js/panels/assets.js), the import dialog
+ * (js/panels/importer.js) and the panel modals (js/panels/modal.js). */
+
+.as-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.as-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 4px;
+}
+
+.as-toolbar .btn svg.icon,
+.as-add svg.icon {
+  width: 12px;
+  height: 12px;
+}
+
+body.as-dragging .as-panel {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+  background: var(--accent-soft);
+}
+
+.as-section > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.as-section > summary::-webkit-details-marker,
+.as-lang > summary::-webkit-details-marker {
+  display: none;
+}
+
+.as-count {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--bg-active);
+  color: var(--fg-muted);
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.as-lang {
+  margin: 0 8px 4px;
+}
+
+.as-lang > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+}
+
+.as-lang > summary:hover {
+  background: var(--bg-hover);
+}
+
+.as-variant {
+  padding: 2px 0 6px;
+}
+
+.as-variant-title {
+  padding: 4px 8px 2px;
+  font-family: var(--font-mono);
+}
+
+.as-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+}
+
+.as-item:hover {
+  background: var(--bg-hover);
+}
+
+.as-thumb {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 3px;
+  background: var(--bg-canvas);
+}
+
+.as-thumb.broken {
+  outline: 1px dashed var(--danger);
+}
+
+.placeholder-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 9px;
+  color: var(--fg-faint);
+  border: 1px dashed var(--border-strong);
+  box-sizing: border-box;
+  word-break: break-all;
+  text-align: center;
+}
+
+.as-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.as-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.as-users {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.as-user {
+  border: 0;
+  border-radius: 8px;
+  padding: 0 6px;
+  height: 16px;
+  font: inherit;
+  font-size: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.as-unused {
+  font-size: 10px;
+}
+
+.as-remove {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.as-item:hover .as-remove,
+.as-font:hover .as-remove,
+.as-remove:focus-visible {
+  visibility: visible;
+}
+
+.as-remove:hover {
+  background: var(--bg-active);
+  color: var(--danger);
+}
+
+.as-remove svg.icon {
+  width: 12px;
+  height: 12px;
+}
+
+.as-missing {
+  margin: 0 8px 6px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--danger) 5%, transparent);
+}
+
+.as-missing-title {
+  color: var(--danger);
+  font-family: var(--font);
+}
+
+.as-missing-title svg.icon,
+.as-detected svg.icon {
+  width: 11px;
+  height: 11px;
+  vertical-align: -1px;
+}
+
+.as-item.missing {
+  align-items: center;
+}
+
+.as-font {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 16px;
+}
+
+.as-font .grow {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.as-font svg.icon {
+  width: 12px;
+  height: 12px;
+}
+
+.as-add {
+  margin: 4px 16px 8px;
+}
+
+/* ----- import dialog -------------------------------------------------------- */
+
+.as-import {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.as-import-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.as-import-name {
+  overflow-wrap: anywhere;
+}
+
+.as-import-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.as-import-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.as-import-fields label {
+  display: contents;
+}
+
+.as-import-fields label > span {
+  color: var(--fg-muted);
+  font-size: var(--fs-small);
+}
+
+.as-select,
+.as-key {
+  height: 24px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+  padding: 0 6px;
+}
+
+.as-key:disabled {
+  color: var(--fg-muted);
+}
+
+.as-detected {
+  color: var(--success);
+  font-size: var(--fs-small);
+}
+
+.as-undetected {
+  color: var(--warning);
+  font-size: var(--fs-small);
+}
+
+.as-replace {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-small);
+}
+
+/* ----- modals (panels/modal.js) ------------------------------------------- */
+
+.ar-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 28%);
+}
+
+.ar-modal {
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 10px;
+  box-shadow: var(--shadow-pop);
+}
+
+.ar-modal-title {
+  padding: 14px 16px 6px;
+  font-weight: 600;
+  font-size: var(--fs-title);
+}
+
+.ar-modal-body {
+  padding: 4px 16px 8px;
+  overflow: auto;
+}
+
+.ar-modal-body p {
+  margin: 0 0 6px;
+}
+
+.ar-modal-list {
+  margin: 4px 0;
+  padding-left: 18px;
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+}
+
+.ar-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ar-modal-field > span {
+  color: var(--fg-muted);
+  font-size: var(--fs-small);
+}
+
+.ar-modal-input {
+  height: 28px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+}
+
+.ar-modal-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus);
+}
+
+.ar-modal-error {
+  color: var(--danger);
+  font-size: var(--fs-small);
+}
+
+.ar-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px 14px;
+}
+
+.ar-modal .btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--accent-fg);
+}
+
+.as-missing > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.as-missing > summary::-webkit-details-marker {
+  display: none;
+}
