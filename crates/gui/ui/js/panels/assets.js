@@ -12,6 +12,7 @@ import { listen } from '../api.js';
 import { h, icon } from '../dom.js';
 import { confirmDialog } from '../dialogs/modal.js';
 import { onImported, pickAndImport } from './importer.js';
+import { openScreenshotImport } from '../dialogs/screenshot-import.js';
 
 const THUMB = 96;
 
@@ -25,6 +26,7 @@ export function mount(el, { store, editor, api, t }) {
       'div',
       { class: 'as-toolbar' },
       h('button', { type: 'button', class: 'btn btn-small', onclick: () => pickAndImport() }, icon('plus'), t('assets.import')),
+      h('button', { type: 'button', class: 'btn btn-small', title: t('import.menu_hint'), onclick: () => openScreenshotImport() }, t('import.button')),
       h('span', { class: 'muted small' }, t('assets.drop_hint')),
     ),
     body,

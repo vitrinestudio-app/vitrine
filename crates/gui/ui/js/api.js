@@ -157,5 +157,11 @@ export const api = {
   stringsImportPlan: (paths, options = {}) => invoke('strings_import_plan', { paths, options }),
   /** Applies a plan from `stringsImportPlan` as one undo step. */
   stringsImportApply: (plan) => invoke('strings_import_apply', { plan }),
+
+  // ----- screenshot import (3.3) -----
+  /** Plan of a folder (`dir`) or `files`: `{ format?, mapping?, overrides?, include_framed? }`. */
+  importPlan: (args) => invoke('import_plan', args),
+  /** Re-plans with the same arguments and copies; `save_mapping` stores the mapping. */
+  importApply: (args) => invoke('import_apply', args),
   catalogFonts: () => invoke('catalog_fonts'),
 };

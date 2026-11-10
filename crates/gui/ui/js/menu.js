@@ -8,7 +8,7 @@ import { t } from './i18n.js';
 import { isMac, keyLabel } from './shortcuts.js';
 
 /**
- * `handlers`: { newProject, openProject, projectSettings, targets, exportDialog,
+ * `handlers`: { newProject, openProject, projectSettings, targets, exportDialog, importScreenshots,
  * appSettings, closeProject, hasProject() }.
  */
 export function createMenu(handlers) {
@@ -19,6 +19,7 @@ export function createMenu(handlers) {
     { id: 'projectSettings', label: 'project.menu.project_settings', project: true },
     { id: 'targets', label: 'project.menu.targets', project: true },
     { id: 'exportDialog', label: 'project.menu.export', key: 'mod+e', project: true },
+    { id: 'importScreenshots', label: 'import.menu', project: true },
     { sep: true },
     { id: 'appSettings', label: 'project.menu.app_settings', key: 'mod+,' },
     { sep: true },

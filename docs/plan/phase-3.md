@@ -21,9 +21,9 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Inspector + style editor toggle; validation info when hyphenation was used
 
 ## 3.3 Screenshot import
-- [ ] Import rules: Arrangia folder convention, fastlane snapshot output (`<locale>/<Device Name>-<name>.png`), configurable device-name → variant and locale → language maps (stored in project.yaml)
-- [ ] Dry-run report (what goes where, unknown files, overwrites), then apply
-- [ ] CLI `arrangia import screenshots <dir> [--fastlane] [--dry-run]`; GUI import dialog (folder pick, preview table, apply)
+- [x] Import rules: Arrangia folder convention, fastlane snapshot output (`<locale>/<Device Name>-<name>.png`), configurable device-name → variant and locale → language maps (stored in project.yaml) — `core::import`, `import.fastlane` in project.yaml, ADR 0010
+- [x] Dry-run report (what goes where, unknown files, overwrites), then apply
+- [x] CLI `arrangia import screenshots <dir> [--format auto|arrangia|fastlane|flat] [--dry-run] [--save-mapping]`; GUI import dialog (folder pick, preview table, apply)
 
 ## 3.4 Translation exchange
 - [x] Export/import CSV (key, per-language columns, notes/context, max length hints) and XLIFF 1.2 + 2.0 (source = default language, target per language; markup mapped to inline tags `<pc>/<ph>` resp. `<g>/<x/>` by default, as text optionally; ADR 0011)

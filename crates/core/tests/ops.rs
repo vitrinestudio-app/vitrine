@@ -653,7 +653,7 @@ mod prop {
     fn make_op(p: &Project, kind: u8, a: u32, b: u32, x: f64) -> Option<Op> {
         let pick = Pick::new(p);
         let page = b % 6; // sometimes out of range on purpose
-        Some(match kind % 29 {
+        Some(match kind % 30 {
             0 => {
                 let (_, id, is_text) = pick.element(a)?;
                 let yaml = match b % 7 {
@@ -942,6 +942,20 @@ mod prop {
                 from: ["accent", "headline", "soft", "primary", "sub"][b as usize % 5].into(),
                 to: ["renamed", "text", "hard", "accent2"][a as usize % 4].into(),
             },
+            29 => {
+                let yaml = match a % 4 {
+                    0 => "{}".to_owned(),
+                    1 => format!(
+                        "{{ fastlane: {{ devices: {{ 'iPhone {}': ios-phone }}, locales: {{ de-DE: de }} }} }}",
+                        b % 20
+                    ),
+                    2 => "{ fastlane: { keys: { 01_home: home } } }".into(),
+                    _ => "{ fastlane: { devices: { 'iPhone': 'not an id' } } }".into(),
+                };
+                Op::SetImport {
+                    import: io::from_yaml(&yaml).unwrap(),
+                }
+            }
             _ => {
                 let mut languages = p.languages.clone();
                 if b % 2 == 0 {

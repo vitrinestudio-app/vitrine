@@ -214,6 +214,11 @@ export function onImported(fn) {
   return () => importListeners.delete(fn);
 }
 
+/** Notifies the `onImported` listeners (e.g. after a folder import). */
+export function notifyImported(files) {
+  for (const fn of importListeners) fn(files);
+}
+
 /** File picker → import dialog. */
 export async function pickAndImport(opts = {}) {
   try {

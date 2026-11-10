@@ -211,6 +211,8 @@ json_commands! {
     strings_export: commands::StringsExportArgs,
     strings_import_plan: commands::StringsImportPlanArgs,
     strings_import_apply: commands::StringsImportApplyArgs,
+    import_plan: commands::ImportPlanArgs,
+    import_apply: commands::ImportApplyArgs,
 }
 
 image_commands! {
@@ -322,6 +324,8 @@ fn main() {
             strings_export,
             strings_import_plan,
             strings_import_apply,
+            import_plan,
+            import_apply,
             render_image,
             render_canvas,
             render_gallery,

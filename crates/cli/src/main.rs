@@ -1,8 +1,9 @@
 //! `arrangia` – command line interface.
 //!
 //! Commands: `new` (project from a template), `render` (preview/debug PNG),
-//! `export` (all files of targets × languages), `validate` and `strings
-//! export|import` (translation exchange). The CLI only
+//! `export` (all files of targets × languages), `validate`, `strings
+//! export|import` (translation exchange) and `import screenshots`
+//! (fastlane / Arrangia / flat folders → `screenshots/`). The CLI only
 //! formats what `arrangia-core` and `arrangia-render` compute; it never
 //! edits project fields directly.
 //!
@@ -11,10 +12,11 @@
 //! | code | meaning |
 //! |---|---|
 //! | 0 | success; `validate`: no errors (warnings only fail with `--strict`) |
-//! | 1 | the project has problems: validation errors, export failures |
+//! | 1 | the project has problems: validation errors, export failures, import files unresolved or failed |
 //! | 2 | the command could not run: usage error (clap), project not loadable, IO error |
 
 mod export;
+mod import;
 mod new;
 mod project;
 mod render;
@@ -89,6 +91,9 @@ enum Command {
     Validate(validate::ValidateArgs),
     /// Exchange translations with translators (CSV, XLIFF).
     Strings(strings::StringsArgs),
+    /// Import files into the project (`screenshots <dir>`: fastlane, Arrangia or flat folders).
+    #[command(subcommand)]
+    Import(import::ImportCommand),
 }
 
 impl Command {
@@ -100,6 +105,7 @@ impl Command {
             Self::Export(_) => "export",
             Self::Validate(_) => "validate",
             Self::Strings(_) => "strings",
+            Self::Import(_) => "import",
         }
     }
 }
@@ -112,6 +118,7 @@ fn main() -> ExitCode {
         Command::Export(args) => export::run(args, &cli.global),
         Command::Validate(args) => validate::run(args, &cli.global),
         Command::Strings(args) => strings::run(args, &cli.global),
+        Command::Import(cmd) => import::run(cmd, &cli.global),
     };
     match result {
         Ok(code) => ExitCode::from(code),
@@ -154,5 +161,30 @@ mod tests {
             Cli::try_parse_from(["arrangia", "render", "--width", "1", "--scale", "1"]).is_err()
         );
         assert!(Cli::try_parse_from(["arrangia", "render", "--canvas", "--scale", "0.5"]).is_ok());
+    }
+
+    #[test]
+    fn parses_import_screenshots() {
+        let cli = Cli::try_parse_from([
+            "arrangia",
+            "import",
+            "screenshots",
+            "shots",
+            "--format",
+            "fastlane",
+            "--device-map",
+            "iPhone 16 Pro Max=ios-phone",
+            "--lang-map",
+            "de-DE=de",
+            "--dry-run",
+            "--format-output",
+            "json",
+        ])
+        .unwrap();
+        assert_eq!(cli.command.name(), "import");
+        assert!(
+            Cli::try_parse_from(["arrangia", "import", "screenshots", "x", "--format", "zip"])
+                .is_err()
+        );
     }
 }

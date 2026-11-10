@@ -28,6 +28,7 @@ mod os;
 mod project;
 mod project_settings;
 mod render;
+mod screenshot_import;
 mod strings;
 mod system;
 mod targets;
@@ -51,6 +52,7 @@ pub use os::*;
 pub use project::*;
 pub use project_settings::*;
 pub use render::*;
+pub use screenshot_import::*;
 pub use strings::*;
 pub use system::*;
 pub use targets::*;
@@ -231,6 +233,7 @@ command_table! {
         default_language_impact, default_language_set, styles_get, styles_patch,
         dialog_pick_folder, reveal_path,
         dialog_save_file, strings_export, strings_import_plan, strings_import_apply,
+        import_plan, import_apply,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,
@@ -256,3 +259,6 @@ mod tests_texts;
 
 #[cfg(test)]
 mod tests_exchange;
+
+#[cfg(test)]
+mod tests_import;

@@ -28,9 +28,9 @@ pub use patch::{StripPatch, TargetPatch};
 
 use crate::catalog;
 use crate::model::{
-    ColorRef, DeviceProps, Element, ElementId, ElementKind, ElementPatch, Lang, Languages, Project,
-    Region, StoreSlot, StringKey, Strip, StripId, StyleKind, Styles, Target, TargetId, Variant,
-    VariantId, is_valid_id,
+    ColorRef, DeviceProps, Element, ElementId, ElementKind, ElementPatch, ImportSettings, Lang,
+    Languages, Project, Region, StoreSlot, StringKey, Strip, StripId, StyleKind, Styles, Target,
+    TargetId, Variant, VariantId, is_valid_id,
 };
 
 /// Overrides of removed elements, by variant, so that removal can be undone.
@@ -48,6 +48,10 @@ pub enum Op {
     },
     SetStyles {
         styles: Styles,
+    },
+    /// Replace the screenshot import mappings (`import:` in `project.yaml`).
+    SetImport {
+        import: ImportSettings,
     },
     /// Set (`Some`) or remove (`None`) a translation.
     SetString {
@@ -349,6 +353,11 @@ impl Project {
                 self.check_styles(&styles)?;
                 let old = std::mem::replace(&mut self.styles, styles);
                 Ok(Op::SetStyles { styles: old })
+            }
+            Op::SetImport { import } => {
+                import.check().map_err(invalid)?;
+                let old = std::mem::replace(&mut self.import, import);
+                Ok(Op::SetImport { import: old })
             }
             Op::SetString { lang, key, value } => {
                 if !self.languages.is_available(lang.as_str()) {
