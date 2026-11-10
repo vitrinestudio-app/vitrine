@@ -102,12 +102,367 @@ struct Asc {
     stuck: Vec<String>,
     /// Files (by name) Apple fails to process (`FAILED` with errors).
     failing: Vec<String>,
+    /// Serve the App Asset Library (else 404: `auto` falls back to sets).
+    library: bool,
+    /// The key may not read the app's library (403); ref data still works.
+    deny_library: bool,
+    /// Library images by id.
+    images: BTreeMap<String, LibImg>,
+    /// Placements by id.
+    placements: BTreeMap<String, Pl>,
+    /// (localization id, group) → placement ids in display order.
+    porder: BTreeMap<(String, String), Vec<String>>,
+    /// Ordering requests received: (group, ids).
+    orderings: Vec<(String, Vec<String>)>,
+}
+
+#[derive(Debug, Clone)]
+struct LibImg {
+    file_name: String,
+    size: u64,
+    category: String,
+    reference: Option<String>,
+    state: String,
+    received: u64,
+}
+
+#[derive(Debug, Clone)]
+struct Pl {
+    loc: String,
+    ptype: String,
+    group: String,
+    image: String,
+}
+
+/// Ref data of the fake library: iPhone 6.9", two Duo groups told apart by
+/// size, header and search results groups (no 6.5" group: `auto` falls
+/// back to the set API for it).
+fn fake_ref_data() -> Value {
+    let spec = |id: &str, w: (u32, u32), h: (u32, u32), types: Value, universal: bool| {
+        json!({"specId": id, "shortName": id,
+               "dimensions": {"minWidth": w.0, "maxWidth": w.1, "minHeight": h.0, "maxHeight": h.1},
+               "compatiblePlacementTypes": types, "alphaAllowed": false,
+               "fileExtensions": [".png", ".jpg"], "universalAsset": universal})
+    };
+    let group = |id: &str, platform: &str, class: &str| json!({"placementProfileGroupId": id, "platform": platform, "displayClassId": class});
+    json!({"data": [{"type": "appAssetLibraryRefData", "id": "1", "attributes": {
+        "features": [{"featureId": "APP_STORE_VERSIONS", "placementPolicies": [
+            {"placementType": "APP_SCREENSHOT", "groupLimits": [{"groupIds":
+                ["IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE", "IPHONE_DUO_OUTER_PROFILE", "IPHONE_DUO_INNER_PROFILE"],
+                "maxCount": 10}]},
+            {"placementType": "PRODUCT_PAGE_HEADER_ASSET", "groupLimits": [{"groupIds": ["IPHONE_HEADER_PROFILE"], "maxCount": 1}]}]}],
+        "placementProfileGroups": [
+            group("IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE", "IPHONE_APP_STORE", "IPHONE_DYNAMIC_ISLAND_LARGE_DISPLAY"),
+            group("IMESSAGE_IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE", "IMESSAGE_APP_STORE", "IPHONE_DYNAMIC_ISLAND_LARGE_DISPLAY"),
+            group("IPHONE_DUO_INNER_PROFILE", "IPHONE_APP_STORE", "IPHONE_DUO"),
+            group("IPHONE_DUO_OUTER_PROFILE", "IPHONE_APP_STORE", "IPHONE_DUO"),
+            group("IPHONE_HEADER_PROFILE", "IPHONE_APP_STORE", "DEFAULT"),
+            group("IPHONE_SEARCH_PROFILE", "IPHONE_APP_STORE", "DEFAULT")],
+        "imageSpecs": [
+            spec("s-69", (1320, 1320), (2868, 2868), json!(["APP_SCREENSHOT"]), false),
+            spec("s-duo-in", (2007, 2007), (2853, 2853), json!(["APP_SCREENSHOT"]), false),
+            spec("s-duo-out", (1398, 1398), (2034, 2034), json!(["APP_SCREENSHOT"]), false),
+            spec("s-header", (3840, 3840), (1646, 1646), json!(["PRODUCT_PAGE_HEADER_ASSET"]), false),
+            spec("s-search", (1920, 3840), (1280, 2560), json!(["APP_STORE_SEARCH_RESULTS_ASSET"]), false),
+            spec("s-universal", (5244, 5244), (2950, 2950),
+                 json!(["PRODUCT_PAGE_HEADER_ASSET", "APP_STORE_SEARCH_RESULTS_ASSET"]), true)],
+        "videoSpecs": [],
+        "placementTypes": [
+            {"placementTypeId": "APP_SCREENSHOT", "acceptsAssetCategories": ["APP_SCREENSHOTS_AND_PREVIEWS"],
+             "specMappings": [
+                {"placementGroupId": "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE", "specs": ["s-69"]},
+                {"placementGroupId": "IPHONE_DUO_INNER_PROFILE", "specs": ["s-duo-in"]},
+                {"placementGroupId": "IPHONE_DUO_OUTER_PROFILE", "specs": ["s-duo-out"]}]},
+            {"placementTypeId": "PRODUCT_PAGE_HEADER_ASSET", "acceptsAssetCategories": ["CREATIVE_ASSETS"],
+             "specMappings": [{"placementGroupId": "IPHONE_HEADER_PROFILE", "specs": ["s-header", "s-universal"]}]},
+            {"placementTypeId": "APP_STORE_SEARCH_RESULTS_ASSET", "acceptsAssetCategories": ["CREATIVE_ASSETS"],
+             "specMappings": [{"placementGroupId": "IPHONE_SEARCH_PROFILE", "specs": ["s-search", "s-universal"]}]}],
+        "displayClasses": [{"displayClassId": "IPHONE_DUO", "deviceFamily": "IPHONE", "screenDimensions": ["5.4", "7.6"]}]
+    }}]})
 }
 
 impl Asc {
     fn id(&mut self, prefix: &str) -> String {
         self.next += 1;
         format!("{prefix}{}", self.next)
+    }
+
+    fn image_doc(&self, id: &str) -> Value {
+        let i = &self.images[id];
+        let ops = if i.state == "AWAITING_UPLOAD" {
+            json!([{"method": "PUT", "url": format!("{}/upload/{id}", self.base),
+                    "length": i.size, "offset": 0, "requestHeaders": [
+                        {"name": "Content-Type", "value": "image/png"}]}])
+        } else {
+            Value::Null
+        };
+        let details = if i.state == "FAILED" {
+            json!([{"code": "IMAGE_INCORRECT_DIMENSIONS",
+                    "description": "The image dimensions match no specification."}])
+        } else {
+            Value::Null
+        };
+        json!({"type": "appAssetLibraryImages", "id": id, "attributes": {
+            "category": i.category, "fileName": i.file_name, "fileSize": i.size,
+            "referenceName": i.reference, "state": i.state, "stateDetails": details,
+            "specId": if i.state == "PREPARE_FOR_SUBMISSION" { json!("spec") } else { Value::Null },
+            "uploadOperations": ops}})
+    }
+
+    fn placement_doc(&self, id: &str) -> Value {
+        let p = &self.placements[id];
+        json!({"type": "appAssetLibraryPlacements", "id": id,
+               "attributes": {"mediaType": "IMAGE", "placementType": p.ptype,
+                              "placementGroup": p.group, "state": "PARENT_PREPARE_FOR_SUBMISSION"},
+               "relationships": {"image": {"data": {"type": "appAssetLibraryImages", "id": p.image}}}})
+    }
+
+    fn loc_id(&self, locale: &str) -> Option<String> {
+        self.locs
+            .iter()
+            .find(|(_, l)| l == locale)
+            .map(|(id, _)| id.clone())
+    }
+
+    /// Reference names of the images placed in `locale`'s `group`, in order.
+    fn placed(&self, locale: &str, group: &str) -> Vec<String> {
+        let Some(loc) = self.loc_id(locale) else {
+            return Vec::new();
+        };
+        self.porder
+            .get(&(loc, group.to_owned()))
+            .cloned()
+            .unwrap_or_default()
+            .iter()
+            .map(|id| {
+                let img = &self.placements[id].image;
+                self.images[img].reference.clone().unwrap_or_default()
+            })
+            .collect()
+    }
+
+    /// Puts a processed library image (optionally placed in `locale`'s group).
+    fn seed_image(&mut self, reference: &str, size: u64, place: Option<(&str, &str)>) -> String {
+        let id = self.id("img-");
+        self.images.insert(
+            id.clone(),
+            LibImg {
+                file_name: "seeded.png".into(),
+                size,
+                category: "APP_SCREENSHOTS_AND_PREVIEWS".into(),
+                reference: Some(reference.to_owned()),
+                state: "PREPARE_FOR_SUBMISSION".into(),
+                received: size,
+            },
+        );
+        if let Some((locale, group)) = place {
+            let loc = if let Some(l) = self.loc_id(locale) {
+                l
+            } else {
+                let l = self.id("loc-");
+                self.locs.push((l.clone(), locale.to_owned()));
+                l
+            };
+            let pl = self.id("pl-");
+            self.placements.insert(
+                pl.clone(),
+                Pl {
+                    loc: loc.clone(),
+                    ptype: "APP_SCREENSHOT".into(),
+                    group: group.to_owned(),
+                    image: id.clone(),
+                },
+            );
+            self.porder
+                .entry((loc, group.to_owned()))
+                .or_default()
+                .push(pl);
+        }
+        id
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn library_route(
+        &mut self,
+        method: &str,
+        seg: &[&str],
+        body: &Value,
+        req: &Request,
+    ) -> Option<ResponseTemplate> {
+        if !self.library {
+            return None;
+        }
+        Some(match (method, seg) {
+            ("GET", ["v1", "apps", _, "assetLibrary"]) if self.deny_library => {
+                ResponseTemplate::new(403).set_body_json(json!({"errors": [{
+                    "status": "403", "code": "FORBIDDEN_ERROR",
+                    "title": "This request is forbidden for security reasons",
+                    "detail": "The API key in use does not allow this request"}]}))
+            }
+            ("GET", ["v1", "apps", _, "assetLibrary"]) => {
+                ok(json!({"data": {"type": "appAssetLibraries", "id": "lib-1"}}))
+            }
+            ("GET", ["v1", "appAssetLibraryRefData"]) => ok(fake_ref_data()),
+            ("GET", ["v1", "appAssetLibraries", "lib-1", "images"]) => {
+                let data: Vec<Value> = self.images.keys().map(|id| self.image_doc(id)).collect();
+                ok(json!({ "data": data }))
+            }
+            ("POST", ["v1", "appAssetLibraryImages"]) => {
+                let a = &body["data"]["attributes"];
+                assert_eq!(
+                    body["data"]["relationships"]["assetLibrary"]["data"]["id"],
+                    "lib-1"
+                );
+                let id = self.id("img-");
+                self.images.insert(
+                    id.clone(),
+                    LibImg {
+                        file_name: a["fileName"].as_str().unwrap().to_owned(),
+                        size: a["fileSize"].as_u64().unwrap(),
+                        category: a["category"].as_str().unwrap().to_owned(),
+                        reference: a["referenceName"].as_str().map(str::to_owned),
+                        state: "AWAITING_UPLOAD".into(),
+                        received: 0,
+                    },
+                );
+                ResponseTemplate::new(201).set_body_json(json!({ "data": self.image_doc(&id) }))
+            }
+            ("PUT", ["upload", id]) if self.images.contains_key(*id) => {
+                let n = req.body.len() as u64;
+                self.images.get_mut(*id).unwrap().received += n;
+                ResponseTemplate::new(200)
+            }
+            ("PATCH", ["v1", "appAssetLibraryImages", id]) => {
+                assert_eq!(
+                    body["data"]["attributes"],
+                    json!({"uploaded": true}),
+                    "commit takes uploaded alone"
+                );
+                let Some(name) = self.images.get(*id).map(|i| i.file_name.clone()) else {
+                    return Some(ResponseTemplate::new(404));
+                };
+                let failing = self.failing.contains(&name);
+                let state = if self.stuck.contains(&name) || failing {
+                    "UPLOAD_COMPLETE"
+                } else {
+                    "PREPARE_FOR_SUBMISSION"
+                };
+                let i = self.images.get_mut(*id).unwrap();
+                assert_eq!(i.received, i.size, "all bytes before the commit");
+                i.state = state.into();
+                let doc = self.image_doc(id);
+                if failing {
+                    self.images.get_mut(*id).unwrap().state = "FAILED".into();
+                }
+                ok(json!({ "data": doc }))
+            }
+            ("GET", ["v1", "appAssetLibraryImages", id]) => {
+                if self.images.contains_key(*id) {
+                    ok(json!({ "data": self.image_doc(id) }))
+                } else {
+                    ResponseTemplate::new(404)
+                }
+            }
+            ("DELETE", ["v1", "appAssetLibraryImages", id]) => {
+                if self.placements.values().any(|p| p.image == *id) {
+                    return Some(ResponseTemplate::new(409).set_body_json(json!({"errors": [{
+                        "status": "409", "code": "STATE_ERROR.ASSET_HAS_PLACEMENTS",
+                        "title": "The asset cannot be deleted",
+                        "detail": "The asset cannot be deleted while placements still use it. Delete those placements first."}]})));
+                }
+                self.images.remove(*id);
+                ResponseTemplate::new(204)
+            }
+            ("GET", ["v1", "appStoreVersionLocalizations", loc, "placements"]) => {
+                let q: BTreeMap<String, String> = req
+                    .url
+                    .query_pairs()
+                    .map(|(k, v)| (k.into_owned(), v.into_owned()))
+                    .collect();
+                assert_eq!(
+                    q.get("sort").map(String::as_str),
+                    Some("placementGroupPosition")
+                );
+                let mut ids: Vec<String> = Vec::new();
+                for ((l, g), list) in &self.porder {
+                    if l == loc && q.get("filter[placementGroup]").is_none_or(|x| x == g) {
+                        ids.extend(list.iter().cloned());
+                    }
+                }
+                ids.retain(|id| {
+                    q.get("filter[placementType]")
+                        .is_none_or(|t| *t == self.placements[id].ptype)
+                });
+                let data: Vec<Value> = ids.iter().map(|id| self.placement_doc(id)).collect();
+                let included: Vec<Value> = ids
+                    .iter()
+                    .map(|id| self.image_doc(&self.placements[id].image))
+                    .collect();
+                ok(json!({ "data": data, "included": included }))
+            }
+            ("POST", ["v1", "appAssetLibraryPlacements"]) => {
+                let a = &body["data"]["attributes"];
+                let r = &body["data"]["relationships"];
+                let image = r["image"]["data"]["id"].as_str().unwrap().to_owned();
+                let loc = r["appStoreVersionLocalization"]["data"]["id"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned();
+                let ptype = a["placementType"].as_str().unwrap().to_owned();
+                let group = a["placementGroup"].as_str().unwrap().to_owned();
+                let creative = ptype != "APP_SCREENSHOT";
+                if creative != (self.images[&image].category == "CREATIVE_ASSETS") {
+                    return Some(ResponseTemplate::new(409).set_body_json(json!({"errors": [{
+                        "status": "409", "code": "ENTITY_ERROR.ATTRIBUTE.INVALID",
+                        "title": "invalid", "detail": "category does not match the placement type"}]})));
+                }
+                let id = self.id("pl-");
+                self.placements.insert(
+                    id.clone(),
+                    Pl {
+                        loc: loc.clone(),
+                        ptype,
+                        group: group.clone(),
+                        image,
+                    },
+                );
+                self.porder
+                    .entry((loc, group))
+                    .or_default()
+                    .push(id.clone());
+                ResponseTemplate::new(201).set_body_json(json!({ "data": self.placement_doc(&id) }))
+            }
+            ("DELETE", ["v1", "appAssetLibraryPlacements", id]) => {
+                if let Some(p) = self.placements.remove(*id) {
+                    if let Some(o) = self.porder.get_mut(&(p.loc, p.group)) {
+                        o.retain(|x| x != id);
+                    }
+                }
+                ResponseTemplate::new(204)
+            }
+            ("POST", ["v1", "appAssetLibraryPlacementOrderingRequests"]) => {
+                let group = body["data"]["attributes"]["placementGroup"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned();
+                let loc =
+                    body["data"]["relationships"]["appStoreVersionLocalization"]["data"]["id"]
+                        .as_str()
+                        .unwrap()
+                        .to_owned();
+                let ids: Vec<String> = body["data"]["relationships"]["orderedPlacements"]["data"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|d| d["id"].as_str().unwrap().to_owned())
+                    .collect();
+                self.orderings.push((group.clone(), ids.clone()));
+                self.porder.insert((loc, group), ids);
+                ResponseTemplate::new(201).set_body_json(json!({"data": {
+                    "type": "appAssetLibraryPlacementOrderingRequests", "id": "or-1"}}))
+            }
+            _ => return None,
+        })
     }
 
     fn shot_doc(&self, id: &str) -> Value {
@@ -254,6 +609,9 @@ impl Respond for FakeAsc {
         a.seen.push(format!("{method} {path}"));
         let seg: Vec<&str> = path.trim_start_matches('/').split('/').collect();
         let body: Value = serde_json::from_slice(&req.body).unwrap_or(Value::Null);
+        if let Some(r) = a.library_route(&method, &seg, &body, req) {
+            return r;
+        }
         match (method.as_str(), seg.as_slice()) {
             ("GET", ["v1", "apps", id]) => ok(json!({"data": {"type": "apps", "id": id,
                 "attributes": {"name": "Fernwood", "bundleId": PACKAGE}}})),
@@ -724,7 +1082,10 @@ async fn plan_local_then_remote() {
     assert_eq!(s["action"], "new");
     assert_eq!(s["images"].as_array().unwrap().len(), 2);
     assert_eq!(s["images"][0]["index"], 1);
+    // `auto`: screenshot sets for everything the set API supports.
     assert_eq!(p["stores"][0]["flow"], "screenshot_sets");
+    assert_eq!(p["stores"][0]["flow_setting"], "auto");
+    assert!(s.get("placement").is_none() && s.get("flow").is_none());
     assert_eq!(p["stores"][1]["flow"], "edit");
     assert!(p["stores"][0].get("remote").is_none());
     assert!(
@@ -738,9 +1099,21 @@ async fn plan_local_then_remote() {
         r["stores"][0]["remote"]["version"],
         "1.0 PREPARE_FOR_SUBMISSION"
     );
+    // No library-only set: the library is not even asked.
+    assert_eq!(r["stores"][0]["flow"], "screenshot_sets");
+    assert!(r["stores"][0].get("flow_note").is_none());
+    assert!(
+        !e.asc
+            .lock()
+            .unwrap()
+            .seen
+            .iter()
+            .any(|x| x.contains("assetLibrary") || x.contains("RefData"))
+    );
     let en = set(&r, "iphone", "en");
     assert_eq!(en["action"], "replace");
     assert_eq!(en["remote_count"], 1);
+    assert!(en.get("placement").is_none());
     let de = set(&r, "iphone", "de");
     assert_eq!(de["action"], "new");
     assert_eq!(de["steps"][0], "create_localization");
@@ -1557,5 +1930,479 @@ async fn no_editable_version_is_reported_once() {
         text.matches("Latest version").count(),
         2,
         "message + summary only: {text}"
+    );
+}
+
+// ----- App Asset Library (ADR 0019) ---------------------------------------------------
+
+/// iPhone 6.9", iPhone Duo (outer display) and a product page header; Apple only.
+const LIB_PROJECT: &str = r##"format: arrangia/1
+revision: 0
+name: "Library test"
+languages:
+  default: en
+  available: [en, de]
+strips:
+- id: main
+  page: {aspect: 1320:2868, count: 2, ids: [one, two]}
+  backgrounds:
+  - "#EEF1F6"
+  elements:
+  - id: t1
+    kind: text
+    page: 0
+    anchor_y: top
+    text: one.title
+    box: {top: 160, left: 80, right: 80}
+    align: center
+  - id: t2
+    kind: text
+    page: 1
+    anchor_y: top
+    text: two.title
+    box: {top: 160, left: 80, right: 80}
+    align: center
+targets:
+- id: iphone
+  strip: main
+  size: [1320, 2868]
+  store: {apple: {display_type: APP_IPHONE_67}}
+- id: duo
+  strip: main
+  size: [1398, 2034]
+  store: {apple: {display_type: APP_IPHONE_DUO}}
+- id: header
+  kind: banner
+  strip: main
+  size: [3840, 1646]
+  region: {pages: [0, 1]}
+  fit: cover
+  store: {apple: {display_type: PRODUCT_PAGE_HEADER_ASSET, placement: header}}
+store:
+  apple: {account: apple-team, app_id: "1234567890"FLOW}
+"##;
+
+fn lib_project(flow: &str) -> String {
+    LIB_PROJECT.replace("FLOW", flow)
+}
+
+/// `PROJECT` with `upload_flow: asset_library` (everything via the library).
+fn library_project() -> String {
+    PROJECT.replace(
+        r#"app_id: "1234567890"}"#,
+        r#"app_id: "1234567890", upload_flow: asset_library}"#,
+    )
+}
+
+/// `<file stem> [<sha256[..12]>]` of a plan set's images, in order.
+fn references(plan: &Value, target: &str, lang: &str) -> Vec<String> {
+    set(plan, target, lang)["images"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| {
+            let name = i["file_name"].as_str().unwrap();
+            let stem = name.rsplit_once('.').unwrap().0;
+            format!("{stem} [{}]", &i["sha256"].as_str().unwrap()[..12])
+        })
+        .collect()
+}
+
+fn library_uploads(asc: &Asc) -> usize {
+    asc.seen
+        .iter()
+        .filter(|s| *s == "POST /v1/appAssetLibraryImages")
+        .count()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn asset_library_uploads_places_and_orders() {
+    let e = env_with(&lib_project(", upload_flow: asset_library")).await;
+    e.asc.lock().unwrap().library = true;
+    let args = json!({ "store": "apple", "langs": ["en"], "remote": true });
+    let r = plan(&e.app, args.clone());
+    assert_eq!(r["blocked"], false, "{r:#}");
+    let store = &r["stores"][0];
+    assert_eq!(store["flow"], "asset_library");
+    assert!(store.get("flow_note").is_none());
+    let iphone = set(&r, "iphone", "en");
+    assert_eq!(
+        iphone["placement"],
+        "APP_SCREENSHOT → IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE"
+    );
+    assert_eq!(iphone["action"], "new");
+    assert_eq!(
+        iphone["steps"],
+        json!([
+            "create_localization",
+            "upload",
+            "create_placements",
+            "set_order"
+        ])
+    );
+    // The image size picks the outer-display Duo group.
+    assert_eq!(
+        set(&r, "duo", "en")["placement"],
+        "APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE"
+    );
+    let header = set(&r, "header", "en");
+    assert_eq!(header["slot"], "PRODUCT_PAGE_HEADER_ASSET");
+    assert_eq!(
+        header["placement"],
+        "PRODUCT_PAGE_HEADER_ASSET → IPHONE_HEADER_PROFILE"
+    );
+
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    let asc = e.asc.lock().unwrap();
+    assert_eq!(
+        asc.placed("en-US", "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE"),
+        references(&r, "iphone", "en")
+    );
+    assert_eq!(
+        asc.placed("en-US", "IPHONE_DUO_OUTER_PROFILE"),
+        references(&r, "duo", "en")
+    );
+    let header_refs = references(&r, "header", "en");
+    assert_eq!(asc.placed("en-US", "IPHONE_HEADER_PROFILE"), header_refs);
+    let header_img = asc
+        .images
+        .values()
+        .find(|i| i.reference.as_deref() == Some(header_refs[0].as_str()))
+        .unwrap();
+    assert_eq!(header_img.category, "CREATIVE_ASSETS");
+    // Screenshots are ordered; the single header needs no ordering request.
+    let ordered: Vec<&str> = asc.orderings.iter().map(|(g, _)| g.as_str()).collect();
+    assert_eq!(
+        ordered,
+        [
+            "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE",
+            "IPHONE_DUO_OUTER_PROFILE"
+        ]
+    );
+    assert!(
+        !asc.seen.iter().any(|s| s.contains("appScreenshot")),
+        "no set-based calls: {:?}",
+        asc.seen
+    );
+    drop(asc);
+    let again = plan(&e.app, args);
+    for t in ["iphone", "duo", "header"] {
+        assert_eq!(set(&again, t, "en")["action"], "unchanged", "{t}");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn asset_library_reuses_assets_and_deletes_old_ones() {
+    let e = env_with(&library_project()).await;
+    e.asc.lock().unwrap().library = true;
+    let local = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
+    let refs = references(&local, "iphone", "en");
+    let bytes: Vec<u64> = set(&local, "iphone", "en")["images"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["bytes"].as_u64().unwrap())
+        .collect();
+    let group = "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE";
+    let (old, manual, reused) = {
+        let mut a = e.asc.lock().unwrap();
+        let old = a.seed_image("old [0123456789ab]", 10, Some(("en-US", group)));
+        let manual = a.seed_image("Hand-made screenshot", 10, Some(("en-US", group)));
+        let reused = a.seed_image(&refs[0], bytes[0], None);
+        (old, manual, reused)
+    };
+    let r = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    let s = set(&r, "iphone", "en");
+    assert_eq!(s["action"], "replace", "{s:#}");
+    assert_eq!(s["remote_count"], 2);
+    assert_eq!(s["reusable"], 1);
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    assert!(run["sets"][0]["note"].as_str().unwrap().contains("kept"));
+    let asc = e.asc.lock().unwrap();
+    assert_eq!(asc.placed("en-US", group), refs);
+    assert_eq!(library_uploads(&asc), 1, "image 1 came from the library");
+    assert!(asc.images.contains_key(&reused));
+    // Old placements are gone; the old Arrangia asset is deleted after its
+    // placement, the hand-made one stays in the library.
+    assert!(!asc.images.contains_key(&old));
+    assert!(asc.images.contains_key(&manual));
+    let pos = |needle: &str| {
+        asc.seen
+            .iter()
+            .position(|s| s.starts_with(needle))
+            .unwrap_or_else(|| panic!("{needle} not in {:?}", asc.seen))
+    };
+    assert!(
+        pos("DELETE /v1/appAssetLibraryPlacements/")
+            < pos(&format!("DELETE /v1/appAssetLibraryImages/{old}")),
+        "{:?}",
+        asc.seen
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn asset_library_failed_processing_changes_no_placement() {
+    let e = env_with(&library_project()).await;
+    e.asc.lock().unwrap().library = true;
+    let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
+    let names = plan_images(&p, "iphone", "en", "file_name");
+    e.asc.lock().unwrap().failing = vec![names[1].clone()];
+    let run = execute(&e.app, &p["confirm_token"]);
+    assert_eq!(run["status"], "failed", "{run:#}");
+    let err = run["sets"][0]["error"].as_str().unwrap();
+    assert!(err.contains("IMAGE_INCORRECT_DIMENSIONS"), "{err}");
+    assert!(err.contains(&names[1]), "{err}");
+    {
+        let asc = e.asc.lock().unwrap();
+        assert!(asc.placements.is_empty(), "no placement before processing");
+        assert_eq!(asc.images.len(), 1, "the failed image is deleted");
+    }
+    // Next run: the processed image is reused from the library.
+    e.asc.lock().unwrap().failing.clear();
+    let p2 = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    assert_eq!(set(&p2, "iphone", "en")["reusable"], 1);
+    let run = execute(&e.app, &p2["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    let asc = e.asc.lock().unwrap();
+    assert_eq!(
+        asc.placed("en-US", "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE"),
+        references(&p2, "iphone", "en")
+    );
+    assert_eq!(library_uploads(&asc), 3);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn forced_screenshot_sets_block_library_only_slots() {
+    let e = env_with(&lib_project(", upload_flow: screenshot_sets")).await;
+    let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
+    assert_eq!(p["blocked"], false, "the other sets still upload: {p:#}");
+    assert_eq!(p["stores"][0]["flow"], "screenshot_sets");
+    assert_eq!(p["stores"][0]["flow_setting"], "screenshot_sets");
+    assert_eq!(p["totals"]["upload_sets"], 1);
+    for t in ["duo", "header"] {
+        let s = set(&p, t, "en");
+        assert_eq!(s["action"], "skip", "{t}");
+        assert!(s["images"].as_array().unwrap().is_empty(), "not rendered");
+        assert!(
+            s["problems"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|x| x["code"] == "needs_asset_library"),
+            "{s:#}"
+        );
+    }
+    assert_eq!(set(&p, "iphone", "en")["action"], "new");
+    assert_eq!(
+        set(&p, "iphone", "en")["steps"],
+        json!(["delete_existing", "upload", "set_order"])
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn forced_asset_library_without_access_blocks() {
+    let e = env_with(&lib_project(", upload_flow: asset_library")).await;
+    let p = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "targets": ["iphone"], "remote": true }),
+    );
+    assert_eq!(p["blocked"], true, "{p:#}");
+    assert!(
+        p["stores"][0]["problems"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x["code"] == "asset_library_unavailable"),
+        "{:#}",
+        p["stores"][0]
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn asset_library_uses_the_set_api_for_a_slot_without_group() {
+    let project = library_project()
+        .replace("size: [1320, 2868]", "size: [1242, 2688]")
+        .replace("APP_IPHONE_67", "APP_IPHONE_65");
+    let e = env_with(&project).await;
+    e.asc.lock().unwrap().library = true;
+    let r = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    assert_eq!(r["blocked"], false, "{r:#}");
+    assert_eq!(r["stores"][0]["flow"], "asset_library");
+    let s = set(&r, "iphone", "en");
+    assert_eq!(s["flow"], "screenshot_sets");
+    assert!(
+        s["problems"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x["code"] == "flow_fallback"),
+        "{s:#}"
+    );
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    assert_eq!(
+        e.asc.lock().unwrap().checksums("en-US", "APP_IPHONE_65"),
+        plan_images(&r, "iphone", "en", "md5")
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn refdata_is_read_only_and_resolves_the_mapping() {
+    let e = env().await;
+    e.asc.lock().unwrap().library = true;
+    let r = call(&e.app, "upload_refdata", json!({}));
+    assert_eq!(r["account"], "apple-team");
+    assert_eq!(r["app"]["id"], "1234567890");
+    assert_eq!(r["app"]["library_id"], "lib-1");
+    assert_eq!(
+        r["ref_data"]["placementProfileGroups"]
+            .as_array()
+            .unwrap()
+            .len(),
+        6
+    );
+    let row = |slot: &str| {
+        r["mapping"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["slot"] == slot)
+            .unwrap_or_else(|| panic!("{slot}"))
+            .clone()
+    };
+    assert_eq!(
+        row("APP_IPHONE_DUO")["groups"],
+        json!([
+            "APP_SCREENSHOT → IPHONE_DUO_INNER_PROFILE 2007x2853",
+            "APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE 1398x2034"
+        ])
+    );
+    assert_eq!(row("APP_IPHONE_DUO")["asset_library_only"], true);
+    assert_eq!(row("APP_IPHONE_65")["groups"], json!([]));
+    assert_eq!(row("universal")["groups"].as_array().unwrap().len(), 2);
+    let asc = e.asc.lock().unwrap();
+    assert!(
+        asc.seen.iter().all(|s| s.starts_with("GET ")),
+        "read-only: {:?}",
+        asc.seen
+    );
+    drop(asc);
+    // Without library access: the reason instead of the id.
+    e.asc.lock().unwrap().deny_library = true;
+    let r = call(&e.app, "upload_refdata", json!({ "app": "1234567890" }));
+    assert!(r["app"].get("library_id").is_none());
+    assert!(r["app"]["library_error"].is_string());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn upload_flow_is_a_project_store_setting() {
+    let e = env().await;
+    let get = |app: &AppState| call(app, "project_store_get", json!({}));
+    let apple = get(&e.app)["store"]["apple"].clone();
+    assert!(apple.get("upload_flow").is_none(), "auto is the default");
+    let mut patched = apple.clone();
+    patched["upload_flow"] = json!("screenshot_sets");
+    call(&e.app, "project_store_patch", json!({ "apple": patched }));
+    assert_eq!(
+        get(&e.app)["store"]["apple"]["upload_flow"],
+        "screenshot_sets"
+    );
+    let yaml = std::fs::read_to_string(e.dir.join("project.yaml")).unwrap();
+    assert!(yaml.contains("upload_flow: screenshot_sets"), "{yaml}");
+    // `auto` is not written.
+    patched["upload_flow"] = json!("auto");
+    call(&e.app, "project_store_patch", json!({ "apple": patched }));
+    let yaml = std::fs::read_to_string(e.dir.join("project.yaml")).unwrap();
+    assert!(!yaml.contains("upload_flow"), "{yaml}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn auto_fallback_skips_duo_and_creative_sets() {
+    // No asset library on this fake store: `auto` uses the set API, which
+    // cannot take the Duo or the header – they are skipped, not uploaded.
+    let e = env_with(&lib_project("")).await;
+    let r = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    assert_eq!(r["blocked"], false, "{r:#}");
+    assert_eq!(r["stores"][0]["flow"], "screenshot_sets");
+    for t in ["duo", "header"] {
+        let s = set(&r, t, "en");
+        assert_eq!(s["action"], "skip", "{t}: {s:#}");
+        assert!(
+            s["problems"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|x| x["code"] == "needs_asset_library")
+        );
+    }
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    let asc = e.asc.lock().unwrap();
+    assert_eq!(
+        asc.checksums("en-US", "APP_IPHONE_67"),
+        plan_images(&r, "iphone", "en", "md5")
+    );
+    assert!(
+        asc.sets.iter().all(|(_, _, d)| d == "APP_IPHONE_67"),
+        "nothing else went into a screenshot set: {:?}",
+        asc.sets
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn auto_sends_only_library_only_sets_through_the_library() {
+    let e = env_with(&lib_project("")).await;
+    e.asc.lock().unwrap().library = true;
+    let local = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
+    assert_eq!(local["stores"][0]["flow"], "screenshot_sets");
+    assert!(set(&local, "iphone", "en").get("flow").is_none());
+    for t in ["duo", "header"] {
+        assert_eq!(set(&local, t, "en")["flow"], "asset_library", "{t}");
+    }
+    let r = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    assert_eq!(r["blocked"], false, "{r:#}");
+    assert_eq!(r["stores"][0]["flow"], "screenshot_sets");
+    assert!(set(&r, "iphone", "en").get("placement").is_none());
+    assert_eq!(
+        set(&r, "duo", "en")["placement"],
+        "APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE"
+    );
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    let asc = e.asc.lock().unwrap();
+    // iPhone via the screenshot set, Duo and header via the library.
+    assert_eq!(
+        asc.checksums("en-US", "APP_IPHONE_67"),
+        plan_images(&r, "iphone", "en", "md5")
+    );
+    assert!(asc.sets.iter().all(|(_, _, d)| d == "APP_IPHONE_67"));
+    assert_eq!(
+        asc.placed("en-US", "IPHONE_DUO_OUTER_PROFILE"),
+        references(&r, "duo", "en")
+    );
+    assert_eq!(
+        asc.placed("en-US", "IPHONE_HEADER_PROFILE"),
+        references(&r, "header", "en")
+    );
+    assert!(
+        asc.placed("en-US", "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE")
+            .is_empty()
     );
 }

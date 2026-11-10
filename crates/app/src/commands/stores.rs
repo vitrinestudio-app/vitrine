@@ -279,18 +279,18 @@ pub fn store_account_test(app: &AppState, args: StoreAccountIdArgs) -> CmdResult
 
 /// Client options of the interactive store calls (short timeout, one retry;
 /// like the connection test).
-fn interactive_options() -> arrangia_publish::ClientOptions {
+pub(crate) fn interactive_options() -> arrangia_publish::ClientOptions {
     crate::store_test::StoreClientTester::default().options
 }
 
-fn store_failure(store: StoreKind, e: &arrangia_publish::Error) -> CommandError {
+pub(crate) fn store_failure(store: StoreKind, e: &arrangia_publish::Error) -> CommandError {
     let e = crate::store_test::map_error(store, e);
     CommandError::new(ErrorCode::Io, e.message)
         .with_details(serde_json::json!({ "reason": e.reason }))
 }
 
 /// An account of `kind` with its secret from the keychain.
-fn account_with_secret(
+pub(crate) fn account_with_secret(
     app: &AppState,
     id: &str,
     kind: StoreKind,

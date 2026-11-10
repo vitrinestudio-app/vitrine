@@ -273,3 +273,22 @@ editable App Store version"). Other store-level failures (app not
 reachable, credentials) are also reported once; their sets fail with a
 short "not uploaded: …".
 
+## Amendment 2026-11-10 (c): App Asset Library flow
+
+ADR 0019 adds `AssetLibraryFlow` as the second `AppleUploadFlow`. Flow
+selection: `store.apple.upload_flow` (`auto` = sets + library-only slots
+via the library | `asset_library` | `screenshot_sets`);
+`remote::open_apple` opens the library only when a set needs it,
+`remote::route` picks the flow of each set. Plan additions (serde
+defaults, older stored plans still load): `StorePlan.flow_setting`,
+`StorePlan.flow_note`, `PlanSet.flow` (a per-set fallback), `PlanSet.placement`
+(placement type → group). New problem codes: `needs_asset_library`,
+`no_placement_mapping`, `no_placement_group`, `asset_library_unavailable`,
+`flow_fallback`, `placement_size`. New progress steps: `delete_placements`,
+`create_placements`, `delete_old_assets`. The trait lost its unused
+`kind()`; `AppleTarget` carries the optional library context.
+
+**Finish event before the wake-up.** `RunHandle::wait` returns only after
+`upload-finished` was emitted (flag `delivered`, set after the event by the
+executor and by the watchdog's end path), so a waiter (CLI, `upload_execute
+{wait}`, tests) never sees a finished run whose event is still pending.

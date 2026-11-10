@@ -253,6 +253,7 @@ json_commands! {
     upload_cancel: commands::NoArgs,
     upload_log: commands::UploadLogArgs,
     upload_confirm: commands::UploadConfirmArgs,
+    upload_refdata: commands::UploadRefdataArgs,
 }
 
 image_commands! {
@@ -428,6 +429,7 @@ fn main() {
             upload_cancel,
             upload_log,
             upload_confirm,
+            upload_refdata,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Arrangia")

@@ -1,0 +1,164 @@
+# App Store Connect App Asset Library mapping (ASC API 4.5.1, ADR 0019).
+# Loaded by `arrangia_core::catalog::asset_library` (embedded at build time).
+#
+# Apple's placement *groups* (`IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE`, …) are
+# runtime strings from `GET /v1/appAssetLibraryRefData` and must not be
+# hard-coded. This file only maps Arrangia's store slots to the *enum*
+# values Apple documents (placement types, display classes, platforms);
+# the upload resolves the group at runtime:
+#
+#   group ∈ refdata.placementProfileGroups
+#     with displayClassId == display_class (if given) and platform ∈ platforms
+#   ∩ refdata.placementTypes[placement_type].specMappings[].placementGroupId
+#   → several left: the one whose specs accept the image size; else the first
+#
+# `arrangia upload refdata` prints the real catalog (and how these rows
+# resolve) so the mapping can be checked with a real key.
+#
+# Field reference
+#   checked       date the enums below were verified (YYYY-MM-DD)
+#   sources       key → {url, kind, note}
+#   screenshots   legacy display type (`store: {apple: {display_type}}`) →
+#     placement_type   AppAssetLibraryPlacementType
+#     display_class    AppAssetLibraryDisplayClass
+#     platforms        AppAssetLibraryPlacementPlatform values to accept
+#     asset_library_only  true: the set-based API has no such display type
+#                      (only the asset library can upload it)
+#     note             why / what is uncertain
+#   creative      `store: {apple: {placement}}` value (header,
+#                 search_results, universal) → placements
+#     placement_types  one placement per type (universal asset: two)
+#     platforms        groups of these platforms get a placement each
+#                      (every matching group whose specs accept the image)
+#   category      asset category per placement type (fixed at reservation)
+
+checked: 2026-11-10
+
+sources:
+  AAL:
+    url: https://developer.apple.com/documentation/appstoreconnectapi/understanding-the-app-asset-library
+    kind: primary
+    note: >-
+      With "Discovering asset specifications", "Placing assets on your App
+      Store surfaces", "Migrating to the App Asset Library", "Uploading and
+      managing image assets" and the 4.5.1 release notes, read 2026-11-10
+      via the pages' documentation JSON.
+  ENUMS:
+    url: https://developer.apple.com/documentation/appstoreconnectapi/appassetlibrarydisplayclass
+    kind: primary
+    note: >-
+      AppAssetLibraryDisplayClass, AppAssetLibraryPlacementType,
+      AppAssetLibraryPlacementPlatform, AppAssetLibraryAssetCategory,
+      read 2026-11-10.
+  R1:
+    url: https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications
+    kind: primary
+    note: >-
+      Header (21:9 3840x1646, universal 16:9 5244x2950) and search results
+      (3:2) assets, iOS/iPadOS 27 only (research 2026-11-10).
+
+screenshots:
+  # iPhone (display class from the screen size; the refdata example maps
+  # IPHONE_DYNAMIC_ISLAND_LARGE_DISPLAY to 6.9" with a 1290x2796 spec).
+  APP_IPHONE_67:
+    {placement_type: APP_SCREENSHOT, display_class: IPHONE_DYNAMIC_ISLAND_LARGE_DISPLAY, platforms: [IPHONE_APP_STORE]}
+  APP_IPHONE_61:
+    {placement_type: APP_SCREENSHOT, display_class: IPHONE_DYNAMIC_ISLAND_MEDIUM_DISPLAY, platforms: [IPHONE_APP_STORE]}
+  APP_IPHONE_65:
+    {placement_type: APP_SCREENSHOT, display_class: IPHONE_FACE_ID_LARGE_DISPLAY, platforms: [IPHONE_APP_STORE]}
+  APP_IPHONE_58:
+    {placement_type: APP_SCREENSHOT, display_class: IPHONE_FACE_ID_MEDIUM_DISPLAY, platforms: [IPHONE_APP_STORE]}
+  APP_IPHONE_55:
+    {placement_type: APP_SCREENSHOT, display_class: IPHONE_HOME_BUTTON_LARGE_DISPLAY, platforms: [IPHONE_APP_STORE]}
+  APP_IPHONE_47:
+    {placement_type: APP_SCREENSHOT, display_class: IPHONE_HOME_BUTTON_MEDIUM_DISPLAY, platforms: [IPHONE_APP_STORE]}
+  APP_IPHONE_40:
+    {placement_type: APP_SCREENSHOT, display_class: IPHONE_HOME_BUTTON_40_DISPLAY, platforms: [IPHONE_APP_STORE]}
+  APP_IPHONE_35:
+    {placement_type: APP_SCREENSHOT, display_class: IPHONE_HOME_BUTTON_35_DISPLAY, platforms: [IPHONE_APP_STORE]}
+  APP_IPHONE_DUO:
+    placement_type: APP_SCREENSHOT
+    display_class: IPHONE_DUO
+    platforms: [IPHONE_APP_STORE]
+    asset_library_only: true
+    note: >-
+      IPHONE_DUO is new in 4.5.1; ScreenshotDisplayType has no Duo value.
+      Whether outer and inner display are two groups is only in the refdata
+      (the image size picks the group).
+  # iPad
+  APP_IPAD_PRO_3GEN_129:
+    {placement_type: APP_SCREENSHOT, display_class: IPAD_13_DISPLAY, platforms: [IPAD_APP_STORE]}
+  APP_IPAD_PRO_129:
+    {placement_type: APP_SCREENSHOT, display_class: IPAD_129_DISPLAY, platforms: [IPAD_APP_STORE]}
+  APP_IPAD_PRO_3GEN_11:
+    {placement_type: APP_SCREENSHOT, display_class: IPAD_11_DISPLAY, platforms: [IPAD_APP_STORE]}
+  APP_IPAD_105:
+    {placement_type: APP_SCREENSHOT, display_class: IPAD_105_DISPLAY, platforms: [IPAD_APP_STORE]}
+  APP_IPAD_97:
+    {placement_type: APP_SCREENSHOT, display_class: IPAD_97_DISPLAY, platforms: [IPAD_APP_STORE]}
+  # Apple Watch
+  APP_WATCH_ULTRA:
+    {placement_type: APP_SCREENSHOT, display_class: WATCH_ULTRA, platforms: [WATCH_APP_STORE]}
+  APP_WATCH_SERIES_10:
+    {placement_type: APP_SCREENSHOT, display_class: WATCH_SERIES_10, platforms: [WATCH_APP_STORE]}
+  APP_WATCH_SERIES_7:
+    {placement_type: APP_SCREENSHOT, display_class: WATCH_SERIES_7, platforms: [WATCH_APP_STORE]}
+  APP_WATCH_SERIES_4:
+    {placement_type: APP_SCREENSHOT, display_class: WATCH_SERIES_4, platforms: [WATCH_APP_STORE]}
+  APP_WATCH_SERIES_3:
+    {placement_type: APP_SCREENSHOT, display_class: WATCH_SERIES_3, platforms: [WATCH_APP_STORE]}
+  # Other platforms: one display class (DEFAULT) per platform.
+  APP_DESKTOP:
+    {placement_type: APP_SCREENSHOT, display_class: DEFAULT, platforms: [MAC_APP_STORE]}
+  APP_APPLE_TV:
+    {placement_type: APP_SCREENSHOT, display_class: DEFAULT, platforms: [TV_APP_STORE]}
+  APP_APPLE_VISION_PRO:
+    {placement_type: APP_SCREENSHOT, display_class: DEFAULT, platforms: [VISION_PRO_APP_STORE]}
+  # iMessage (own placement type and platform, the iPhone/iPad display class)
+  IMESSAGE_APP_IPHONE_67:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPHONE_DYNAMIC_ISLAND_LARGE_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPHONE_65:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPHONE_FACE_ID_LARGE_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPHONE_61:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPHONE_DYNAMIC_ISLAND_MEDIUM_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPHONE_58:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPHONE_FACE_ID_MEDIUM_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPHONE_55:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPHONE_HOME_BUTTON_LARGE_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPHONE_47:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPHONE_HOME_BUTTON_MEDIUM_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPHONE_40:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPHONE_HOME_BUTTON_40_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPAD_PRO_3GEN_129:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPAD_13_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPAD_PRO_3GEN_11:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPAD_11_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPAD_PRO_129:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPAD_129_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPAD_105:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPAD_105_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+  IMESSAGE_APP_IPAD_97:
+    {placement_type: IMESSAGE_APP_SCREENSHOT, display_class: IPAD_97_DISPLAY, platforms: [IMESSAGE_APP_STORE]}
+
+creative:
+  # Header and search results assets exist only in the asset library (no
+  # legacy endpoint). Shown on iOS/iPadOS 27+ (R1). Their group ids are not
+  # in the public docs: every group of the type on these platforms whose
+  # specs accept the image gets a placement ("1 header per placement group").
+  header:
+    placement_types: [PRODUCT_PAGE_HEADER_ASSET]
+    platforms: [IPHONE_APP_STORE, IPAD_APP_STORE, ANY]
+  search_results:
+    placement_types: [APP_STORE_SEARCH_RESULTS_ASSET]
+    platforms: [IPHONE_APP_STORE, IPAD_APP_STORE, ANY]
+  # One universal 16:9 asset (5244x2950, png) placed as both.
+  universal:
+    placement_types: [PRODUCT_PAGE_HEADER_ASSET, APP_STORE_SEARCH_RESULTS_ASSET]
+    platforms: [IPHONE_APP_STORE, IPAD_APP_STORE, ANY]
+
+category:
+  APP_SCREENSHOT: APP_SCREENSHOTS_AND_PREVIEWS
+  IMESSAGE_APP_SCREENSHOT: APP_SCREENSHOTS_AND_PREVIEWS
+  APP_PREVIEW: APP_SCREENSHOTS_AND_PREVIEWS
+  PRODUCT_PAGE_HEADER_ASSET: CREATIVE_ASSETS
+  APP_STORE_SEARCH_RESULTS_ASSET: CREATIVE_ASSETS

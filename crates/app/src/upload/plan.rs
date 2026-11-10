@@ -22,14 +22,15 @@ use std::path::{Path, PathBuf};
 
 use arrangia_core::Project;
 use arrangia_core::catalog::{self, Store as CatalogStore};
-use arrangia_core::model::{ApplePlatform, Lang, StoreKind, Target};
+use arrangia_core::model::{ApplePlatform, AppleUploadFlowSetting, Lang, StoreKind, Target};
 use arrangia_core::validate::{FindingCode, Severity, ValidationReport};
 use arrangia_publish::google as gp;
 use arrangia_render::export::{ExportOptions, ExportReport, FileKind};
 use serde::{Deserialize, Serialize};
 
+use super::library::{self as lib, AssetLibraryFlow};
 use super::log::UploadLog;
-use super::remote::{self, AppleUploadFlow as _};
+use super::remote::{self, AppleFlowKind, AppleUploadFlow as _, ScreenshotSetFlow};
 use super::{
     PLAN_VERSION, PlanImage, PlanSet, Problem, RemoteInfo, Selection, SetAction, StorePlan, Totals,
     UploadPlan, now_secs, sha256_hex,
@@ -93,7 +94,10 @@ pub fn images_dir(dir: &Path) -> PathBuf {
 fn slot_of(target: &Target, store: StoreKind) -> Option<&str> {
     let slot = target.store.as_ref()?;
     match store {
-        StoreKind::Apple => slot.apple.as_ref().map(|a| a.display_type.as_str()),
+        StoreKind::Apple => slot
+            .apple
+            .as_ref()
+            .map(arrangia_core::model::AppleSlot::key),
         StoreKind::Google => slot.google.as_ref().map(|g| g.image_type.as_str()),
     }
 }
@@ -279,10 +283,15 @@ pub(crate) fn build_local(
         .unwrap_or_default();
     // Targets to render: a slot of a selected store (Apple: of the
     // project's platform; the others are listed as `skip`).
+    let flow_setting = remote::flow_setting(&project);
+    // (Apple: not the slots only the asset library can upload when the
+    // project forces the set-based API – they are skipped.)
     let renders = |t: &Target, s: StoreKind| {
         slot_of(t, s).is_some_and(|slot| {
             s != StoreKind::Apple
-                || is_mac_display_type(slot) == (apple_platform == ApplePlatform::Macos)
+                || (is_mac_display_type(slot) == (apple_platform == ApplePlatform::Macos)
+                    && !(flow_setting == AppleUploadFlowSetting::ScreenshotSets
+                        && lib::asset_library_only(slot)))
         })
     };
     let slotted: Vec<&Target> = project
@@ -332,9 +341,11 @@ pub(crate) fn build_local(
             account: project.store.account(store).map(str::to_owned),
             app: app_key(&project, store),
             flow: match store {
-                StoreKind::Apple => remote::apple_flow().kind().as_str().to_owned(),
+                StoreKind::Apple => remote::preferred_flow(flow_setting).as_str().to_owned(),
                 StoreKind::Google => "edit".to_owned(),
             },
+            flow_setting: (store == StoreKind::Apple).then(|| flow_setting.as_str().to_owned()),
+            flow_note: None,
             remote: None,
             sets: Vec::new(),
             problems: Vec::new(),
@@ -386,6 +397,8 @@ pub(crate) fn build_local(
                     lang: lang.clone(),
                     locale: locale.clone(),
                     slot: slot.to_owned(),
+                    flow: None,
+                    placement: None,
                     action: SetAction::New,
                     reason: None,
                     steps: Vec::new(),
@@ -429,6 +442,17 @@ pub(crate) fn build_local(
                             locale.as_deref().unwrap_or_default()
                         ),
                     ));
+                }
+                if store == StoreKind::Apple {
+                    // Creative assets and Duo never go into a screenshot set.
+                    if flow_setting == AppleUploadFlowSetting::ScreenshotSets
+                        && lib::asset_library_only(slot)
+                    {
+                        skip_library_only(&mut set, flow_setting);
+                        sp.sets.push(set);
+                        continue;
+                    }
+                    apple_flow_checks(&mut set, flow_setting);
                 }
                 set.problems
                     .extend(validation_problems(&report, target.id.as_str(), &lang));
@@ -496,7 +520,7 @@ pub(crate) fn build_local(
                         "no images were rendered for this set",
                     ));
                 }
-                set.steps = default_steps(store);
+                set.steps = default_steps(store, &sp.flow, set.flow.as_deref(), slot);
                 if set.problems.iter().any(|p| p.blocking) {
                     set.action = SetAction::Blocked;
                 } else if let (Some(app), Some(loc)) = (&sp.app, &set.locale) {
@@ -539,14 +563,73 @@ pub(crate) fn build_local(
     Ok(LocalPlan { plan, fingerprint })
 }
 
-fn default_steps(store: StoreKind) -> Vec<String> {
+fn default_steps(store: StoreKind, flow: &str, set_flow: Option<&str>, slot: &str) -> Vec<String> {
+    let library = set_flow.unwrap_or(flow) == AppleFlowKind::AssetLibrary.as_str();
     match store {
+        StoreKind::Apple if library && lib::slot_from_key(slot).is_creative() => {
+            vec!["delete_placements", "upload", "create_placements"]
+        }
+        StoreKind::Apple if library => {
+            vec![
+                "delete_placements",
+                "upload",
+                "create_placements",
+                "set_order",
+            ]
+        }
         StoreKind::Apple => vec!["delete_existing", "upload", "set_order"],
         StoreKind::Google => vec!["delete_existing", "upload"],
     }
     .into_iter()
     .map(str::to_owned)
     .collect()
+}
+
+/// A slot only the App Asset Library can upload (creative `placement`,
+/// `APP_IPHONE_DUO`) while the set-based API is in use: skipped with a
+/// warning (`needs_asset_library`), the other sets still upload.
+pub(crate) fn skip_library_only(set: &mut PlanSet, setting: AppleUploadFlowSetting) {
+    let msg = remote::needs_library_message(&set.slot, setting);
+    set.action = SetAction::Skip;
+    set.flow = Some(AppleFlowKind::ScreenshotSets.as_str().to_owned());
+    set.placement = None;
+    set.problems
+        .push(Problem::warn("needs_asset_library", msg.clone()));
+    set.reason = Some(msg);
+}
+
+/// Local (no network) flow checks of an Apple set going through the asset
+/// library (ADR 0019; `auto`: only library-only slots): the flow and the
+/// placement from the mapping; an unmapped display type falls back to the
+/// set-based API, an unmapped library-only slot is blocking.
+fn apple_flow_checks(set: &mut PlanSet, setting: AppleUploadFlowSetting) {
+    if !remote::wants_library(setting, &set.slot) {
+        return;
+    }
+    if setting == AppleUploadFlowSetting::Auto {
+        // Library-only slot under `auto` (the store's base flow is sets).
+        set.flow = Some(AppleFlowKind::AssetLibrary.as_str().to_owned());
+    }
+    match lib::local_label(&set.slot) {
+        Some(label) => set.placement = Some(label),
+        None if !lib::asset_library_only(&set.slot) => {
+            set.flow = Some(AppleFlowKind::ScreenshotSets.as_str().to_owned());
+            set.problems.push(Problem::info(
+                "no_placement_mapping",
+                format!(
+                    "`{}` has no App Asset Library mapping; uploaded with the screenshot set API",
+                    set.slot
+                ),
+            ));
+        }
+        None => set.problems.push(Problem::blocking(
+            "no_placement_mapping",
+            format!(
+                "`{}` has no App Asset Library mapping (data/asset-library.yaml)",
+                set.slot
+            ),
+        )),
+    }
 }
 
 /// `2026-11-10 14:03 UTC`.
@@ -720,6 +803,7 @@ pub(crate) fn no_editable_version_problem(
     Some(p)
 }
 
+#[allow(clippy::too_many_lines)] // one linear check
 async fn check_apple(
     config: &super::UploadConfig,
     account: &crate::stores::StoreAccount,
@@ -728,7 +812,7 @@ async fn check_apple(
     sp: &mut StorePlan,
     force: bool,
 ) -> RemoteInfo {
-    let flow = remote::apple_flow();
+    let setting = remote::flow_setting(project);
     let fail = |sp: &mut StorePlan, code: &str, e: &arrangia_publish::Error| {
         let msg = remote::store_message(StoreKind::Apple, e);
         sp.problems.push(Problem::blocking(code, msg.clone()));
@@ -753,26 +837,36 @@ async fn check_apple(
             .map(|a| a.platform)
             .unwrap_or_default(),
     );
-    let target = match flow.open(&client, &app_ref, platform).await {
-        Ok(t) => t,
-        Err(e) => {
-            if let Some(p) = no_editable_version_problem(&e, sp.app.as_deref()) {
-                let info = RemoteInfo {
-                    ok: false,
-                    error: Some(p.message.clone()),
-                    ..RemoteInfo::default()
+    let needs_library = sp.sets.iter().any(|s| {
+        (s.action.uploads() || s.action == SetAction::Unchanged)
+            && remote::wants_library(setting, &s.slot)
+    });
+    let session =
+        match remote::open_apple(&client, &app_ref, platform, setting, needs_library).await {
+            Ok(s) => s,
+            Err(e) => {
+                if let Some(p) = no_editable_version_problem(&e, sp.app.as_deref()) {
+                    let info = RemoteInfo {
+                        ok: false,
+                        error: Some(p.message.clone()),
+                        ..RemoteInfo::default()
+                    };
+                    sp.problems.push(p);
+                    return info;
+                }
+                let code = if e.kind() == arrangia_publish::ErrorKind::Conflict {
+                    "no_editable_version"
+                } else if setting == AppleUploadFlowSetting::AssetLibrary && lib::unavailable(&e) {
+                    "asset_library_unavailable"
+                } else {
+                    "app_not_reachable"
                 };
-                sp.problems.push(p);
-                return info;
+                return fail(sp, code, &e);
             }
-            let code = if e.kind() == arrangia_publish::ErrorKind::Conflict {
-                "no_editable_version"
-            } else {
-                "app_not_reachable"
-            };
-            return fail(sp, code, &e);
-        }
-    };
+        };
+    session.kind.as_str().clone_into(&mut sp.flow);
+    sp.flow_note.clone_from(&session.fallback);
+    let target = &session.target;
     let mut ok = true;
     for set in &mut sp.sets {
         if !(set.action.uploads() || set.action == SetAction::Unchanged) {
@@ -781,10 +875,60 @@ async fn check_apple(
         let Some(locale) = set.locale.clone() else {
             continue;
         };
-        match flow
-            .inspect(&client, &target, &locale, &set.slot, &set.images)
-            .await
-        {
+        set.flow = None;
+        set.problems.retain(|p| p.code != "no_placement_mapping");
+        let inspected = match remote::route(&session, &set.slot, &set.images) {
+            Err(remote::NoRoute::NeedsLibrary(_)) => {
+                // No library: Duo / creative assets cannot go along.
+                skip_library_only(set, session.setting);
+                continue;
+            }
+            Err(remote::NoRoute::NoGroup(why)) => {
+                set.problems
+                    .push(Problem::blocking("no_placement_group", why));
+                set.action = SetAction::Blocked;
+                continue;
+            }
+            Ok(remote::Route::Sets { note }) => {
+                set.placement = None;
+                if session.kind != AppleFlowKind::ScreenshotSets {
+                    set.flow = Some(AppleFlowKind::ScreenshotSets.as_str().to_owned());
+                }
+                if let Some(note) = note {
+                    set.problems.push(Problem::info("flow_fallback", note));
+                }
+                ScreenshotSetFlow
+                    .inspect(&client, target, &locale, &set.slot, &set.images)
+                    .await
+            }
+            Ok(remote::Route::Library(routes)) => {
+                if session.kind != AppleFlowKind::AssetLibrary {
+                    set.flow = Some(AppleFlowKind::AssetLibrary.as_str().to_owned());
+                }
+                set.placement = Some(
+                    routes
+                        .iter()
+                        .map(lib::PlacementRoute::label)
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                );
+                for r in routes.iter().filter(|r| !r.size_ok) {
+                    set.problems.push(Problem::warn(
+                        "placement_size",
+                        format!(
+                            "no image spec of {} accepts {}x{} (see `arrangia upload refdata`); App Store Connect may reject the images",
+                            r.group,
+                            set.images.first().map_or(0, |i| i.width),
+                            set.images.first().map_or(0, |i| i.height)
+                        ),
+                    ));
+                }
+                AssetLibraryFlow
+                    .inspect(&client, target, &locale, &set.slot, &set.images)
+                    .await
+            }
+        };
+        match inspected {
             Ok(r) => refine(
                 set,
                 Found {

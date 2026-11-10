@@ -74,6 +74,20 @@ pub enum UploadCommand {
         #[arg(long, value_enum, default_value_t = Format::Text)]
         format: Format,
     },
+    /// App Store Connect asset types (read-only): the App Asset Library
+    /// reference data – placement types, groups, display classes, image
+    /// specs – and how Arrangia's slots resolve against it (ADR 0019).
+    Refdata {
+        /// Apple account id (default: the project's, else the only one).
+        #[arg(long, value_name = "ID")]
+        account: Option<String>,
+        /// App: numeric Apple ID or bundle id (default: the project's);
+        /// also checks that the app can use the asset library.
+        #[arg(long, value_name = "ID")]
+        app: Option<String>,
+        #[arg(long, value_enum, default_value_t = Format::Text)]
+        format: Format,
+    },
     /// Past uploads from `<project>/.cache/uploads.sqlite`.
     Log {
         /// Only the last run.
@@ -201,6 +215,20 @@ fn call(app: &AppState, name: &str, args: Value) -> anyhow::Result<Value> {
 }
 
 pub fn run(args: &UploadArgs, global: &Global) -> anyhow::Result<u8> {
+    if let UploadCommand::Refdata {
+        account,
+        app,
+        format,
+    } = &args.command
+    {
+        return refdata(
+            args.app_dir.as_ref(),
+            global,
+            account.as_deref(),
+            app.as_deref(),
+            *format,
+        );
+    }
     let app = app_state(args.app_dir.as_ref(), global.quiet, &global.project)?;
     match &args.command {
         UploadCommand::Plan {
@@ -276,7 +304,181 @@ pub fn run(args: &UploadArgs, global: &Global) -> anyhow::Result<u8> {
             }
             Ok(EXIT_OK)
         }
+        UploadCommand::Refdata { .. } => unreachable!("handled above"),
     }
+}
+
+/// `upload refdata`: works without a project (then `--account` or the only
+/// Apple account); with one, its account and app are the defaults.
+fn refdata(
+    app_dir: Option<&PathBuf>,
+    global: &Global,
+    account: Option<&str>,
+    app_id: Option<&str>,
+    format: Format,
+) -> anyhow::Result<u8> {
+    let paths = match app_dir {
+        Some(d) => AppPaths::in_dir(d),
+        None => {
+            AppPaths::platform().ok_or_else(|| anyhow!("no app data folder (set --app-dir)"))?
+        }
+    };
+    let app = AppState::new(
+        paths,
+        Arc::new(Progress { quiet: true }),
+        Arc::new(NoDialogs),
+    )
+    .without_watcher();
+    if global.project.join("project.yaml").is_file() {
+        app.open_project(&global.project).map_err(cmd_error)?;
+    }
+    let report = call(
+        &app,
+        "upload_refdata",
+        json!({"account": account, "app": app_id}),
+    )?;
+    match format {
+        Format::Json => println!("{}", serde_json::to_string_pretty(&report)?),
+        Format::Text => print!("{}", format_refdata(&report, Style::stdout())),
+    }
+    Ok(EXIT_OK)
+}
+
+fn strs(v: &Value) -> Vec<&str> {
+    v.as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect()
+}
+
+fn spec_size(spec: &Value) -> String {
+    let d = &spec["dimensions"];
+    let range = |a: &Value, b: &Value| {
+        if a == b {
+            a.to_string()
+        } else {
+            format!("{a}-{b}")
+        }
+    };
+    format!(
+        "{}x{}",
+        range(&d["minWidth"], &d["maxWidth"]),
+        range(&d["minHeight"], &d["maxHeight"])
+    )
+}
+
+/// The text report of `upload refdata`.
+#[allow(clippy::too_many_lines)] // one linear report
+fn format_refdata(r: &Value, style: Style) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::new();
+    let rd = &r["ref_data"];
+    let _ = writeln!(
+        out,
+        "{} {}",
+        style.bold("App Store Connect asset types"),
+        style.dim(&format!(
+            "(account {})",
+            r["account"].as_str().unwrap_or("-")
+        ))
+    );
+    if let Some(a) = r.get("app") {
+        let _ = writeln!(
+            out,
+            "App: {} ({}, {})",
+            a["name"].as_str().unwrap_or_default(),
+            a["id"].as_str().unwrap_or_default(),
+            a["bundle_id"].as_str().unwrap_or_default()
+        );
+        match (a["library_id"].as_str(), a["library_error"].as_str()) {
+            (Some(id), _) => {
+                let _ = writeln!(out, "  asset library: {}", style.ok(id));
+            }
+            (None, Some(e)) => {
+                let _ = writeln!(out, "  asset library: {}", style.warn(e));
+            }
+            _ => {}
+        }
+    }
+    let specs = rd["imageSpecs"].as_array().cloned().unwrap_or_default();
+    let _ = writeln!(out, "\n{}", style.bold("Placement types"));
+    for t in rd["placementTypes"].as_array().into_iter().flatten() {
+        let _ = writeln!(
+            out,
+            "  {} {}",
+            t["placementTypeId"].as_str().unwrap_or_default(),
+            style.dim(&format!(
+                "[{}]",
+                strs(&t["acceptsAssetCategories"]).join(", ")
+            ))
+        );
+        for m in t["specMappings"].as_array().into_iter().flatten() {
+            let sizes: Vec<String> = strs(&m["specs"])
+                .iter()
+                .filter_map(|id| specs.iter().find(|s| s["specId"] == *id).map(spec_size))
+                .collect();
+            let _ = writeln!(
+                out,
+                "    {:<48} {}",
+                m["placementGroupId"].as_str().unwrap_or_default(),
+                style.dim(&sizes.join(" "))
+            );
+        }
+    }
+    let _ = writeln!(out, "\n{}", style.bold("Placement groups"));
+    for g in rd["placementProfileGroups"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        let _ = writeln!(
+            out,
+            "  {:<48} {:<22} {}",
+            g["placementProfileGroupId"].as_str().unwrap_or_default(),
+            g["platform"].as_str().unwrap_or_default(),
+            g["displayClassId"].as_str().unwrap_or_default()
+        );
+    }
+    let _ = writeln!(out, "\n{}", style.bold("Display classes"));
+    for d in rd["displayClasses"].as_array().into_iter().flatten() {
+        let _ = writeln!(
+            out,
+            "  {:<40} {:<8} {}",
+            d["displayClassId"].as_str().unwrap_or_default(),
+            d["deviceFamily"].as_str().unwrap_or_default(),
+            strs(&d["screenDimensions"]).join(", ")
+        );
+    }
+    let _ = writeln!(
+        out,
+        "\n{} {}",
+        style.bold("Arrangia slots"),
+        style.dim(&format!(
+            "(data/asset-library.yaml, checked {})",
+            r["mapping_checked"].as_str().unwrap_or_default()
+        ))
+    );
+    for m in r["mapping"].as_array().into_iter().flatten() {
+        let groups = strs(&m["groups"]);
+        let slot = m["slot"].as_str().unwrap_or_default();
+        if groups.is_empty() {
+            let _ = writeln!(
+                out,
+                "  {:<30} {}",
+                slot,
+                style.warn(&format!(
+                    "no group ({} · {})",
+                    m["display_class"].as_str().unwrap_or("any display class"),
+                    strs(&m["platforms"]).join("/")
+                ))
+            );
+        }
+        for (i, g) in groups.iter().enumerate() {
+            let _ = writeln!(out, "  {:<30} {g}", if i == 0 { slot } else { "" });
+        }
+    }
+    out
 }
 
 fn confirm(plan: &arrangia_app::upload::UploadPlan) -> anyhow::Result<()> {
@@ -344,12 +546,19 @@ fn print_plan(plan: &Value, global: &Global) {
             "{} {}",
             style.bold(store_name(sp["store"].as_str().unwrap_or_default())),
             style.dim(&format!(
-                "(account {}, app {}, flow {})",
+                "(account {}, app {}, flow {}{})",
                 sp["account"].as_str().unwrap_or("-"),
                 sp["app"].as_str().unwrap_or("-"),
-                sp["flow"].as_str().unwrap_or_default()
+                sp["flow"].as_str().unwrap_or_default(),
+                sp["flow_setting"]
+                    .as_str()
+                    .map(|s| format!(", setting {s}"))
+                    .unwrap_or_default()
             ))
         );
+        if let Some(n) = sp["flow_note"].as_str() {
+            println!("  {}", style.warn(n));
+        }
         if let Some(r) = sp.get("remote") {
             if let Some(v) = r["version"].as_str() {
                 println!(
@@ -382,6 +591,15 @@ fn print_plan(plan: &Value, global: &Global) {
                 kb(&s["bytes"]),
                 s["slot"].as_str().unwrap_or_default()
             );
+            if let Some(pl) = s["placement"].as_str() {
+                let flow = s["flow"]
+                    .as_str()
+                    .map(|f| format!(" ({f})"))
+                    .unwrap_or_default();
+                println!("    {}", style.dim(&format!("{pl}{flow}")));
+            } else if let Some(f) = s["flow"].as_str() {
+                println!("    {}", style.dim(&format!("flow {f}")));
+            }
             if let Some(r) = s["reason"].as_str()
                 && (global.verbose
                     || action == "skip"
@@ -510,6 +728,60 @@ fn print_log(log: &Value, events: bool) {
                     e["message"].as_str().unwrap_or_default()
                 );
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn refdata_text_report() {
+        let report = json!({
+            "account": "apple-team",
+            "app": {"id": "1234567890", "name": "Fernwood", "bundle_id": "com.example.fernwood",
+                    "library_id": "lib-1"},
+            "ref_data": {
+                "features": [],
+                "placementProfileGroups": [
+                    {"placementProfileGroupId": "IPHONE_DUO_OUTER_PROFILE",
+                     "platform": "IPHONE_APP_STORE", "displayClassId": "IPHONE_DUO"}],
+                "imageSpecs": [{"specId": "s1", "dimensions":
+                    {"minWidth": 1398, "maxWidth": 1398, "minHeight": 2034, "maxHeight": 2034}}],
+                "videoSpecs": [],
+                "placementTypes": [{"placementTypeId": "APP_SCREENSHOT",
+                    "acceptsAssetCategories": ["APP_SCREENSHOTS_AND_PREVIEWS"],
+                    "specMappings": [{"placementGroupId": "IPHONE_DUO_OUTER_PROFILE", "specs": ["s1"]}]}],
+                "displayClasses": [{"displayClassId": "IPHONE_DUO", "deviceFamily": "IPHONE",
+                                    "screenDimensions": ["5.4", "7.6"]}]
+            },
+            "mapping": [
+                {"slot": "APP_IPHONE_DUO", "placement_types": ["APP_SCREENSHOT"],
+                 "display_class": "IPHONE_DUO", "platforms": ["IPHONE_APP_STORE"],
+                 "groups": ["APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE 1398x2034"],
+                 "asset_library_only": true},
+                {"slot": "header", "placement_types": ["PRODUCT_PAGE_HEADER_ASSET"],
+                 "platforms": ["IPHONE_APP_STORE", "IPAD_APP_STORE"], "groups": [],
+                 "asset_library_only": true}
+            ],
+            "mapping_checked": "2026-11-10"
+        });
+        let text = format_refdata(&report, Style::plain());
+        for want in [
+            "App Store Connect asset types (account apple-team)",
+            "App: Fernwood (1234567890, com.example.fernwood)",
+            "asset library: lib-1",
+            "APP_SCREENSHOT [APP_SCREENSHOTS_AND_PREVIEWS]",
+            "IPHONE_DUO_OUTER_PROFILE",
+            "1398x2034",
+            "IPHONE_DUO",
+            "5.4, 7.6",
+            "APP_IPHONE_DUO",
+            "header",
+            "no group (any display class · IPHONE_APP_STORE/IPAD_APP_STORE)",
+        ] {
+            assert!(text.contains(want), "{want:?} missing in\n{text}");
         }
     }
 }

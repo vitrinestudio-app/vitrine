@@ -219,3 +219,14 @@ Two read-only calls were added for "Test connection" (ADR 0016,
 Google package name is now checked when an edit URL is built instead of in
 `Client::new`, so a token-only client needs none. The asset-library
 question is listed in `docs/plan/STATUS.md` → "Open questions for the user".
+
+## Amendment 2026-11-10 (b) – App Asset Library
+
+The App Asset Library flow is built (2026-11-10). Default (`auto`): the
+set-based flow for everything it supports, the library only for iPhone
+Duo and the creative assets; `asset_library` opts in per project. Making
+the library the default is still open (after a verified real run).
+Its verified endpoints, enums and the client calls
+(`arrangia_publish::apple::library`) are in **ADR 0019**. The part upload
+is shared (`Client::transfer_parts`); asset-library commits send
+`{uploaded: true}` only (no MD5).

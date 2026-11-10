@@ -97,6 +97,7 @@ export const api = {
   uploadStatus: () => invoke('upload_status'),
   uploadCancel: () => invoke('upload_cancel'),
   uploadLog: (args = {}) => invoke('upload_log', args),
+  uploadRefdata: (args = {}) => invoke('upload_refdata', args),
   /** The user's answer to an assistant's upload request. */
   uploadConfirm: (id, approved) => invoke('upload_confirm', { id, approved }),
 
