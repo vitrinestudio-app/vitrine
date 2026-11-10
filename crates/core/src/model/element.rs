@@ -91,6 +91,9 @@ pub struct DeviceProps {
     pub bezel: Option<String>,
     /// Colour variant of the catalog model (`midnight`) or a custom `#RRGGBB`.
     pub color: Option<String>,
+    /// Foldables: open (inner display) or folded (outer display); `None` =
+    /// the state of `model`.
+    pub fold: Option<Fold>,
     /// Browser chrome inside a laptop/desktop frame (`chrome: browser`).
     pub chrome: Option<Chrome>,
     /// URL shown in browser chrome.
@@ -247,6 +250,7 @@ impl ElementKindTag {
                 "frame",
                 "bezel",
                 "color",
+                "fold",
                 "chrome",
                 "url",
                 "appearance",
@@ -298,6 +302,17 @@ pub const COMMON_FIELDS: [&str; 13] = [
 pub enum Orientation {
     Portrait,
     Landscape,
+}
+
+/// Fold state of a foldable device model (`fold: open|folded`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Fold {
+    /// Unfolded: the large inner display.
+    #[default]
+    Open,
+    /// Closed: the outer display.
+    Folded,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -674,6 +689,7 @@ element_fields! {
     frame: FrameStyle,
     bezel: String,
     color: String,
+    fold: Fold,
     chrome: Chrome,
     url: String,
     appearance: Appearance,
@@ -816,6 +832,7 @@ impl TryFrom<ElementWire> for Element {
                     frame: w.frame.clone(),
                     bezel: w.bezel.clone(),
                     color: w.color.clone(),
+                    fold: w.fold,
                     chrome: w.chrome,
                     url: w.url.clone(),
                     appearance: w.appearance,
@@ -928,6 +945,7 @@ impl From<Element> for ElementWire {
             frame: None,
             bezel: None,
             color: None,
+            fold: None,
             chrome: None,
             url: None,
             appearance: None,
@@ -967,6 +985,7 @@ impl From<Element> for ElementWire {
                 w.frame = p.frame;
                 w.bezel = p.bezel;
                 w.color = p.color;
+                w.fold = p.fold;
                 w.chrome = p.chrome;
                 w.url = p.url;
                 w.appearance = p.appearance;

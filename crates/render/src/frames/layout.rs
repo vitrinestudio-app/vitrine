@@ -10,9 +10,9 @@
 //! are not symmetric (notch, lens offsets) are built in model space and
 //! mapped with [`Layout::m`].
 
-use arrangia_core::catalog::{self, BrowserChrome, Device, DeviceClass};
+use arrangia_core::catalog::{self, BrowserChrome, Device, DeviceClass, HingeAt};
 use arrangia_core::geometry::{Rect, Vec2};
-use arrangia_core::model::{Chrome, Orientation};
+use arrangia_core::model::Chrome;
 use arrangia_core::resolve::ResolvedDevice;
 use tiny_skia::{Path, PathBuilder, Point, Transform};
 
@@ -53,6 +53,9 @@ pub struct Layout<'a> {
     /// Housing (laptop: lid, desktop: screen housing, browser: window).
     pub body: Rect,
     pub body_r: f64,
+    /// Local corner radii of the housing (handhelds: the hinge side of a
+    /// closed foldable is nearly square).
+    pub body_radii: Radii,
     /// Whole display (incl. browser chrome when drawn inside it).
     pub display: Rect,
     pub display_r: f64,
@@ -110,16 +113,16 @@ pub fn browser_chrome() -> &'static BrowserChrome {
     &catalog::catalog().devices.browser_chrome
 }
 
-/// Is `dev` drawn rotated (portrait-natural device in landscape)?
+/// Is `dev` drawn rotated (shown in the orientation it is not given in:
+/// a portrait-natural phone in landscape, the landscape-natural open
+/// foldable in portrait)? Always 90° counter-clockwise.
 pub fn rotated(dev: &ResolvedDevice) -> bool {
-    dev.device.natural == Orientation::Portrait
-        && dev.orientation == Orientation::Landscape
-        && dev.device.class != DeviceClass::None
+    dev.device.natural != dev.orientation && dev.device.class != DeviceClass::None
 }
 
 pub fn kind(device: &Device) -> Kind {
     match device.class {
-        DeviceClass::Phone | DeviceClass::Tablet => Kind::Handheld,
+        DeviceClass::Phone | DeviceClass::Tablet | DeviceClass::Watch => Kind::Handheld,
         DeviceClass::Laptop => Kind::Laptop,
         DeviceClass::Desktop => Kind::Desktop,
         DeviceClass::Browser => Kind::Browser,
@@ -197,6 +200,7 @@ impl<'a> Layout<'a> {
                     outer,
                     body: outer,
                     body_r: r,
+                    body_radii: shapes::uniform(r),
                     display: outer,
                     display_r: r,
                     chrome: Some(ChromeArea {
@@ -229,6 +233,7 @@ impl<'a> Layout<'a> {
                     outer,
                     body: outer,
                     body_r: r,
+                    body_radii: shapes::uniform(r),
                     display: outer,
                     display_r: r,
                     chrome: None,
@@ -282,6 +287,18 @@ impl<'a> Layout<'a> {
                 } else {
                     (None, display, shapes::uniform(display_r))
                 };
+                let br = d.body.radius * s;
+                // Model corners tl, tr, br, bl; rotated 90° CCW the model's
+                // top-right corner becomes the local top-left one.
+                let model = match d.hinge {
+                    Some(h) if h.at == HingeAt::Left => [br * 0.2, br, br, br * 0.2],
+                    _ => shapes::uniform(br),
+                };
+                let body_radii = if rot {
+                    [model[1], model[2], model[3], model[0]]
+                } else {
+                    model
+                };
                 Self {
                     device: d,
                     kind,
@@ -289,7 +306,8 @@ impl<'a> Layout<'a> {
                     s,
                     outer,
                     body,
-                    body_r: d.body.radius * s,
+                    body_r: br,
+                    body_radii,
                     display,
                     display_r,
                     chrome,
@@ -416,10 +434,17 @@ impl<'a> Layout<'a> {
         })
     }
 
+    /// Housing outline of a handheld inset by `d` (lu): `rect` with the
+    /// body's corner radii minus `d`.
+    pub fn body_inset(&self, rect: Rect, d: f64) -> Option<Path> {
+        shapes::rect(rect, self.body_radii.map(|r| (r - d).max(0.0)), true)
+    }
+
     /// Lid / housing outline.
     pub fn body_path(&self) -> Option<Path> {
         match self.kind {
-            Kind::Handheld | Kind::Desktop => shapes::smooth(self.body, self.body_r),
+            Kind::Handheld => self.body_inset(self.body, 0.0),
+            Kind::Desktop => shapes::smooth(self.body, self.body_r),
             Kind::Laptop => {
                 let r = self.body_r;
                 shapes::rect(self.body, [r, r, r * 0.3, r * 0.3], true)

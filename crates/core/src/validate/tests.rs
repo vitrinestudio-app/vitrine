@@ -709,3 +709,142 @@ fn imported_frame_missing_is_an_info() {
         FindingCode::ImportedBezelFallback
     ));
 }
+
+const PHONE_ON_PAGE_0: &str = "
+  - id: title
+    kind: text
+    page: 0
+    text: title
+    box: {top: 40, left: 20, right: 20}
+  - id: phone
+    kind: device
+    page: 0
+    at: {x: 500, y: 1100}
+    width: 600
+    model: iphone-island
+    screenshot: home";
+
+#[test]
+fn text_outside_safe_area() {
+    let mut p = project(PHONE_ON_PAGE_0, "");
+    set(&mut p, "en", "title", "Hello");
+    set(&mut p, "de", "title", "Hallo");
+    assert!(!has(&run(&p), FindingCode::TextOutsideSafeArea));
+    // Text 40 lu from the top of a 2000 lu page: outside a 10 % inset.
+    p.targets[0].safe_area = Some(crate::model::SafeArea {
+        top: 10.0,
+        ..Default::default()
+    });
+    let r = run(&p);
+    let f = find(&r, FindingCode::TextOutsideSafeArea);
+    assert_eq!(f.level, Severity::Warn);
+    // A small inset leaves it inside.
+    p.targets[0].safe_area = Some(crate::model::SafeArea {
+        top: 1.0,
+        ..Default::default()
+    });
+    assert!(!has(&run(&p), FindingCode::TextOutsideSafeArea));
+}
+
+#[test]
+#[allow(clippy::many_single_char_names)]
+fn fold_and_screenshot_only_resolve_and_round_trip() {
+    use crate::resolve::{ResolveOptions, ResolvedKind, resolve};
+    let duo = "
+  - id: duo
+    kind: device
+    page: 0
+    at: {x: 500, y: 1000}
+    width: 600
+    model: iphone-duo
+    fold: folded
+    rotation: 12
+    screenshot: home
+  - id: small
+    kind: device
+    page: 0
+    at: {x: 200, y: 300}
+    width: 100
+    model: watch";
+    let mut p = project(
+        duo,
+        "  screenshot_only: true\n  safe_area: {top: 5, right: 2.5, bottom: 5, left: 2.5}\n  store: {apple: {display_type: PRODUCT_PAGE_HEADER_ASSET, placement: header}}\n",
+    );
+    // YAML round trip of the new fields.
+    let yaml = crate::io::to_yaml(&p).unwrap();
+    for needle in [
+        "fold: folded",
+        "screenshot_only: true",
+        "safe_area: {top: 5, right: 2.5, bottom: 5, left: 2.5}",
+        "placement: header",
+    ] {
+        assert!(yaml.contains(needle), "{needle} missing in\n{yaml}");
+    }
+    assert_eq!(crate::io::project_from_yaml(&yaml).unwrap(), p);
+    // Screenshot only: the larger device of page 0 fills the page, bare.
+    let s = resolve(&p, "t", "en", &ResolveOptions::new(&NoAssets)).unwrap();
+    assert_eq!(s.backgrounds.len(), 0);
+    assert_eq!(s.elements.len(), 1, "{:#?}", s.elements);
+    let e = &s.elements[0];
+    assert_eq!(e.id.as_str(), "duo");
+    assert_eq!(e.rotation, 0.0);
+    let page = s.frame.pages[0].rect;
+    assert!((e.size.x - page.w).abs() < 1e-9 && (e.size.y - page.h).abs() < 1e-9);
+    let ResolvedKind::Device(d) = &e.props else {
+        panic!()
+    };
+    assert_eq!(d.model, "none");
+    assert_eq!(d.mapped_from.as_deref(), Some("iphone-duo-folded"));
+    assert_eq!(d.device.display.radius, 0.0);
+    // Without it: `fold: folded` draws the folded model.
+    p.targets[0].screenshot_only = false;
+    let s = resolve(&p, "t", "en", &ResolveOptions::new(&NoAssets)).unwrap();
+    let ResolvedKind::Device(d) = &s.element("duo").unwrap().props else {
+        panic!()
+    };
+    assert_eq!(d.model, "iphone-duo-folded");
+    assert_eq!(
+        d.screenshot.as_ref().unwrap().variant.as_deref(),
+        Some("ios-phone-duo-outer")
+    );
+    // `fold: open` on the folded model goes back; non-foldables ignore it.
+    let c = crate::catalog::catalog();
+    let folded = c.device("iphone-duo-folded").unwrap();
+    assert_eq!(
+        folded.fold_model(Some(crate::model::Fold::Open)),
+        Some("iphone-duo")
+    );
+    assert_eq!(folded.fold_model(Some(crate::model::Fold::Folded)), None);
+    assert_eq!(folded.fold_model(None), None);
+    assert_eq!(
+        c.device("watch")
+            .unwrap()
+            .fold_model(Some(crate::model::Fold::Folded)),
+        None
+    );
+}
+
+#[test]
+fn wear_os_decorations_and_screenshot_only() {
+    let mut p = project(
+        PHONE_ON_PAGE_0,
+        "  store: {google: {image_type: wearScreenshots}}\n",
+    );
+    set(&mut p, "en", "title", "Hello");
+    set(&mut p, "de", "title", "Hallo");
+    p.targets[0].size = PixelSize::new(1024, 1024);
+    let r = run(&p);
+    let f = find(&r, FindingCode::StoreDecorations);
+    assert_eq!(f.level, Severity::Info);
+    assert!(f.message.contains("texts"), "{}", f.message);
+    assert!(f.message.contains("device frames"), "{}", f.message);
+    // Screenshot only: no decorations; page 2 has no device.
+    p.targets[0].screenshot_only = true;
+    let r = run(&p);
+    assert!(!has(&r, FindingCode::StoreDecorations), "{:#?}", r.findings);
+    assert!(!has(&r, FindingCode::TextMissing));
+    assert_eq!(
+        find(&r, FindingCode::ScreenshotOnlyEmpty).level,
+        Severity::Warn
+    );
+}

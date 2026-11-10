@@ -336,6 +336,15 @@ impl Walker<'_, '_> {
                 );
             }
         }
+        // Foldables: `fold` picks the model of that state (after the map,
+        // so a mapped foldable folds too).
+        if let Some(other) = catalog
+            .device(&model)
+            .and_then(|dev| dev.fold_model(p.fold))
+            .filter(|o| catalog.device(o).is_some())
+        {
+            other.clone_into(&mut model);
+        }
         let Some(device) = catalog.device(&model) else {
             d.warn(
                 DiagnosticCode::UnknownDevice,
@@ -768,6 +777,79 @@ impl Walker<'_, '_> {
             Vec2::new(w, h),
         )
     }
+}
+
+/// `screenshot_only` targets: per page, the largest device homed on it
+/// becomes a bare screenshot filling the page (catalog model `none`, square
+/// corners, no shadow, rotation or group transform); everything else is
+/// dropped. Pages without a device stay empty (warning). Diagnostics of
+/// dropped elements are removed.
+pub(super) fn screenshot_only(
+    elements: &[ResolvedElement],
+    layout: &CanvasLayout,
+    count: u32,
+    catalog: &crate::catalog::Catalog,
+    d: &mut Diags,
+) -> Vec<ResolvedElement> {
+    let Some(bare) = catalog.device("none") else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for page in 0..count {
+        let main = elements
+            .iter()
+            .filter(|e| e.page == page && matches!(e.props, ResolvedKind::Device(_)))
+            .fold(None::<&ResolvedElement>, |best, e| match best {
+                Some(b) if b.size.x * b.size.y >= e.size.x * e.size.y => Some(b),
+                _ => Some(e),
+            });
+        let Some(e) = main else {
+            d.element = None;
+            d.warn(
+                DiagnosticCode::ScreenshotOnlyEmpty,
+                format!(
+                    "page {} has no device: its screenshot-only image stays empty",
+                    page + 1
+                ),
+            );
+            continue;
+        };
+        let ResolvedKind::Device(dev) = &e.props else {
+            continue;
+        };
+        let rect = layout.page_rect(i64::from(page));
+        let mut device = bare.with_display_aspect(rect.w / rect.h);
+        device.body.radius = 0.0;
+        device.display.radius = 0.0;
+        let mut dev = (**dev).clone();
+        dev.mapped_from = Some(dev.model.clone());
+        dev.model.clone_from(&device.id);
+        dev.orientation = device.natural;
+        dev.device = device;
+        dev.frame = FrameStyle::Stylized;
+        dev.free_aspect = true;
+        dev.imported = None;
+        dev.chrome = None;
+        dev.shadow = Vec::new();
+        dev.content_scale = 1.0;
+        out.push(ResolvedElement {
+            id: e.id.clone(),
+            groups: Vec::new(),
+            page,
+            z: 0,
+            center: rect.center(),
+            size: Vec2::new(rect.w, rect.h),
+            rotation: 0.0,
+            pivot: Vec2::ZERO,
+            opacity: 1.0,
+            clip: Some(rect),
+            props: ResolvedKind::Device(Box::new(dev)),
+        });
+    }
+    let kept: Vec<ElementId> = out.iter().map(|e| e.id.clone()).collect();
+    d.items
+        .retain(|x| x.element.as_ref().is_none_or(|id| kept.contains(id)));
+    out
 }
 
 fn scale_shadow(l: ResolvedShadowLayer, k: f64) -> ResolvedShadowLayer {

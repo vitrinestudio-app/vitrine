@@ -6,7 +6,9 @@ use std::fmt::Debug;
 
 use arrangia_core::catalog;
 use arrangia_core::layout::FontLibrary;
-use arrangia_core::model::{Orientation, PixelSize, StoreSlot, TargetKind};
+use arrangia_core::model::{
+    BannerFit, Fold, Orientation, PixelSize, Region, SafeArea, StoreSlot, TargetKind,
+};
 use serde::Serialize;
 
 use super::{AppState, NoArgs};
@@ -57,6 +59,16 @@ pub struct DeviceInfo {
     pub screenshot_variant: Option<String>,
     pub screenshot_sizes: Vec<PixelSize>,
     pub browser: bool,
+    /// Foldables: this model's fold state and the model of the other one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fold: Option<FoldInfo>,
+}
+
+/// Fold link of a foldable model (`fold:` in `devices.yaml`).
+#[derive(Debug, Clone, Serialize)]
+pub struct FoldInfo {
+    pub state: Fold,
+    pub other: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -80,6 +92,14 @@ pub struct TargetPresetInfo {
     pub screenshots: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub requirement: Option<String>,
+    /// New targets export the bare screenshots (watch, Wear OS).
+    pub screenshot_only: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub safe_area: Option<SafeArea>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub region: Option<Region>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fit: Option<BannerFit>,
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
@@ -138,6 +158,10 @@ pub fn catalog_devices(_: &AppState, _: NoArgs) -> CmdResult<Vec<DeviceInfo>> {
             screenshot_variant: d.screenshot.variant.clone(),
             screenshot_sizes: d.screenshot.sizes.clone(),
             browser: d.browser,
+            fold: d.fold.as_ref().map(|f| FoldInfo {
+                state: f.state,
+                other: f.other.clone(),
+            }),
         })
         .collect())
 }
@@ -159,6 +183,10 @@ pub fn catalog_targets(_: &AppState, _: NoArgs) -> CmdResult<Vec<TargetPresetInf
             device: t.device.clone(),
             screenshots: t.screenshots.clone(),
             requirement: t.requirement.map(snake),
+            screenshot_only: t.screenshot_only,
+            safe_area: t.safe_area,
+            region: t.region,
+            fit: t.fit,
             status: snake(t.status),
             note: t.note.clone(),
         })

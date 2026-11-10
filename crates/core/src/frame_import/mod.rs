@@ -96,8 +96,12 @@ pub struct PlanItem {
 pub struct Unmatched {
     pub file: String,
     pub name: String,
-    /// The user chose to ignore it (user mapping `null`).
+    /// The user chose to ignore it (user mapping `null`), or a `skip`
+    /// rule of the source excludes it (`reason`).
     pub ignored: bool,
+    /// Why the source's rules skip it (`skip:` in the rule file).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 /// Result of [`plan`] / [`import`].
@@ -134,6 +138,7 @@ impl ImportPlan {
 
 /// Plans (`apply == false`) or performs the import of `package` into
 /// `store` with `rules` and the store's user mapping.
+#[allow(clippy::too_many_lines)]
 pub fn import(
     store: &FrameStore,
     package: &Package,
@@ -163,10 +168,22 @@ pub fn import(
                     file: e.path.clone(),
                     name,
                     ignored: true,
+                    reason: None,
                 });
                 continue;
             }
-            None => rules.match_file(&e.name),
+            None => {
+                if let Some(reason) = rules.skip_reason(&e.name) {
+                    unmatched.push(Unmatched {
+                        file: e.path.clone(),
+                        name,
+                        ignored: true,
+                        reason: Some(reason.to_owned()),
+                    });
+                    continue;
+                }
+                rules.match_file(&e.name)
+            }
         };
         match m {
             Some(m) => matched.push((e, name, m)),
@@ -174,6 +191,7 @@ pub fn import(
                 file: e.path.clone(),
                 name,
                 ignored: false,
+                reason: None,
             }),
         }
     }

@@ -100,6 +100,64 @@ pub struct Target {
     pub langs: Option<Vec<Lang>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub store: Option<StoreSlot>,
+    /// Pages targets: export each page's device screenshot alone (no
+    /// frame, background, texts or other elements), filling the image.
+    /// Watch and Wear OS targets default to it.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub screenshot_only: bool,
+    /// Area of each output image that key content (texts) should stay in,
+    /// insets in percent of the image width/height. Validation warns about
+    /// texts outside it; the canvas shows it as a dashed rectangle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub safe_area: Option<SafeArea>,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde passes references
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+
+/// Safe-area insets in percent of the output image's width (`left`,
+/// `right`) and height (`top`, `bottom`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(remote = "Self", deny_unknown_fields)]
+pub struct SafeArea {
+    #[serde(default, serialize_with = "num")]
+    pub top: f64,
+    #[serde(default, serialize_with = "num")]
+    pub right: f64,
+    #[serde(default, serialize_with = "num")]
+    pub bottom: f64,
+    #[serde(default, serialize_with = "num")]
+    pub left: f64,
+}
+flow_style!(SafeArea);
+
+impl SafeArea {
+    /// Check the insets (each `0..100`, opposite sides leave room).
+    pub fn check(&self) -> Result<(), String> {
+        let all = [self.top, self.right, self.bottom, self.left];
+        if all
+            .iter()
+            .any(|v| !(v.is_finite() && (0.0..100.0).contains(v)))
+        {
+            return Err("safe_area insets must be within 0..100 (%)".into());
+        }
+        if self.left + self.right >= 100.0 || self.top + self.bottom >= 100.0 {
+            return Err("safe_area insets leave no area".into());
+        }
+        Ok(())
+    }
+
+    /// The safe rectangle inside `image` (any unit).
+    pub fn inside(&self, image: crate::geometry::Rect) -> crate::geometry::Rect {
+        crate::geometry::Rect::new(
+            image.x + image.w * self.left / 100.0,
+            image.y + image.h * self.top / 100.0,
+            image.w * (1.0 - (self.left + self.right) / 100.0),
+            image.h * (1.0 - (self.top + self.bottom) / 100.0),
+        )
+    }
 }
 
 impl Target {
@@ -121,6 +179,8 @@ impl Target {
             quality: None,
             langs: None,
             store: None,
+            screenshot_only: false,
+            safe_area: None,
         }
     }
 
@@ -179,6 +239,14 @@ impl Target {
         }
         if let Some(g) = &self.gallery {
             g.check().map_err(|e| format!("target `{id}`: {e}"))?;
+        }
+        if let Some(a) = &self.safe_area {
+            a.check().map_err(|e| format!("target `{id}`: {e}"))?;
+        }
+        if self.screenshot_only && self.kind != TargetKind::Pages {
+            return Err(format!(
+                "target `{id}`: `screenshot_only` is only allowed on pages targets"
+            ));
         }
         Ok(())
     }
@@ -347,12 +415,31 @@ pub struct StoreSlot {
 }
 flow_style!(StoreSlot);
 
-/// App Store Connect screenshot set.
+/// App Store Connect screenshot set, or a creative asset placement.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AppleSlot {
-    /// `screenshotDisplayType`, e.g. `APP_IPHONE_67`.
+    /// `screenshotDisplayType`, e.g. `APP_IPHONE_67`; for creative assets
+    /// (`placement`) the App Asset Library placement type
+    /// (`PRODUCT_PAGE_HEADER_ASSET`, `APP_STORE_SEARCH_RESULTS_ASSET`).
     pub display_type: String,
+    /// Creative asset (product page header / search results, iOS 27+):
+    /// uploaded through the App Asset Library, one image per localization,
+    /// never into a screenshot set. `None` = screenshots.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placement: Option<CreativePlacement>,
+}
+
+/// Where an App Store creative asset is shown.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CreativePlacement {
+    /// Product page header (21:9).
+    Header,
+    /// Search results (3:2).
+    SearchResults,
+    /// One 16:9 asset used for both placements.
+    Universal,
 }
 
 /// Google Play image type.

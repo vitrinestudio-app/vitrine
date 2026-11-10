@@ -81,6 +81,13 @@ export function drawOverlay(svg, m) {
     out.push(rect(r, 'ov-gap'));
   }
 
+  // Safe area of each output image (targets with `safe_area`): dashed.
+  for (const img of o.images) {
+    if (!img.safe) continue;
+    const a = S({ x: img.safe.x, y: img.safe.y });
+    out.push(rect({ x: a.x, y: a.y, w: img.safe.w * m.zoom, h: img.safe.h * m.zoom }, 'ov-safe'));
+  }
+
   // Column dividers inside grouped images.
   for (const img of o.images) {
     if (img.pages.length < 2) continue;

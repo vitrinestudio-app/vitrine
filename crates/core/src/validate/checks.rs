@@ -87,8 +87,10 @@ fn slot_presets<'c>(s: &Scope<'c>) -> Vec<&'c TargetPreset> {
 /// anchor deviation.
 pub(super) fn frame_checks(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
     store_checks(s, &scene.frame, ctx, out);
+    decoration_checks(s, scene, ctx, out);
     let layout = &scene.frame.layout;
-    if s.target.kind == TargetKind::Pages && s.target.variant.is_none() {
+    if s.target.kind == TargetKind::Pages && s.target.variant.is_none() && !s.target.screenshot_only
+    {
         let dev = layout.page_height / layout.reference_page_height - 1.0;
         if dev.abs() > s.options.thresholds.variant_aspect {
             out.push(ctx.finding(
@@ -217,6 +219,54 @@ fn store_checks(s: &Scope<'_>, frame: &Frame, ctx: &Ctx, out: &mut Sink) {
     // JPEG), so `alpha: false` rules are met by construction.
 }
 
+/// Stores that want the bare app UI (`decorations: false`, Wear OS):
+/// report frames, texts, backgrounds and graphics of targets that are not
+/// `screenshot_only` (info: the user may know better).
+fn decoration_checks(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
+    if s.target.screenshot_only {
+        return;
+    }
+    let catalog = s.options.catalog;
+    let Some(rules) = slot_presets(s)
+        .iter()
+        .find_map(|p| p.rules.as_deref())
+        .and_then(|r| catalog.store_rules(r))
+        .filter(|r| !r.decorations)
+    else {
+        return;
+    };
+    let mut found = BTreeSet::new();
+    if !scene.backgrounds.is_empty() {
+        found.insert("backgrounds");
+    }
+    for e in &scene.elements {
+        match &e.props {
+            ResolvedKind::Background { .. } => found.insert("backgrounds"),
+            ResolvedKind::Text(_) => found.insert("texts"),
+            ResolvedKind::Device(d) if d.device.class != DeviceClass::None => {
+                found.insert("device frames")
+            }
+            ResolvedKind::Device(_) => false,
+            ResolvedKind::Image(_) | ResolvedKind::Shape(_) => found.insert("graphics"),
+        };
+    }
+    if found.is_empty() {
+        return;
+    }
+    out.push(ctx.finding(
+        Severity::Info,
+        C::StoreDecorations,
+        false,
+        None,
+        None,
+        format!(
+            "{} wants the app interface only, without {}; switch on `screenshot_only` to export the bare screenshots",
+            rules.label,
+            found.into_iter().collect::<Vec<_>>().join(", ")
+        ),
+    ));
+}
+
 fn px(s: PixelSize) -> String {
     format!("{}x{}", s.w, s.h)
 }
@@ -297,6 +347,7 @@ fn resolve_diagnostics(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mu
             D::ImportedFrameMissing => (C::ImportedFrameMissing, Severity::Info, false),
             D::ImportedBezelFallback => (C::ImportedBezelFallback, Severity::Info, false),
             D::ImportedColorFallback => (C::ImportedColorFallback, Severity::Info, false),
+            D::ScreenshotOnlyEmpty => (C::ScreenshotOnlyEmpty, Severity::Warn, false),
         };
         let page = d.element.as_ref().and_then(|id| s.page_of(id));
         out.push(ctx.finding(
@@ -432,6 +483,24 @@ fn text_checks(
                 g.right()
             ),
         );
+    }
+    if let (Some(area), Some(v)) = (s.target.safe_area, visible) {
+        for img in &scene.frame.images {
+            let Some(part) = intersection(&v, &img.source) else {
+                continue;
+            };
+            if !inside(&part, &area.inside(img.source)) {
+                push(
+                    Severity::Warn,
+                    C::TextOutsideSafeArea,
+                    format!(
+                        "text `{key}` lies outside the safe area of image {} (keep key content inside it)",
+                        img.index + 1
+                    ),
+                );
+                break;
+            }
+        }
     }
     Some(bounds)
 }

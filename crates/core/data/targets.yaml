@@ -19,12 +19,26 @@
 #     max_ratio        long side / short side must be <= this
 #     aspects          allowed aspect ratios (either orientation listed explicitly)
 #     max_file_size    bytes, null = not documented
+#     decorations      false = only the bare app UI is allowed: no device
+#                      frames, texts, backgrounds (Wear OS); default true
 #   presets     one entry per screenshot set / banner format
 #     id, label, store (apple | google | none), platform (ios | ipados | macos |
-#     android | chromeos | web), kind (pages | banner; default pages)
+#     watchos | android | chromeos | wearos | web), kind (pages | banner;
+#     default pages)
 #     sizes        {portrait: [[w, h] …], landscape: [[w, h] …]}; first = default
 #     slot         store slot as in project targets: {apple: {display_type}} /
-#                  {google: {image_type}}; absent = no API upload slot
+#                  {google: {image_type}}; absent = no API upload slot.
+#                  App Store creative assets (header / search results) add
+#                  `placement: header | search_results | universal`; their
+#                  display_type is the App Asset Library placement type
+#                  (uploaded only through the asset library, ADR 0018)
+#     screenshot_only  new targets export each page's screenshot alone
+#                  (no frame, background or text; watch / Wear OS)
+#     safe_area    {top, right, bottom, left} insets in % of the image;
+#                  absent = not published (validation then has nothing to
+#                  check; set it on the project target once measured)
+#     region, fit  banner presets: default region of the strip and fit
+#                  (page ranges are clamped to the strip)
 #     gallery      default gallery profile (galleries.yaml)
 #     device       default device model (devices.yaml); screenshots = default
 #                  screenshot variant key
@@ -74,6 +88,40 @@ sources:
   OG:
     url: https://ogp.me/
     kind: convention
+  AC1:
+    url: https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications
+    kind: primary
+    note: >-
+      Creative assets (product page header, search results, universal),
+      checked 2026-11-10: header 21:9 3840x1646 exact (jpeg/png); search
+      results 3:2 from 1920x1280 to 3840x2560 (jpeg/png); universal 16:9
+      5244x2950 (png only); no alpha. iOS/iPadOS 27 and later.
+  AC2:
+    url: https://developer.apple.com/app-store/asset-best-practices/
+    kind: primary
+    note: >-
+      Safe area "defined in each template" (Figma/Photoshop/Pixelmator/
+      Sketch); no numbers published (2026-11-10).
+  AAL:
+    url: https://developer.apple.com/documentation/appstoreconnectapi/understanding-the-app-asset-library
+    kind: primary
+    note: >-
+      App Asset Library (ASC API 4.5/4.5.1): placement types
+      PRODUCT_PAGE_HEADER_ASSET and APP_STORE_SEARCH_RESULTS_ASSET, display
+      classes IPHONE_DUO and WATCH_*; checked 2026-11-10.
+  DUO:
+    url: https://developer.apple.com/news/?id=kkphp5qo
+    kind: primary
+    note: >-
+      iPhone Duo news (2026-10-05): uploads open in App Store Connect;
+      screenshots required from April 2027 (A1: for apps built with the iOS
+      27.1 SDK or later).
+  WF1:
+    url: https://developer.apple.com/forums/thread/815829
+    kind: forum
+    note: >-
+      Watch screenshots are plain screen captures; the store applies its
+      own watch mask (no official framing rule).
 
 # Store API slot values. Apple: complete `ScreenshotDisplayType` enum (A2,
 # fetched 2026-11-09; no descriptions, no Duo value). Google: `AppImageType`
@@ -90,6 +138,9 @@ store_slots:
     IMESSAGE_APP_IPHONE_55, IMESSAGE_APP_IPHONE_47, IMESSAGE_APP_IPHONE_40,
     IMESSAGE_APP_IPAD_PRO_3GEN_129, IMESSAGE_APP_IPAD_PRO_3GEN_11, IMESSAGE_APP_IPAD_PRO_129,
     IMESSAGE_APP_IPAD_105, IMESSAGE_APP_IPAD_97,
+    # App Asset Library placement types of creative assets (AAL), used with
+    # `placement:`; not ScreenshotDisplayType values.
+    PRODUCT_PAGE_HEADER_ASSET, APP_STORE_SEARCH_RESULTS_ASSET,
   ]
   google: [
     phoneScreenshots, sevenInchScreenshots, tenInchScreenshots, tvScreenshots,
@@ -162,6 +213,69 @@ rules:
       avoid pure white/black/dark grey backgrounds. File size limit not
       stated on G1 (API transport limit 15 MB, G3).
     sources: [G1, G3]
+
+  apple-creative-header:
+    label: App Store product page header
+    store: apple
+    count: {min: 1, max: 1}
+    formats: [png, jpeg]
+    alpha: false
+    sizes: exact
+    max_file_size: null
+    note: >-
+      Optional creative asset, one per placement and localization (per App
+      Store version, custom product page, PPO treatment). Shown on iOS 27 /
+      iPadOS 27 and later. No prices, URLs, (c), awards or other platforms;
+      suitable for 4+. Safe area only in Apple's templates (AC2).
+    sources: [AC1, AC2, AAL]
+
+  apple-creative-search:
+    label: App Store search results asset
+    store: apple
+    count: {min: 1, max: 1}
+    formats: [png, jpeg]
+    alpha: false
+    sizes: range
+    min_side: 1280
+    max_side: 3840
+    aspects: ["3:2"]
+    max_file_size: null
+    note: >-
+      Optional creative asset, 3:2 between 1920x1280 and 3840x2560, one per
+      localization; replaces the first screenshots in search results (iOS
+      27+). Rules as for the header (AC2).
+    sources: [AC1, AC2, AAL]
+
+  apple-creative-universal:
+    label: App Store universal creative asset
+    store: apple
+    count: {min: 1, max: 1}
+    formats: [png]
+    alpha: false
+    sizes: exact
+    max_file_size: null
+    note: >-
+      One 16:9 PNG (5244x2950) serving both the header and the search
+      results placement ("Use header asset in search results"); PNG only.
+    sources: [AC1, AC2, AAL]
+
+  google-wear:
+    label: Google Play Wear OS screenshots
+    store: google
+    count: {min: 1, max: 8}
+    formats: [png, jpeg]
+    alpha: false
+    sizes: range
+    min_side: 384
+    max_side: 3840
+    aspects: ["1:1"]
+    max_file_size: 8388608
+    decorations: false
+    note: >-
+      1:1, at least 384x384, the app interface only: no device frames, extra
+      text, graphics or backgrounds, no transparency or masking; current
+      Wear OS version. 8 MB as for the other Play screenshots.
+    sources: [G1, G2]
 
 presets:
   # ---------------------------------------------------------------- Apple iPhone
@@ -288,19 +402,21 @@ presets:
       landscape: [[2034, 1398]]
     slot: {apple: {display_type: APP_IPHONE_DUO}}
     gallery: appstore-iphone
+    device: iphone-duo-folded
     screenshots: ios-phone-duo-outer
     rules: apple-screenshots
     requirement: optional
     status: unverified
     note: >-
       Sizes from A1 (added Sep 2026); required from April 2027 for apps built
-      with the iOS 27.1 SDK or later. API type UNVERIFIED: APP_IPHONE_DUO is
-      not in Apple's enum (A2, 2026-11-09); only fastlane (F3) claims it works
-      for both inner and outer sizes, and the name may change. ASC
-      (2026-11-09) has it only behind a feature flag (display class
-      IPHONE_DUO, screenshot group IPHONE_DUO_PROFILE) and exposes no sizes.
-      No device model yet (no `device`).
-    sources: [A1, A2, ASC, F3, AF1]
+      with the iOS 27.1 SDK or later (A1; the DUO news says all new
+      submissions). Upload ONLY through the App Asset Library (display class
+      IPHONE_DUO, AAL): APP_IPHONE_DUO is not in the ScreenshotDisplayType
+      enum (A2, re-checked 2026-11-10), so the set-based upload cannot send
+      it; the slot value is our stand-in for the asset-library mapping.
+      Whether outer and inner are separate placement groups is not
+      documented (read it from the asset library ref data).
+    sources: [A1, A2, ASC, F3, AF1, AAL, DUO]
 
   - id: ios-iphone-duo-inner
     label: iPhone Duo (inner display)
@@ -311,12 +427,16 @@ presets:
       landscape: [[2853, 2007]]
     slot: {apple: {display_type: APP_IPHONE_DUO}}
     gallery: appstore-iphone
+    device: iphone-duo
     screenshots: ios-phone-duo-inner
     rules: apple-screenshots
     requirement: optional
     status: unverified
-    note: See ios-iphone-duo-outer (API type unverified, same slot for both).
-    sources: [A1, A2, F3, AF1]
+    note: >-
+      951x669 pt @3x, larger than the native 1878x2670 panel with the same
+      aspect. See ios-iphone-duo-outer (asset library only, display class
+      IPHONE_DUO, same slot for both).
+    sources: [A1, A2, F3, AF1, AAL, DUO]
 
   # ------------------------------------------------------------------ Apple iPad
   - id: ios-ipad-13
@@ -412,6 +532,166 @@ presets:
     note: Required for Mac apps; any one of the four 16:10 sizes (landscape only, ASC).
     sources: [A1, A2, ASC]
 
+  # ----------------------------------------------------------------- Apple Watch
+  # Watch screenshots are plain screen captures at the exact size (one size
+  # for all localizations, A1); the store draws its own watch mask (WF1), so
+  # the presets export `screenshot_only` (no frame, background or text).
+  - id: watch-ultra
+    label: Apple Watch Ultra
+    store: apple
+    platform: watchos
+    sizes:
+      portrait: [[422, 514], [410, 502]]
+    slot: {apple: {display_type: APP_WATCH_ULTRA}}
+    gallery: none
+    device: watch-ultra
+    screenshots: watch
+    rules: apple-screenshots
+    screenshot_only: true
+    requirement: conditional
+    status: verified
+    note: >-
+      Required for Apple Watch apps: ONE watch size (any of the watch
+      presets), the same for all localizations. 422x514 = Ultra 3/4,
+      410x502 = Ultra / Ultra 2 (both APP_WATCH_ULTRA).
+    sources: [A1, A2, AAL, WF1]
+
+  - id: watch-series
+    label: Apple Watch Series 10 and later
+    store: apple
+    platform: watchos
+    sizes:
+      portrait: [[416, 496]]
+    slot: {apple: {display_type: APP_WATCH_SERIES_10}}
+    gallery: none
+    device: watch
+    screenshots: watch
+    rules: apple-screenshots
+    screenshot_only: true
+    requirement: conditional
+    status: verified
+    note: Series 10, 11, 12 (A1). See watch-ultra (one watch size is enough).
+    sources: [A1, A2, AAL, WF1]
+
+  - id: watch-series-7
+    label: Apple Watch Series 7 – 9
+    store: apple
+    platform: watchos
+    sizes:
+      portrait: [[396, 484]]
+    slot: {apple: {display_type: APP_WATCH_SERIES_7}}
+    gallery: none
+    device: watch-ultra
+    screenshots: watch
+    rules: apple-screenshots
+    screenshot_only: true
+    requirement: optional
+    status: verified
+    note: >-
+      Series 7, 8, 9. The display aspect (0.818) is closer to the Ultra
+      model than to `watch` (0.839), hence `device: watch-ultra`.
+    sources: [A1, A2, AAL]
+
+  - id: watch-series-4
+    label: Apple Watch Series 4 – 6, SE
+    store: apple
+    platform: watchos
+    sizes:
+      portrait: [[368, 448]]
+    slot: {apple: {display_type: APP_WATCH_SERIES_4}}
+    gallery: none
+    device: watch-ultra
+    screenshots: watch
+    rules: apple-screenshots
+    screenshot_only: true
+    requirement: optional
+    status: verified
+    note: Series 4, 5, 6, SE (all generations).
+    sources: [A1, A2, AAL]
+
+  - id: watch-series-3
+    label: Apple Watch Series 1 – 3
+    store: apple
+    platform: watchos
+    sizes:
+      portrait: [[312, 390]]
+    slot: {apple: {display_type: APP_WATCH_SERIES_3}}
+    gallery: none
+    device: watch
+    screenshots: watch
+    rules: apple-screenshots
+    screenshot_only: true
+    requirement: optional
+    status: verified
+    note: Legacy (Series 1 – 3), aspect 0.8.
+    sources: [A1, A2, AAL]
+
+  # ------------------------------------------------------- App Store creative assets
+  # Product page header and search results assets (iOS / iPadOS 27+):
+  # optional, one image per localization, rendered from a region of a strip
+  # like any banner. Upload only through the App Asset Library (AAL).
+  # Safe area: NOT PUBLISHED as numbers; Apple defines it only in its design
+  # templates (AC2). `safe_area` stays unset until measured from the
+  # templates; set it on the project target to get the overlay and the
+  # `text_outside_safe_area` warning.
+  - id: ios-header
+    label: App Store product page header (21:9)
+    store: apple
+    platform: ios
+    kind: banner
+    sizes:
+      landscape: [[3840, 1646]]
+    slot: {apple: {display_type: PRODUCT_PAGE_HEADER_ASSET, placement: header}}
+    gallery: none
+    rules: apple-creative-header
+    fit: cover
+    requirement: optional
+    status: verified
+    note: >-
+      Whole strip by default (cover, centred, top kept); pick a page range or
+      a free rectangle as the region. Safe area not published (see above).
+    sources: [AC1, AC2, AAL]
+
+  - id: ios-search-results
+    label: App Store search results asset (3:2)
+    store: apple
+    platform: ios
+    kind: banner
+    sizes:
+      landscape: [[3840, 2560], [2880, 1920], [1920, 1280]]
+    slot: {apple: {display_type: APP_STORE_SEARCH_RESULTS_ASSET, placement: search_results}}
+    gallery: none
+    rules: apple-creative-search
+    region: {pages: [0, 2]}
+    fit: cover
+    requirement: optional
+    status: verified
+    note: >-
+      Any 3:2 size from 1920x1280 to 3840x2560. Default region: the first
+      three pages (three portrait pages are about 3:2, like the three
+      screenshots search shows without it).
+    sources: [AC1, AC2, AAL]
+
+  - id: ios-creative-universal
+    label: App Store universal creative asset (16:9)
+    store: apple
+    platform: ios
+    kind: banner
+    sizes:
+      landscape: [[5244, 2950]]
+    slot: {apple: {display_type: PRODUCT_PAGE_HEADER_ASSET, placement: universal}}
+    gallery: none
+    rules: apple-creative-universal
+    region: {pages: [0, 3]}
+    fit: cover
+    requirement: optional
+    status: verified
+    note: >-
+      One PNG for both placements (header and search results; the asset
+      library creates one placement per type). Default region: the first
+      four pages (about 16:9 for portrait pages).
+    sources: [AC1, AC2, AAL]
+
   # ----------------------------------------------------------------- Google Play
   - id: play-phone
     label: Google Play phone (9:16)
@@ -494,6 +774,25 @@ presets:
     requirement: optional
     status: verified
     note: No Android Publisher API image type (G2); upload in the Play Console only.
+    sources: [G1, G2]
+
+  - id: play-wear
+    label: Google Play Wear OS (1:1)
+    store: google
+    platform: wearos
+    sizes:
+      portrait: [[1024, 1024], [384, 384]]
+    slot: {google: {image_type: wearScreenshots}}
+    gallery: none
+    screenshots: wear
+    rules: google-wear
+    screenshot_only: true
+    requirement: conditional
+    status: verified
+    note: >-
+      Required for Wear OS apps. App UI only (G1): exported
+      `screenshot_only`; validation reports frames, texts or backgrounds if
+      that is switched off. Any square size from 384 to 3840 px.
     sources: [G1, G2]
 
   - id: play-feature-graphic

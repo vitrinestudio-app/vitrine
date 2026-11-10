@@ -34,7 +34,8 @@ failed: …`.
 
 Element kinds and their fields:
 - device: `model` (catalog_devices), `screenshot` (key), `width` (height
-  follows), `orientation`, `color`, `frame`, `fit`, `shadow`, `chrome`, `url`
+  follows), `orientation`, `color`, `frame`, `fit`, `shadow`, `chrome`, `url`,
+  `fold` (open|folded, foldables such as `iphone-duo`)
 - text: `text` (translation key), `style`, `box: {top, left, right, bottom}`
   (margins to the page) or `at` + `width` (+ `height`) for a free box,
   `align`, `valign`, `fit: {shrink_to, max_lines}`, `font_size`, `color`,

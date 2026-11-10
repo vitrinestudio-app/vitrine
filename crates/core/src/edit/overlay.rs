@@ -48,6 +48,9 @@ pub struct OverlayImage {
     pub pages: Vec<u32>,
     /// Canvas rect covered by the image.
     pub rect: Rect,
+    /// The target's safe area inside `rect` (dashed in the editor).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub safe: Option<Rect>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -313,6 +316,7 @@ impl Editor<'_> {
                     index: i.index,
                     pages: i.pages.clone(),
                     rect: i.source,
+                    safe: self.target.safe_area.map(|a| a.inside(i.source)),
                 })
                 .collect(),
             elements,

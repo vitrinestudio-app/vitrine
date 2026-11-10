@@ -185,7 +185,12 @@ fn print_plan(plan: &ImportPlan, root: &Path, global: &Global) {
     }
     for u in &plan.unmatched {
         let tag = if u.ignored { "ignored " } else { "unknown " };
-        println!("{} {}", st.dim(tag), u.file);
+        let why = u
+            .reason
+            .as_deref()
+            .map(|r| format!("  ({r})"))
+            .unwrap_or_default();
+        println!("{} {}{}", st.dim(tag), u.file, st.dim(&why));
     }
     let n = plan.installs().count();
     let verb = if plan.applied {

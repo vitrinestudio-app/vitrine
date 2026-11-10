@@ -15,9 +15,9 @@ mod targets;
 use std::sync::LazyLock;
 
 pub use devices::{
-    BrowserChrome, BrowserTheme, Button, ColorVariant, Cutout, CutoutKind, CutoutShape, Device,
-    DeviceClass, DevicesFile, Edge, Laptop, LaptopBase, MIN_CHROME_SCALE, Rect, Screenshot, Size,
-    Stand, StandFoot,
+    BrowserChrome, BrowserTheme, Button, ButtonStyle, ColorVariant, Cutout, CutoutKind,
+    CutoutShape, Device, DeviceClass, DevicesFile, Edge, FoldLink, Hinge, HingeAt, Laptop,
+    LaptopBase, MIN_CHROME_SCALE, Rect, Screenshot, Size, Stand, StandFoot,
 };
 pub use galleries::{Basis, CornerRadius, GalleriesFile, GalleryProfile, Measured};
 pub use store_locales::{LocaleSource, StoreLocale, StoreLocales, StoreLocalesFile, store_locales};
@@ -253,6 +253,96 @@ mod tests {
         let apple = target_preset("ios-iphone-69").unwrap();
         assert!(apple.has_size(PixelSize::new(2868, 1320)));
         assert!(!apple.has_size(PixelSize::new(1284, 2778)));
+    }
+
+    #[test]
+    fn creative_watch_and_foldable_entries() {
+        use crate::model::{CreativePlacement, Fold, PixelSize, TargetKind};
+        let placement = |id: &str| {
+            let p = target_preset(id).unwrap();
+            assert_eq!(p.kind, TargetKind::Banner, "{id}");
+            p.slot.as_ref().unwrap().apple.as_ref().unwrap().placement
+        };
+        assert_eq!(placement("ios-header"), Some(CreativePlacement::Header));
+        assert_eq!(
+            placement("ios-search-results"),
+            Some(CreativePlacement::SearchResults)
+        );
+        assert_eq!(
+            placement("ios-creative-universal"),
+            Some(CreativePlacement::Universal)
+        );
+        let header = target_preset("ios-header").unwrap();
+        assert_eq!(header.default_size(), Some(PixelSize::new(3840, 1646)));
+        assert!(header.safe_area.is_none(), "not published by Apple");
+        // Search results: any 3:2 size within 1920x1280..3840x2560.
+        let search = store_rules("apple-creative-search").unwrap();
+        assert_eq!(
+            search.check_size(PixelSize::new(2400, 1600)),
+            Vec::<String>::new()
+        );
+        assert_ne!(
+            search.check_size(PixelSize::new(1500, 1000)),
+            Vec::<String>::new()
+        );
+        assert_ne!(
+            search.check_size(PixelSize::new(3840, 2160)),
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            store_rules("apple-creative-universal").unwrap().formats,
+            [crate::model::ImageFormat::Png]
+        );
+        // Watches and Wear OS export bare screenshots.
+        for id in [
+            "watch-ultra",
+            "watch-series",
+            "watch-series-7",
+            "watch-series-4",
+            "watch-series-3",
+            "play-wear",
+        ] {
+            assert!(target_preset(id).unwrap().screenshot_only, "{id}");
+        }
+        assert!(!store_rules("google-wear").unwrap().decorations);
+        assert_eq!(
+            target_preset("play-wear").unwrap().default_size(),
+            Some(PixelSize::new(1024, 1024))
+        );
+        // Foldable: two linked models, open = landscape natural.
+        let open = device("iphone-duo").unwrap();
+        let folded = device("iphone-duo-folded").unwrap();
+        assert_eq!(
+            open.fold_model(Some(Fold::Folded)),
+            Some("iphone-duo-folded")
+        );
+        assert_eq!(folded.fold_model(Some(Fold::Open)), Some("iphone-duo"));
+        assert!(open.matches_screenshot(PixelSize::new(2007, 2853)));
+        assert!(open.matches_screenshot(PixelSize::new(2853, 2007)));
+        assert!(folded.matches_screenshot(PixelSize::new(1398, 2034)));
+        assert_eq!(device("watch").unwrap().class, DeviceClass::Watch);
+        assert!(
+            device("watch-ultra")
+                .unwrap()
+                .matches_screenshot(PixelSize::new(410, 502))
+        );
+    }
+
+    #[test]
+    fn check_reports_broken_fold_links() {
+        let mut c = catalog().clone();
+        let d = c
+            .devices
+            .devices
+            .iter_mut()
+            .find(|d| d.id == "iphone-duo-folded")
+            .unwrap();
+        d.fold.as_mut().unwrap().other = "watch".into();
+        let errors = c.check();
+        assert!(
+            errors.iter().any(|e| e.contains("must link back")),
+            "{errors:#?}"
+        );
     }
 
     #[test]

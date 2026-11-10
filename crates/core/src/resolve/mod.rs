@@ -161,6 +161,19 @@ pub fn resolve(
         },
         &mut d,
     );
+    let (backgrounds, elements) =
+        if target.screenshot_only && target.kind == crate::model::TargetKind::Pages {
+            let only = elements::screenshot_only(
+                &elements,
+                &frame.layout,
+                strip.page.count,
+                options.catalog,
+                &mut d,
+            );
+            (Vec::new(), only)
+        } else {
+            (backgrounds, elements)
+        };
     Ok(ResolvedScene {
         target: target.id.clone(),
         strip: strip.id.clone(),

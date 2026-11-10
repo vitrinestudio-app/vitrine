@@ -9,7 +9,7 @@
 # the bezels from https://developer.apple.com/design/resources/ and imports
 # the DMG / ZIP / folder; the files go to the app data folder only.
 #
-# STATUS: the iPhone 15+ rules are verified with a real package
+# STATUS: the iPhone 15+, iPhone Duo and Watch Ultra rules are verified with real packages
 # (Bezel-iPhone-18.dmg, 2026-11-10, rules marked `verified:`): PNGs named
 # `iPhone 18 Pro Max - <Colour> - <Portrait|Landscape>.png` and
 # `iPhone 18 Pro - <Colour> - <Portrait|Landscape>.png`, colours Black,
@@ -56,6 +56,8 @@
 #                    files of one vendor model (default 0)
 #     verified       date the rule was checked against a real package
 #     note           free text
+#   skip             {pattern, reason}: files that are deliberately not
+#                    imported (tried before the rules, shown as ignored)
 #   The vendor model (`iPhone 18 Pro`) is the file name before the colour;
 #   projects may pin it with `bezel: iPhone 18 Pro`.
 
@@ -70,6 +72,11 @@ verified: false
 color_aliases:
   "(PRODUCT)RED": product-red
   "Space Grey": space-gray
+
+# Files that are not a frame for one screen (listed as ignored).
+skip:
+  - pattern: "iPhone Duo - {color} - Outer Open"
+    reason: marketing composite (back and outer display, open flat), no single-screen target
 
 rules:
   # ---- iPhone with notch (iPhone X … 13, 14 / 14 Plus, 16e)
@@ -103,9 +110,37 @@ rules:
   - pattern: "iPhone Air{*} - {color} - {orientation}"
     model: iphone-island
     priority: 15
-  - pattern: "iPhone Duo{*} - {color} - {orientation}"
-    model: iphone-island
-    priority: 5
+  # ---- iPhone Duo (book-style foldable; Bezel-iPhone-Duo.dmg, user's
+  # package 2026-11-10): `iPhone Duo - <Night Sky|Star White> - <View>.png`,
+  # views `Inner Open Portrait|Landscape` (2247×3093, screen ≈ 2007×2853),
+  # `Outer Closed Portrait|Landscape` (1574×2194, screen ≈ 1398×2034) and
+  # `Outer Open` (skipped, see `skip`). Partially open views are PSD only.
+  - pattern: "iPhone Duo - {color} - Inner Open {orientation}"
+    model: iphone-duo
+    priority: 10
+    verified: 2026-11-10
+    note: inner display, open (slot ios-iphone-duo-inner)
+  - pattern: "iPhone Duo - {color} - Outer Closed {orientation}"
+    model: iphone-duo-folded
+    priority: 10
+    verified: 2026-11-10
+    note: outer display, closed (slot ios-iphone-duo-outer)
+  # ---- Apple Watch (Bezel-Apple-Watch-Ultra-4-2026.dmg, user's package
+  # 2026-11-10): `AW Ultra 4 - <Case> + <Band>.png`, all 620×940 (case with
+  # band, portrait only, no orientation in the name), cases Black / Natural.
+  # The band is part of the colour key (`natural-trail-loop-sand`) so all
+  # case × band combinations are installed side by side.
+  - pattern: "AW Ultra{*} - {color}"
+    model: watch-ultra
+    orientation: portrait
+    priority: 10
+    verified: 2026-11-10
+    note: colour = case + band; screenshot 422×514 (slot watch-ultra)
+  - pattern: "AW Series{*} - {color}"
+    model: watch
+    orientation: portrait
+    priority: 10
+    note: guessed from the Ultra package (`AW Series <n> - <Case> + <Band>`), unverified
   # ---- iPhone with home button
   - pattern: "iPhone SE{*} - {color} - {orientation}"
     model: iphone-home

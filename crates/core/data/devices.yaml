@@ -20,9 +20,18 @@
 #                screenshot, inside the display) or home_button | camera |
 #                speaker (in the bezel, outside the display);
 #                shape: pill | circle | notch | rect; {x, y, w, h, radius}
-#   buttons      {name, edge: left|right|top|bottom, at, length, depth}:
-#                `at` = start along the edge from the top/left body corner,
-#                `depth` = how far the button sticks out of the body
+#   buttons      {name, edge: left|right|top|bottom, at, length, depth,
+#                style}: `at` = start along the edge from the top/left body
+#                corner, `depth` = how far the button sticks out of the body;
+#                style plain (default) | crown (watch crown, ribbed
+#                cylinder) | guard (raised part of the housing, body colour)
+#   hinge        foldables: {at: center|left, w}; center = vertical hinge
+#                through the body (crease line on the display, seams in the
+#                bezel), left = spine along the left edge (closed)
+#   fold         foldables: {state: open|folded, other: <model id>}: the
+#                model of the other fold state (`fold:` on a device element
+#                switches to it; both entries link to each other and share
+#                the colours)
 #   laptop       hinge {w, h} centred below the lid, base {w, h, radius,
 #                lip {w, h}} centred below the hinge (front view)
 #   stand        desktop stand: neck {w, h} centred below the body, foot
@@ -169,6 +178,107 @@ devices:
       # 20:9 raw screenshots exceed Play's 2:1 limit, so no Play preset
       # matches directly; the frame is placed on a 9:16 or 1:2 page.
       targets: []
+
+  # Book-style foldable (two models, one per fold state). Proportions from
+  # the public spec sheet (open 164.6 x 117.8 mm, closed 84.1 x 117.8 mm;
+  # inner 7.6" 2670 x 1878 px, outer 5.4" 1398 x 2034 px); bezels, radii,
+  # hinge and buttons estimated. Camera: the outer display has a small
+  # punch hole in the top right corner (APPROXIMATED, position not
+  # published); the inner camera is under the display (not drawn).
+  - id: iphone-duo
+    label: Foldable phone (open)
+    class: phone
+    unit: mm
+    natural: landscape
+    orientations: [landscape, portrait]
+    body: {w: 164.6, h: 117.8, radius: 8.0}
+    rim: 0.9
+    display: {x: 3.35, y: 3.37, w: 157.9, h: 111.06, radius: 4.8}
+    hinge: {at: center, w: 1.4}
+    fold: {state: open, other: iphone-duo-folded}
+    buttons:
+      - {name: power, edge: right, at: 14.0, length: 14.0, depth: 0.6}
+      - {name: volume_up, edge: top, at: 128.0, length: 10.0, depth: 0.6}
+      - {name: volume_down, edge: top, at: 141.0, length: 10.0, depth: 0.6}
+    colors: [midnight, porcelain, silver]
+    default_color: midnight
+    screenshot:
+      aspect: "2853:2007"
+      variant: ios-phone-duo-inner
+      sizes: [[2853, 2007], [2670, 1878]]
+      targets: [ios-iphone-duo-inner]
+
+  - id: iphone-duo-folded
+    label: Foldable phone (folded)
+    class: phone
+    unit: mm
+    natural: portrait
+    orientations: [portrait, landscape]
+    body: {w: 84.1, h: 117.8, radius: 8.0}
+    rim: 0.9
+    display: {x: 4.03, y: 2.38, w: 77.69, h: 113.04, radius: 5.6}
+    hinge: {at: left, w: 2.2}
+    fold: {state: folded, other: iphone-duo}
+    cutouts:
+      - {kind: punch_hole, shape: circle, x: 74.4, y: 4.6, w: 2.8, h: 2.8}
+    buttons:
+      - {name: power, edge: right, at: 14.0, length: 14.0, depth: 0.6}
+      - {name: volume_up, edge: top, at: 47.5, length: 10.0, depth: 0.6}
+      - {name: volume_down, edge: top, at: 60.5, length: 10.0, depth: 0.6}
+    colors: [midnight, porcelain, silver]
+    default_color: midnight
+    screenshot:
+      aspect: "1398:2034"
+      variant: ios-phone-duo-outer
+      sizes: [[1398, 2034]]
+      targets: [ios-iphone-duo-outer]
+
+  # -------------------------------------------------------------- watches
+  # Generic smartwatch shapes; proportions from public case sizes (49 x 44
+  # mm rugged, 46 x 39 mm round-cornered) and the store screenshot aspects.
+  # Watch targets export the bare screenshot (`screenshot_only`), the
+  # frames are for marketing layouts.
+  - id: watch-ultra
+    label: Rugged watch
+    class: watch
+    unit: mm
+    natural: portrait
+    orientations: [portrait]
+    body: {w: 44.0, h: 49.0, radius: 10.0}
+    rim: 2.4
+    display: {x: 5.0, y: 3.8, w: 34.0, h: 41.4, radius: 7.0}
+    buttons:
+      - {name: guard, style: guard, edge: right, at: 12.0, length: 27.0, depth: 1.5}
+      - {name: crown, style: crown, edge: right, at: 15.0, length: 9.0, depth: 3.4}
+      - {name: side, edge: right, at: 28.0, length: 9.0, depth: 2.0}
+      - {name: action, edge: left, at: 14.0, length: 11.0, depth: 1.0}
+    colors: [natural-titanium, black-titanium]
+    default_color: natural-titanium
+    screenshot:
+      aspect: "422:514"
+      variant: watch
+      sizes: [[422, 514], [410, 502]]
+      targets: [watch-ultra, watch-series-7, watch-series-4]
+
+  - id: watch
+    label: Watch
+    class: watch
+    unit: mm
+    natural: portrait
+    orientations: [portrait]
+    body: {w: 39.0, h: 46.0, radius: 11.5}
+    rim: 1.0
+    display: {x: 2.4, y: 2.61, w: 34.2, h: 40.78, radius: 9.0}
+    buttons:
+      - {name: crown, style: crown, edge: right, at: 12.5, length: 7.6, depth: 2.6}
+      - {name: side, edge: right, at: 25.0, length: 11.0, depth: 0.8}
+    colors: [midnight, silver, starlight]
+    default_color: midnight
+    screenshot:
+      aspect: "416:496"
+      variant: watch
+      sizes: [[416, 496]]
+      targets: [watch-series]
 
   # -------------------------------------------------------------- tablets
   - id: ipad-modern

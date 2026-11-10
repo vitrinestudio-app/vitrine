@@ -25,6 +25,19 @@ pub struct Rules {
     #[serde(default)]
     pub color_aliases: BTreeMap<String, String>,
     pub rules: Vec<Rule>,
+    /// Files that are deliberately not imported (marketing composites …),
+    /// listed as ignored with the reason; tried before `rules`.
+    #[serde(default)]
+    pub skip: Vec<SkipRule>,
+}
+
+/// A file-name pattern of files that are not frames for any model.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SkipRule {
+    pub pattern: String,
+    /// Shown to the user.
+    pub reason: String,
 }
 
 /// One file-name pattern.
@@ -90,6 +103,9 @@ impl Rules {
 
     pub fn parse(yaml: &str) -> Result<Rules, String> {
         let rules: Rules = crate::io::from_yaml(yaml)?;
+        for r in &rules.skip {
+            Pattern::parse(&r.pattern)?;
+        }
         for r in &rules.rules {
             Pattern::parse(&r.pattern)?;
             if r.orientation.is_none() && !r.pattern.contains("{orientation}") {
@@ -100,6 +116,15 @@ impl Rules {
             }
         }
         Ok(rules)
+    }
+
+    /// Why `file_name` is not imported, if a `skip` rule matches it.
+    pub fn skip_reason(&self, file_name: &str) -> Option<&str> {
+        let name = normalize_name(file_name);
+        self.skip.iter().find_map(|r| {
+            let pattern = Pattern::parse(&r.pattern).ok()?;
+            pattern.matches(&name).map(|_| r.reason.as_str())
+        })
     }
 
     /// The first rule matching `file_name` (folders and extension are
@@ -330,6 +355,57 @@ mod tests {
                 r.model
             );
         }
+    }
+
+    #[test]
+    fn duo_and_watch_names() {
+        // Real names (Bezel-iPhone-Duo.dmg, Bezel-Apple-Watch-Ultra-4-2026.dmg).
+        assert_eq!(
+            m("PNG/iPhone Duo - Night Sky - Inner Open Portrait.png"),
+            Some((
+                "iphone-duo".into(),
+                "night-sky".into(),
+                Orientation::Portrait
+            ))
+        );
+        assert_eq!(
+            m("iPhone Duo - Star White - Outer Closed Landscape.png"),
+            Some((
+                "iphone-duo-folded".into(),
+                "star-white".into(),
+                Orientation::Landscape
+            ))
+        );
+        let r = apple();
+        let duo = r
+            .match_file("iPhone Duo - Star White - Inner Open Landscape.png")
+            .unwrap();
+        assert_eq!(duo.apple_model, "iPhone Duo");
+        assert!(duo.verified);
+        assert!(
+            r.skip_reason("iPhone Duo - Night Sky - Outer Open.png")
+                .is_some_and(|s| s.contains("marketing"))
+        );
+        assert!(
+            r.skip_reason("iPhone Duo - Night Sky - Inner Open Portrait.png")
+                .is_none()
+        );
+        let w = r
+            .match_file("AW Ultra 4 - Natural + Trail Loop Sand.png")
+            .unwrap();
+        assert_eq!(
+            (w.model.as_str(), w.color.as_str(), w.orientation),
+            (
+                "watch-ultra",
+                "natural-trail-loop-sand",
+                Orientation::Portrait
+            )
+        );
+        assert_eq!(w.apple_model, "AW Ultra 4");
+        assert_eq!(
+            m("AW Series 11 - Jet Black + Sport Band Black.png").map(|x| x.0),
+            Some("watch".into())
+        );
     }
 
     #[test]

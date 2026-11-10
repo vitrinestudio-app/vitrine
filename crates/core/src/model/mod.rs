@@ -25,7 +25,7 @@ pub use color::{ColorRef, Rgba};
 pub use common::{AnchorY, Aspect, Clip, FitMode, PixelSize, Point, VisibleIn};
 pub use element::{
     Align, Appearance, BackgroundProps, COMMON_FIELDS, Chrome, DeviceProps, Element, ElementKind,
-    ElementKindTag, ElementPatch, ElementWire, FitValue, GroupProps, ImageProps,
+    ElementKindTag, ElementPatch, ElementWire, FitValue, Fold, GroupProps, ImageProps,
     LANG_OVERRIDE_FIELDS, Orientation, ShapeKind, ShapeProps, Stroke, StrokeJoin, StrokePosition,
     TextBox, TextFit, TextProps, VAlign,
 };
@@ -41,8 +41,8 @@ pub use style::{
     StyleKind, Styles, TextStyle, TextTransform, is_valid_family_name,
 };
 pub use target::{
-    AppleSlot, BannerFit, GalleryRef, Gaps, GoogleSlot, ImageFormat, Region, RegionRect, StoreSlot,
-    Target, TargetKind,
+    AppleSlot, BannerFit, CreativePlacement, GalleryRef, Gaps, GoogleSlot, ImageFormat, Region,
+    RegionRect, SafeArea, StoreSlot, Target, TargetKind,
 };
 
 use fmt::flow_seq;

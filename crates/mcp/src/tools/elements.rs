@@ -31,7 +31,7 @@ All kinds: page (home page, 0-based), lock_page, at {x, y} (centre, lu relative 
 width, height, rotation (degrees, clockwise), pivot {x, y}, anchor_y (top|bottom|center|stretch), \
 opacity (0..1), z (layer), clip (none|page), visible, visible_in {targets, langs}. \
 device: model, orientation (portrait|landscape), frame (stylized|detailed|imported:apple), bezel, \
-color, chrome (none|browser), url, appearance (light|dark), screenshot (key), fit (cover|contain|stretch), shadow. \
+color, fold (open|folded, foldables), chrome (none|browser), url, appearance (light|dark), screenshot (key), fit (cover|contain|stretch), shadow. \
 text: text (translation key), style, box {top, left, right, bottom} (margins to the page), align \
 (left|center|right), valign (top|center|bottom), fit {shrink_to, max_lines}, color, font_size, \
 stroke {color, width}, glow {color, radius}, shadow, hyphenate. \

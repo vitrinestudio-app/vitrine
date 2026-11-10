@@ -576,6 +576,9 @@ pub enum DiagnosticCode {
     /// The device's colour is not installed for its imported frame; the
     /// default (or first) installed colour is drawn.
     ImportedColorFallback,
+    /// A page of a `screenshot_only` target has no device: the image
+    /// stays empty.
+    ScreenshotOnlyEmpty,
 }
 
 /// An info or warning collected during resolve.

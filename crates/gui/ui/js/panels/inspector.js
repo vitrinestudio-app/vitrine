@@ -502,6 +502,11 @@ export function mount(el, ctx) {
     rows.push(row(t('inspector.color'), colorControls, { field: 'color', info, wide: true }));
     const orients = [{ value: '', label: `${t('inspector.default')}${dev ? ` (${t(`inspector.orientation.${dev.natural}`)})` : ''}` }, ...(dev?.orientations ?? ['portrait', 'landscape']).map((x) => ({ value: x, label: t(`inspector.orientation.${x}`) }))];
     rows.push(row(t('inspector.orientation'), selectInput({ key: 'orientation', options: orients, value: e.orientation ?? '', title: t('inspector.orientation'), onChange: (v) => set({ orientation: v || null }) }), { field: 'orientation', info }));
+    if (dev?.fold) {
+      // Foldables: open (inner display) or folded (outer display).
+      const folds = [{ value: '', label: `${t('inspector.default')} (${t(`inspector.fold.${dev.fold.state}`)})` }, ...['open', 'folded'].map((x) => ({ value: x, label: t(`inspector.fold.${x}`) }))];
+      rows.push(row(t('inspector.fold'), selectInput({ key: 'fold', options: folds, value: e.fold ?? '', title: t('inspector.fold'), onChange: (v) => set({ fold: v || null }) }), { field: 'fold', info }));
+    }
     const keys = [...new Set((extra.assets?.screenshots ?? []).map((s) => s.key))].sort();
     rows.push(
       row(t('inspector.screenshot'), textInput({ key: 'screenshot', value: e.screenshot ?? '', list: keys, mono: true, placeholder: t('inspector.screenshot.none'), title: t('inspector.screenshot'), onCommit: (v) => set({ screenshot: v || null }) }), {

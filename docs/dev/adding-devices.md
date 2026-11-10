@@ -10,8 +10,13 @@ hand to Claude Code for it.
   `orientations`, `body {w,h,radius}`, `rim`, `display {x,y,w,h,radius}`,
   `cutouts` (island / notch / punch_hole over the screen; home_button / camera /
   speaker in the bezel), `buttons {edge, at, length, depth}`, `laptop` (hinge +
-  base), `stand` (neck + foot), `browser`, `colors` (names from the shared
+  base), `stand` (neck + foot), `browser`, `hinge {at: center|left, w}` and
+  `fold {state: open|folded, other}` (foldables: one model per fold state,
+  linked both ways, same colours), `colors` (names from the shared
   palette), `default_color`, `screenshot {aspect|free, variant, sizes, targets}`.
+  Buttons take `style: plain|crown|guard` (watch crown, crown guard).
+  Classes: phone, tablet, watch (drawn by `handheld.rs`), laptop, desktop,
+  browser, none.
 - **Drawing:** `crates/render/src/frames/` turns that data into vector paths
   (tiny-skia) at render time, in two styles: `stylized` (flat) and `detailed`
   (rim gradients, gloss, lens details). Main entry points:
@@ -21,8 +26,9 @@ hand to Claude Code for it.
   `shapes.rs`, `screen.rs`, `palette.rs`, `layout.rs`.
 - Only ratios matter (numbers are in a model unit such as mm); the renderer
   scales the outer width to the element's `width` in lu.
-- Landscape = the portrait-natural geometry rotated 90° counter-clockwise;
-  the screenshot itself is never rotated.
+- The other orientation = the natural geometry rotated 90° counter-clockwise
+  (portrait phone → landscape; the landscape-natural open foldable →
+  portrait); the screenshot itself is never rotated.
 
 ## Two kinds of additions
 1. **Data only** – a new model of an existing class whose shape the drawing
@@ -30,8 +36,8 @@ hand to Claude Code for it.
    different bezels, a laptop with other proportions). Only `devices.yaml`
    (+ colours, + `targets.yaml` cross-references) changes.
 2. **New shape/class** – something the drawing code can't express yet (e.g. a
-   foldable / "iPhone Duo" with two screens, a watch with a crown, a TV, a
-   phone with a camera bar in the screen). Needs catalog schema additions
+   TV, a phone with a camera bar in the screen; foldables and watches with
+   crowns exist since 2026-11-10: `iphone-duo`, `watch-ultra`, `watch`). Needs catalog schema additions
    (`catalog/devices.rs`, validation in `Catalog::check()`) and drawing code in
    `frames/`, plus tests.
 

@@ -125,6 +125,32 @@ fn rows() -> Vec<Vec<Item>> {
             item("none", L, 420.0).dark().accent("#9B51E0"),
         ],
         vec![
+            item("iphone-duo", L, 560.0).accent("#2F80ED"),
+            item("iphone-duo", P, 400.0)
+                .color("porcelain")
+                .accent("#27AE60"),
+            item("iphone-duo-folded", P, 280.0).dark().accent("#F2994A"),
+            item("iphone-duo-folded", L, 400.0)
+                .color("silver")
+                .accent("#EB5757"),
+        ],
+        vec![
+            item("watch-ultra", P, 220.0).dark().accent("#F2994A"),
+            item("watch-ultra", P, 220.0)
+                .color("black-titanium")
+                .dark()
+                .accent("#27AE60"),
+            item("watch", P, 200.0).dark().accent("#EB5757"),
+            item("watch", P, 200.0)
+                .color("silver")
+                .dark()
+                .accent("#2F80ED"),
+            item("watch", P, 200.0)
+                .color("starlight")
+                .dark()
+                .accent("#9B51E0"),
+        ],
+        vec![
             item("ipad-modern", P, 380.0),
             item("ipad-home", P, 360.0)
                 .color("silver-white")
@@ -213,6 +239,10 @@ fn closeups(dir: &Path) -> anyhow::Result<()> {
         item("imac", L, 1400.0).color("pastel-green").web(),
         item("ipad-modern", L, 1400.0).color("space-gray"),
         item("browser", L, 1200.0).web().dark(),
+        item("iphone-duo", L, 1400.0),
+        item("iphone-duo-folded", P, 800.0).dark(),
+        item("watch-ultra", P, 700.0).dark(),
+        item("watch", P, 700.0).color("silver").dark(),
     ];
     for (style, name) in [
         (FrameStyle::Stylized, "stylized"),
