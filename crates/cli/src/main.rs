@@ -1,7 +1,8 @@
 //! `arrangia` – command line interface.
 //!
 //! Commands: `new` (project from a template), `render` (preview/debug PNG),
-//! `export` (all files of targets × languages) and `validate`. The CLI only
+//! `export` (all files of targets × languages), `validate` and `strings
+//! export|import` (translation exchange). The CLI only
 //! formats what `arrangia-core` and `arrangia-render` compute; it never
 //! edits project fields directly.
 //!
@@ -17,6 +18,7 @@ mod export;
 mod new;
 mod project;
 mod render;
+mod strings;
 mod term;
 mod validate;
 
@@ -85,6 +87,8 @@ enum Command {
     Export(export::ExportArgs),
     /// Validate a project and report infos, warnings and errors.
     Validate(validate::ValidateArgs),
+    /// Exchange translations with translators (CSV, XLIFF).
+    Strings(strings::StringsArgs),
 }
 
 impl Command {
@@ -95,6 +99,7 @@ impl Command {
             Self::Render(_) => "render",
             Self::Export(_) => "export",
             Self::Validate(_) => "validate",
+            Self::Strings(_) => "strings",
         }
     }
 }
@@ -106,6 +111,7 @@ fn main() -> ExitCode {
         Command::Render(args) => render::run(args, &cli.global),
         Command::Export(args) => export::run(args, &cli.global),
         Command::Validate(args) => validate::run(args, &cli.global),
+        Command::Strings(args) => strings::run(args, &cli.global),
     };
     match result {
         Ok(code) => ExitCode::from(code),

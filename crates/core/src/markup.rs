@@ -233,6 +233,36 @@ fn match_markers(src: &str, toks: &mut [Token]) {
     }
 }
 
+/// A token of inline markup after marker matching (for `core::exchange`):
+/// unmatched markers are literal text; text keeps hard breaks as `\n` and
+/// soft hyphens as U+00AD (escapes resolved).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum MarkupToken {
+    Text(String),
+    /// `**` (toggles).
+    Bold,
+    /// `_` (toggles).
+    Italic,
+    Open(String),
+    Close,
+}
+
+/// Tokens of `src` as [`parse`] sees them.
+pub(crate) fn matched_tokens(src: &str) -> Vec<MarkupToken> {
+    let mut toks = tokenize(src);
+    match_markers(src, &mut toks);
+    toks.into_iter()
+        .map(|t| match t.tok {
+            _ if !t.matched => MarkupToken::Text(t.literal),
+            Tok::Text(s) => MarkupToken::Text(s),
+            Tok::Bold => MarkupToken::Bold,
+            Tok::Italic => MarkupToken::Italic,
+            Tok::Open(name) => MarkupToken::Open(name),
+            Tok::Close => MarkupToken::Close,
+        })
+        .collect()
+}
+
 /// Parses inline markup. Never fails and never panics; see module docs.
 pub fn parse(src: &str) -> Markup {
     let mut toks = tokenize(src);
