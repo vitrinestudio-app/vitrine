@@ -21,7 +21,7 @@ import { editor } from '../editor.js';
 import { t } from '../i18n.js';
 import { currentTarget, store, viewArgs } from '../store.js';
 import { isTauri } from '../transport.js';
-import { openModal } from './modal.js';
+import { choiceDialog } from '../dialogs/modal.js';
 
 const FONT_EXT = ['ttf', 'otf', 'ttc'];
 const RASTER_EXT = ['png', 'jpg', 'jpeg'];
@@ -163,11 +163,12 @@ export async function importFiles(sources, opts = {}) {
     h('label', { class: 'as-replace' }, replace, t('assets.replace')),
   );
   const keyOk = () => rows.every((r) => r.kindSel.value !== 'screenshot' || sanitize(r.keyInput.value) === r.keyInput.value);
-  const go = await openModal({
+  const go = await choiceDialog({
+    size: 'medium',
     title: opts.title ?? t('assets.import_title'),
     body,
     buttons: [
-      { label: t('assets.modal_cancel'), value: false },
+      { label: t('project.dialog.cancel'), value: false },
       {
         label: t('assets.import'),
         primary: true,

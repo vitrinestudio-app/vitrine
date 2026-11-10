@@ -25,7 +25,40 @@ export const api = {
   undo: () => invoke('undo'),
   redo: () => invoke('redo'),
   /** @returns {Promise<object>} validation counts + findings */
-  validate: (target, lang) => invoke('validate', { targets: [target], langs: [lang], preview: true }),
+  validate: (target, lang, preview = true) => invoke('validate', { targets: [target], langs: [lang], preview }),
+
+  // ----- project, targets, settings, export (tasks 2.9/2.10) -----
+  /** Full validation report (all targets × languages unless filtered). */
+  validateAll: ({ targets, langs, preview = true } = {}) => invoke('validate', { targets, langs, preview }),
+  projectNew: (args) => invoke('project_new', args),
+  projectOpen: (dir) => invoke('project_open', { dir }),
+  projectClose: () => invoke('project_close'),
+  recentProjects: () => invoke('recent_projects'),
+  recentRemove: (path) => invoke('recent_remove', { path }),
+  pickFolder: (title) => invoke('dialog_pick_folder', { title }),
+  revealPath: (path) => invoke('reveal_path', { path }),
+  settingsGet: () => invoke('settings_get'),
+  settingsSet: (settings) => invoke('settings_set', { settings }),
+  catalogTargets: () => invoke('catalog_targets'),
+  catalogGalleries: () => invoke('catalog_galleries'),
+  catalogDevices: () => invoke('catalog_devices'),
+  catalogFonts: () => invoke('catalog_fonts'),
+  targetGet: (id) => invoke('target_get', { id }),
+  targetAddFromPreset: (preset, strip, opts = {}) => invoke('target_add_from_preset', { preset, strip, ...opts }),
+  /** `patch`: TargetPatch fields (null resets); `rename`: new id. */
+  targetPatch: (id, patch = {}, rename) => invoke('target_patch', { id, patch, ...(rename ? { rename } : {}) }),
+  targetRemove: (id) => invoke('target_remove', { id }),
+  projectRename: (name) => invoke('project_rename', { name }),
+  languageAdd: (lang) => invoke('language_add', { lang }),
+  languageRemove: (lang) => invoke('language_remove', { lang }),
+  languagesSet: ({ order, fallback }) => invoke('languages_set', { order, fallback }),
+  defaultLanguageImpact: (lang) => invoke('default_language_impact', { lang }),
+  defaultLanguageSet: (lang) => invoke('default_language_set', { lang }),
+  stylesGet: () => invoke('styles_get'),
+  /** `{colors?, text?, spans?, shadows?: {name: value|null}, frame?, rename?: {kind, from, to}}`. */
+  stylesPatch: (patch) => invoke('styles_patch', patch),
+  export: (args) => invoke('export', args),
+  exportCancel: () => invoke('export_cancel'),
 
   /** Overlay (hit-test) data of the view. */
   overlay: (view) => invoke('overlay', view),

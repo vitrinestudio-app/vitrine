@@ -10,7 +10,7 @@
 
 import { listen } from '../api.js';
 import { h, icon } from '../dom.js';
-import { confirmDialog } from './modal.js';
+import { confirmDialog } from '../dialogs/modal.js';
 import { onImported, pickAndImport } from './importer.js';
 
 const THUMB = 96;

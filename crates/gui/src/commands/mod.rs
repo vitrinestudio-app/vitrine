@@ -22,10 +22,13 @@ mod catalog;
 mod edit;
 mod export;
 mod inspect;
+mod os;
 mod project;
+mod project_settings;
 mod render;
 mod strings;
 mod system;
+mod targets;
 mod texts;
 
 use std::path::PathBuf;
@@ -40,10 +43,13 @@ pub use catalog::*;
 pub use edit::*;
 pub use export::*;
 pub use inspect::*;
+pub use os::*;
 pub use project::*;
+pub use project_settings::*;
 pub use render::*;
 pub use strings::*;
 pub use system::*;
+pub use targets::*;
 pub use texts::*;
 
 use crate::dialogs::Dialogs;
@@ -213,6 +219,10 @@ command_table! {
         dialog_open_project, dialog_pick_files,
         preview_stats,
         element_info, markup_check, assets_probe, assets_upload,
+        target_get, target_add_from_preset, target_patch, target_remove,
+        project_rename, language_add, language_remove, languages_set,
+        default_language_impact, default_language_set, styles_get, styles_patch,
+        dialog_pick_folder, reveal_path,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,

@@ -32,12 +32,24 @@ js/views/overlay.js   SVG overlay drawing (pure function of a model)
 js/views/snap.js      snapping lines/box/angle
 js/views/{pages,gallery,languages}.js   other centre views
 js/views/textedit.js  inline text editor of the canvas (double-click)
-js/panels/*.js        sidebar/inspector panels (see below); modal.js =
-                      confirm/prompt dialogs, importer.js = asset import
-                      dialog + drag & drop routing
+js/panels/*.js        sidebar/inspector panels (see below); importer.js =
+                      asset import dialog + drag & drop routing
 js/panels/fields.js   form controls: scrub numbers, colours, selects, fill editor
 js/panels/strip-settings.js  strip settings (inspector with no selection)
+js/menu.js            app menu (top-bar button), ⌘N/⌘O/⌘E/⌘, shortcuts
+js/start.js           start screen (#welcome), new-project dialog, folder drop
+js/dialogs/modal.js   <dialog> helper (openModal, choiceDialog, confirmDialog,
+                      promptDialog) + form controls (row, input, select…)
+js/dialogs/*.js       targets editor, validation popover, export, project
+                      and app settings
+styles/{dialogs,targets,start,settings}.css   styles of the above
+styles/{textedit,translations,assets}.css      text editor, translations, assets
 ```
+
+Dialogs use `openModal({ title, body, footer, size })` from
+`dialogs/modal.js`; model changes go through a backend command that
+builds the ops (e.g. `target_patch`, `styles_patch`) and then
+`editor.apply(Promise.resolve(result))`.
 
 ## Conventions
 

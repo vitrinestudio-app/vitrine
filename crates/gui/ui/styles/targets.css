@@ -1,0 +1,113 @@
+/* Targets editor (task 2.9). */
+
+.dlg-targets .dlg-body {
+  padding: 0;
+  display: flex;
+}
+
+.tg-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+
+.tg-list {
+  border-right: 1px solid var(--border);
+  background: var(--bg-panel);
+  overflow: auto;
+  padding-bottom: 12px;
+}
+
+.tg-list-head {
+  padding: 10px 16px 0;
+}
+
+.tg-right {
+  overflow: auto;
+  padding: 14px 18px 24px;
+  min-width: 0;
+}
+
+.tg-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tg-form-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tg-form-head .spacer {
+  flex: 1;
+}
+
+.tg-hints {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 14px;
+}
+
+.tg-hints .mono {
+  opacity: 0.8;
+}
+
+.tg-add-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.tg-add-bar .form-row {
+  grid-template-columns: auto auto;
+  align-items: center;
+}
+
+.tg-add-bar .form-label {
+  padding-top: 0;
+}
+
+.tg-filter {
+  flex: 1;
+}
+
+.tg-preset-group .section-title {
+  padding-left: 0;
+}
+
+.tg-preset {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+
+.tg-preset:hover {
+  background: var(--bg-hover);
+}
+
+.tg-preset-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 260px;
+  flex-wrap: wrap;
+}
+
+.tg-preset-label {
+  font-weight: 500;
+}
+
+.tg-preset-sizes {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}

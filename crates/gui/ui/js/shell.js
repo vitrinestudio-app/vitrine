@@ -14,10 +14,12 @@ import { mountCanvas } from './views/canvas.js';
 import { mountGallery } from './views/gallery.js';
 import { mountLanguages } from './views/languages.js';
 import { mountPages } from './views/pages.js';
+import { toggleValidation } from './dialogs/validation.js';
 
 const BASE = '__base__';
 
-export function mountShell() {
+/** `app`: app-level actions `{ menu (button element), targets(), exportDialog() }` from main.js. */
+export function mountShell(app = {}) {
   const ctx = panelContext();
   const shell = { canvas: null };
 
@@ -31,18 +33,23 @@ export function mountShell() {
     label: t('top.variant'),
     onchange: (v) => editor.setContext({ variant: v === '' ? undefined : v === BASE ? null : v }),
   });
-  const badge = h('span', { class: 'badge', title: t('top.validation') });
+  const badge = h('button', { class: 'badge badge-btn', type: 'button', title: t('top.validation'), onclick: () => toggleValidation(badge, shell) });
+  const targetsBtn = h('button', { class: 'icon-btn', type: 'button', title: t('project.menu.targets'), onclick: () => app.targets?.() }, icon('targets'));
+  const exportBtn = h('button', { class: 'btn btn-small', type: 'button', title: `${t('project.menu.export')} (${keyLabel('mod+e')})`, onclick: () => app.exportDialog?.() }, icon('export'), t('export.button'));
   const undo = h('button', { class: 'icon-btn', type: 'button', onclick: () => actions.undo() }, icon('undo'));
   const redo = h('button', { class: 'icon-btn', type: 'button', onclick: () => actions.redo() }, icon('redo'));
   topbar.append(
+    app.menu ?? '',
     h('span', { class: 'logo' }, icon('logo')),
     name,
     h('span', { class: 'sep' }),
     strip.el,
     target.el,
+    targetsBtn,
     lang.el,
     variant.el,
     h('span', { class: 'spacer' }),
+    exportBtn,
     badge,
     h('span', { class: 'sep' }),
     undo,
@@ -89,12 +96,12 @@ export function mountShell() {
     redo.title = `${t('top.redo')}${h0.redo.length ? ` ${h0.redo[h0.redo.length - 1]}` : ''} (${keyLabel('mod+shift+z')})`;
 
     const v = st.validation;
-    badge.className = 'badge';
+    badge.className = 'badge badge-btn';
     if (!v) {
       badge.replaceChildren(t('top.validation.pending'));
     } else if (v.errors) {
       badge.classList.add('error');
-      badge.replaceChildren(icon('error'), String(v.errors + v.warnings));
+      badge.replaceChildren(icon('error'), String(v.errors), ...(v.warnings ? [h('span', { class: 'badge-sub' }, icon('warning'), String(v.warnings))] : []));
     } else if (v.warnings) {
       badge.classList.add('warn');
       badge.replaceChildren(icon('warning'), String(v.warnings));

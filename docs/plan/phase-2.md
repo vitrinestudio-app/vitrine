@@ -131,16 +131,29 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   Tauri `tauri://drag-drop` paths, browser `File`s via `assets_upload`).
 
 ## 2.9 Targets, validation, export
-- [ ] Targets editor (from presets, size, gallery, group, variant,
+- [x] Targets editor (from presets, size, gallery, group, variant,
       device_map, banner region/fit/gaps, format)
-- [ ] Validation panel (grouped, click → select element/page)
-- [ ] Export dialog: targets × languages, progress, open folder
+- [x] Validation panel (grouped, click → select element/page)
+- [x] Export dialog: targets × languages, progress, open folder
+- Commands `target_get`, `target_add_from_preset`, `target_patch` (fields
+  + rename, one undo step), `target_remove`, `dialog_pick_folder`,
+  `reveal_path` (file manager via `std::process`); store-rule hints are
+  validation findings of the target. The export matrix is split into one
+  `export` call per distinct language set.
 
 ## 2.10 Project + app settings, start screen
-- [ ] Start screen: new (templates), open, recent
-- [ ] Project settings: default language (§5.0 warning), languages + fallback,
+- [x] Start screen: new (templates), open, recent
+- [x] Project settings: default language (§5.0 warning), languages + fallback,
       frame style, colours/text styles/spans, fonts
-- [ ] App settings dialog
+- [x] App settings dialog
+- Commands `project_rename`, `language_add`/`language_remove`,
+  `languages_set` (order, fallback map), `default_language_impact`,
+  `default_language_set`, `styles_get`, `styles_patch` (per-map entries,
+  frame, rename incl. references inside the styles). App menu (top-bar
+  button) + ⌘N/⌘O/⌘E/⌘, ; the UI language applies by reloading the web
+  view (view context kept). Open: renaming a style referenced by elements
+  is refused (no element rewrite yet); font import UI (fonts are listed,
+  added via the `fonts/` folder).
 
 ## 2.11 Verification + docs
 - [ ] End-to-end scenario via the dev bridge in Chrome: new project → add

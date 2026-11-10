@@ -15,7 +15,7 @@
 // The sidebar widens while this panel is shown (styles/translations.css).
 
 import { h, icon } from '../dom.js';
-import { confirmDialog, promptDialog } from './modal.js';
+import { confirmDialog, promptDialog } from '../dialogs/modal.js';
 
 const SOFT_HYPHEN = '­';
 const VALIDATE_DELAY = 600;
