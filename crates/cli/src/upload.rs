@@ -369,6 +369,7 @@ fn spec_size(spec: &Value) -> String {
 }
 
 /// The text report of `upload refdata`.
+#[allow(clippy::too_many_lines)] // one linear report
 fn format_refdata(r: &Value, style: Style) -> String {
     use std::fmt::Write as _;
     let mut out = String::new();

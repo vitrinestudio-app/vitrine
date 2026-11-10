@@ -289,6 +289,15 @@ export async function storesPane(commit) {
           onchange: (v) => set('platform', v),
         }),
       ),
+      row(
+        t('stores.apple.upload_flow'),
+        select({
+          options: ['auto', 'asset_library', 'screenshot_sets'].map((f) => ({ value: f, label: t(`stores.apple.upload_flow.${f}`) })),
+          value: a.upload_flow ?? 'auto',
+          onchange: (v) => set('upload_flow', v),
+        }),
+        t('stores.apple.upload_flow.hint'),
+      ),
       removeRow('apple'),
     );
   }

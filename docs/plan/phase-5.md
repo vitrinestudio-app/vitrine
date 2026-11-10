@@ -55,15 +55,17 @@ replaces it) – open question in ADR 0017.
 - [~] Rate limits / retries / resume after abort; log every step – client
       side done (retry/backoff/Retry-After, cancel, observer hook, progress
       events, idempotent deletes); resume + upload log belong to 5.5
-- [ ] Optional: App Asset Library backend (`appAssetLibraryImages` +
-      placements + ordering requests; needed for `IPHONE_DUO`)
-      – catalog side ready 2026-11-10: creative-asset presets (`ios-header`,
-      `ios-search-results`, `ios-creative-universal`, slot `placement:
-      header|search_results|universal`, display_type = placement type
-      `PRODUCT_PAGE_HEADER_ASSET` / `APP_STORE_SEARCH_RESULTS_ASSET`), Duo
-      presets with devices; watch presets (`APP_WATCH_*`) and Wear OS
-      (`wearScreenshots`) export `screenshot_only`. The set-based flow
-      must not send `placement` slots or `APP_IPHONE_DUO`.
+- [x] App Asset Library backend (ADR 0019, 2026-11-10; default flow):
+      library, ref data, images (commit without checksum), placements,
+      ordering requests; `store.apple.upload_flow` auto/asset_library/
+      screenshot_sets; header/search results placements
+      (catalog presets `ios-header`, `ios-search-results`,
+      `ios-creative-universal`: slot `placement`); Duo; the set-based
+      flow never gets `placement` slots or `APP_IPHONE_DUO`; reuse by content marker;
+      `upload refdata` (CLI + GUI "Show App Store asset types")
+- [ ] User checks the real ref data once (`arrangia upload refdata`) and the
+      mapping in `data/asset-library.yaml` (display classes, header/search
+      groups, Duo inner/outer groups)
 
 ## 5.4 Google Play client
 Client part done 2026-11-10 (`arrangia_publish::google`, ADR 0017).

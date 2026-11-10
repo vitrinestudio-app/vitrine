@@ -273,3 +273,17 @@ editable App Store version"). Other store-level failures (app not
 reachable, credentials) are also reported once; their sets fail with a
 short "not uploaded: …".
 
+## Amendment 2026-11-10 (c): App Asset Library flow
+
+ADR 0019 adds `AssetLibraryFlow` as the second `AppleUploadFlow` and makes
+it the default. Flow selection: `store.apple.upload_flow` (`auto` |
+`asset_library` | `screenshot_sets`); `remote::open_apple` picks the store's
+flow (with `auto` falling back to the set API when the library is not
+available), `remote::route` the flow of each set. Plan additions (serde
+defaults, older stored plans still load): `StorePlan.flow_setting`,
+`StorePlan.flow_note`, `PlanSet.flow` (a per-set fallback), `PlanSet.placement`
+(placement type → group). New problem codes: `needs_asset_library`,
+`no_placement_mapping`, `no_placement_group`, `asset_library_unavailable`,
+`flow_fallback`, `placement_size`. New progress steps: `delete_placements`,
+`create_placements`, `delete_old_assets`. The trait lost its unused
+`kind()`; `AppleTarget` carries the optional library context.

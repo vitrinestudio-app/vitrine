@@ -2283,7 +2283,7 @@ async fn refdata_is_read_only_and_resolves_the_mapping() {
     assert_eq!(row("APP_IPHONE_DUO")["asset_library_only"], true);
     assert_eq!(row("APP_IPHONE_65")["groups"], json!([]));
     assert_eq!(
-        row("header_and_search")["groups"].as_array().unwrap().len(),
+        row("universal")["groups"].as_array().unwrap().len(),
         2
     );
     let asc = e.asc.lock().unwrap();
@@ -2305,4 +2305,26 @@ async fn refdata_is_read_only_and_resolves_the_mapping() {
     );
     assert_eq!(p["stores"][0]["flow"], "screenshot_sets");
     assert!(p["stores"][0]["flow_note"].is_string());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn upload_flow_is_a_project_store_setting() {
+    let e = env().await;
+    let get = |app: &AppState| call(app, "project_store_get", json!({}));
+    let apple = get(&e.app)["store"]["apple"].clone();
+    assert!(apple.get("upload_flow").is_none(), "auto is the default");
+    let mut patched = apple.clone();
+    patched["upload_flow"] = json!("screenshot_sets");
+    call(&e.app, "project_store_patch", json!({ "apple": patched }));
+    assert_eq!(
+        get(&e.app)["store"]["apple"]["upload_flow"],
+        "screenshot_sets"
+    );
+    let yaml = std::fs::read_to_string(e.dir.join("project.yaml")).unwrap();
+    assert!(yaml.contains("upload_flow: screenshot_sets"), "{yaml}");
+    // `auto` is not written.
+    patched["upload_flow"] = json!("auto");
+    call(&e.app, "project_store_patch", json!({ "apple": patched }));
+    let yaml = std::fs::read_to_string(e.dir.join("project.yaml")).unwrap();
+    assert!(!yaml.contains("upload_flow"), "{yaml}");
 }

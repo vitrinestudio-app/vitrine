@@ -8,7 +8,10 @@
 //   (remote plan), plan table (target · language · locale · action · images ·
 //   problems), Confirm & upload → per-set progress from `upload-progress`
 //   events → result + "Show log". A run started elsewhere (MCP, another
-//   window) is shown when the dialog opens.
+//   window) is shown when the dialog opens. Apple: the plan shows the
+//   upload flow (App Asset Library / screenshot sets, ADR 0019) and each
+//   set's placement; "Show App Store asset types" opens the read-only ref
+//   data (`upload_refdata`) to check the runtime placement groups.
 // - `initUploadConfirm()`: an AI assistant asked for an upload over MCP
 //   (`upload-confirm-requested`): a dialog shows the plan and the user
 //   approves or declines (`upload_confirm`); it closes itself when the
@@ -119,7 +122,7 @@ export function planView(plan) {
       h(
         'tr',
         { class: `up-row up-${s.action}` },
-        h('td', {}, s.target),
+        h('td', {}, s.target, s.placement ? h('div', { class: 'small muted mono', title: t('upload.placement.hint') }, s.placement) : null, s.flow ? h('div', { class: 'small muted' }, t(`upload.flow.${s.flow}`)) : null),
         h('td', {}, s.lang),
         h('td', { class: 'mono' }, s.locale ?? '–'),
         h('td', {}, h('span', { class: `up-action up-action-${s.action}`, title: s.reason ?? '' }, t(`upload.action.${s.action}`))),
@@ -144,8 +147,14 @@ export function planView(plan) {
       h(
         'section',
         { class: 'up-store' },
-        h('h3', { class: 'up-store-title' }, storeLabel(sp.store), h('span', { class: 'muted small' }, ` ${sp.app ?? ''}${sp.account ? ` · ${sp.account}` : ''}`)),
+        h(
+          'h3',
+          { class: 'up-store-title' },
+          storeLabel(sp.store),
+          h('span', { class: 'muted small' }, ` ${sp.app ?? ''}${sp.account ? ` · ${sp.account}` : ''}${sp.store === 'apple' ? ` · ${t(`upload.flow.${sp.flow}`)}` : ''}`),
+        ),
         remote,
+        sp.flow_note ? h('div', { class: 'small up-warn' }, sp.flow_note) : null,
         problemList(sp.problems),
         sp.sets.length
           ? h(
@@ -161,6 +170,74 @@ export function planView(plan) {
   const tt = plan.totals;
   parts.push(h('div', { class: 'up-totals' }, fmt(t('upload.totals'), { sets: tt.upload_sets, images: tt.images, size: kb(tt.bytes), unchanged: tt.unchanged_sets, skipped: tt.skipped_sets })));
   return h('div', { class: 'up-plan' }, parts.filter(Boolean));
+}
+
+/** App Store asset types (read-only `upload_refdata`): how Arrangia's slots
+ * resolve to App Asset Library placement groups, plus Apple's raw lists. */
+export async function showAssetTypes(err) {
+  const body = h('div', { class: 'up-asset-types' }, h('p', { class: 'muted' }, t('upload.asset_types.loading')));
+  const am = openModal({
+    title: t('upload.asset_types.title'),
+    size: 'large',
+    dismissable: true,
+    body: [body],
+    footer: [h('span', { class: 'spacer' }), h('button', { class: 'btn', type: 'button', onclick: () => am.close() }, t('project.dialog.close'))],
+  });
+  let r;
+  try {
+    r = await api.uploadRefdata({});
+  } catch (e) {
+    body.replaceChildren(h('p', { class: 'up-warn' }, e?.message ?? String(e)));
+    err?.show?.(e);
+    return;
+  }
+  const rd = r.ref_data ?? {};
+  const app = r.app
+    ? h(
+        'p',
+        { class: 'small' },
+        `${r.app.name} (${r.app.id}) · `,
+        r.app.library_id ? fmt(t('upload.asset_types.library'), { id: r.app.library_id }) : h('span', { class: 'up-warn' }, fmt(t('upload.asset_types.no_library'), { error: r.app.library_error ?? '' })),
+      )
+    : null;
+  const slots = h(
+    'table',
+    { class: 'up-table' },
+    h('thead', {}, h('tr', {}, h('th', {}, t('upload.asset_types.slot')), h('th', {}, t('upload.asset_types.groups')))),
+    h(
+      'tbody',
+      {},
+      r.mapping.map((m) =>
+        h(
+          'tr',
+          {},
+          h('td', { class: 'mono' }, m.slot, m.asset_library_only ? h('div', { class: 'small muted' }, t('upload.asset_types.library_only')) : null),
+          h(
+            'td',
+            { class: 'mono small' },
+            m.groups.length ? m.groups.map((g) => h('div', {}, g)) : h('span', { class: 'up-warn' }, fmt(t('upload.asset_types.no_group'), { cls: m.display_class ?? '–', platforms: m.platforms.join(', ') })),
+          ),
+        ),
+      ),
+    ),
+  );
+  const groups = h(
+    'details',
+    {},
+    h('summary', {}, fmt(t('upload.asset_types.raw_groups'), { n: (rd.placementProfileGroups ?? []).length })),
+    h(
+      'table',
+      { class: 'up-table small mono' },
+      h('tbody', {}, (rd.placementProfileGroups ?? []).map((g) => h('tr', {}, h('td', {}, g.placementProfileGroupId), h('td', {}, g.platform), h('td', {}, g.displayClassId)))),
+    ),
+  );
+  const types = h(
+    'details',
+    {},
+    h('summary', {}, fmt(t('upload.asset_types.raw_types'), { n: (rd.placementTypes ?? []).length })),
+    h('ul', { class: 'small mono' }, (rd.placementTypes ?? []).map((pt) => h('li', {}, `${pt.placementTypeId} [${(pt.acceptsAssetCategories ?? []).join(', ')}]: ${(pt.specMappings ?? []).map((m) => m.placementGroupId).join(', ')}`))),
+  );
+  body.replaceChildren(h('p', { class: 'muted small' }, fmt(t('upload.asset_types.intro'), { account: r.account, checked: r.mapping_checked })), app, slots, groups, types);
 }
 
 export function openUpload() {
@@ -182,6 +259,7 @@ export function openUpload() {
     (remoteBox = checkbox({ label: t('upload.remote'), checked: remote, title: t('upload.remote.hint'), onchange: (v) => ((remote = v), makePlan()) })),
     checkbox({ label: t('upload.force'), checked: force, onchange: (v) => ((force = v), makePlan()) }),
     h('button', { class: 'btn btn-small', type: 'button', onclick: () => makePlan() }, icon('reset'), t('upload.replan')),
+    h('button', { class: 'btn btn-small', type: 'button', title: t('upload.asset_types.hint'), onclick: () => showAssetTypes(err) }, t('upload.asset_types')),
   );
   const planBox = h('div', { class: 'up-plan-box' });
   const progress = h('div', { class: 'up-progress', hidden: true });
@@ -357,6 +435,12 @@ export function openUpload() {
         return fmt(t('upload.step.failed'), { file: name, error: f.error ?? '' });
       case 'delete_existing':
         return t('upload.step.delete_existing');
+      case 'delete_placements':
+        return t('upload.step.delete_placements');
+      case 'create_placements':
+        return t('upload.step.create_placements');
+      case 'delete_old_assets':
+        return t('upload.step.delete_old_assets');
       case 'set_order':
       case 'verify':
         return t('upload.step.set_order');

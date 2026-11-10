@@ -327,12 +327,13 @@ pub fn upload_refdata(app: &AppState, args: UploadRefdataArgs) -> CmdResult<Refd
     let project = app.session().ok().map(|s| s.snapshot());
     let account_id = match args.account {
         Some(a) => a,
-        None => match project
-            .as_ref()
-            .and_then(|p| p.store.account(StoreKind::Apple))
-        {
-            Some(a) => a.to_owned(),
-            None => {
+        None => {
+            if let Some(a) = project
+                .as_ref()
+                .and_then(|p| p.store.account(StoreKind::Apple))
+            {
+                a.to_owned()
+            } else {
                 let apple: Vec<_> = app
                     .settings_store()
                     .load()?
@@ -354,7 +355,7 @@ pub fn upload_refdata(app: &AppState, args: UploadRefdataArgs) -> CmdResult<Refd
                     }
                 }
             }
-        },
+        }
     };
     let app_ref = match args.app {
         Some(a) if !a.is_empty() && a.bytes().all(|b| b.is_ascii_digit()) => {

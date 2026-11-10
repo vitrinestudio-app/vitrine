@@ -5,8 +5,8 @@
 //! **Apple flows.** [`AppleUploadFlow`] hides how a set of screenshots gets
 //! into App Store Connect. Two implementations: [`ScreenshotSetFlow`]
 //! (`appScreenshotSets` / `appScreenshots`, deprecated in ASC API 4.5.1;
-//! ADR 0017) and [`super::library::AssetLibraryFlow`] (images + placements
-//! + ordering requests; ADR 0019). [`open_apple`] picks the store's flow
+//! ADR 0017) and [`super::library::AssetLibraryFlow`] (images, placements
+//! and ordering requests; ADR 0019). [`open_apple`] picks the store's flow
 //! from `store.apple.upload_flow` (`auto` = asset library, set API when the
 //! library is unavailable) and [`route`] the flow of each set (`auto` also
 //! falls back per set when the ref data has no group for it; Duo and

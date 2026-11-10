@@ -147,7 +147,8 @@ loopback only). `publish::credentials` validates key files and wraps the keychai
 `ARRANGIA_KEYRING=mock` = in-memory, `ARRANGIA_KEYRING_SERVICE` renames;
 unit tests use `SecretStore::mock()`, never touch the real keychain).
 `publish::{apple, google}` (ADR 0017) – App Store Connect (ES256 JWT,
-screenshot sets: reserve/upload parts/commit MD5/poll/reorder) and Google
+screenshot sets: reserve/upload parts/commit MD5/poll/reorder; App Asset
+Library in `apple::library`, ADR 0019) and Google
 Play (service-account OAuth, edits, `deleteall`, upload, commit) REST
 clients with retry/backoff, cancellation, observer and progress hooks;
 no network in tests (wiremock, `crates/publish/tests/`).
@@ -158,15 +159,18 @@ op `set_store`, locale defaults `data/store-locales.yaml`). `app::upload`
 (`remote`), blocking problems, confirm token stored with a fingerprint in
 the log), `log` (`<project>/.cache/uploads.sqlite`: plans, runs, sets,
 files, redacted events), `remote` (clients from account + keychain,
-`AppleUploadFlow` trait – today `ScreenshotSetFlow`, the App Asset Library
-would be a second implementation), `exec` (run thread: Apple per set,
+`AppleUploadFlow` trait, flow selection `store.apple.upload_flow`
+auto|asset_library|screenshot_sets via `open_apple`/`route`), `library`
+(`AssetLibraryFlow`, the default, ADR 0019: placement groups resolved at
+runtime from the ref data with `core/data/asset-library.yaml`, content
+marker in `referenceName`; `ScreenshotSetFlow` is the fallback), `exec` (run thread: Apple per set,
 Google one edit, progress events `upload-progress`/`upload-finished`,
 cancel, rate-limit pauses; resume = new plan, done sets are unchanged),
 `policy` (MCP rule table: GUI-hosted needs the user's "Confirm upload"
 click via `upload-confirm-requested` → `upload_confirm`, headless only with
 setting `mcp_allow_headless_upload`). `readiness` (setup checklist with `fix` place, also in every plan).
 Commands `upload_readiness|plan|execute|status|
-cancel|log|confirm`; `UploadConfig` on `AppState::upload()` (endpoints via
+cancel|log|confirm|refdata` (`refdata` = read-only App Store asset types); `UploadConfig` on `AppState::upload()` (endpoints via
 `ARRANGIA_ASC_BASE_URL`… loopback only in CLI/dev bridge; tests set it). `mcp` (ADR 0014,
 0015) – `ArrangiaMcp` over an `Arc<AppState>` (headless: own state; GUI:
 the live one, `Host::Gui`: omitted target/lang default to the GUI's view,
@@ -308,7 +312,8 @@ else headless opening `--project` when it holds a `project.yaml`; never
 print to stdout there), `upload plan [--store apple|google] [--target]
 [--lang] [--remote] [--force] [--format json]`, `upload execute --confirm
 <token> [--yes] [--changes-not-sent-for-review]`, `upload log [--last]
-[--events]` (`upload` takes `--app-dir`; ADR 0018). Exit codes: 0 ok, 1 project
+[--events]`, `upload refdata [--account] [--app] [--format json]`
+(`upload` takes `--app-dir`; ADR 0018, 0019). Exit codes: 0 ok, 1 project
 problems, 2 could not run.
 
 Golden tests (`crates/render/tests/golden.rs`) render every output image
