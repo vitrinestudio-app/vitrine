@@ -137,6 +137,8 @@ dependencies = [
  "arrangia-core",
  "arrangia-publish",
  "arrangia-render",
+ "aws-lc-rs",
+ "base64 0.23.1",
  "directories",
  "imagesize 0.14.0",
  "notify",
@@ -148,6 +150,8 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tiny-skia",
+ "tokio",
+ "wiremock",
 ]
 
 [[package]]

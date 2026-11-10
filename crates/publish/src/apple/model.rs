@@ -50,6 +50,15 @@ pub struct App {
     pub name: String,
 }
 
+/// Result of [`crate::apple::Client::apps_overview`]: what the key can see.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppsOverview {
+    /// Number of apps visible to the key (`meta.paging.total`), if reported.
+    pub total: Option<u64>,
+    /// The first app of the list, if any.
+    pub first: Option<App>,
+}
+
 /// `appStoreVersions` resource.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppStoreVersion {
@@ -171,6 +180,20 @@ pub(crate) struct Document<T> {
     pub data: T,
     #[serde(default)]
     pub links: Option<Links>,
+    #[serde(default)]
+    pub meta: Option<Meta>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub(crate) struct Meta {
+    #[serde(default)]
+    pub paging: Option<Paging>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub(crate) struct Paging {
+    #[serde(default)]
+    pub total: Option<u64>,
 }
 
 #[derive(Debug, Default, Deserialize)]

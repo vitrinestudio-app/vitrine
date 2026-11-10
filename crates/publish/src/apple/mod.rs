@@ -26,8 +26,8 @@ use tokio::time::Instant;
 use zeroize::Zeroizing;
 
 pub use model::{
-    App, AppRef, AppScreenshot, AppStoreVersion, DeliveryState, HttpHeader, Localization, Platform,
-    ScreenshotSet, UploadOperation,
+    App, AppRef, AppScreenshot, AppStoreVersion, AppsOverview, DeliveryState, HttpHeader,
+    Localization, Platform, ScreenshotSet, UploadOperation,
 };
 use model::{
     AppAttrs, Document, ErrorResponse, LocalizationAttrs, Resource, ScreenshotAttrs, SetAttrs,
@@ -302,6 +302,25 @@ impl Client {
     }
 
     // ---- resources ---------------------------------------------------------
+
+    /// Cheap read-only call for a connection test: `GET /v1/apps?limit=1`.
+    /// Proves the key is accepted and returns how many apps it can see.
+    pub async fn apps_overview(&self) -> Result<AppsOverview> {
+        let mut url = self.url(&["v1", "apps"])?;
+        url.query_pairs_mut()
+            .append_pair("fields[apps]", "bundleId,name")
+            .append_pair("limit", "1");
+        let doc: Document<Vec<Resource<AppAttrs>>> = self.get_doc(url).await?;
+        let total = doc
+            .meta
+            .and_then(|m| m.paging)
+            .and_then(|p| p.total)
+            .or_else(|| doc.data.is_empty().then_some(0));
+        Ok(AppsOverview {
+            total,
+            first: doc.data.into_iter().next().map(App::from),
+        })
+    }
 
     /// Finds the app by bundle id or Apple id.
     pub async fn find_app(&self, app: &AppRef) -> Result<App> {

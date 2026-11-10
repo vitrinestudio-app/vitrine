@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use super::*;
 use crate::dialogs::NoDialogs;
 use crate::events::RecordingSink;
-use crate::stores::{ConnectionInfo, ConnectionTester, StoreAccount};
+use crate::stores::{ConnectionError, ConnectionInfo, ConnectionTester, StoreAccount};
 use crate::testutil::example_copy;
 
 fn call(app: &AppState, name: &str, args: Value) -> Value {
@@ -156,9 +156,10 @@ impl ConnectionTester for FakeTester {
         &self,
         account: &StoreAccount,
         _: &arrangia_publish::credentials::Secret,
-    ) -> Result<ConnectionInfo, String> {
+    ) -> Result<ConnectionInfo, ConnectionError> {
         Ok(ConnectionInfo {
             summary: format!("hello {}", account.label),
+            ..ConnectionInfo::default()
         })
     }
 }

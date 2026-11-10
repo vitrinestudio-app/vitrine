@@ -269,6 +269,10 @@ fn main() {
     let relay = Arc::new(ProgressRelay::new(events.clone()));
     let discovery = arrangia_mcp::discovery::path(&paths);
     let state: Shared = Arc::new(AppState::new(paths, relay.clone(), dialogs.clone()));
+    // "Test connection" of store accounts uses the real store clients (read-only).
+    state.set_connection_tester(Arc::new(
+        arrangia_gui::store_test::StoreClientTester::default(),
+    ));
     let open_at_start = project_arg();
     let startup = state.clone();
     let mcp_host: Arc<OnceLock<Arc<McpHost>>> = Arc::default();

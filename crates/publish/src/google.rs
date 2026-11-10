@@ -119,7 +119,7 @@ pub struct Image {
 pub struct Config {
     /// Service account key file contents (JSON).
     pub service_account_json: Zeroizing<String>,
-    /// Package name (`com.example.app`).
+    /// Package name (`com.example.app`); may be empty for [`Client::authenticate`].
     pub package_name: String,
     /// API base URL (overridable for tests).
     pub base_url: String,
@@ -280,9 +280,6 @@ impl Client {
         jsonwebtoken::EncodingKey::from_rsa_pem(sa.private_key.as_bytes()).map_err(|_| {
             Error::config("the service account private key is not a valid RSA PEM key")
         })?;
-        if config.package_name.trim().is_empty() {
-            return Err(Error::config("package name is empty"));
-        }
         Ok(Self {
             package_name: config.package_name,
             email: sa.client_email,
@@ -357,9 +354,19 @@ impl Client {
         Ok(resp.access_token)
     }
 
+    /// Fetches a fresh OAuth access token (read-only connection test: proves
+    /// the service account key is accepted by Google; it does not check Play
+    /// Console permissions). Works without a package name.
+    pub async fn authenticate(&self) -> Result<()> {
+        self.bearer(true).await.map(drop)
+    }
+
     // ---- request helpers ---------------------------------------------------
 
     fn edit_url(&self, upload: bool, rest: &[&str]) -> Result<Url> {
+        if self.package_name.trim().is_empty() {
+            return Err(Error::config("package name is empty"));
+        }
         let mut segments: Vec<&str> = Vec::with_capacity(rest.len() + 5);
         if upload {
             segments.push("upload");

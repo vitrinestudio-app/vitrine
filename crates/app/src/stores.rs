@@ -125,18 +125,70 @@ pub fn new_account_id(kind: StoreKind, label: &str, taken: &[StoreAccount]) -> S
 }
 
 /// What a connection test found out.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct ConnectionInfo {
-    /// Short human summary, e.g. "3 apps visible" or the service account.
+    /// Short human summary, e.g. "key accepted, 3 apps visible (first: …)".
     pub summary: String,
+    /// Apple: number of apps the key can see.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub apps_visible: Option<u64>,
+    /// Apple: name of the first visible app.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_app: Option<String>,
+    /// Google: the service account e-mail Google accepted.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_email: Option<String>,
 }
 
-/// Seam for the store clients' "who am I" call (`arrangia_publish::apple` /
-/// `google`, Phase 5.3/5.4). `AppState` uses none until the clients are
-/// wired up; `store_account_test` then answers `not_implemented` after
-/// checking that the secret is in the keychain and valid.
+/// Why a connection test failed (stable, for the UI: `details.reason`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConnectionFailure {
+    /// The store rejected the key (wrong ids, revoked/deleted key, clock).
+    KeyRejected,
+    /// The key is accepted but lacks permissions.
+    NoPermission,
+    /// No network / store not reachable.
+    Offline,
+    /// The store had a server problem or answered unexpectedly.
+    StoreError,
+    /// Rate limit reached.
+    RateLimited,
+    /// No answer in time.
+    Timeout,
+    /// The stored key cannot be used by the client.
+    InvalidKey,
+    /// Anything else.
+    Other,
+}
+
+/// A failed connection test: reason + user-facing message (no secrets).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConnectionError {
+    pub reason: ConnectionFailure,
+    pub message: String,
+}
+
+impl ConnectionError {
+    pub fn new(reason: ConnectionFailure, message: impl Into<String>) -> Self {
+        Self {
+            reason,
+            message: message.into(),
+        }
+    }
+}
+
+/// Seam for the store clients' "who am I" call. The GUI and the dev bridge
+/// install [`crate::store_test::StoreClientTester`] (`arrangia_publish::apple`
+/// / `google`); without a tester (CLI, headless MCP) `store_account_test`
+/// answers `not_implemented` after checking that the secret is in the
+/// keychain and valid.
 pub trait ConnectionTester: Send + Sync {
-    fn test(&self, account: &StoreAccount, secret: &Secret) -> Result<ConnectionInfo, String>;
+    fn test(
+        &self,
+        account: &StoreAccount,
+        secret: &Secret,
+    ) -> Result<ConnectionInfo, ConnectionError>;
 }
 
 #[cfg(test)]

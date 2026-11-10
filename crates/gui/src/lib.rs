@@ -16,5 +16,5 @@ pub mod bridge;
 pub use arrangia_app::{
     Actor, AppInfo, AppState, CommandError, ErrorCode, EventSink, Reply, Session, ViewState,
     app_info, commands, dialogs, dispatch, dispatch_as, error, events, preview, session, settings,
-    stores, testutil, view, watch,
+    store_test, stores, testutil, view, watch,
 };

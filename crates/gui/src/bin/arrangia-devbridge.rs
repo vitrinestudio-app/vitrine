@@ -21,7 +21,9 @@
 //! `<app-dir>/claude_desktop_config.json` here, never the real config.
 //! Store account secrets go to an in-memory keychain (lost on exit) unless
 //! `--system-keychain` is given (then `ARRANGIA_KEYRING_SERVICE` decides
-//! the service name; use a test name).
+//! the service name; use a test name). "Test connection" calls the real
+//! stores (read-only) unless `ARRANGIA_ASC_BASE_URL` /
+//! `ARRANGIA_PLAY_TOKEN_URL` point to a loopback mock server.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -93,6 +95,11 @@ fn main() -> ExitCode {
     if !o.system_keychain {
         state = state.with_secret_store(arrangia_gui::stores::credentials::SecretStore::mock());
     }
+    // Store connection test with the real clients; `ARRANGIA_ASC_BASE_URL`,
+    // `ARRANGIA_PLAY_TOKEN_URL` (loopback only) point it at a mock server.
+    state.set_connection_tester(Arc::new(
+        arrangia_gui::store_test::StoreClientTester::from_env(),
+    ));
     let app = Arc::new(state);
     let project = match (&o.project, o.copy) {
         (Some(dir), true) => {

@@ -234,8 +234,10 @@ pub struct StoreAccountTest {
 }
 
 /// Reads the secret from the keychain, checks it again and asks the store
-/// who we are. Without store clients (before Phase 5.3/5.4 are wired up)
-/// the answer is `not_implemented` (details: `secret: "ok"`).
+/// who we are (read-only, see `crate::store_test`). Without an installed
+/// tester (CLI, headless MCP) the answer is `not_implemented` (details:
+/// `secret: "ok"`). A failed test is an `io` error with `details.reason`
+/// (`key_rejected`, `no_permission`, `offline`, …).
 pub fn store_account_test(app: &AppState, args: StoreAccountIdArgs) -> CmdResult<StoreAccountTest> {
     let account = find_account(app, &args.id)?;
     let secret = app
@@ -252,8 +254,8 @@ pub fn store_account_test(app: &AppState, args: StoreAccountIdArgs) -> CmdResult
     let Some(tester) = app.connection_tester() else {
         return Err(CommandError::new(
             ErrorCode::NotImplemented,
-            "the key is in the keychain and valid; the connection test needs the store \
-             clients (not available yet)",
+            "the key is in the keychain and valid; the connection test is only available \
+             in the app",
         )
         .with_details(serde_json::json!({ "secret": "ok" })));
     };
@@ -263,7 +265,8 @@ pub fn store_account_test(app: &AppState, args: StoreAccountIdArgs) -> CmdResult
             ok: true,
             info,
         }),
-        Err(message) => Err(CommandError::new(ErrorCode::Io, message)),
+        Err(e) => Err(CommandError::new(ErrorCode::Io, e.message)
+            .with_details(serde_json::json!({ "reason": e.reason }))),
     }
 }
 
