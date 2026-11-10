@@ -146,4 +146,14 @@ export const api = {
   assetThumbnail: (path, maxEdge) => invoke('asset_thumbnail', { path, max_edge: maxEdge }),
   pickFiles: (args = {}) => invoke('dialog_pick_files', args),
   catalogFonts: () => invoke('catalog_fonts'),
+
+  // ----- imported frame packages (3.5) -----
+  framesList: () => invoke('frames_list'),
+  /** Plan of importing a folder / .zip / .dmg (nothing written). */
+  framesImportPlan: (path) => invoke('frames_import_plan', { path }),
+  /** `assignments`: [{ name, model?, color?, orientation? }] (no model = ignore). */
+  framesImportApply: (path, assignments = []) => invoke('frames_import_apply', { path, assignments }),
+  /** `args`: { model?, color?, orientation? } (none = all). */
+  framesRemove: (args = {}) => invoke('frames_remove', args),
+  framesThumbnail: (file, maxEdge) => invoke('frames_thumbnail', { file, max_edge: maxEdge }),
 };

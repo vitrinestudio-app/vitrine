@@ -107,3 +107,164 @@
   max-height: 180px;
   overflow: auto;
 }
+
+/* Frame packages (task 3.5). */
+
+.fp-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fp-intro {
+  margin: 0 0 6px;
+}
+
+.fp-pick {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.fp-summary {
+  margin: 8px 0 4px;
+  font-weight: 600;
+}
+
+.fp-table-wrap {
+  margin: 6px 0 14px;
+}
+
+.fp-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.fp-table th,
+.fp-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+  font-weight: normal;
+}
+
+.fp-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+  color: var(--fg-muted);
+}
+
+.fp-notes {
+  max-width: 260px;
+}
+
+.fp-file {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fp-superseded td {
+  color: var(--fg-muted);
+}
+
+.fp-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--border-strong);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+
+.fp-badge-install {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.fp-badge-replace,
+.fp-badge-unmatched {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.fp-badge-failed {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.fp-assign {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.fp-assign .fp-color {
+  width: 150px;
+}
+
+.fp-installed-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fp-installed-head h3 {
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.fp-installed-head .spacer {
+  flex: 1;
+}
+
+.fp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+  max-height: 34vh;
+  overflow: auto;
+}
+
+.fp-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.fp-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  flex: none;
+  border-radius: var(--radius-small);
+  background: var(--fg-faint);
+}
+
+.fp-card-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.fp-card-model {
+  font-weight: 600;
+}
+
+.fp-card-src {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fp-root {
+  margin-top: 10px;
+}

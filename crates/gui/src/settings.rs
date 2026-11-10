@@ -6,6 +6,9 @@
 //! |---|---|---|---|
 //! | `settings.yaml` | `~/Library/Application Support/app.Arrangia.Arrangia/` | `~/.config/arrangia/` | `%APPDATA%\Arrangia\Arrangia\config\` |
 //! | `app.sqlite` | same folder | `~/.local/share/arrangia/` | `%APPDATA%\Arrangia\Arrangia\data\` |
+//! | `frames/` (imported frames, ADR 0009) | same folder | data folder | data folder |
+//!
+//! `ARRANGIA_APP_DIR` moves everything below one folder (`config/`, `data/`).
 
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -26,8 +29,14 @@ pub struct AppPaths {
 }
 
 impl AppPaths {
-    /// The platform folders (`directories`); `None` without a home folder.
+    /// The platform folders (`directories`), or below `$ARRANGIA_APP_DIR`
+    /// when set (like the CLI); `None` without a home folder.
     pub fn platform() -> Option<Self> {
+        if let Some(dir) =
+            std::env::var_os(arrangia_core::frame_import::APP_DIR_ENV).filter(|v| !v.is_empty())
+        {
+            return Some(Self::in_dir(Path::new(&dir)));
+        }
         let dirs = directories::ProjectDirs::from("app", "Arrangia", "Arrangia")?;
         Some(Self {
             config_dir: dirs.config_dir().to_owned(),

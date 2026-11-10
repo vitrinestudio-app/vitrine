@@ -22,6 +22,7 @@ mod catalog;
 mod edit;
 mod add;
 mod export;
+mod frames;
 mod inspect;
 mod os;
 mod project;
@@ -44,6 +45,7 @@ pub use assets::*;
 pub use catalog::*;
 pub use edit::*;
 pub use export::*;
+pub use frames::*;
 pub use inspect::*;
 pub use os::*;
 pub use project::*;
@@ -151,6 +153,7 @@ impl AppState {
     /// Opens `dir` as the current project (closing the previous one).
     pub fn open_project(&self, dir: &std::path::Path) -> CmdResult<Arc<Session>> {
         let session = Session::open(dir, self.events.clone())?;
+        session.set_frames(self.frame_index(), false);
         if self.watch {
             session.watch()?;
         }
@@ -225,10 +228,11 @@ command_table! {
         project_rename, language_add, language_remove, languages_set,
         default_language_impact, default_language_set, styles_get, styles_patch,
         dialog_pick_folder, reveal_path,
+        frames_import_plan, frames_import_apply, frames_list, frames_remove,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,
-        render_preview_string, asset_thumbnail,
+        render_preview_string, asset_thumbnail, frames_thumbnail,
     ],
 }
 
@@ -247,3 +251,6 @@ mod tests;
 
 #[cfg(test)]
 mod tests_texts;
+
+#[cfg(test)]
+mod tests_frames;

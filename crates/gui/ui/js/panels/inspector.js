@@ -196,7 +196,7 @@ export function mount(el, ctx) {
   async function loadExtras(info, st) {
     const out = {};
     if (info.kind === 'device') {
-      [out.devices, out.assets] = await Promise.all([cache.devices(), cache.assets()]);
+      [out.devices, out.assets, out.frames] = await Promise.all([cache.devices(), cache.assets(), api.framesList().catch(() => null)]);
     } else if (info.kind === 'text') {
       out.keys = await cache.keys(st.lang);
     } else if (info.kind === 'image' || info.kind === 'shape' || info.kind === 'background') {
@@ -404,17 +404,35 @@ export function mount(el, ctx) {
     if (!dev) models.unshift({ value: e.model, label: e.model });
     rows.push(row(t('inspector.model'), selectInput({ key: 'model', options: models, value: e.model, title: t('inspector.model'), onChange: (v) => set({ model: v }) }), { field: 'model', info }));
     const frameDefault = store.get().summary.styles.frame;
+    const frameLabel = (f) => (f?.startsWith('imported:') ? t(`frames.source.${f.slice(9)}`) : t(`inspector.frame.${f}`));
+    // Imported frames (task 3.5): which colours are installed for this model.
+    const effFrame = e.frame ?? frameDefault;
+    const importedSrc = effFrame?.startsWith('imported:') ? extra.frames?.sources?.find((x) => x.source === effFrame.slice(9)) : null;
+    const importedFrames = (importedSrc?.frames ?? []).filter((f) => f.model === e.model);
+    const importedColors = [...new Map(importedFrames.map((f) => [f.color, f.color_label])).entries()];
+    let frameHint = null;
+    if (effFrame?.startsWith('imported:')) {
+      if (!importedSrc?.models?.includes(e.model)) frameHint = t('frames.inspector.no_model');
+      else if (!importedColors.length) frameHint = t('frames.inspector.missing');
+      else if (e.color && !e.color.startsWith('#') && !importedColors.some(([c]) => c === e.color)) frameHint = t('frames.inspector.color_missing');
+      else frameHint = t('frames.inspector.available').replace('{colors}', importedColors.map(([, l]) => l).join(', '));
+    }
     rows.push(
       row(
         t('inspector.frame'),
         selectInput({
           key: 'frame',
-          options: [{ value: '', label: `${t('inspector.project_default')} (${t(`inspector.frame.${frameDefault}`)})` }, { value: 'stylized', label: t('inspector.frame.stylized') }, { value: 'detailed', label: t('inspector.frame.detailed') }],
+          options: [
+            { value: '', label: `${t('inspector.project_default')} (${frameLabel(frameDefault)})` },
+            { value: 'stylized', label: t('inspector.frame.stylized') },
+            { value: 'detailed', label: t('inspector.frame.detailed') },
+            { value: 'imported:apple', label: t('frames.source.apple') },
+          ],
           value: e.frame ?? '',
           title: t('inspector.frame'),
           onChange: (v) => set({ frame: v || null }),
         }),
-        { field: 'frame', info },
+        { field: 'frame', info, hint: frameHint },
       ),
     );
     // Colour: catalog swatches + custom hex.
@@ -430,9 +448,19 @@ export function mount(el, ctx) {
         return b;
       }),
     );
+    // Colours of the installed imported frames (vendor names).
+    const importedChips = importedColors.length
+      ? h(
+          'div',
+          { class: 'insp-chips' },
+          ...importedColors.map(([c, label]) =>
+            h('button', { type: 'button', class: `toggle-chip${current === c ? ' on' : ''}`, 'aria-pressed': String(current === c), title: c, onclick: () => set({ color: c }) }, label),
+          ),
+        )
+      : null;
     const custom = current && current.startsWith('#') ? current : '';
     rows.push(
-      row(t('inspector.color'), [sw, colorInput({ key: 'color', value: custom, palette: {}, swatches: [], optional: true, placeholder: t('inspector.color.custom'), t, onCommit: (v) => set({ color: v }) })], {
+      row(t('inspector.color'), [sw, importedChips, colorInput({ key: 'color', value: custom, palette: {}, swatches: [], optional: true, placeholder: t('inspector.color.custom'), t, onCommit: (v) => set({ color: v }) })], {
         field: 'color',
         info,
         wide: true,

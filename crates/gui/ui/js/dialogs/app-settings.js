@@ -6,6 +6,7 @@
 import { api } from '../api.js';
 import { h } from '../dom.js';
 import { t } from '../i18n.js';
+import { openFramePackages } from './frame-packages.js';
 import { errorLine, input, openModal, row, select } from './modal.js';
 
 /** Reloads the UI in `lang`, keeping the view context (see main.js). */
@@ -20,7 +21,8 @@ export function reloadInLanguage(lang) {
 }
 
 export async function openAppSettings() {
-  const info = await api.settingsGet();
+  const [info, frames] = await Promise.all([api.settingsGet(), api.framesList().catch(() => null)]);
+  const frameCount = frames?.sources?.reduce((n, s) => n + s.frames.length, 0) ?? 0;
   const err = errorLine();
   const saved = h('span', { class: 'muted small' });
   let settings = info.settings;
@@ -64,10 +66,20 @@ export async function openAppSettings() {
         row(
           t('settings.frame'),
           select({
-            options: ['detailed', 'stylized'].map((f) => ({ value: f, label: t(`settings.frame.${f}`) })),
+            options: [...['detailed', 'stylized'].map((f) => ({ value: f, label: t(`settings.frame.${f}`) })), { value: 'imported:apple', label: t('frames.source.apple') }],
             value: settings.default_frame_style,
             onchange: (v) => save({ default_frame_style: v }),
           }),
+        ),
+        row(
+          t('frames.title'),
+          h(
+            'div',
+            { class: 'fp-settings-row' },
+            h('span', {}, frameCount ? t('frames.count').replace('{n}', String(frameCount)) : t('frames.none_short')),
+            h('button', { class: 'btn', type: 'button', onclick: () => openFramePackages() }, t('frames.manage')),
+          ),
+          t('frames.settings_hint'),
         ),
         row(t('settings.store'), h('span', { class: 'muted' }, t('settings.store.note'))),
         row(t('settings.file'), h('span', { class: 'mono small selectable' }, info.settings_file)),
