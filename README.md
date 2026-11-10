@@ -16,14 +16,17 @@ Website: <https://arrangia.app>
 ## Status
 
 **Pre-alpha. Phase 1 (core + command line) and Phase 2 (desktop editor)
-are complete, pending review.** Projects can be created, designed,
-translated, validated and exported in the desktop app, or headless with
-the `arrangia` command line tool; store upload and the MCP server are not
-built yet. The full concept (in German) is in
-[`docs/KONZEPT.md`](docs/KONZEPT.md), the task lists in
-[`docs/plan/phase-1.md`](docs/plan/phase-1.md) and
-[`docs/plan/phase-2.md`](docs/plan/phase-2.md) (with the known gaps of the
-editor under "Follow-ups").
+are complete; Phase 3 (languages & import) is nearly done** – per-language
+text overrides, font fallbacks, opt-in automatic hyphenation, screenshot
+import (fastlane and folder layouts), translation exchange via CSV and
+XLIFF, and imported Apple Product Bezels (still to be verified with the
+real package). Projects can be created, designed, translated, validated
+and exported in the desktop app, or headless with the `arrangia` command
+line tool; store upload and the MCP server are not built yet. The full
+concept (in German) is in [`docs/KONZEPT.md`](docs/KONZEPT.md), the task
+lists in [`docs/plan/`](docs/plan/) (`phase-1.md` … `phase-3.md`, with
+known gaps under "Follow-ups"), the current state in
+[`docs/plan/STATUS.md`](docs/plan/STATUS.md).
 
 ### Desktop editor
 
@@ -43,7 +46,8 @@ export; every change is saved immediately as plain YAML.
 [`tests/fixtures/example`](tests/fixtures/example) is a complete project
 for a fictional garden planner, exported from one YAML file into iPhone,
 Google Play, iPad landscape, Mac App Store, web slides and banner targets
-in English and German. Store gallery previews as Arrangia renders them:
+in English, German, French and Canadian French (which inherits all but
+two texts from French). Store gallery previews as Arrangia renders them:
 
 ![iPhone 6.9" set: one continuous canvas, a phone crossing pages 3 and 4](docs/example/iphone-gallery-en.jpg)
 
@@ -51,6 +55,13 @@ The same phone pages as an iPad landscape set (two pages per image,
 tablet frames, a variant with adjusted positions), in German:
 
 ![iPad 13" landscape set in German](docs/example/ipad-gallery-de.jpg)
+
+In French, with the French app screenshots for the first three pages and
+the English ones as fallback for the rest; the German set above shows a
+language override that lets "Mischkultur-partner" be hyphenated
+automatically instead of shrinking the headline:
+
+![iPhone 6.9" set in French](docs/example/iphone-gallery-fr.jpg)
 
 Mac App Store set and a web app in a browser window and in a notebook
 with browser chrome:
@@ -110,6 +121,18 @@ arrangia render --project my-app --canvas    # preview PNG: --page N | --image N
 arrangia render --project my-app --target play-phone --page 2 --width 400 -o page.png
 arrangia export --project my-app             # all targets × languages into my-app/export/
 arrangia export --target ios-iphone-69 --lang de --force   # --force ignores the incremental cache
+
+# translations for translators (CSV or XLIFF 1.2/2.0; markup becomes protected inline tags)
+arrangia strings export --format xliff20 --lang fr -o translations/   # --format csv --context --missing-only
+arrangia strings import translations/fr.xlf --dry-run                 # report: changed/new/unknown keys, overflows
+
+# screenshots from fastlane snapshot, an Arrangia folder tree or a flat folder
+arrangia import screenshots fastlane/screenshots --dry-run            # --device-map "iPhone 17 Pro Max=ios-phone" --save-mapping
+
+# Apple Product Bezels (downloaded by you; stored app-wide, never in the project)
+arrangia frames import /Volumes/Bezel-iPhone-18 --dry-run             # folder, zip or DMG
+arrangia frames list
+arrangia frames remove --model iphone-island                          # --color, --orientation; --all removes everything
 ```
 
 Exit codes: `0` success (warnings fail only with `validate --strict`), `1`

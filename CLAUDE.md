@@ -16,10 +16,9 @@ the model, renderer or architecture. The user communicates in German; code,
 comments, commit messages and repo docs are in English.
 
 Status: pre-alpha. Phase 1 (core + CLI) and Phase 2 (GUI editor) are
-complete pending review (`docs/plan/phase-1.md`, `docs/plan/phase-2.md`
-with the known GUI gaps under "Follow-ups"); Phase 3 (store upload) is
-next. See the roadmap in
-KONZEPT.md §12.
+done and reviewed; Phase 3 (languages & import, `docs/plan/phase-3.md`)
+is nearly done. Current state and decisions: `docs/plan/STATUS.md`. See
+the roadmap in KONZEPT.md §12.
 
 ## Core ideas
 
@@ -56,8 +55,9 @@ crates/
 assets/fonts/           bundled OFL fonts (Inter 4.1, embedded by core::layout)
 assets/hyphenation/     hyph-utf8 hyphenation patterns (permissive licences only,
                         see LICENSES.md; embedded by core::layout::hyphen)
-tests/fixtures/example/ example project (all target kinds, en + de) and its
-                        golden reference images (golden/)
+tests/fixtures/example/ example project (all target kinds; en, de, fr, fr-CA
+                        with deliberate fallbacks) and its golden reference
+                        images (golden/)
 docs/KONZEPT.md         concept (binding)
 docs/adr/               architecture decision records
 docs/plan/              task lists per phase
@@ -93,8 +93,8 @@ device frames and browser chrome from the catalog; `text` – glyph outlines
 of `core::layout` results; `export` – page/banner files, gallery previews,
 incremental manifest; plus `paint`/`blur`/`raster` helpers.
 
-`cli` – `arrangia new|render|export|validate|frames` on top of `core` +
-`render` (templates in `core::templates`).
+`cli` – `arrangia new|render|export|validate|strings|import|frames` on
+top of `core` + `render` (templates in `core::templates`).
 
 `core::frame_import` (ADR 0012) – Apple Product Bezels imported by the
 user: package (folder/zip/DMG), name rules in
@@ -196,15 +196,20 @@ CLI usage (`--project <DIR>`, default the current folder): `new <dir>
 [--preview] [--strict] [--format json]`, `render [--target] [--lang]
 [--page N | --image N | --canvas | --gallery] [--width|--max-edge|--scale]
 [-o file]`, `export [--target] [--lang] [--out dir] [--no-gallery]
-[--force] [--format json]`, `frames import <path> [--dry-run]`, `frames
+[--force] [--format json]`, `strings export [--format csv|xliff12|xliff20]
+[--lang] [-o] [--missing-only] [--context]`, `strings import <file>…
+[--dry-run] [--create-keys] [--empty keep|remove]`, `import screenshots
+<dir> [--format auto|arrangia|fastlane|flat] [--device-map|--lang-map|--key-map
+A=B] [--dry-run] [--save-mapping]`, `frames import <path> [--dry-run]`, `frames
 list`, `frames remove [--model] [--color] [--orientation] [--all]`
 (synthetic test package: `cargo run -p arrangia-core --example
 synthetic_bezels -- <dir|file.zip>`). Exit codes: 0 ok, 1 project problems, 2 could
 not run.
 
 Golden tests (`crates/render/tests/golden.rs`) render every output image
-of every target of `tests/fixtures/example` (en, plus de for the iPhone
-set and the blog header) at 25 % and the gallery previews at 320 px, and
+of every target of `tests/fixtures/example` (en, plus `EXTRA_LANGS`: de
+for the iPhone set and the blog header, fr for the iPhone and iPad sets)
+at 25 % and the gallery previews at 320 px, and
 compare them with `tests/fixtures/example/golden/`: a pixel differs above
 8/255 in any channel, an image fails above 0.5 % differing pixels
 (constants at the top of the file). On failure they write `*.actual.png` /
@@ -213,7 +218,9 @@ compare them with `tests/fixtures/example/golden/`: a pixel differs above
 outside the tolerance and delete stale ones. They run in the normal debug
 `cargo test` (dependencies are built with `opt-level = 2`, our crates are
 not; ~7 s on 10 cores). Changing the fixture or the renderer visibly means
-updating the references in the same commit.
+updating the references in the same commit. `crates/cli/tests/scenario.rs`
+is the Phase 3 "done when" check (3 languages × 3 targets exported with
+fallbacks, overflow reported).
 
 Cross-platform tests: paths via `Path::join`, never compare paths as
 strings; line endings are LF (`.gitattributes`), tests reading checked-in

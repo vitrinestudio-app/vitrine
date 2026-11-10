@@ -28,6 +28,8 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Grouping `group: 2`: two portrait pages → one landscape image (iPad landscape from the phone canvas).
 - Variants: per-format overrides (position, size, rotation…) while content stays shared. Inspector marks overrides purple.
 - Language overrides: per-language text tweaks (font size, box, style, fit, effects); marked teal in the inspector; `de-AT` inherits `de`.
+- Regional languages (`fr-CA`, `de-AT`, `pt-BR`): fall back automatically to their prefix language (`fr-CA → fr → default`); translate only the keys that differ (example: fr-CA has 2 Québec texts, "jardin communautaire", "cellulaire"). No `languages.fallback` entry needed for prefixes; use it only for non-prefix chains.
+- Fallback severities: text from the default language = warning "not translated" (fails `validate --strict`); text from a prefix/configured fallback = info; screenshot from any fallback = info. A partial screenshot set per language is fine (missing ones come from the fallback chain).
 - Rotation sign: positive = clockwise (CSS convention).
 
 ## 3. How-to notes
@@ -55,6 +57,11 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Automatic hyphenation: opt-in (`hyphenate: true`), only kicks in when text doesn't fit even at `shrink_to`. Bundled languages: en-us, en-gb, de (1996), fr, es, nl, it, da, pt, nb/no, fi. Swedish missing (pattern licence LPPL-only, pending project licence decision).
 - Exchange: CSV (Excel variants with BOM/`;` detected) and XLIFF 1.2/2.0; markup becomes protected inline tags so CAT tools don't break it; import shows a dry-run diff and post-import overflow check; one undo step.
 - CSV context column gives element/page/style and an approximate max length.
+- XLIFF/CSV export writes one file per non-default language; a sparse regional language (fr-CA) gets all keys it lacks with `--missing-only`.
+- French typography: put a no-break space (U+00A0) before `:` `;` `?` `!` and inside « guillemets »; also to keep words together on one line ("le bon\u00a0moment"). Line breaking respects it.
+- YAML: a translation containing `: ` (colon + space) or starting with `"`, `[`, `*` must be quoted (`"…"`); the GUI/strings import write correct YAML automatically.
+- Hyphenation tip: auto-fit shrinks first and hyphenates only at `shrink_to`. If a long compound makes a headline shrink too much in one language, raise `shrink_to` for that language with a language override (`langs: {de: {fit: {shrink_to: 78, max_lines: 2}}}`) so hyphenation kicks in earlier; widen the box (`box`) if the break lands at an ugly syllable (it takes the last pattern point that fits: "Mischkul-turpartner" vs "Mischkultur-partner"). Soft hyphen `\-` forces the exact point. Example: `title-companions` in the example project.
+- Validation info `hyphenated` lists every text that was hyphenated automatically per target × language – check those renders.
 
 ### Apple device frames (Apple Design Resources "Product Bezels")
 - User downloads the bezels themselves from developer.apple.com/design/resources; Arrangia never ships or uploads them (Apple licence; License.rtf in the package).
@@ -78,6 +85,8 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 ## 4. Reference notes
 - CLI exit codes: 0 ok, 1 project problems (validation errors / export errors), 2 command could not run.
 - `validate --strict` fails on warnings; `--preview` treats missing screenshots as warnings.
+- Text overflow (`text_overflow`) is an **error** (exit 1) – only the affected language/target; other languages still validate clean.
+- `render --gallery --max-edge N`: N is the image *height* of the gallery, not its long side.
 - Keyboard: arrows nudge 1 lu (⇧ 10), ⌘D duplicate, ⌘G / ⇧⌘G group/ungroup, `[` `]` z-order, ⌘Z/⇧⌘Z, ⌥ disables snapping while dragging, ⇧ free rotation / axis lock, ⌘N/⌘O/⌘E/⌘, menus.
 - Dev bridge (developers only): run the UI in a browser – see CLAUDE.md.
 
