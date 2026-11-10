@@ -81,6 +81,9 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Keyboard: arrows nudge 1 lu (⇧ 10), ⌘D duplicate, ⌘G / ⇧⌘G group/ungroup, `[` `]` z-order, ⌘Z/⇧⌘Z, ⌥ disables snapping while dragging, ⇧ free rotation / axis lock, ⌘N/⌘O/⌘E/⌘, menus.
 - Dev bridge (developers only): run the UI in a browser – see CLAUDE.md.
 
+## Contributor notes
+- Built-in device frames are own parametric artwork (devices.yaml + render/frames); how to add devices + ready-made Claude prompt: docs/dev/adding-devices.md.
+
 ## 5. Limits & FAQ
 - Colour management (Display P3 → sRGB) not yet.
 - RTL layouts not mirrored yet.
