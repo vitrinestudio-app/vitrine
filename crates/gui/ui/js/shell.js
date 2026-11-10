@@ -19,7 +19,7 @@ import { toggleValidation } from './dialogs/validation.js';
 
 const BASE = '__base__';
 
-/** `app`: app-level actions `{ menu (button element), targets(), exportDialog(), claude (indicator element) }` from main.js. */
+/** `app`: app-level actions `{ menu (button element), targets(), exportDialog(), assistant (MCP indicator element) }` from main.js. */
 export function mountShell(app = {}) {
   const ctx = panelContext();
   const shell = { canvas: null };
@@ -53,7 +53,7 @@ export function mountShell(app = {}) {
     h('span', { class: 'sep' }),
     addMenu.el,
     h('span', { class: 'spacer' }),
-    app.claude ?? '',
+    app.assistant ?? '',
     exportBtn,
     badge,
     h('span', { class: 'sep' }),

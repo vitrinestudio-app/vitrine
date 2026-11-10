@@ -39,15 +39,16 @@ js/panels/strip-settings.js  strip settings (inspector with no selection)
 js/menu.js            app menu (top-bar button), ⌘N/⌘O/⌘E/⌘, shortcuts
 js/add-menu.js        top-bar "Add" menu → `element_add` on the visible page
 js/start.js           start screen (#welcome), new-project dialog, folder drop
-js/claude.js          Claude / MCP (ADR 0015): status, top-bar indicator + activity
-                      popover, toasts, canvas glow trigger, projects opened by Claude
+js/assistant.js       AI assistants over MCP (ADR 0015): status, top-bar indicator +
+                      activity popover, toasts (client display name), canvas glow
+                      trigger, projects opened by an assistant
 js/dialogs/modal.js   <dialog> helper (openModal, choiceDialog, confirmDialog,
                       promptDialog) + form controls (row, input, select…)
 js/dialogs/*.js       targets editor, validation popover, export, project
                       and app settings
 styles/{dialogs,targets,start,settings}.css   styles of the above
 styles/{textedit,translations,assets}.css      text editor, translations, assets
-styles/claude.css     indicator, activity popover, toasts, glow, settings section
+styles/assistant.css  indicator, activity popover, toasts, glow, settings section
 ```
 
 Dialogs use `openModal({ title, body, footer, size })` from

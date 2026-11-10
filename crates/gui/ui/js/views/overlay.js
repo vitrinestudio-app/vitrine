@@ -58,7 +58,7 @@ export function rotateHandleAt(el, toScreen) {
  * @param {SVGSVGElement} svg
  * @param {object} m model: overlay, zoom, panX, panY, selection, hover,
  *   variantActive, drag ({ ghosts, guides, readout, homePage, marquee,
- *   hideSelection }), showHandles, highlight ({ ids, alpha }: Claude's
+ *   hideSelection }), showHandles, highlight ({ ids, alpha }: an assistant's
  *   last edit)
  */
 export function drawOverlay(svg, m) {
@@ -163,7 +163,7 @@ export function drawOverlay(svg, m) {
     }
   }
 
-  // Elements Claude just changed: a fading glow outline (ADR 0015).
+  // Elements an assistant just changed: a fading glow outline (ADR 0015).
   if (m.highlight) {
     const a = `opacity="${fmt(m.highlight.alpha)}"`;
     for (const id of m.highlight.ids) {
@@ -172,8 +172,8 @@ export function drawOverlay(svg, m) {
       const b = g?.bounds;
       const pts = e ? e.quad.map(S) : b ? [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y }, { x: b.x + b.w, y: b.y + b.h }, { x: b.x, y: b.y + b.h }].map(S) : null;
       if (!pts) continue;
-      out.push(poly(pts, 'ov-claude-glow', a));
-      out.push(poly(pts, 'ov-claude', a));
+      out.push(poly(pts, 'ov-assistant-glow', a));
+      out.push(poly(pts, 'ov-assistant', a));
     }
   }
 

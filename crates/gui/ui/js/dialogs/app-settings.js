@@ -1,11 +1,12 @@
 // App settings dialog (task 2.10): UI language (applies right away by
 // reloading the web view; the backend session stays open), defaults for
-// new projects (language, frame style), Claude / MCP (ADR 0015: switch,
-// status, "Add to Claude Desktop", Claude Code commands), a note on store
-// credentials (Phase 5).
+// new projects (language, frame style), AI assistants (MCP) (ADR 0015:
+// generic first – switch, status, port, autostart, how any MCP client
+// connects – then the client-specific setup: "Add to Claude Desktop",
+// Claude Code commands), a note on store credentials (Phase 5).
 
 import { api } from '../api.js';
-import { clientLabel, onClaudeChange, refreshClaudeStatus } from '../claude.js';
+import { clientLabel, onAssistantChange, refreshAssistantStatus } from '../assistant.js';
 import { h, icon } from '../dom.js';
 import { t } from '../i18n.js';
 import { openFramePackages } from './frame-packages.js';
@@ -93,25 +94,25 @@ export async function openAppSettings() {
           ),
           t('frames.settings_hint'),
         ),
-        ...claudeRows(save, () => settings),
+        ...mcpRows(save, () => settings),
         row(t('settings.store'), h('span', { class: 'muted' }, t('settings.store.note'))),
         row(t('settings.file'), h('span', { class: 'mono small selectable' }, info.settings_file)),
       ),
     ],
     footer: [saved, h('span', { class: 'spacer' }), h('button', { class: 'btn btn-primary', type: 'button', onclick: () => m.close() }, t('project.dialog.done'))],
-    onClose: () => unsubClaude?.(),
+    onClose: () => unsubMcp?.(),
   });
   return m;
 }
 
-let unsubClaude = null;
+let unsubMcp = null;
 
 /** Read-only text field with a copy button. */
 function copyField(text) {
-  const field = h('input', { class: 'field mono small claude-cmd', type: 'text', readonly: true, spellcheck: 'false' });
+  const field = h('input', { class: 'field mono small assistant-cmd', type: 'text', readonly: true, spellcheck: 'false' });
   field.value = text;
   field.addEventListener('focus', () => field.select());
-  const btn = h('button', { class: 'icon-btn', type: 'button', title: t('claude.copy') }, icon('copy'));
+  const btn = h('button', { class: 'icon-btn', type: 'button', title: t('mcp.copy') }, icon('copy'));
   btn.addEventListener('click', async () => {
     field.select();
     try {
@@ -122,32 +123,33 @@ function copyField(text) {
     btn.classList.add('done');
     setTimeout(() => btn.classList.remove('done'), 1200);
   });
-  return h('div', { class: 'claude-copy' }, field, btn);
+  return h('div', { class: 'assistant-copy' }, field, btn);
 }
 
 function statusText(st) {
-  if (!st?.hosted) return t('claude.state.unavailable');
-  if (!st.enabled) return t('claude.state.off');
-  if (!st.running) return st.error ? `${t('claude.state.error')}: ${st.error}` : t('claude.state.off');
+  if (!st?.hosted) return t('mcp.state.unavailable');
+  if (!st.enabled) return t('mcp.state.off');
+  if (!st.running) return st.error ? `${t('mcp.state.error')}: ${st.error}` : t('mcp.state.off');
   const now = Date.now();
   const clients = (st.clients ?? []).filter((c) => c.sessions > 0 || now - c.last_seen < 5 * 60 * 1000);
-  const parts = [t('claude.settings.listening').replace('{port}', String(st.port))];
-  parts.push(clients.length ? t('claude.settings.clients').replace('{clients}', clients.map((c) => clientLabel(c.name)).join(', ')) : t('claude.settings.no_clients'));
-  if (st.last_activity) parts.push(t('claude.settings.last').replace('{time}', new Date(st.last_activity).toLocaleTimeString()));
+  const parts = [t('mcp.settings.listening').replace('{port}', String(st.port))];
+  parts.push(clients.length ? t('mcp.settings.clients').replace('{clients}', clients.map((c) => clientLabel(c)).join(', ')) : t('mcp.settings.no_clients'));
+  if (st.last_activity) parts.push(t('mcp.settings.last').replace('{time}', new Date(st.last_activity).toLocaleTimeString()));
   return parts.join(' · ');
 }
 
-/** Rows of the "Claude / MCP" section. */
-function claudeRows(save, current) {
+/** Rows of the "AI assistants (MCP)" section: generic first, then client-specific. */
+function mcpRows(save, current) {
   const toggle = h('span');
-  const status = h('div', { class: 'claude-status small' });
-  const code = h('div', { class: 'claude-code' });
+  const status = h('div', { class: 'assistant-status small' });
+  const code = h('div', { class: 'mcp-connect' });
+  const other = h('div', { class: 'mcp-connect' });
   let st = null;
 
   function render() {
     toggle.replaceChildren(
       checkbox({
-        label: t('claude.settings.allow'),
+        label: t('mcp.settings.allow'),
         checked: st ? st.enabled : current().mcp_enabled !== false,
         disabled: st?.hosted === false,
         onchange: async (v) => {
@@ -156,21 +158,35 @@ function claudeRows(save, current) {
           } catch (e) {
             status.textContent = e.message;
           }
-          await refreshClaudeStatus();
+          await refreshAssistantStatus();
         },
       }),
     );
     status.dataset.state = !st?.running ? 'off' : 'on';
     status.textContent = statusText(st);
     const items = [
-      h('div', { class: 'claude-code-head' }, h('strong', {}, t('claude.settings.code_stdio')), h('span', { class: 'badge ok' }, t('claude.settings.recommended'))),
+      h('div', { class: 'mcp-connect-head' }, h('strong', {}, t('claude.settings.code_stdio')), h('span', { class: 'badge ok' }, t('mcp.settings.recommended'))),
       copyField(st?.claude_code?.stdio ?? ''),
     ];
-    if (st && !st.cli_exists) items.push(h('div', { class: 'form-hint warn' }, t('claude.settings.cli_missing').replace('{path}', st.cli_path)));
     if (st?.claude_code?.http) {
-      items.push(h('div', { class: 'claude-code-head' }, h('strong', {}, t('claude.settings.code_http'))), copyField(st.claude_code.http), h('div', { class: 'form-hint' }, t('claude.settings.code_http.hint')));
+      items.push(h('div', { class: 'mcp-connect-head' }, h('strong', {}, t('claude.settings.code_http'))), copyField(st.claude_code.http), h('div', { class: 'form-hint' }, t('claude.settings.code_http.hint')));
     }
     code.replaceChildren(...items);
+
+    const generic = [
+      h('div', { class: 'mcp-connect-head' }, h('strong', {}, t('mcp.settings.other.stdio')), h('span', { class: 'badge ok' }, t('mcp.settings.recommended'))),
+      copyField(st?.generic?.stdio ?? ''),
+    ];
+    if (st && !st.cli_exists) generic.push(h('div', { class: 'form-hint warn' }, t('mcp.settings.cli_missing').replace('{path}', st.cli_path)));
+    if (st?.url && st?.generic?.http_header) {
+      generic.push(
+        h('div', { class: 'mcp-connect-head' }, h('strong', {}, t('mcp.settings.other.http'))),
+        copyField(st.url),
+        copyField(st.generic.http_header),
+        h('div', { class: 'form-hint' }, t('mcp.settings.other.http.hint')),
+      );
+    }
+    other.replaceChildren(...generic);
   }
 
   async function refresh() {
@@ -181,37 +197,38 @@ function claudeRows(save, current) {
     }
     render();
   }
-  unsubClaude?.();
-  unsubClaude = onClaudeChange(() => refresh());
+  unsubMcp?.();
+  unsubMcp = onAssistantChange(() => refresh());
   refresh();
 
   return [
-    h('div', { class: 'form-section' }, icon('sparkle'), t('claude.settings.title')),
-    row(t('claude.settings.connect'), h('div', { class: 'claude-toggle' }, toggle, status), t('claude.settings.connect.hint')),
+    h('div', { class: 'form-section' }, icon('sparkle'), t('mcp.settings.title')),
+    row(t('mcp.settings.connect'), h('div', { class: 'assistant-toggle' }, toggle, status), t('mcp.settings.connect.hint')),
+    row(
+      t('mcp.settings.port'),
+      input({
+        type: 'number',
+        min: 1024,
+        max: 65535,
+        value: current().mcp_port ?? '',
+        placeholder: t('mcp.settings.port.auto'),
+        cls: 'num-wide mono',
+        onchange: (v) => save({ mcp_port: v || null }),
+      }),
+      t('mcp.settings.port.hint'),
+    ),
+    row(
+      t('mcp.settings.autostart'),
+      checkbox({ label: t('mcp.settings.autostart.on'), checked: current().mcp_autostart_gui !== false, onchange: (v) => save({ mcp_autostart_gui: v }) }),
+      t('mcp.settings.autostart.hint'),
+    ),
+    row(t('mcp.settings.other'), other, t('mcp.settings.other.hint')),
     row(
       t('claude.settings.desktop'),
       h('div', {}, h('button', { class: 'btn', type: 'button', onclick: () => openClaudeDesktop() }, t('claude.desktop.button'))),
       t('claude.settings.desktop.hint'),
     ),
     row(t('claude.settings.code'), code),
-    row(
-      t('claude.settings.port'),
-      input({
-        type: 'number',
-        min: 1024,
-        max: 65535,
-        value: current().mcp_port ?? '',
-        placeholder: t('claude.settings.port.auto'),
-        cls: 'num-wide mono',
-        onchange: (v) => save({ mcp_port: v || null }),
-      }),
-      t('claude.settings.port.hint'),
-    ),
-    row(
-      t('claude.settings.autostart'),
-      checkbox({ label: t('claude.settings.autostart.on'), checked: current().mcp_autostart_gui !== false, onchange: (v) => save({ mcp_autostart_gui: v }) }),
-      t('claude.settings.autostart.hint'),
-    ),
   ];
 }
 
@@ -228,7 +245,7 @@ export async function openClaudeDesktop() {
     h('p', { class: 'dlg-text' }, t('claude.desktop.intro')),
     h('div', { class: 'form' }, row(t('claude.desktop.file'), h('span', { class: 'mono small selectable' }, plan.config_path)), row(t('claude.desktop.status'), h('span', { class: `claude-state ${plan.state}` }, stateText))),
     plan.error ? h('div', { class: 'form-error' }, plan.error) : null,
-    !plan.cli_exists ? h('div', { class: 'form-hint warn' }, t('claude.settings.cli_missing').replace('{path}', plan.cli_path)) : null,
+    !plan.cli_exists ? h('div', { class: 'form-hint warn' }, t('mcp.settings.cli_missing').replace('{path}', plan.cli_path)) : null,
     h('div', { class: 'section-title' }, t(plan.preview ? 'claude.desktop.after' : 'claude.desktop.entry')),
     // The whole file as it will be written (other entries unchanged).
     h('pre', { class: 'claude-json mono small selectable' }, plan.preview ?? JSON.stringify({ mcpServers: { arrangia: plan.entry } }, null, 2)),

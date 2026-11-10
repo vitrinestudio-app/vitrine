@@ -6,7 +6,7 @@
 
 import { actions } from './actions.js';
 import { api, listen } from './api.js';
-import { createClaudeIndicator, initClaude } from './claude.js';
+import { createAssistantIndicator, initAssistant } from './assistant.js';
 import { openAppSettings } from './dialogs/app-settings.js';
 import { openExport } from './dialogs/export.js';
 import { openScreenshotImport } from './dialogs/screenshot-import.js';
@@ -54,7 +54,7 @@ async function showProject() {
       menu: createMenu(appActions).el,
       targets: appActions.targets,
       exportDialog: appActions.exportDialog,
-      claude: createClaudeIndicator({ openSettings: appActions.appSettings }),
+      assistant: createAssistantIndicator({ openSettings: appActions.appSettings }),
     });
     bindShortcuts({
       ...actions,
@@ -77,13 +77,13 @@ async function closeProject() {
   await projectClosed();
 }
 
-/** The backend has no project any more (closed here or by Claude). */
+/** The backend has no project any more (closed here or by an assistant). */
 async function projectClosed() {
   store.set({ summary: null, overlay: null, strip: null, target: null, variant: undefined, selection: [], hover: null, validation: null });
   await showProject();
 }
 
-/** A project was opened (start screen, menu, or by Claude over MCP). */
+/** A project was opened (start screen, menu, or by an assistant over MCP). */
 async function projectOpened() {
   store.set({ selection: [], hover: null, variant: undefined, strip: null, target: null, lang: null, validation: null });
   await showProject();
@@ -148,9 +148,9 @@ async function start() {
     onSettings: appActions.appSettings,
   });
   setOnOpened(projectOpened);
-  // Claude over MCP (ADR 0015): its edits show live, projects it opens
+  // AI assistants over MCP (ADR 0015): their edits show live, projects they open
   // replace the start screen.
-  await initClaude({ onProjectOpened: projectOpened, onProjectClosed: projectClosed });
+  await initAssistant({ onProjectOpened: projectOpened, onProjectClosed: projectClosed });
   bindAppShortcuts(appActions);
   await bindFolderDrop();
   await listen('project-changed', (change) => {

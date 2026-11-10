@@ -40,8 +40,8 @@ export const api = {
   pickFolder: (title) => invoke('dialog_pick_folder', { title }),
   revealPath: (path) => invoke('reveal_path', { path }),
   settingsGet: () => invoke('settings_get'),
-  // ----- Claude / MCP (ADR 0015) -----
-  /** In-app MCP endpoint: `{hosted, enabled, running, url, port, clients, token?, claude_code, cli_path, …}`. */
+  // ----- AI assistants / MCP (ADR 0015) -----
+  /** In-app MCP endpoint: `{hosted, enabled, running, url, port, clients, token?, generic, claude_code, cli_path, …}`. */
   mcpStatus: () => invoke('mcp_status'),
   mcpSetEnabled: (enabled) => invoke('mcp_set_enabled', { enabled }),
   /** What "Add to Claude Desktop" would write (`{config_path, state, entry, preview, cli_path, …}`). */

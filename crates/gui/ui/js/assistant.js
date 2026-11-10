@@ -1,13 +1,14 @@
-// Live collaboration with Claude (ADR 0015). The app hosts an MCP endpoint;
-// Claude's edits run through this app's session. This module
+// Live collaboration with AI assistants over MCP (ADR 0015). The app hosts
+// an MCP endpoint; an assistant's edits (Claude Desktop, Claude Code or any
+// other MCP client) run through this app's session. This module
 //
 //   - keeps the endpoint status (`mcp_status` + `mcp-status` events),
-//   - shows Claude's steps as they happen: refreshes the editor, briefly
-//     outlines the touched elements on the canvas and stacks a small toast
-//     "Claude: <label>" (click selects the elements),
+//   - shows the assistant's steps as they happen: refreshes the editor,
+//     briefly outlines the touched elements on the canvas and stacks a
+//     small toast "<client name>: <label>" (click selects the elements),
 //   - keeps the activity list behind the top-bar indicator (time, label,
 //     undo for the latest step),
-//   - follows projects Claude opens or closes (`project-opened`/`-closed`).
+//   - follows projects an assistant opens or closes (`project-opened`/`-closed`).
 
 import { actions } from './actions.js';
 import { api, listen } from './api.js';
@@ -22,11 +23,8 @@ const MAX_ACTIVITY = 60;
 const TOAST_MS = 4500;
 const MAX_TOASTS = 4;
 
-/** Known MCP client names → display names. */
-const CLIENTS = { 'claude-ai': 'Claude Desktop', 'claude-code': 'Claude Code' };
-
 let status = null;
-/** Claude's steps, newest first: `{ time, label, action, ids, client, revision }`. */
+/** Assistant steps, newest first: `{ time, label, action, ids, client, revision }`. */
 const activity = [];
 const subscribers = new Set();
 
@@ -35,17 +33,24 @@ function notify() {
 }
 
 /** Calls `fn()` when status or activity change; returns an unsubscribe. */
-export function onClaudeChange(fn) {
+export function onAssistantChange(fn) {
   subscribers.add(fn);
   return () => subscribers.delete(fn);
 }
 
-export function clientLabel(name) {
-  return CLIENTS[name] ?? name;
+/** Display name of an MCP client (`display_name` from Rust: known clients, `clientInfo.title` or the prettified name). */
+export function clientLabel(client) {
+  const name = client?.display_name || client?.name;
+  return !name || name === 'Assistant' ? t('assistant.fallback') : name;
+}
+
+/** Is `actor` (of `project-edited` …) an assistant over MCP? (`claude` = before 2026-11-10.) */
+function isAssistant(actor) {
+  return actor?.kind === 'assistant' || actor?.kind === 'claude';
 }
 
 /** The endpoint status (or null before the first answer). */
-export function claudeStatus() {
+export function assistantStatus() {
   return status;
 }
 
@@ -56,7 +61,7 @@ export function connectedClients(st = status) {
 }
 
 /** `off` | `ready` | `connected` | `error`. */
-export function claudeState(st = status) {
+export function assistantState(st = status) {
   if (!st?.hosted || !st.enabled) return 'off';
   if (!st.running) return st.error ? 'error' : 'off';
   return connectedClients(st).length ? 'connected' : 'ready';
@@ -66,7 +71,7 @@ export function activityList() {
   return activity;
 }
 
-export async function refreshClaudeStatus() {
+export async function refreshAssistantStatus() {
   try {
     status = await api.mcpStatus();
   } catch {
@@ -80,23 +85,23 @@ export async function refreshClaudeStatus() {
  * Wires the events. `onProjectOpened()` / `onProjectClosed()` switch
  * between start screen and editor (main.js).
  */
-export async function initClaude({ onProjectOpened, onProjectClosed }) {
-  await refreshClaudeStatus();
+export async function initAssistant({ onProjectOpened, onProjectClosed }) {
+  await refreshAssistantStatus();
   await listen('mcp-status', (s) => {
-    // Events never carry the token or the Claude Code commands.
+    // Events never carry the token or the connect commands.
     status = { ...(status ?? {}), ...s };
     notify();
   });
   await listen('project-edited', (ev) => {
-    if (ev.actor?.kind === 'claude') onClaudeEdit(ev).catch((e) => console.error(e));
+    if (isAssistant(ev.actor)) onAssistantEdit(ev).catch((e) => console.error(e));
   });
   await listen('project-opened', (ev) => {
-    if (ev.actor?.kind !== 'claude') return;
-    record({ label: `${t('claude.opened')} ${ev.name}`, action: 'open', ids: [], client: ev.actor.client });
+    if (!isAssistant(ev.actor)) return;
+    record({ label: `${t('assistant.opened')} ${ev.name}`, action: 'open', ids: [], client: ev.actor.client });
     Promise.resolve(onProjectOpened?.(ev)).catch((e) => console.error(e));
   });
   await listen('project-closed', (ev) => {
-    if (ev.actor?.kind === 'claude') Promise.resolve(onProjectClosed?.()).catch((e) => console.error(e));
+    if (isAssistant(ev.actor)) Promise.resolve(onProjectClosed?.()).catch((e) => console.error(e));
   });
   // "Connected" expires without events.
   setInterval(notify, 30_000);
@@ -108,7 +113,7 @@ function record({ label, action, ids, client, revision }) {
   notify();
 }
 
-async function onClaudeEdit(ev) {
+async function onAssistantEdit(ev) {
   const ids = ev.changes?.elements ?? [];
   record({ label: ev.label, action: ev.action, ids, client: ev.actor.client, revision: ev.revision });
   showToast(ev.label, ids);
@@ -119,9 +124,9 @@ async function onClaudeEdit(ev) {
 // ----- toasts ----------------------------------------------------------------------
 
 function toastHost() {
-  let el = document.getElementById('claude-toasts');
+  let el = document.getElementById('assistant-toasts');
   if (!el) {
-    el = h('div', { id: 'claude-toasts', class: 'claude-toasts', role: 'status', 'aria-live': 'polite' });
+    el = h('div', { id: 'assistant-toasts', class: 'assistant-toasts', role: 'status', 'aria-live': 'polite' });
     document.body.append(el);
   }
   return el;
@@ -133,15 +138,15 @@ function selectable(ids) {
   return ids.filter((id) => o.elements.some((e) => e.id === id) || o.groups.some((g) => g.id === id));
 }
 
-/** A small stacked toast "Claude: …"; click selects `ids`. */
+/** A small stacked toast "<client name>: …"; click selects `ids`. */
 export function showToast(label, ids = []) {
   const host = toastHost();
   const el = h(
     'button',
     {
-      class: 'claude-toast',
+      class: 'assistant-toast',
       type: 'button',
-      title: ids.length ? t('claude.toast.select') : label,
+      title: ids.length ? t('assistant.toast.select') : label,
       onclick: () => {
         const sel = selectable(ids);
         if (sel.length) {
@@ -152,7 +157,7 @@ export function showToast(label, ids = []) {
       },
     },
     icon('sparkle'),
-    h('span', { class: 'claude-toast-text' }, label),
+    h('span', { class: 'assistant-toast-text' }, label),
   );
   host.append(el);
   while (host.children.length > MAX_TOASTS) host.firstElementChild.remove();
@@ -176,31 +181,31 @@ function clock(ms) {
 }
 
 function tooltip(st) {
-  const state = claudeState(st);
-  if (state === 'off') return st?.hosted === false ? t('claude.state.unavailable') : t('claude.state.off');
-  if (state === 'error') return `${t('claude.state.error')}: ${st.error}`;
-  if (state === 'ready') return t('claude.state.ready').replace('{port}', String(st.port));
-  const names = connectedClients(st).map((c) => clientLabel(c.name)).join(', ');
-  return t('claude.state.connected').replace('{clients}', names);
+  const state = assistantState(st);
+  if (state === 'off') return st?.hosted === false ? t('mcp.state.unavailable') : t('mcp.state.off');
+  if (state === 'error') return `${t('mcp.state.error')}: ${st.error}`;
+  if (state === 'ready') return t('mcp.state.ready').replace('{port}', String(st.port));
+  const names = connectedClients(st).map((c) => clientLabel(c)).join(', ');
+  return t('mcp.state.connected').replace('{clients}', names);
 }
 
 /**
- * The top-bar indicator: a sparkle with the state (off / ready / connected
- * with client name). Click opens the activity list. `openSettings()`
+ * The top-bar indicator: a sparkle with the state (off; ready: "MCP";
+ * connected: the client's display name). Click opens the activity list. `openSettings()`
  * opens the app settings.
  */
-export function createClaudeIndicator({ openSettings } = {}) {
-  const label = h('span', { class: 'claude-ind-label' });
-  const el = h('button', { class: 'claude-ind', type: 'button', onclick: () => toggleActivity(el, openSettings) }, icon('sparkle'), label);
+export function createAssistantIndicator({ openSettings } = {}) {
+  const label = h('span', { class: 'assistant-ind-label' });
+  const el = h('button', { class: 'assistant-ind', type: 'button', onclick: () => toggleActivity(el, openSettings) }, icon('sparkle'), label);
   const render = () => {
-    const state = claudeState();
+    const state = assistantState();
     el.dataset.state = state;
     el.title = tooltip(status);
     const clients = connectedClients();
-    label.textContent = state === 'connected' ? clientLabel(clients[0].name) : '';
-    label.hidden = state !== 'connected';
+    label.textContent = state === 'connected' ? clientLabel(clients[0]) : state === 'ready' ? 'MCP' : '';
+    label.hidden = state !== 'connected' && state !== 'ready';
   };
-  onClaudeChange(render);
+  onAssistantChange(render);
   render();
   return el;
 }
@@ -220,14 +225,14 @@ function mountActivity(anchor, openSettings) {
   const list = h('div', { class: 'ca-list' });
   const el = h(
     'div',
-    { class: 'popover claude-activity', role: 'dialog', 'aria-label': t('claude.activity') },
+    { class: 'popover assistant-activity', role: 'dialog', 'aria-label': t('assistant.activity') },
     h(
       'header',
       { class: 'vp-head' },
       icon('sparkle'),
-      h('strong', {}, t('claude.activity')),
+      h('strong', {}, t('assistant.activity')),
       h('span', { class: 'spacer' }),
-      h('button', { class: 'btn btn-small', type: 'button', onclick: () => (close(), openSettings?.()) }, t('claude.settings')),
+      h('button', { class: 'btn btn-small', type: 'button', onclick: () => (close(), openSettings?.()) }, t('assistant.open_settings')),
       h('button', { class: 'icon-btn', type: 'button', title: t('project.dialog.close'), onclick: () => close() }, icon('close')),
     ),
     head,
@@ -245,12 +250,12 @@ function mountActivity(anchor, openSettings) {
     const st = status;
     const clients = connectedClients(st);
     head.replaceChildren(
-      h('span', { class: `ca-dot ${claudeState(st)}` }),
+      h('span', { class: `ca-dot ${assistantState(st)}` }),
       h('span', {}, tooltip(st)),
-      ...(clients.length ? [h('span', { class: 'muted small' }, `· ${clients.map((c) => `${clientLabel(c.name)} (${c.calls})`).join(', ')}`)] : []),
+      ...(clients.length ? [h('span', { class: 'muted small' }, `· ${clients.map((c) => `${clientLabel(c)} (${c.calls})`).join(', ')}`)] : []),
     );
     if (!activity.length) {
-      list.replaceChildren(h('p', { class: 'placeholder' }, t('claude.activity.empty')));
+      list.replaceChildren(h('p', { class: 'placeholder' }, t('assistant.activity.empty')));
       return;
     }
     const history = store.get().history;
@@ -267,7 +272,7 @@ function mountActivity(anchor, openSettings) {
             {
               class: 'ca-label',
               type: 'button',
-              title: a.ids.length ? t('claude.toast.select') : '',
+              title: a.ids.length ? t('assistant.toast.select') : '',
               onclick: () => {
                 const sel = selectable(a.ids);
                 if (sel.length) {
@@ -284,7 +289,7 @@ function mountActivity(anchor, openSettings) {
     );
   }
 
-  const unsub = onClaudeChange(render);
+  const unsub = onAssistantChange(render);
   const unsubHistory = store.select((s) => s.history, render);
   const onDown = (e) => {
     if (!el.contains(e.target) && !anchor.contains(e.target)) close();

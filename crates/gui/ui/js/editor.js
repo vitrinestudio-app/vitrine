@@ -9,7 +9,7 @@
 //                                                      (target/variant/lang/strip):
 //                                                      rebuild everything
 //   highlight   { ids }                               – briefly outline these
-//                                                      elements (Claude's edits)
+//                                                      elements (assistant edits)
 
 import { api } from './api.js';
 import { bounds, inflate, union } from './geometry.js';
@@ -161,7 +161,7 @@ export const editor = {
 
   /**
    * Shows a step made by someone else through the backend session
-   * (`project-edited` with actor Claude, ADR 0015): same refresh as
+   * (`project-edited` with an assistant actor, ADR 0015): same refresh as
    * `apply`, or a full reload when targets, strips or languages changed.
    */
   async remoteEdit(ev) {

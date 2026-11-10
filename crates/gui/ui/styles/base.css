@@ -45,9 +45,9 @@
   /* fields set by a per-language override (ADR 0009) */
   --lang-override: #0d9488;
   --lang-override-bg: rgb(13 148 136 / 12%);
-  /* Claude's live edits (ADR 0015): indicator, toasts, canvas glow */
-  --claude: #d97757;
-  --claude-soft: rgb(217 119 87 / 14%);
+  /* AI assistants' live edits (ADR 0015): indicator, toasts, canvas glow */
+  --assistant: #d97757;
+  --assistant-soft: rgb(217 119 87 / 14%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -74,8 +74,8 @@
     --label: #8e8e95;
     --lang-override: #2dd4bf;
     --lang-override-bg: rgb(45 212 191 / 14%);
-    --claude: #e8916f;
-    --claude-soft: rgb(232 145 111 / 18%);
+    --assistant: #e8916f;
+    --assistant-soft: rgb(232 145 111 / 18%);
   }
 }
 
@@ -102,8 +102,8 @@
   --label: #8e8e95;
   --lang-override: #2dd4bf;
   --lang-override-bg: rgb(45 212 191 / 14%);
-  --claude: #e8916f;
-  --claude-soft: rgb(232 145 111 / 18%);
+  --assistant: #e8916f;
+  --assistant-soft: rgb(232 145 111 / 18%);
 }
 
 *,

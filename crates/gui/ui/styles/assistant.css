@@ -1,8 +1,9 @@
-/* Claude / MCP (ADR 0015): top-bar indicator, activity popover, toasts,
-   canvas glow of Claude's edits, the settings section. */
+/* AI assistants over MCP (ADR 0015): top-bar indicator, activity popover,
+   toasts, canvas glow of an assistant's edits, the settings section
+   (generic MCP and the Claude-specific setup). */
 
 /* ----- top-bar indicator ----- */
-.claude-ind {
+.assistant-ind {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -18,25 +19,25 @@
   cursor: pointer;
 }
 
-.claude-ind:hover {
+.assistant-ind:hover {
   background: var(--bg-hover);
 }
 
-.claude-ind[data-state="ready"] {
+.assistant-ind[data-state="ready"] {
   color: var(--fg-muted);
 }
 
-.claude-ind[data-state="connected"] {
-  color: var(--claude);
-  background: var(--claude-soft);
-  border-color: color-mix(in srgb, var(--claude) 35%, transparent);
+.assistant-ind[data-state="connected"] {
+  color: var(--assistant);
+  background: var(--assistant-soft);
+  border-color: color-mix(in srgb, var(--assistant) 35%, transparent);
 }
 
-.claude-ind[data-state="error"] {
+.assistant-ind[data-state="error"] {
   color: var(--danger);
 }
 
-.claude-ind-label {
+.assistant-ind-label {
   max-width: 120px;
   white-space: nowrap;
   overflow: hidden;
@@ -44,14 +45,14 @@
 }
 
 /* ----- activity popover ----- */
-.claude-activity {
+.assistant-activity {
   width: 380px;
   max-height: min(480px, 70vh);
   display: flex;
   flex-direction: column;
 }
 
-.claude-activity .vp-head {
+.assistant-activity .vp-head {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -59,8 +60,8 @@
   border-bottom: 1px solid var(--border);
 }
 
-.claude-activity .vp-head > .icon {
-  color: var(--claude);
+.assistant-activity .vp-head > .icon {
+  color: var(--assistant);
 }
 
 .ca-status {
@@ -86,7 +87,7 @@
 }
 
 .ca-dot.connected {
-  background: var(--claude);
+  background: var(--assistant);
 }
 
 .ca-dot.error {
@@ -134,7 +135,7 @@
 }
 
 /* ----- toasts ----- */
-.claude-toasts {
+.assistant-toasts {
   position: fixed;
   right: 16px;
   bottom: 48px;
@@ -146,14 +147,14 @@
   pointer-events: none;
 }
 
-.claude-toast {
+.assistant-toast {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   max-width: min(420px, 60vw);
   padding: 7px 12px;
   border: 0;
-  border-left: 3px solid var(--claude);
+  border-left: 3px solid var(--assistant);
   border-radius: 8px;
   background: var(--bg-chrome);
   color: var(--fg);
@@ -170,34 +171,34 @@
     transform 0.18s ease;
 }
 
-.claude-toast.in {
+.assistant-toast.in {
   opacity: 1;
   transform: none;
 }
 
-.claude-toast > .icon {
-  color: var(--claude);
+.assistant-toast > .icon {
+  color: var(--assistant);
   flex: none;
 }
 
-.claude-toast-text {
+.assistant-toast-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* ----- canvas glow (overlay.js) ----- */
-.ov-claude-glow {
-  fill: var(--claude-soft);
-  stroke: var(--claude);
+.ov-assistant-glow {
+  fill: var(--assistant-soft);
+  stroke: var(--assistant);
   stroke-opacity: 0.35;
   stroke-width: 8;
   stroke-linejoin: round;
 }
 
-.ov-claude {
+.ov-assistant {
   fill: none;
-  stroke: var(--claude);
+  stroke: var(--assistant);
   stroke-width: 2;
   stroke-linejoin: round;
 }
@@ -214,50 +215,50 @@
 }
 
 .form-section > .icon {
-  color: var(--claude);
+  color: var(--assistant);
 }
 
-.claude-toggle {
+.assistant-toggle {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.claude-status {
+.assistant-status {
   color: var(--fg-muted);
 }
 
-.claude-status[data-state="on"] {
+.assistant-status[data-state="on"] {
   color: var(--success);
 }
 
-.claude-code {
+.mcp-connect {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
 }
 
-.claude-code-head {
+.mcp-connect-head {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-top: 4px;
 }
 
-.claude-copy {
+.assistant-copy {
   display: flex;
   align-items: center;
   gap: 4px;
   min-width: 0;
 }
 
-.claude-cmd {
+.assistant-cmd {
   flex: 1;
   min-width: 0;
 }
 
-.claude-copy .icon-btn.done {
+.assistant-copy .icon-btn.done {
   color: var(--success);
 }
 
