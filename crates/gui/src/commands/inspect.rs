@@ -723,6 +723,70 @@ mod tests {
     }
 
     #[test]
+    fn element_patch_text_effects() {
+        let (_tmp, app) = app();
+        let view = |patch: Value| json!({"target": "ios-iphone-69", "variant": null, "id": "title-plan", "patch": patch});
+        let r = call(
+            &app,
+            "element_patch",
+            view(json!({
+                "stroke": {"color": "@leaf", "width": 4, "position": "center"},
+                "glow": {"color": "#FFFFFF", "radius": 12, "opacity": 0.5},
+                "shadow": "hard"
+            })),
+        );
+        assert_eq!(last_undo(&r), "Edit stroke, glow, shadow of title-plan");
+        let e = call(
+            &app,
+            "element_get",
+            json!({"target": "ios-iphone-69", "id": "title-plan"}),
+        );
+        assert_eq!(
+            e["base"]["stroke"],
+            json!({"color": "@leaf", "width": 4, "position": "center"})
+        );
+        assert_eq!(e["base"]["glow"]["opacity"], 0.5);
+        assert_eq!(e["base"]["shadow"], "hard");
+        // The overlay reports the extent of the glow.
+        let o = call(&app, "overlay", json!({"target": "ios-iphone-69"}));
+        let el = o["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|x| x["id"] == "title-plan")
+            .unwrap();
+        let (content, visual) = (&el["text"]["content"], &el["text"]["visual"]);
+        assert!(visual["w"].as_f64().unwrap() > content["w"].as_f64().unwrap() + 70.0);
+        // Invalid values and unknown colours are refused.
+        for (bad, code) in [
+            (
+                json!({"glow": {"color": "#FFFFFF", "radius": 12, "opacity": 3}}),
+                ErrorCode::InvalidArgs,
+            ),
+            (
+                json!({"stroke": {"color": "@nope", "width": 2}}),
+                ErrorCode::OpRejected,
+            ),
+            (json!({"shadow": "nope"}), ErrorCode::OpRejected),
+        ] {
+            let err = dispatch(&app, "element_patch", view(bad.clone())).unwrap_err();
+            assert_eq!(err.code, code, "{bad}");
+        }
+        // Reset to the style's values.
+        call(
+            &app,
+            "element_patch",
+            view(json!({"stroke": null, "glow": null, "shadow": null})),
+        );
+        let e = call(
+            &app,
+            "element_get",
+            json!({"target": "ios-iphone-69", "id": "title-plan"}),
+        );
+        assert!(e["base"].get("stroke").is_none() && e["base"].get("glow").is_none());
+    }
+
+    #[test]
     fn rename_and_arrange() {
         let (_tmp, app) = app();
         let r = call(

@@ -546,5 +546,17 @@
   "add.image": "Bild",
   "add.shape": "Form",
   "add.background": "Seitenhintergrund",
-  "export.issues_label": "Hinweise"
+  "export.issues_label": "Hinweise",
+  "inspector.outline": "Kontur",
+  "inspector.outline.width": "Konturbreite (lu)",
+  "inspector.outline.position": "Konturposition",
+  "inspector.outline.outside": "Außen",
+  "inspector.outline.center": "Mittig",
+  "inspector.glow": "Leuchten",
+  "inspector.glow.radius": "Leuchtradius (Unschärfe, lu)",
+  "inspector.glow.opacity": "Leuchtdeckkraft",
+  "inspector.glow.spread": "Leuchtausdehnung (lu)",
+  "inspector.shadow.style": "Wie Textstil",
+  "inspector.fx.override": "Textstil überschreiben",
+  "inspector.fx.from_style": "Aus dem Textstil (Breite/Deckkraft 0 schaltet ab)"
 }

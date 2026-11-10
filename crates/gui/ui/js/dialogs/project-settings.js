@@ -236,6 +236,44 @@ export function openProjectSettings(tab = 'general') {
       return h('div', { class: 'ps-style-row' }, picker, renameInput('color', name), input({ value: hex, cls: 'mono hex', onchange: (v) => v && patch({ colors: { [name]: v } }) }), removeBtn('colors', name));
     });
 
+    /** Outline and glow rows of a text or span style (`set(key, value)`). */
+    const effectRows = (st, set) => {
+      const stroke = st.stroke ?? null;
+      const glow = st.glow ?? null;
+      const setStroke = (k, v) => {
+        const ns = { ...stroke, [k]: v };
+        if (v == null || (k === 'position' && v === 'outside')) delete ns[k];
+        set('stroke', ns);
+      };
+      const setGlow = (k, v) => set('glow', clean({ ...glow, [k]: v }));
+      const mini = (label, value, onchange, step = 1, title) => h('label', { class: 'mini', title }, h('span', { class: 'muted small' }, label), input({ type: 'number', value, step, min: 0, cls: 'num', placeholder: '–', onchange }));
+      return [
+        row(
+          t('inspector.outline'),
+          h(
+            'div',
+            { class: 'inline wrap' },
+            checkbox({ checked: !!stroke, title: t('inspector.outline'), onchange: (on) => set('stroke', on ? { color: '#FFFFFF', width: 4 } : null) }),
+            stroke ? withRefs(colorRefInput(stroke.color, (v) => v && setStroke('color', v))) : null,
+            stroke ? mini('W', stroke.width, (v) => setStroke('width', v ?? 0), 0.5, t('inspector.outline.width')) : null,
+            stroke ? select({ options: ['outside', 'center'].map((x) => ({ value: x, label: t(`inspector.outline.${x}`) })), value: stroke.position ?? 'outside', title: t('inspector.outline.position'), onchange: (v) => setStroke('position', v) }) : null,
+          ),
+        ),
+        row(
+          t('inspector.glow'),
+          h(
+            'div',
+            { class: 'inline wrap' },
+            checkbox({ checked: !!glow, title: t('inspector.glow'), onchange: (on) => set('glow', on ? { color: '#FFFFFF', radius: 12 } : null) }),
+            glow ? withRefs(colorRefInput(glow.color, (v) => v && setGlow('color', v))) : null,
+            glow ? mini('R', glow.radius, (v) => setGlow('radius', v ?? 0), 1, t('inspector.glow.radius')) : null,
+            glow ? mini('α', glow.opacity, (v) => setGlow('opacity', v == null ? null : Math.min(1, v)), 0.05, t('inspector.glow.opacity')) : null,
+            glow ? mini('+', glow.spread, (v) => setGlow('spread', v), 1, t('inspector.glow.spread')) : null,
+          ),
+        ),
+      ];
+    };
+
     // text styles
     const text = Object.entries(styles.text ?? {}).map(([name, st]) => {
       const set = (k, v) => patch({ text: { [name]: clean({ ...st, [k]: v }) } });
@@ -255,6 +293,7 @@ export function openProjectSettings(tab = 'general') {
           row(t('project.styles.color'), withRefs(colorRefInput(st.color, (v) => set('color', v)))),
           row(t('project.styles.transform'), select({ options: [{ value: '', label: t('project.styles.default') }, ...['none', 'uppercase', 'lowercase'].map((v) => ({ value: v, label: t(`project.styles.transform.${v}`) }))], value: st.transform ?? '', onchange: (v) => set('transform', v || null) })),
           row(t('project.styles.shadow'), select({ options: [{ value: '', label: t('project.styles.default') }, ...shadowNames], value: st.shadow ?? '', onchange: (v) => set('shadow', v || null) })),
+          ...effectRows(st, set),
         ),
       );
     });
@@ -274,6 +313,8 @@ export function openProjectSettings(tab = 'general') {
           row(t('project.styles.weight'), h('div', { class: 'inline' }, select({ options: [{ value: '', label: t('project.styles.inherit') }, ...WEIGHTS.map(String)], value: st.weight ? String(st.weight) : '', onchange: (v) => set('weight', v ? Number(v) : null) }), checkbox({ label: t('project.styles.italic'), checked: st.italic, onchange: (v) => set('italic', v || null) }))),
           row(t('project.styles.color'), withRefs(colorRefInput(st.color, (v) => set('color', v)))),
           row(t('project.styles.background'), withRefs(colorRefInput(st.background, (v) => set('background', v)))),
+          ...effectRows(st, set),
+          row(t('project.styles.shadow'), select({ options: [{ value: '', label: t('project.styles.inherit') }, ...shadowNames], value: st.shadow ?? '', onchange: (v) => set('shadow', v || null) })),
         ),
       );
     });

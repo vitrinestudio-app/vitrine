@@ -546,5 +546,17 @@
   "add.image": "Image",
   "add.shape": "Shape",
   "add.background": "Page background",
-  "export.issues_label": "Issues"
+  "export.issues_label": "Issues",
+  "inspector.outline": "Outline",
+  "inspector.outline.width": "Outline width (lu)",
+  "inspector.outline.position": "Outline position",
+  "inspector.outline.outside": "Outside",
+  "inspector.outline.center": "Centred",
+  "inspector.glow": "Glow",
+  "inspector.glow.radius": "Glow radius (blur, lu)",
+  "inspector.glow.opacity": "Glow opacity",
+  "inspector.glow.spread": "Glow spread (lu)",
+  "inspector.shadow.style": "As text style",
+  "inspector.fx.override": "Override the text style",
+  "inspector.fx.from_style": "From the text style (width/opacity 0 switches it off)"
 }

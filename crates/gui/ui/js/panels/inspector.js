@@ -389,10 +389,10 @@ export function mount(el, ctx) {
     return rows;
   }
 
-  function shadowSelect(info, e, set) {
+  function shadowSelect(info, e, set, emptyLabel = t('inspector.shadow.off')) {
     const project = store.get().summary.styles.shadows ?? [];
     const names = [...new Set([...BUILTIN_SHADOWS, ...project])];
-    const options = [{ value: '', label: t('inspector.shadow.off') }, ...names.map((n) => ({ value: n, label: n }))];
+    const options = [{ value: '', label: emptyLabel }, ...names.map((n) => ({ value: n, label: n }))];
     return row(t('inspector.shadow'), selectInput({ key: 'shadow', options, value: e.shadow ?? '', title: t('inspector.shadow'), onChange: (v) => set({ shadow: v || null }) }), { field: 'shadow', info });
   }
 
@@ -528,6 +528,7 @@ export function mount(el, ctx) {
       row(t('inspector.font_size'), numberInput({ key: 'font_size', label: 'A', unit: 'lu', value: e.font_size ?? null, optional: true, placeholder: ot ? fmtNum(ot.font_size, 1) : t('inspector.auto'), min: 1, precision: 1, onCommit: (v) => set({ font_size: v }) }).el, { field: 'font_size', info }),
     );
     rows.push(row(t('inspector.color'), colorInput({ key: 'text.color', value: e.color ?? '', palette: palette(), optional: true, placeholder: t('inspector.style.color'), t, onCommit: (v) => set({ color: v }) }), { field: 'color', info }));
+    rows.push(...textEffectRows(info, e, set));
 
     // Box: page margins or a free box.
     const margins = e.box != null;
@@ -597,6 +598,68 @@ export function mount(el, ctx) {
       rows.push(row(t('inspector.computed'), h('div', { class: 'insp-computed' }, h('span', {}, `${fmtNum(ot.font_size, 1)} lu · ${ot.lines} ${t('inspector.lines_unit')}`), status), { wide: true }));
     }
     return section('text', t('kind.text'), rows);
+  }
+
+  /**
+   * Outline, glow and shadow of a text element. Unchecked = the text
+   * style's value; a width / opacity of 0 or shadow `none` switches the
+   * style's effect off.
+   */
+  function textEffectRows(info, e, set) {
+    const stroke = e.stroke ?? null;
+    const glow = e.glow ?? null;
+    const setStroke = (patch) => set({ stroke: { ...stroke, ...patch } });
+    const setGlow = (patch) => {
+      const g = { ...glow, ...patch };
+      for (const k of ['opacity', 'spread']) if (g[k] == null) delete g[k];
+      set({ glow: g });
+    };
+    return [
+      row(
+        t('inspector.outline'),
+        [
+          checkInput({ key: 'stroke.on', checked: !!stroke, onChange: (on) => set({ stroke: on ? { color: '#FFFFFF', width: 4 } : null }), title: t('inspector.fx.override') }),
+          stroke ? colorInput({ key: 'stroke.color', value: stroke.color, palette: palette(), t, onCommit: (v) => setStroke({ color: v ?? '#000000' }) }) : null,
+          stroke
+            ? h(
+                'div',
+                { class: 'insp-grid2' },
+                numberInput({ key: 'stroke.width', label: 'W', title: t('inspector.outline.width'), unit: 'lu', value: stroke.width, min: 0, precision: 1, onCommit: (v) => setStroke({ width: v ?? 0 }) }).el,
+                selectInput({
+                  key: 'stroke.position',
+                  options: ['outside', 'center'].map((x) => ({ value: x, label: t(`inspector.outline.${x}`) })),
+                  value: stroke.position ?? 'outside',
+                  title: t('inspector.outline.position'),
+                  onChange: (v) => {
+                    const ns = { ...stroke, position: v };
+                    if (v === 'outside') delete ns.position;
+                    set({ stroke: ns });
+                  },
+                }),
+              )
+            : null,
+        ],
+        { field: 'stroke', info, wide: !!stroke, hint: stroke ? null : t('inspector.fx.from_style') },
+      ),
+      row(
+        t('inspector.glow'),
+        [
+          checkInput({ key: 'glow.on', checked: !!glow, onChange: (on) => set({ glow: on ? { color: '#FFFFFF', radius: 12 } : null }), title: t('inspector.fx.override') }),
+          glow ? colorInput({ key: 'glow.color', value: glow.color, palette: palette(), t, onCommit: (v) => setGlow({ color: v ?? '#FFFFFF' }) }) : null,
+          glow
+            ? h(
+                'div',
+                { class: 'insp-grid2' },
+                numberInput({ key: 'glow.radius', label: 'R', title: t('inspector.glow.radius'), value: glow.radius, min: 0, precision: 1, onCommit: (v) => setGlow({ radius: v ?? 0 }) }).el,
+                numberInput({ key: 'glow.opacity', label: '%', title: t('inspector.glow.opacity'), value: glow.opacity ?? null, optional: true, placeholder: '100', scale: 100, min: 0, max: 1, precision: 0, onCommit: (v) => setGlow({ opacity: v }) }).el,
+                numberInput({ key: 'glow.spread', label: '+', title: t('inspector.glow.spread'), value: glow.spread ?? null, optional: true, placeholder: '0', min: 0, precision: 1, onCommit: (v) => setGlow({ spread: v }) }).el,
+              )
+            : null,
+        ],
+        { field: 'glow', info, wide: !!glow, hint: glow ? null : t('inspector.fx.from_style') },
+      ),
+      shadowSelect(info, e, set, t('inspector.shadow.style')),
+    ];
   }
 
   function imagePaths(extra) {

@@ -351,4 +351,59 @@ mod tests {
         let r = call(&app, "styles_patch", json!({}));
         assert_eq!(r["applied"], false);
     }
+
+    #[test]
+    fn styles_patch_text_effects() {
+        let (_tmp, app) = opened();
+        call(
+            &app,
+            "styles_patch",
+            json!({
+                "colors": {"rim": "#FFFFFF"},
+                "text": {"fx": {"size": 80, "stroke": {"color": "@rim", "width": 4},
+                                "glow": {"color": "@rim", "radius": 10, "spread": 2}}},
+                "spans": {"pop": {"stroke": {"color": "@rim", "width": 2, "position": "center"},
+                                  "shadow": "hard"}}
+            }),
+        );
+        let s = call(&app, "styles_get", Value::Null);
+        assert_eq!(s["text"]["fx"]["glow"]["spread"], 2);
+        assert_eq!(s["spans"]["pop"]["stroke"]["position"], "center");
+        // Renames follow outline/glow colours and span shadows.
+        call(
+            &app,
+            "styles_patch",
+            json!({"rename": {"kind": "color", "from": "rim", "to": "rim2"}}),
+        );
+        call(
+            &app,
+            "styles_patch",
+            json!({"shadows": {"lift": {"layers": [{"color": "#00000040", "blur": 4}]}},
+                   "spans": {"pop": {"shadow": "lift"}}}),
+        );
+        call(
+            &app,
+            "styles_patch",
+            json!({"rename": {"kind": "shadow", "from": "lift", "to": "lift2"}}),
+        );
+        let s = call(&app, "styles_get", Value::Null);
+        assert_eq!(s["text"]["fx"]["stroke"]["color"], "@rim2");
+        assert_eq!(s["text"]["fx"]["glow"]["color"], "@rim2");
+        assert_eq!(s["spans"]["pop"]["shadow"], "lift2");
+        assert!(
+            s["spans"]["pop"]["stroke"].is_null(),
+            "replaced by the patch"
+        );
+        // Unknown references and bad values are refused.
+        for bad in [
+            json!({"spans": {"x": {"shadow": "nope"}}}),
+            json!({"text": {"x": {"glow": {"color": "#000000", "radius": -1}}}}),
+            json!({"text": {"x": {"stroke": {"color": "@nope", "width": 1}}}}),
+        ] {
+            assert!(
+                dispatch(&app, "styles_patch", bad.clone()).is_err(),
+                "{bad}"
+            );
+        }
+    }
 }
