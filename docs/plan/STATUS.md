@@ -18,6 +18,7 @@ current: update after each phase/merge and whenever the user decides something.
     - Next: re-run the scenario with the fixes.
   - Still to confirm: Claude Desktop's real `clientInfo.name` (assumed `claude-ai` → "Claude Desktop"); clean-exit removal of `mcp.json` on ⌘Q in the real app; CLI path for bundled builds (Phase 6 TODO, today `arrangia` next to the GUI binary or `ARRANGIA_CLI`); oddity: `element_add` text without `key` creates key `text`.
 - Phase 5 (store upload) – planning started 2026-11-10, see `docs/plan/phase-5.md`.
+  - Done: 5.1 credentials & config (ADR 0016): app-wide store accounts in `settings.yaml` (secrets in the system keychain, service `app.arrangia`, user `<id>/<kind>`; `ARRANGIA_KEYRING=mock` for tests/dev bridge), `store:` mapping in `project.yaml` (op `set_store`), locale defaults `crates/core/data/store-locales.yaml` (Apple 50 / Google 86 codes, checked 2026-11-10), store validation findings, commands `store_account_*`, `project_store_get/patch`, MCP `store_config_get` (read-only), GUI app settings → Stores + project settings → Stores tab (not yet checked visually). `store_account_test` returns `not_implemented` until the clients (5.3/5.4) implement `ConnectionTester`.
 - Next phases per KONZEPT §12: 6 polish/website, 7 3D.
 
 ## Session practicalities

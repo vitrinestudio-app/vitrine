@@ -131,7 +131,15 @@ read via `view_get`), `preview` (binary preview payload + cache),
 `dialogs`, `mcp` (`McpStatus` of the GUI-hosted endpoint, `mcp-status`
 event, `McpControl` hook), `claude_desktop` ("Add to Claude Desktop":
 order-keeping JSON merge with backup; `ARRANGIA_CLAUDE_DESKTOP_CONFIG`
-redirects it – never write the real config in tests). `mcp` (ADR 0014,
+redirects it – never write the real config in tests), `stores` (app-wide
+store accounts in `settings.yaml`, `ConnectionTester` seam; commands
+`store_account_*`, `project_store_get/patch`, `store_config_get`; ADR
+0016). `publish::credentials` validates key files and wraps the keychain
+(`keyring`, service `app.arrangia`, user `<id>/<kind>`;
+`ARRANGIA_KEYRING=mock` = in-memory, `ARRANGIA_KEYRING_SERVICE` renames;
+unit tests use `SecretStore::mock()`, never touch the real keychain).
+Project store mapping: `store:` in `project.yaml` (`core::model::store`,
+op `set_store`, locale defaults `data/store-locales.yaml`). `mcp` (ADR 0014,
 0015) – `ArrangiaMcp` over an `Arc<AppState>` (headless: own state; GUI:
 the live one, `Host::Gui`: omitted target/lang default to the GUI's view,
 sessions/tool calls go into the MCP status). `host` (feature `http`):

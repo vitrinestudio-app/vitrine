@@ -21,15 +21,17 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - Verify every endpoint, enum and limit against the current official API
   docs before implementing; note source + date in the ADR.
 
-## 5.1 Credentials & config
-- [ ] Store accounts in app settings (app-wide, not in the project):
+## 5.1 Credentials & config (done 2026-11-10, ADR 0016)
+- [x] Store accounts in app settings (app-wide, not in the project):
       Apple (issuer id, key id, `.p8` → keychain), Google (service account JSON →
-      keychain); list/test/remove; "test connection" call
-- [ ] Project ↔ store mapping in `project.yaml`: Apple app id / bundle id,
+      keychain); list/test/remove; "test connection" call (seam
+      `ConnectionTester`; answers `not_implemented` until 5.3/5.4 wire the clients)
+- [x] Project ↔ store mapping in `project.yaml`: Apple app id / bundle id,
       Google package name; language → store locale map (`de` → `de-DE`,
-      configurable, defaults per store)
-- [ ] Target ↔ store slot already in targets (`store: {apple: {display_type}}`,
-      `google: {image_type}`) – validate completeness
+      configurable, defaults per store in `data/store-locales.yaml`)
+- [x] Target ↔ store slot already in targets (`store: {apple: {display_type}}`,
+      `google: {image_type}`) – validate completeness (`store_no_slot`,
+      `store_slot_duplicate`, locale findings)
 
 ## 5.2 Plan (dry run)
 - [ ] For each target × language: which store set gets replaced, which images
