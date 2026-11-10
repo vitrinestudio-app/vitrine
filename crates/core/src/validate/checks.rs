@@ -295,6 +295,7 @@ fn resolve_diagnostics(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mu
             D::PartialImage => (C::PartialImage, Severity::Info, false),
             D::RegionOutOfRange => (C::RegionOutOfRange, Severity::Warn, false),
             D::ImportedFrameMissing => (C::ImportedFrameMissing, Severity::Info, false),
+            D::ImportedBezelFallback => (C::ImportedBezelFallback, Severity::Info, false),
         };
         let page = d.element.as_ref().and_then(|id| s.page_of(id));
         out.push(ctx.finding(

@@ -17,7 +17,8 @@ pub struct Rules {
     /// Source id (`apple`), used in `frame: imported:<source>`.
     pub source: String,
     pub label: String,
-    /// `false` while the patterns are not checked against a real package.
+    /// `true` when every rule is checked against a real package; single
+    /// rules say so with `verified: <date>`.
     #[serde(default)]
     pub verified: bool,
     /// Vendor colour name (case-insensitive) → colour id.
@@ -38,6 +39,9 @@ pub struct Rule {
     pub orientation: Option<Orientation>,
     #[serde(default)]
     pub priority: i32,
+    /// Date the rule was checked against a real package (`2026-11-10`).
+    #[serde(default)]
+    pub verified: Option<String>,
     #[serde(default)]
     pub note: Option<String>,
 }
@@ -51,10 +55,18 @@ pub struct FileMatch {
     /// Colour as written in the file name (`Black Titanium`).
     pub color_label: String,
     pub orientation: Orientation,
+    /// The vendor's model name: the file name before the colour
+    /// (`iPhone 18 Pro`, `MacBook Pro 14 - M4`). Different vendor models
+    /// of one catalog model are installed side by side (ADR 0012).
+    pub apple_model: String,
     pub priority: i32,
     /// The pattern that matched (`None` = a user assignment).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rule: Option<String>,
+    /// The rule is checked against a real package (user assignments are
+    /// trusted).
+    #[serde(default)]
+    pub verified: bool,
 }
 
 impl Rules {
@@ -102,10 +114,12 @@ impl Rules {
             Some(FileMatch {
                 model: r.model.clone(),
                 color: self.color_id(&label),
+                apple_model: vendor_model(&name, &label),
                 color_label: label,
                 orientation,
                 priority: r.priority,
                 rule: Some(r.pattern.clone()),
+                verified: self.verified || r.verified.is_some(),
             })
         })
     }
@@ -142,6 +156,32 @@ pub fn normalize_name(file: &str) -> String {
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// The vendor model name in a normalised file name: everything before
+/// the last ` - <colour>` (`iPhone 18 Pro - Black - Portrait` →
+/// `iPhone 18 Pro`). Without the colour in the name: the name without a
+/// trailing ` - Portrait` / ` - Landscape`.
+pub fn vendor_model(name: &str, color_label: &str) -> String {
+    let lower = name.to_lowercase();
+    let needle = format!(" - {}", color_label.trim().to_lowercase());
+    let cut = if needle.len() > 3 {
+        lower.rfind(&needle)
+    } else {
+        None
+    }
+    .or_else(|| {
+        [" - portrait", " - landscape"]
+            .iter()
+            .find(|o| lower.ends_with(*o))
+            .map(|o| lower.len() - o.len())
+    });
+    // Lower-casing may change byte lengths; fall back to the whole name.
+    let base = cut
+        .filter(|&i| lower.len() == name.len() && name.is_char_boundary(i))
+        .map_or(name, |i| &name[..i]);
+    let out = base.trim();
+    if out.is_empty() { name.trim() } else { out }.to_owned()
 }
 
 /// Lower-case id: alphanumerics kept, everything else becomes one `-`.
@@ -364,6 +404,42 @@ mod tests {
             "midnight"
         );
         assert_eq!(m("iMac 24\" - Blue.png").unwrap().0, "imac");
+    }
+
+    #[test]
+    fn vendor_models() {
+        let v = |n: &str| apple().match_file(n).unwrap().apple_model;
+        assert_eq!(v("iPhone 18 Pro - Black - Portrait.png"), "iPhone 18 Pro");
+        assert_eq!(
+            v("iPhone 18 Pro Max \u{2013} Glacier \u{2013} Landscape.png"),
+            "iPhone 18 Pro Max"
+        );
+        assert_eq!(
+            v("MacBook Pro 14 - M4 - Space Black.png"),
+            "MacBook Pro 14 - M4"
+        );
+        assert_eq!(vendor_model("Foo Bar - Portrait", "x"), "Foo Bar");
+        assert_eq!(vendor_model("Foo", "Foo"), "Foo");
+    }
+
+    #[test]
+    fn iphone_18_names() {
+        for c in ["Black", "Burgundy", "Glacier", "Silver"] {
+            for (o, want) in [
+                ("Portrait", Orientation::Portrait),
+                ("Landscape", Orientation::Landscape),
+            ] {
+                for model in ["iPhone 18 Pro", "iPhone 18 Pro Max"] {
+                    let f = apple()
+                        .match_file(&format!("{model} - {c} - {o}.png"))
+                        .unwrap();
+                    assert_eq!(f.model, "iphone-island");
+                    assert_eq!(f.color, slug(c));
+                    assert_eq!(f.orientation, want);
+                    assert_eq!(f.apple_model, model);
+                }
+            }
+        }
     }
 
     #[test]

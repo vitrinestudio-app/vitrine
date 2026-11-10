@@ -72,8 +72,17 @@ fn plan_matches_dedupes_and_lists_unmatched() {
     let store = FrameStore::new(store_dir.path());
     let pkg = Package::open(dir.path()).unwrap();
     assert_eq!(pkg.kind, PackageKind::Folder);
-    assert_eq!(pkg.skipped, 1, "License.rtf");
+    assert_eq!(pkg.skipped, 1, "Read Me.txt");
+    assert_eq!(pkg.psd, 2);
+    assert_eq!(pkg.licenses, ["License.rtf"]);
     let plan = import(&store, &pkg, apple(), false).unwrap();
+    assert_eq!(plan.psd, 2);
+    assert_eq!(plan.skipped, 1);
+    assert_eq!(plan.licenses.len(), 1);
+    assert_eq!(
+        std::path::Path::new(&plan.licenses[0]),
+        dir.path().join("License.rtf")
+    );
     assert!(!plan.applied);
     assert!(plan.unverified_rules);
     let mut installs: Vec<_> = plan
@@ -83,27 +92,60 @@ fn plan_matches_dedupes_and_lists_unmatched() {
                 i.matched.model.as_str(),
                 i.matched.color.as_str(),
                 orientation_name(i.matched.orientation),
+                i.matched.apple_model.as_str(),
             )
         })
         .collect();
     installs.sort_unstable();
+    // Both iPhone sizes are kept (ADR 0012): Pro and Pro Max.
     assert_eq!(
         installs,
         [
-            ("ipad-modern", "space-black", "portrait"),
-            ("iphone-island", "black-titanium", "landscape"),
-            ("iphone-island", "black-titanium", "portrait"),
-            ("iphone-island", "desert-titanium", "portrait"),
-            ("macbook", "space-black", "landscape"),
+            ("ipad-modern", "space-black", "portrait", "iPad Pro 13 - M4"),
+            (
+                "iphone-island",
+                "black-titanium",
+                "landscape",
+                "iPhone 16 Pro"
+            ),
+            (
+                "iphone-island",
+                "black-titanium",
+                "landscape",
+                "iPhone 16 Pro Max"
+            ),
+            (
+                "iphone-island",
+                "black-titanium",
+                "portrait",
+                "iPhone 16 Pro"
+            ),
+            (
+                "iphone-island",
+                "black-titanium",
+                "portrait",
+                "iPhone 16 Pro Max"
+            ),
+            (
+                "iphone-island",
+                "desert-titanium",
+                "portrait",
+                "iPhone 16 Pro Max"
+            ),
+            ("macbook", "space-black", "landscape", "MacBook Pro 14 - M4"),
         ]
     );
     let superseded: Vec<_> = plan
         .items
         .iter()
         .filter(|i| matches!(i.action, Action::Superseded { .. }))
-        .map(|i| i.name.as_str())
+        .map(|i| i.file.as_str())
         .collect();
-    assert_eq!(superseded, ["iPhone 16 Pro - Black Titanium - Portrait"]);
+    // Only a true duplicate (same vendor model) is superseded.
+    assert_eq!(
+        superseded,
+        ["Small/iPhone 16 Pro - Black Titanium - Portrait.png"]
+    );
     assert_eq!(plan.unmatched.len(), 1);
     assert_eq!(
         plan.unmatched[0].name,
@@ -125,17 +167,15 @@ fn apply_writes_the_store_and_index() {
     let plan = import(&store, &pkg, apple(), true).unwrap();
     assert!(plan.applied);
     let root = store_dir.path().join("frames").join("apple");
-    let bezel = root
+    let slot = root
         .join("iphone-island")
         .join("black-titanium")
-        .join("portrait.png");
+        .join("portrait");
+    let bezel = slot.join("iphone-16-pro-max.png");
     assert!(bezel.is_file());
-    assert!(
-        root.join("iphone-island")
-            .join("black-titanium")
-            .join("portrait.mask.png")
-            .is_file()
-    );
+    assert!(slot.join("iphone-16-pro-max.mask.png").is_file());
+    assert!(slot.join("iphone-16-pro.png").is_file());
+    assert!(slot.join("iphone-16-pro.mask.png").is_file());
     // The bezel is copied unchanged.
     let original = std::fs::read(
         dir.path()
@@ -146,7 +186,17 @@ fn apply_writes_the_store_and_index() {
     assert_eq!(std::fs::read(&bezel).unwrap(), original);
 
     let index = store.index();
-    assert_eq!(index.frames("apple").len(), 5);
+    assert_eq!(index.frames("apple").len(), 7);
+    let pro = index
+        .frames("apple")
+        .iter()
+        .find(|f| f.apple_model == "iPhone 16 Pro" && f.orientation == Orientation::Portrait)
+        .unwrap();
+    assert_eq!(pro.screen, specs[3].screen, "the full-size file won");
+    assert_eq!(pro.license.as_deref(), Some("License.rtf"));
+    let yaml = std::fs::read_to_string(root.join(INDEX_FILE)).unwrap();
+    assert!(yaml.contains("apple_model: iPhone 16 Pro Max"), "{yaml}");
+    assert!(yaml.contains("license: License.rtf"), "{yaml}");
     let f = index
         .find(
             "apple",
@@ -160,6 +210,7 @@ fn apply_writes_the_store_and_index() {
     assert_eq!(f.size, PixelSize::new(specs[0].width, specs[0].height));
     assert_eq!(f.color_label, "Black Titanium");
     assert_eq!(f.package, dir.path().file_name().unwrap().to_string_lossy());
+    assert_eq!(f.apple_model, "iPhone 16 Pro Max", "find = the largest");
     // Without a colour: the default if installed, else the first.
     let first = index
         .find(
@@ -193,20 +244,24 @@ fn apply_writes_the_store_and_index() {
     let again = import(&store, &pkg, apple(), false).unwrap();
     assert!(again.installs().all(|i| i.action == Action::Replace));
 
-    // Remove one colour, then everything.
-    assert_eq!(
-        store
-            .remove(
-                "apple",
-                Some("iphone-island"),
-                Some("desert-titanium"),
-                None
-            )
-            .unwrap(),
-        1
-    );
+    // Remove one vendor model of one slot, one colour, then everything.
+    let filter = RemoveFilter {
+        model: Some("iphone-island"),
+        color: Some("black-titanium"),
+        orientation: Some(Orientation::Portrait),
+        bezel: Some("iphone-16-pro"),
+    };
+    assert_eq!(store.remove("apple", &filter).unwrap(), 1);
+    assert!(!slot.join("iphone-16-pro.png").exists());
+    assert!(bezel.is_file());
+    let filter = RemoveFilter {
+        model: Some("iphone-island"),
+        color: Some("desert-titanium"),
+        ..RemoveFilter::default()
+    };
+    assert_eq!(store.remove("apple", &filter).unwrap(), 1);
     assert!(!root.join("iphone-island").join("desert-titanium").exists());
-    assert_eq!(store.remove("apple", None, None, None).unwrap(), 4);
+    assert_eq!(store.remove("apple", &RemoveFilter::default()).unwrap(), 5);
     assert!(store.index().is_empty());
     assert!(!root.join("iphone-island").exists());
 }
@@ -248,14 +303,16 @@ fn zip_packages_are_read() {
         synthetic::write_zip(&dir.path().join("Bezels.zip"), &synthetic::default_specs()).unwrap();
     let pkg = Package::open(&zip).unwrap();
     assert_eq!(pkg.kind, PackageKind::Zip);
-    assert_eq!(pkg.entries.len(), 7, "resource forks are ignored");
+    assert_eq!(pkg.entries.len(), 9, "resource forks are ignored");
     assert_eq!(pkg.skipped, 1);
+    assert_eq!(pkg.psd, 2);
     let store_dir = tempfile::tempdir().unwrap();
     let store = FrameStore::new(store_dir.path());
     let plan = import(&store, &pkg, apple(), true).unwrap();
-    assert_eq!(plan.installs().count(), 5);
+    assert_eq!(plan.installs().count(), 7);
     assert_eq!(plan.package, "Bezels.zip");
-    assert_eq!(store.index().frames("apple").len(), 5);
+    assert_eq!(plan.licenses, ["Bezels.zip/Bezels/License.rtf"]);
+    assert_eq!(store.index().frames("apple").len(), 7);
 }
 
 #[test]
@@ -266,6 +323,7 @@ fn other_inputs_are_rejected() {
     assert!(
         Package::open(&png)
             .unwrap_err()
+            .to_string()
             .contains("whole bezel package")
     );
     let txt = dir.path().join("x.txt");
@@ -275,7 +333,12 @@ fn other_inputs_are_rejected() {
     {
         let dmg = dir.path().join("x.dmg");
         std::fs::write(&dmg, b"x").unwrap();
-        assert!(Package::open(&dmg).unwrap_err().contains("extract"));
+        assert!(
+            Package::open(&dmg)
+                .unwrap_err()
+                .to_string()
+                .contains("extract")
+        );
     }
 }
 
@@ -284,4 +347,200 @@ fn today_is_a_date() {
     let t = today();
     assert_eq!(t.len(), 10);
     assert!(t.starts_with("20"));
+}
+
+fn frame(apple_model: &str, screen: (u32, u32), priority: i32) -> InstalledFrame {
+    InstalledFrame {
+        model: "iphone-island".into(),
+        color: "black".into(),
+        color_label: "Black".into(),
+        orientation: Orientation::Portrait,
+        apple_model: apple_model.into(),
+        file: String::new(),
+        mask: String::new(),
+        size: PixelSize::new(screen.0 + 150, screen.1 + 150),
+        screen: PxRect {
+            x: 75,
+            y: 75,
+            w: screen.0,
+            h: screen.1,
+        },
+        radius: 0.0,
+        priority,
+        source_file: String::new(),
+        package: String::new(),
+        license: None,
+        imported: String::new(),
+    }
+}
+
+#[test]
+fn bezel_selection() {
+    let max = frame("iPhone 18 Pro Max", (1320, 2868), 30);
+    let pro = frame("iPhone 18 Pro", (1206, 2622), 20);
+    let old = frame("iPhone 15", (1179, 2556), 20);
+    let c = [&max, &pro, &old];
+    let px = |w, h| Some(PixelSize::new(w, h));
+    let pick = |pin, target, shot| {
+        let (f, why) = select_bezel(&c, pin, target, shot).unwrap();
+        (f.apple_model.as_str(), why)
+    };
+    // By the target's page size first (6.3" slot → Pro), either orientation.
+    assert_eq!(
+        pick(None, px(1206, 2622), px(1320, 2868)),
+        ("iPhone 18 Pro", BezelChoice::Target)
+    );
+    assert_eq!(
+        pick(None, px(2868, 1320), None),
+        ("iPhone 18 Pro Max", BezelChoice::Target)
+    );
+    // Then by the screenshot's pixel size.
+    assert_eq!(
+        pick(None, px(1080, 1920), px(1179, 2556)),
+        ("iPhone 15", BezelChoice::Screenshot)
+    );
+    assert_eq!(
+        pick(None, None, px(1206, 2622)),
+        ("iPhone 18 Pro", BezelChoice::Screenshot)
+    );
+    // Aspect: 1206:2622 and 1320:2868 are within 0.1 % → priority wins;
+    // 1179:2556 (0.4613) is further away.
+    assert_eq!(
+        pick(None, px(603, 1311), None),
+        ("iPhone 18 Pro Max", BezelChoice::Aspect)
+    );
+    // Nothing close (iPad aspect): the largest, a fallback.
+    assert_eq!(
+        pick(None, px(2064, 2752), None),
+        ("iPhone 18 Pro Max", BezelChoice::Largest)
+    );
+    assert_eq!(
+        pick(None, None, None),
+        ("iPhone 18 Pro Max", BezelChoice::Largest)
+    );
+    // Pinned, case-insensitive or as slug; unknown pins fall through.
+    assert_eq!(
+        pick(Some("iphone 15"), px(1320, 2868), None),
+        ("iPhone 15", BezelChoice::Pinned)
+    );
+    assert_eq!(
+        pick(Some("iphone-18-pro"), None, None),
+        ("iPhone 18 Pro", BezelChoice::Pinned)
+    );
+    assert_eq!(
+        pick(Some("iPhone 99"), px(1206, 2622), None),
+        ("iPhone 18 Pro", BezelChoice::Target)
+    );
+    // Deterministic ties: same size and priority → name order.
+    let a = frame("B model", (100, 200), 0);
+    let b = frame("A model", (100, 200), 0);
+    let (f, _) = select_bezel(&[&a, &b], None, None, None).unwrap();
+    assert_eq!(f.apple_model, "A model");
+    let (f, _) = select_bezel(&[&b, &a], None, None, None).unwrap();
+    assert_eq!(f.apple_model, "A model");
+    assert!(select_bezel(&[], None, None, None).is_none());
+}
+
+#[test]
+fn legacy_store_is_migrated() {
+    // A store written before vendor models existed:
+    // `<model>/<colour>/<orientation>.png`, no `apple_model`.
+    let store_dir = tempfile::tempdir().unwrap();
+    let store = FrameStore::new(store_dir.path());
+    let src = store_dir.path().join("apple");
+    let old_dir = src.join("iphone-island").join("black");
+    std::fs::create_dir_all(&old_dir).unwrap();
+    std::fs::write(old_dir.join("portrait.png"), b"bezel").unwrap();
+    std::fs::write(old_dir.join("portrait.mask.png"), b"mask").unwrap();
+    std::fs::write(
+        src.join(INDEX_FILE),
+        "frames:\n- model: iphone-island\n  color: black\n  color_label: Black\n  \
+         orientation: portrait\n  file: iphone-island/black/portrait.png\n  \
+         mask: iphone-island/black/portrait.mask.png\n  size: [1520, 3068]\n  \
+         screen: {x: 100, y: 100, w: 1320, h: 2868}\n  radius: 160\n  \
+         source_file: iPhone 18 Pro Max - Black - Portrait.png\n  \
+         package: Bezel-iPhone-18\n  imported: 2026-11-10\n\
+         - model: iphone-island\n  color: gone\n  color_label: Gone\n  \
+         orientation: portrait\n  file: iphone-island/gone/portrait.png\n  \
+         mask: iphone-island/gone/portrait.mask.png\n  size: [10, 10]\n  \
+         screen: {x: 1, y: 1, w: 8, h: 8}\n  radius: 1\n  \
+         source_file: iPhone 18 Pro Max - Gone - Portrait.png\n  \
+         package: x\n  imported: 2026-11-10\n",
+    )
+    .unwrap();
+    // Read-only users see the vendor model at once (files stay).
+    let index = FrameIndex::load(store_dir.path());
+    let f = &index.frames("apple")[0];
+    assert_eq!(f.apple_model, "iPhone 18 Pro Max");
+    assert_eq!(f.file, "iphone-island/black/portrait.png");
+    // Migration moves the files and drops entries without files.
+    let migrated = store.migrate("apple").unwrap();
+    assert_eq!(migrated.frames.len(), 1);
+    let new = old_dir.join("portrait").join("iphone-18-pro-max.png");
+    assert_eq!(std::fs::read(&new).unwrap(), b"bezel");
+    assert!(
+        old_dir
+            .join("portrait")
+            .join("iphone-18-pro-max.mask.png")
+            .is_file()
+    );
+    assert!(!old_dir.join("portrait.png").exists());
+    let index = store.index();
+    assert_eq!(
+        index.frames("apple")[0].file,
+        "iphone-island/black/portrait/iphone-18-pro-max.png"
+    );
+    // Idempotent.
+    assert_eq!(
+        store.migrate("apple").unwrap(),
+        store.source_index("apple").unwrap()
+    );
+    // A later install of the other size keeps the migrated one.
+    let mut pro = frame("iPhone 18 Pro", (1206, 2622), 0);
+    pro.color = "black".into();
+    store.install("apple", pro, b"pro", b"pro-mask").unwrap();
+    assert_eq!(store.index().frames("apple").len(), 2);
+}
+
+#[test]
+fn dmg_licence_agreement_is_explained() {
+    let dmg = std::path::Path::new("/Users/me/Downloads/Bezel-iPhone-18.dmg");
+    let e = attach_error(dmg, "hdiutil: attach canceled\n");
+    assert_eq!(
+        e,
+        PackageError::LicenseAgreement {
+            path: dmg.to_owned(),
+            volume: std::path::Path::new("/Volumes").join("Bezel-iPhone-18"),
+        }
+    );
+    let msg = e.to_string();
+    assert!(msg.contains("licence agreement"), "{msg}");
+    assert!(msg.contains("accept the licence"), "{msg}");
+    assert!(msg.contains("Bezel-iPhone-18"), "{msg}");
+    // Other failures keep hdiutil's message.
+    let other = attach_error(dmg, "hdiutil: attach failed - image not recognized");
+    assert!(matches!(other, PackageError::Other(ref m) if m.contains("not recognized")));
+    // `hdiutil imageinfo -plist`.
+    let with = "<dict><key>Properties</key><dict>\n\t<key>Software License Agreement</key>\n\t<true/>\n</dict></dict>";
+    let without = with.replace("<true/>", "<false/>");
+    assert!(imageinfo_has_sla(with));
+    assert!(!imageinfo_has_sla(&without));
+    assert!(!imageinfo_has_sla("<dict></dict>"));
+}
+
+#[test]
+fn verified_rules_need_no_warning() {
+    // Only iPhone 15+ files (verified rules): no "unverified" note.
+    let dir = tempfile::tempdir().unwrap();
+    let specs: Vec<_> = synthetic::default_specs()
+        .into_iter()
+        .filter(|s| s.file.starts_with("iPhone"))
+        .collect();
+    synthetic::write_folder(dir.path(), &specs).unwrap();
+    let store_dir = tempfile::tempdir().unwrap();
+    let store = FrameStore::new(store_dir.path());
+    let plan = import(&store, &Package::open(dir.path()).unwrap(), apple(), false).unwrap();
+    assert_eq!(plan.installs().count(), 5);
+    assert!(!plan.unverified_rules);
+    assert!(plan.items.iter().all(|i| i.matched.verified));
 }

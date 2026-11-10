@@ -5,9 +5,15 @@
 //!   <source>/                         apple
 //!     index.yaml                      installed frames (FrameSourceIndex)
 //!     user-mapping.yaml               manual file assignments (UserMapping)
-//!     <model>/<colour>/<orientation>.png        the vendor bezel, unchanged
-//!     <model>/<colour>/<orientation>.mask.png   detected screen mask
+//!     <model>/<colour>/<orientation>/<vendor-model>.png       the vendor bezel, unchanged
+//!     <model>/<colour>/<orientation>/<vendor-model>.mask.png  detected screen mask
 //! ```
+//!
+//! One catalog model × colour × orientation may hold several vendor models
+//! (`iPhone 18 Pro` and `iPhone 18 Pro Max` are both `iphone-island`):
+//! resolve picks one per target ([`super::select_bezel`]). Stores written
+//! before that (`<model>/<colour>/<orientation>.png`, no `apple_model`)
+//! are read as they are and moved to this layout by [`FrameStore::migrate`].
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -16,6 +22,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use super::analyze::PxRect;
+use super::rules::{Rules, normalize_name, slug, vendor_model};
 use crate::io::{from_yaml, to_yaml, write_atomic};
 use crate::model::{Orientation, PixelSize};
 
@@ -32,6 +39,9 @@ pub struct InstalledFrame {
     /// Colour as the vendor writes it (`Black Titanium`).
     pub color_label: String,
     pub orientation: Orientation,
+    /// The vendor's model name (`iPhone 18 Pro`), from the file name.
+    #[serde(default)]
+    pub apple_model: String,
     /// Bezel PNG, relative to the source folder.
     pub file: String,
     /// Mask PNG, relative to the source folder.
@@ -42,12 +52,60 @@ pub struct InstalledFrame {
     pub screen: PxRect,
     /// Estimated screen corner radius (px).
     pub radius: f64,
+    /// Rule priority (tie-break of the automatic choice).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub priority: i32,
     /// Original file name in the package.
     pub source_file: String,
     /// Package it came from (file name of the DMG / ZIP / folder).
     pub package: String,
+    /// The package's licence file (`License.rtf`): the frames are subject
+    /// to it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
     /// Import date (`YYYY-MM-DD`, UTC).
     pub imported: String,
+}
+
+#[allow(
+    clippy::trivially_copy_pass_by_ref,
+    reason = "serde skip_serializing_if"
+)]
+fn is_zero(v: &i32) -> bool {
+    *v == 0
+}
+
+impl InstalledFrame {
+    /// Same catalog model × colour × orientation × vendor model.
+    pub fn same_slot(&self, other: &InstalledFrame) -> bool {
+        self.model == other.model
+            && self.color == other.color
+            && self.orientation == other.orientation
+            && slug(&self.apple_model) == slug(&other.apple_model)
+    }
+
+    /// Does `name` (as written in `bezel:`) name this vendor model?
+    /// Case-insensitive; `iphone-18-pro` works too.
+    pub fn is_bezel(&self, name: &str) -> bool {
+        self.apple_model.eq_ignore_ascii_case(name.trim()) || slug(&self.apple_model) == slug(name)
+    }
+
+    /// Fills `apple_model` of entries written before it existed (from the
+    /// source file name and the rules of `source`).
+    fn fill_legacy(&mut self, source: &str) {
+        if !self.apple_model.is_empty() {
+            return;
+        }
+        let name = normalize_name(&self.source_file);
+        self.apple_model = Rules::builtin(source)
+            .and_then(|r| r.match_file(&self.source_file))
+            .map_or_else(|| vendor_model(&name, &self.color_label), |m| m.apple_model);
+    }
+
+    /// Screen area in px².
+    pub fn screen_area(&self) -> u64 {
+        u64::from(self.screen.w) * u64::from(self.screen.h)
+    }
 }
 
 /// `<source>/index.yaml`.
@@ -56,6 +114,25 @@ pub struct InstalledFrame {
 pub struct FrameSourceIndex {
     #[serde(default)]
     pub frames: Vec<InstalledFrame>,
+}
+
+impl FrameSourceIndex {
+    fn fill_legacy(&mut self, source: &str) {
+        for f in &mut self.frames {
+            f.fill_legacy(source);
+        }
+    }
+
+    fn sort(&mut self) {
+        self.frames.sort_by(|a, b| {
+            (&a.model, &a.color, a.orientation as u8, &a.apple_model).cmp(&(
+                &b.model,
+                &b.color,
+                b.orientation as u8,
+                &b.apple_model,
+            ))
+        });
+    }
 }
 
 /// A manual assignment of a file name (GUI "unmatched files").
@@ -95,8 +172,9 @@ impl FrameIndex {
                 let name = e.file_name().to_string_lossy().into_owned();
                 let path = e.path().join(INDEX_FILE);
                 if let Ok(text) = fs::read_to_string(&path)
-                    && let Ok(index) = from_yaml::<FrameSourceIndex>(&text)
+                    && let Ok(mut index) = from_yaml::<FrameSourceIndex>(&text)
                 {
+                    index.fill_legacy(&name);
                     sources.insert(name, index);
                 }
             }
@@ -135,8 +213,33 @@ impl FrameIndex {
         self.sources.get(source).map_or(&[], |s| &s.frames)
     }
 
-    /// The frame for `model` × `color` × `orientation`. Without a colour:
-    /// `default_color` if installed, else the first installed colour.
+    /// All installed bezels (vendor models) for `model` × `color` ×
+    /// `orientation`, in index order. Without a colour: `default_color` if
+    /// installed, else the first installed colour.
+    pub fn candidates(
+        &self,
+        source: &str,
+        model: &str,
+        color: Option<&str>,
+        default_color: Option<&str>,
+        orientation: Orientation,
+    ) -> Vec<&InstalledFrame> {
+        let all: Vec<_> = self
+            .frames(source)
+            .iter()
+            .filter(|f| f.model == model && f.orientation == orientation)
+            .collect();
+        let color = color
+            .or_else(|| default_color.filter(|d| all.iter().any(|f| f.color == *d)))
+            .or_else(|| all.first().map(|f| f.color.as_str()));
+        let Some(color) = color else {
+            return Vec::new();
+        };
+        all.into_iter().filter(|f| f.color == color).collect()
+    }
+
+    /// The largest installed bezel for `model` × `color` × `orientation`
+    /// (see [`Self::candidates`]; resolve uses [`super::select_bezel`]).
     pub fn find(
         &self,
         source: &str,
@@ -145,17 +248,8 @@ impl FrameIndex {
         default_color: Option<&str>,
         orientation: Orientation,
     ) -> Option<&InstalledFrame> {
-        let mut candidates = self
-            .frames(source)
-            .iter()
-            .filter(|f| f.model == model && f.orientation == orientation);
-        if let Some(c) = color {
-            return candidates.find(|f| f.color == c);
-        }
-        let all: Vec<_> = candidates.collect();
-        default_color
-            .and_then(|d| all.iter().find(|f| f.color == d).copied())
-            .or_else(|| all.first().copied())
+        let c = self.candidates(source, model, color, default_color, orientation);
+        super::select_bezel(&c, None, None, None).map(|(f, _)| f)
     }
 
     /// Installed colours of `model` (any orientation), sorted, unique.
@@ -172,7 +266,7 @@ impl FrameIndex {
     }
 
     /// Path of a frame file relative to the frames root
-    /// (`apple/iphone-island/black/portrait.png`).
+    /// (`apple/iphone-island/black/portrait/iphone-18-pro.png`).
     pub fn rel_path(source: &str, file: &str) -> String {
         format!("{source}/{file}")
     }
@@ -208,7 +302,12 @@ impl FrameStore {
     pub fn source_index(&self, source: &str) -> Result<FrameSourceIndex, String> {
         let path = self.source_dir(source).join(INDEX_FILE);
         match fs::read_to_string(&path) {
-            Ok(t) => from_yaml(&t).map_err(|e| format!("{}: {e}", path.display())),
+            Ok(t) => from_yaml::<FrameSourceIndex>(&t)
+                .map(|mut ix| {
+                    ix.fill_legacy(source);
+                    ix
+                })
+                .map_err(|e| format!("{}: {e}", path.display())),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(FrameSourceIndex::default()),
             Err(e) => Err(format!("{}: {e}", path.display())),
         }
@@ -238,8 +337,25 @@ impl FrameStore {
         write_atomic(&dir.join(USER_MAPPING_FILE), yaml.as_bytes()).map_err(|e| e.to_string())
     }
 
+    /// Relative folder and file stem of a frame in the current layout
+    /// (`iphone-island/black/portrait`, `iphone-18-pro`).
+    fn layout_of(frame: &InstalledFrame) -> (String, String) {
+        let o = super::orientation_name(frame.orientation);
+        let stem = match slug(&frame.apple_model) {
+            s if s.is_empty() => "bezel".to_owned(),
+            s => s,
+        };
+        (format!("{}/{}/{o}", frame.model, frame.color), stem)
+    }
+
+    fn abs(&self, source: &str, rel: &str) -> PathBuf {
+        rel.split('/')
+            .fold(self.source_dir(source), |p, c| p.join(c))
+    }
+
     /// Writes one frame (bezel bytes unchanged + mask) and records it,
-    /// replacing an entry with the same model × colour × orientation.
+    /// replacing an entry with the same model × colour × orientation ×
+    /// vendor model.
     pub fn install(
         &self,
         source: &str,
@@ -247,69 +363,106 @@ impl FrameStore {
         bezel: &[u8],
         mask_png: &[u8],
     ) -> Result<InstalledFrame, String> {
-        let o = match frame.orientation {
-            Orientation::Portrait => "portrait",
-            Orientation::Landscape => "landscape",
-        };
-        let rel_dir = format!("{}/{}", frame.model, frame.color);
-        let dir = self
-            .source_dir(source)
-            .join(&frame.model)
-            .join(&frame.color);
+        let mut index = self.migrate(source)?;
+        let (rel_dir, stem) = Self::layout_of(&frame);
+        let dir = self.abs(source, &rel_dir);
         fs::create_dir_all(&dir).map_err(err(&dir))?;
-        write_atomic(&dir.join(format!("{o}.png")), bezel).map_err(|e| e.to_string())?;
-        write_atomic(&dir.join(format!("{o}.mask.png")), mask_png).map_err(|e| e.to_string())?;
-        frame.file = format!("{rel_dir}/{o}.png");
-        frame.mask = format!("{rel_dir}/{o}.mask.png");
-        let mut index = self.source_index(source)?;
-        index.frames.retain(|f| {
-            !(f.model == frame.model
-                && f.color == frame.color
-                && f.orientation == frame.orientation)
-        });
+        write_atomic(&dir.join(format!("{stem}.png")), bezel).map_err(|e| e.to_string())?;
+        write_atomic(&dir.join(format!("{stem}.mask.png")), mask_png).map_err(|e| e.to_string())?;
+        frame.file = format!("{rel_dir}/{stem}.png");
+        frame.mask = format!("{rel_dir}/{stem}.mask.png");
+        index.frames.retain(|f| !f.same_slot(&frame));
         index.frames.push(frame.clone());
-        index.frames.sort_by(|a, b| {
-            (&a.model, &a.color, a.orientation as u8).cmp(&(
-                &b.model,
-                &b.color,
-                b.orientation as u8,
-            ))
-        });
+        index.sort();
         self.save_index(source, &index)?;
         Ok(frame)
     }
 
-    /// Removes frames of `source` matching the filters (`None` = any);
-    /// returns how many were removed. Removing everything deletes the
-    /// source folder (the user mapping is kept).
-    pub fn remove(
-        &self,
-        source: &str,
-        model: Option<&str>,
-        color: Option<&str>,
-        orientation: Option<Orientation>,
-    ) -> Result<usize, String> {
+    /// Moves frames of an older store layout
+    /// (`<model>/<colour>/<orientation>.png`, no `apple_model`) to the
+    /// current one and rewrites the index; returns the (migrated) index.
+    /// Missing files are dropped from the index. A store in the current
+    /// layout is returned unchanged.
+    pub fn migrate(&self, source: &str) -> Result<FrameSourceIndex, String> {
         let mut index = self.source_index(source)?;
-        let dir = self.source_dir(source);
+        let mut changed = false;
+        let mut kept: Vec<InstalledFrame> = Vec::with_capacity(index.frames.len());
+        for mut f in std::mem::take(&mut index.frames) {
+            let (rel_dir, stem) = Self::layout_of(&f);
+            let (file, mask) = (
+                format!("{rel_dir}/{stem}.png"),
+                format!("{rel_dir}/{stem}.mask.png"),
+            );
+            if f.file != file || f.mask != mask {
+                let (old_file, old_mask) = (self.abs(source, &f.file), self.abs(source, &f.mask));
+                if !old_file.is_file() {
+                    changed = true;
+                    continue;
+                }
+                let dir = self.abs(source, &rel_dir);
+                fs::create_dir_all(&dir).map_err(err(&dir))?;
+                let new_file = self.abs(source, &file);
+                fs::rename(&old_file, &new_file).map_err(err(&old_file))?;
+                if old_mask.is_file() {
+                    let new_mask = self.abs(source, &mask);
+                    fs::rename(&old_mask, &new_mask).map_err(err(&old_mask))?;
+                }
+                f.file = file;
+                f.mask = mask;
+                changed = true;
+            }
+            // Two legacy entries can never share a slot, but be safe.
+            if let Some(i) = kept.iter().position(|k| k.same_slot(&f)) {
+                kept.remove(i);
+                changed = true;
+            }
+            kept.push(f);
+        }
+        index.frames = kept;
+        if changed {
+            index.sort();
+            self.save_index(source, &index)?;
+        }
+        Ok(index)
+    }
+
+    /// Removes frames of `source` matching the filters (`None` = any;
+    /// `bezel` = vendor model, see [`InstalledFrame::is_bezel`]); returns
+    /// how many were removed. Emptied folders are deleted (the user
+    /// mapping is kept).
+    pub fn remove(&self, source: &str, filter: &RemoveFilter<'_>) -> Result<usize, String> {
+        let mut index = self.migrate(source)?;
         let (gone, keep): (Vec<_>, Vec<_>) = index.frames.into_iter().partition(|f| {
-            model.is_none_or(|m| f.model == m)
-                && color.is_none_or(|c| f.color == c)
-                && orientation.is_none_or(|o| f.orientation == o)
+            filter.model.is_none_or(|m| f.model == m)
+                && filter.color.is_none_or(|c| f.color == c)
+                && filter.orientation.is_none_or(|o| f.orientation == o)
+                && filter.bezel.is_none_or(|b| f.is_bezel(b))
         });
         for f in &gone {
             for rel in [&f.file, &f.mask] {
-                let p = rel.split('/').fold(dir.clone(), |p, c| p.join(c));
-                let _ = fs::remove_file(&p);
+                let _ = fs::remove_file(self.abs(source, rel));
             }
-            // Drop emptied colour / model folders.
-            let colour_dir = dir.join(&f.model).join(&f.color);
-            let _ = fs::remove_dir(&colour_dir);
-            let _ = fs::remove_dir(dir.join(&f.model));
+            // Drop emptied orientation / colour / model folders.
+            let mut dir = self.abs(source, &f.file);
+            for _ in 0..3 {
+                if !dir.pop() || fs::remove_dir(&dir).is_err() {
+                    break;
+                }
+            }
         }
         index.frames = keep;
         self.save_index(source, &index)?;
         Ok(gone.len())
     }
+}
+
+/// Which frames [`FrameStore::remove`] removes (`None` = any).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RemoveFilter<'a> {
+    pub model: Option<&'a str>,
+    pub color: Option<&'a str>,
+    pub orientation: Option<Orientation>,
+    pub bezel: Option<&'a str>,
 }
 
 /// Today's date (UTC) as `YYYY-MM-DD`.

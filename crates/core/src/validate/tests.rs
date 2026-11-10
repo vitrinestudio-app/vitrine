@@ -684,4 +684,28 @@ fn imported_frame_missing_is_an_info() {
     let r = validate(&p, &opts);
     assert!(!has(&r, FindingCode::ImportedFrameMissing));
     assert!(!has(&r, FindingCode::UnknownDeviceColor));
+
+    // A pinned bezel that is not installed: info, automatic choice.
+    let pinned = project(
+        &elements.replace(
+            "color: desert-titanium",
+            "color: black-titanium\n    bezel: iPhone 99",
+        ),
+        "",
+    );
+    let r = validate(&pinned, &opts);
+    let f = find(&r, FindingCode::ImportedBezelFallback);
+    assert_eq!(f.level, Severity::Info);
+    assert!(f.message.contains("iPhone 99"), "{}", f.message);
+    let ok = project(
+        &elements.replace(
+            "color: desert-titanium",
+            "color: black-titanium\n    bezel: iPhone 16 Pro",
+        ),
+        "",
+    );
+    assert!(!has(
+        &validate(&ok, &opts),
+        FindingCode::ImportedBezelFallback
+    ));
 }

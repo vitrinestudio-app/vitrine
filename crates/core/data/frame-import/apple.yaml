@@ -9,8 +9,16 @@
 # the bezels from https://developer.apple.com/design/resources/ and imports
 # the DMG / ZIP / folder; the files go to the app data folder only.
 #
-# STATUS: built from documentation and secondary sources, NOT yet verified
-# with a real package (`verified: false`). Sources (checked 2026-11-10):
+# STATUS: the iPhone 15+ rules are verified with a real package
+# (Bezel-iPhone-18.dmg, 2026-11-10, rules marked `verified:`): PNGs named
+# `iPhone 18 Pro Max - <Colour> - <Portrait|Landscape>.png` and
+# `iPhone 18 Pro - <Colour> - <Portrait|Landscape>.png`, colours Black,
+# Burgundy, Glacier, Silver, screen offsets 66–76 px (Pro Max 1320×2868 at
+# 75,66 portrait; Pro 1206×2622 at 72,69), next to Photoshop files and a
+# `License.rtf`; the DMG has a licence agreement (SLA) the user accepts in
+# Finder. All other rules (notch / home iPhones, iPad, Mac) are still
+# built from documentation and secondary sources (no `verified:`).
+# Sources (checked 2026-11-10):
 #   - https://developer.apple.com/design/resources/ (one `Bezel-*.dmg` per
 #     device family, e.g. Bezel-iPhone-17.dmg, Bezel-iPad-Pro-(M5).dmg,
 #     Bezel-MacBook-Air-M5.dmg, Bezel-iMac-M4.dmg)
@@ -40,17 +48,25 @@
 #     model          catalog model id (devices.yaml) the frame stands in for
 #     orientation    orientation when the pattern has no {orientation}
 #                    (Macs: landscape)
-#     priority       several files for the same model × colour × orientation
-#                    (e.g. iPhone 17 Pro and 17 Pro Max): the higher priority
-#                    wins, then the larger image (default 0)
+#     priority       tie-break of the automatic bezel choice in resolve
+#                    (several vendor models per model × colour × orientation,
+#                    e.g. iPhone 18 Pro and 18 Pro Max, are all installed;
+#                    resolve picks by target page size, screenshot size,
+#                    aspect, then priority); also picks between duplicate
+#                    files of one vendor model (default 0)
+#     verified       date the rule was checked against a real package
 #     note           free text
+#   The vendor model (`iPhone 18 Pro`) is the file name before the colour;
+#   projects may pin it with `bezel: iPhone 18 Pro`.
 
 source: apple
 label: Apple Design Resources (Product Bezels)
+# Not every rule is verified (see `verified:` per rule).
 verified: false
 
 # Apple colour name (case-insensitive) → colour id. Everything else is
-# slugified.
+# slugified (iPhone 18 Pro: Black → black, Burgundy → burgundy, Glacier →
+# glacier, Silver → silver; no aliases needed).
 color_aliases:
   "(PRODUCT)RED": product-red
   "Space Grey": space-gray
@@ -77,11 +93,13 @@ rules:
   - pattern: "iPhone 1{*}Pro Max - {color} - {orientation}"
     model: iphone-island
     priority: 30
-    note: 6.9" Pro Max, matches the catalog aspect 1320:2868 best
+    verified: 2026-11-10
+    note: 6.9" Pro Max (screen 1320×2868), App Store slot ios-iphone-69
   - pattern: "iPhone 1{*} - {color} - {orientation}"
     model: iphone-island
     priority: 20
-    note: iPhone 15 … 18 incl. Plus / Pro
+    verified: 2026-11-10
+    note: iPhone 15 … 18 incl. Plus / Pro (18 Pro screen 1206×2622, slot ios-iphone-63)
   - pattern: "iPhone Air{*} - {color} - {orientation}"
     model: iphone-island
     priority: 15

@@ -30,9 +30,15 @@ pub struct BezelSpec {
     pub color: [u8; 3],
 }
 
-fn phone(file: &str, landscape: bool, color: [u8; 3]) -> BezelSpec {
-    // 1320:2868 / 4 = 330 × 717, 25 px bezel.
-    let (sw, sh, m) = (330, 717, 25);
+/// Screen sizes (portrait, px) of the two synthetic iPhone models, like
+/// the 6.9" Pro Max and the 6.3" Pro (the App Store Connect sizes).
+pub const PRO_MAX_SCREEN: (u32, u32) = (1320, 2868);
+pub const PRO_SCREEN: (u32, u32) = (1206, 2622);
+
+/// A phone bezel with the portrait screen `screen` divided by `div`.
+fn phone(file: &str, landscape: bool, color: [u8; 3], screen: (u32, u32), div: u32) -> BezelSpec {
+    let div = div.max(1);
+    let (sw, sh, m) = (screen.0 / div, screen.1 / div, 100 / div);
     let (w, h, screen) = if landscape {
         (
             sh + 2 * m,
@@ -61,39 +67,73 @@ fn phone(file: &str, landscape: bool, color: [u8; 3]) -> BezelSpec {
         width: w,
         height: h,
         screen,
-        screen_radius: 40.0,
-        outer_radius: 62.0,
+        screen_radius: f64::from(160 / div),
+        outer_radius: f64::from(250 / div),
         island: true,
         base: false,
         color,
     }
 }
 
-/// The default package: phones (portrait + landscape, two colours, a
-/// superseded smaller model), an iPad, a `MacBook`, an unmatched PNG.
+/// The default package at 1/4 of the real sizes (fast tests), see
+/// [`specs`].
 pub fn default_specs() -> Vec<BezelSpec> {
+    specs(4)
+}
+
+/// The package with phone screens divided by `div` (`1` = real sizes,
+/// 1320×2868 and 1206×2622): two iPhone models ("16 Pro Max" and
+/// "16 Pro", portrait + landscape, plus a second Pro Max colour), a
+/// smaller duplicate of one file (superseded), an iPad, a `MacBook` and an
+/// unmatched PNG.
+pub fn specs(div: u32) -> Vec<BezelSpec> {
     let black = [0x2C, 0x2C, 0x30];
     let desert = [0xBF, 0xA4, 0x8F];
+    // The "Pro" a little warmer, to tell the two models apart in renders.
+    let pro = [0x44, 0x30, 0x34];
     let mut out = vec![
         phone(
             "iPhone 16 Pro Max/iPhone 16 Pro Max - Black Titanium - Portrait.png",
             false,
             black,
+            PRO_MAX_SCREEN,
+            div,
         ),
         phone(
             "iPhone 16 Pro Max/iPhone 16 Pro Max - Black Titanium - Landscape.png",
             true,
             black,
+            PRO_MAX_SCREEN,
+            div,
         ),
         phone(
             "iPhone 16 Pro Max/iPhone 16 Pro Max \u{2013} Desert Titanium \u{2013} Portrait.png",
             false,
             desert,
+            PRO_MAX_SCREEN,
+            div,
         ),
         phone(
             "iPhone 16 Pro/iPhone 16 Pro - Black Titanium - Portrait.png",
             false,
-            black,
+            pro,
+            PRO_SCREEN,
+            div,
+        ),
+        phone(
+            "iPhone 16 Pro/iPhone 16 Pro - Black Titanium - Landscape.png",
+            true,
+            pro,
+            PRO_SCREEN,
+            div,
+        ),
+        // The same file again at half size: superseded by the larger one.
+        phone(
+            "Small/iPhone 16 Pro - Black Titanium - Portrait.png",
+            false,
+            pro,
+            PRO_SCREEN,
+            div * 2,
         ),
     ];
     // iPad Pro 13: 2064:2752 / 8 = 258 × 344, 20 px bezel.
@@ -135,11 +175,25 @@ pub fn default_specs() -> Vec<BezelSpec> {
         "Extras/Apple Vision Pro - Space Gray - Portrait.png",
         false,
         black,
+        PRO_MAX_SCREEN,
+        4,
     );
     odd.island = false;
     out.push(odd);
     out
 }
+
+/// Non-PNG files of the synthetic package: Photoshop files (ignored), the
+/// licence (shown to the user) and one other file (skipped).
+pub const EXTRA_FILES: [(&str, &str); 4] = [
+    (
+        "iPhone 16 Pro Max/iPhone 16 Pro Max - Black Titanium.psd",
+        "8BPS synthetic",
+    ),
+    ("iPhone 16 Pro/iPhone 16 Pro.psd", "8BPS synthetic"),
+    ("License.rtf", "synthetic test package, not Apple artwork\n"),
+    ("Read Me.txt", "synthetic\n"),
+];
 
 /// Inside a rounded rect (radius `r`) given by its edges.
 fn in_rrect(x: f64, y: f64, l: f64, t: f64, rgt: f64, b: f64, r: f64) -> bool {
@@ -232,7 +286,7 @@ pub fn render(spec: &BezelSpec) -> RgbaImage {
     }
 }
 
-/// Writes the specs as PNGs (plus a non-PNG licence file) below `dir`.
+/// Writes the specs as PNGs (plus [`EXTRA_FILES`]) below `dir`.
 pub fn write_folder(dir: &Path, specs: &[BezelSpec]) -> Result<(), String> {
     for spec in specs {
         let path = spec.file.split('/').fold(dir.to_owned(), |p, c| p.join(c));
@@ -242,11 +296,13 @@ pub fn write_folder(dir: &Path, specs: &[BezelSpec]) -> Result<(), String> {
         let png = encode_rgba_png(&render(spec))?;
         fs::write(&path, png).map_err(|e| format!("{}: {e}", path.display()))?;
     }
-    fs::write(
-        dir.join("License.rtf"),
-        "synthetic test package, not Apple artwork\n",
-    )
-    .map_err(|e| e.to_string())?;
+    for (file, text) in EXTRA_FILES {
+        let path = file.split('/').fold(dir.to_owned(), |p, c| p.join(c));
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+        }
+        fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
     Ok(())
 }
 
@@ -270,8 +326,10 @@ pub fn write_zip(path: &Path, specs: &[BezelSpec]) -> Result<PathBuf, String> {
         .map_err(e)?;
         zip.write_all(b"junk").map_err(|e| e.to_string())?;
     }
-    zip.start_file("Bezels/License.rtf", opts).map_err(e)?;
-    zip.write_all(b"synthetic").map_err(|e| e.to_string())?;
+    for (file, text) in EXTRA_FILES {
+        zip.start_file(format!("Bezels/{file}"), opts).map_err(e)?;
+        zip.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+    }
     zip.finish().map_err(e)?;
     Ok(path.to_owned())
 }

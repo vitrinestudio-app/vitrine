@@ -361,3 +361,57 @@ fn example_project_validates_and_exports() {
         );
     }
 }
+
+/// `frames import` of the synthetic bezel package into a temporary app
+/// folder (never the real one): both iPhone sizes, licence notice,
+/// Photoshop files counted separately, `frames remove --bezel`.
+#[test]
+fn frames_import_keeps_all_sizes_and_shows_the_licence() {
+    let tmp = tempfile::tempdir().unwrap();
+    let pkg = tmp.path().join("Bezels");
+    arrangia_core::frame_import::synthetic::write_folder(
+        &pkg,
+        &arrangia_core::frame_import::synthetic::default_specs(),
+    )
+    .unwrap();
+    let app = tmp.path().join("appdir");
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_arrangia"))
+            .args(args)
+            .env("NO_COLOR", "1")
+            .env("ARRANGIA_APP_DIR", &app)
+            .output()
+            .expect("run arrangia")
+    };
+    let pkg_s = pkg.to_str().unwrap();
+    let o = run(&["frames", "import", pkg_s, "--dry-run"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let out = stdout(&o);
+    assert!(out.contains("would import 7 frames"), "{out}");
+    assert!(out.contains("2 Photoshop file(s) ignored"), "{out}");
+    assert!(out.contains("1 other file(s) skipped"), "{out}");
+    assert!(
+        out.contains("subject to Apple's licence (License.rtf"),
+        "{out}"
+    );
+    assert!(out.contains("never in projects"), "{out}");
+    assert!(out.contains("/ iPhone 16 Pro "), "{out}");
+    assert!(!app.exists(), "a dry run writes nothing");
+
+    let o = run(&["frames", "import", pkg_s]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let o = run(&["frames", "list", "--format", "json"]);
+    let list: Value = serde_json::from_slice(&o.stdout).unwrap();
+    let models: Vec<&str> = list
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["model"] == "iphone-island" && f["orientation"] == "portrait")
+        .filter(|f| f["color"] == "black-titanium")
+        .map(|f| f["apple_model"].as_str().unwrap())
+        .collect();
+    assert_eq!(models, ["iPhone 16 Pro", "iPhone 16 Pro Max"]);
+    let o = run(&["frames", "remove", "--bezel", "iPhone 16 Pro"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(stdout(&o).contains("removed 2 frames"), "{}", stdout(&o));
+}

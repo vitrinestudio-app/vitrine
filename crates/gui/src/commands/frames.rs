@@ -7,8 +7,8 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use arrangia_core::frame_import::{
-    Assignment, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, InstalledFrame, Package, Rules,
-    import, normalize_name,
+    Assignment, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, InstalledFrame, Package,
+    PackageError, RemoveFilter, Rules, import, normalize_name,
 };
 use arrangia_core::model::Orientation;
 use arrangia_render::raster::{Filter, SourceImage};
@@ -50,8 +50,25 @@ fn rules(source: &str) -> CmdResult<&'static Rules> {
         .ok_or_else(|| CommandError::invalid(format!("unknown frame source `{source}`")))
 }
 
+/// Opens a package. A disk image with a licence agreement gives an error
+/// with `details: {kind: "dmg_license", dmg, volume}` so the UI can explain
+/// it (localized) and offer the folder picker; Arrangia never accepts the
+/// agreement itself.
 fn open_package(path: &Path) -> CmdResult<Package> {
-    Package::open(path).map_err(|e| CommandError::new(ErrorCode::Io, e))
+    Package::open(path).map_err(package_error)
+}
+
+pub(super) fn package_error(e: PackageError) -> CommandError {
+    match &e {
+        PackageError::LicenseAgreement { path, volume } => {
+            CommandError::new(ErrorCode::Io, e.to_string()).with_details(serde_json::json!({
+                "kind": "dmg_license",
+                "dmg": path,
+                "volume": volume,
+            }))
+        }
+        PackageError::Other(m) => CommandError::new(ErrorCode::Io, m.clone()),
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -195,18 +212,22 @@ pub struct FramesRemoveArgs {
     pub color: Option<String>,
     #[serde(default)]
     pub orientation: Option<Orientation>,
+    /// Vendor model (`iPhone 18 Pro`).
+    #[serde(default)]
+    pub bezel: Option<String>,
 }
 
 /// Removes matching frames (no filter = all of the source); returns the
 /// count.
 pub fn frames_remove(app: &AppState, args: FramesRemoveArgs) -> CmdResult<usize> {
+    let filter = RemoveFilter {
+        model: args.model.as_deref(),
+        color: args.color.as_deref(),
+        orientation: args.orientation,
+        bezel: args.bezel.as_deref(),
+    };
     let n = FrameStore::new(app.frames_root())
-        .remove(
-            &args.source,
-            args.model.as_deref(),
-            args.color.as_deref(),
-            args.orientation,
-        )
+        .remove(&args.source, &filter)
         .map_err(|e| CommandError::new(ErrorCode::Io, e))?;
     app.refresh_frames();
     Ok(n)

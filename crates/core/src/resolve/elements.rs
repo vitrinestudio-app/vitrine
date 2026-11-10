@@ -15,12 +15,12 @@ use super::scene::{
 use super::style::StyleResolver;
 use super::{Diags, ResolveOptions};
 use crate::catalog::Device;
-use crate::frame_import::FrameIndex;
+use crate::frame_import::{BezelChoice, FrameIndex, select_bezel};
 use crate::geometry::{CanvasLayout, Rect, Vec2};
 use crate::model::{
     Align, AnchorY, Clip, DeviceProps, Element, ElementId, ElementKind, ElementPatch, FitMode,
-    FrameStyle, ImageProps, Orientation, Project, Rgba, ShapeKind, ShapeProps, Strip, Target,
-    TextProps, VAlign, VariantId,
+    FrameStyle, ImageProps, Orientation, PixelSize, Project, Rgba, ShapeKind, ShapeProps, Strip,
+    Target, TextProps, VAlign, VariantId,
 };
 
 /// Device width when an element sets none, lu.
@@ -361,25 +361,6 @@ impl Walker<'_, '_> {
             DEFAULT_DEVICE_WIDTH
         });
         let requested = p.frame.clone().unwrap_or_else(|| self.frame_style.clone());
-        let imported = self.imported_frame(p, &requested, &model, device, orientation, d);
-        let (color, palette) = match &imported {
-            Some(f) => (
-                DeviceColor::Named(f.color.clone()),
-                catalog.devices.colors.get(&f.color).cloned(),
-            ),
-            // Vendor colour names of an imported frame that is missing here
-            // are expected: an info, not a warning.
-            None => self.device_color(
-                p,
-                device,
-                mapped_from.is_some() || matches!(requested, FrameStyle::Imported(_)),
-                d,
-            ),
-        };
-        let frame = match (&requested, &imported) {
-            (FrameStyle::Imported(_), None) => FrameStyle::Detailed,
-            _ => requested,
-        };
         let variant = self
             .inp
             .target
@@ -409,6 +390,33 @@ impl Walker<'_, '_> {
             }
             s
         });
+        let imported = self.imported_frame(
+            p,
+            &requested,
+            &model,
+            device,
+            orientation,
+            screenshot.as_ref().and_then(|s| s.size),
+            d,
+        );
+        let (color, palette) = match &imported {
+            Some(f) => (
+                DeviceColor::Named(f.color.clone()),
+                catalog.devices.colors.get(&f.color).cloned(),
+            ),
+            // Vendor colour names of an imported frame that is missing here
+            // are expected: an info, not a warning.
+            None => self.device_color(
+                p,
+                device,
+                mapped_from.is_some() || matches!(requested, FrameStyle::Imported(_)),
+                d,
+            ),
+        };
+        let frame = match (&requested, &imported) {
+            (FrameStyle::Imported(_), None) => FrameStyle::Detailed,
+            _ => requested,
+        };
         // `aspect: free` models (browser, none) take the screenshot's aspect
         // when its size is known. The screenshot is never rotated, so for a
         // rotated model the natural-orientation aspect is inverted.
@@ -464,6 +472,7 @@ impl Walker<'_, '_> {
 
     /// The installed vendor frame for `frame: imported:<source>`, or an
     /// info when it is missing on this machine (parametric fallback).
+    #[allow(clippy::too_many_arguments)]
     fn imported_frame(
         &self,
         p: &DeviceProps,
@@ -471,6 +480,7 @@ impl Walker<'_, '_> {
         model: &str,
         device: &Device,
         orientation: Orientation,
+        screenshot_px: Option<PixelSize>,
         d: &mut Diags,
     ) -> Option<ImportedFrame> {
         let FrameStyle::Imported(source) = requested else {
@@ -481,8 +491,8 @@ impl Walker<'_, '_> {
             return None;
         }
         let color = p.color.as_deref().filter(|c| !c.starts_with('#'));
-        let found = self.inp.options.frames.and_then(|ix| {
-            ix.find(
+        let candidates = self.inp.options.frames.map_or_else(Vec::new, |ix| {
+            ix.candidates(
                 source,
                 model,
                 color,
@@ -490,7 +500,15 @@ impl Walker<'_, '_> {
                 orientation,
             )
         });
-        let Some(f) = found else {
+        // The target's page size (pages targets): a 1206×2622 target shows
+        // the bezel whose screen is 1206×2622.
+        let t = self.inp.target;
+        let target_px = matches!(t.kind, crate::model::TargetKind::Pages)
+            .then(|| PixelSize::new(t.size.w / t.group_size().max(1), t.size.h));
+        let pin = p.bezel.as_deref();
+        let auto = select_bezel(&candidates, None, target_px, screenshot_px);
+        let chosen = select_bezel(&candidates, pin, target_px, screenshot_px);
+        let Some((f, choice)) = chosen else {
             d.info(
                 DiagnosticCode::ImportedFrameMissing,
                 format!(
@@ -501,6 +519,35 @@ impl Walker<'_, '_> {
             );
             return None;
         };
+        if let Some(pin) = pin
+            && choice != BezelChoice::Pinned
+        {
+            d.info(
+                DiagnosticCode::ImportedBezelFallback,
+                format!(
+                    "bezel `{pin}` is not installed for `{model}` ({}, {}); using `{}` (installed: {})",
+                    f.color_label,
+                    crate::frame_import::orientation_name(orientation),
+                    f.apple_model,
+                    candidates
+                        .iter()
+                        .map(|c| c.apple_model.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            );
+        } else if choice == BezelChoice::Largest && candidates.len() > 1 {
+            d.info(
+                DiagnosticCode::ImportedBezelFallback,
+                format!(
+                    "no installed `{model}` bezel matches the target or screenshot size; using the largest, `{}` (set `bezel:` to choose)",
+                    f.apple_model
+                ),
+            );
+        }
+        let mut bezels: Vec<String> = candidates.iter().map(|c| c.apple_model.clone()).collect();
+        bezels.sort();
+        bezels.dedup();
         Some(ImportedFrame {
             source: source.clone(),
             file: FrameIndex::rel_path(source, &f.file),
@@ -508,6 +555,10 @@ impl Walker<'_, '_> {
             size: f.size,
             screen: f.screen,
             color: f.color.clone(),
+            bezel: f.apple_model.clone(),
+            choice,
+            automatic: auto.map_or_else(String::new, |(a, _)| a.apple_model.clone()),
+            bezels,
         })
     }
 

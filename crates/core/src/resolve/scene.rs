@@ -197,6 +197,15 @@ pub struct ImportedFrame {
     pub screen: crate::frame_import::PxRect,
     /// Colour id of the installed frame.
     pub color: String,
+    /// The vendor model drawn (`iPhone 18 Pro Max`).
+    pub bezel: String,
+    /// Why it was chosen.
+    pub choice: crate::frame_import::BezelChoice,
+    /// What the automatic choice would be (differs from `bezel` when the
+    /// element pins another one).
+    pub automatic: String,
+    /// All installed vendor models for this model × colour × orientation.
+    pub bezels: Vec<String>,
 }
 
 /// Colour of a device frame.
@@ -556,6 +565,9 @@ pub enum DiagnosticCode {
     /// `frame: imported:<source>` but no such frame is installed; the
     /// parametric frame is drawn.
     ImportedFrameMissing,
+    /// An imported bezel was chosen as a fallback: the pinned `bezel` is
+    /// not installed, or no installed size matches (largest used).
+    ImportedBezelFallback,
 }
 
 /// An info or warning collected during resolve.

@@ -198,6 +198,85 @@ fn missing_frames_fall_back_to_parametric_with_an_info() {
         panic!()
     };
     let f = dev.imported.as_ref().unwrap();
-    assert!(f.file.ends_with("landscape.png"));
+    assert!(f.file.contains("/landscape/"), "{}", f.file);
     assert!(e.size.x > e.size.y);
+}
+
+fn imported(scene: &ResolvedScene) -> &arrangia_core::resolve::ImportedFrame {
+    let ResolvedKind::Device(dev) = &scene.elements[0].props else {
+        panic!()
+    };
+    dev.imported.as_ref().expect("imported frame")
+}
+
+fn has_bezel_info(scene: &ResolvedScene) -> bool {
+    scene
+        .diagnostics
+        .iter()
+        .any(|d| d.code == DiagnosticCode::ImportedBezelFallback)
+}
+
+#[test]
+fn bezel_is_chosen_per_target_screenshot_or_pin() {
+    use arrangia_core::frame_import::BezelChoice;
+    let (dir, index) = setup();
+    let root = dir.path().join("project");
+    let ix = || Some(index.clone());
+    // The screenshot (330×717) is the Pro Max screen at 1/4.
+    let (scene, _) = render(&root, ix(), PROJECT);
+    let f = imported(&scene);
+    assert_eq!(
+        (f.bezel.as_str(), f.choice),
+        ("iPhone 16 Pro Max", BezelChoice::Screenshot)
+    );
+    assert_eq!(f.bezels, ["iPhone 16 Pro", "iPhone 16 Pro Max"]);
+    assert!(f.file.ends_with("/portrait/iphone-16-pro-max.png"));
+    // A target whose page is the Pro screen (301×655) shows the Pro.
+    let target = PROJECT.replace("size: [500, 1000]", "size: [301, 655]");
+    let (scene, _) = render(&root, ix(), &target);
+    let f = imported(&scene);
+    assert_eq!(
+        (f.bezel.as_str(), f.choice),
+        ("iPhone 16 Pro", BezelChoice::Target)
+    );
+    assert!(f.file.ends_with("/portrait/iphone-16-pro.png"));
+    assert!(!has_bezel_info(&scene));
+    // Pinned on the element (overrides the automatic choice).
+    let pinned = PROJECT.replace(
+        "    frame: imported:apple\n",
+        "    frame: imported:apple\n    bezel: iPhone 16 Pro\n",
+    );
+    let (scene, _) = render(&root, ix(), &pinned);
+    let f = imported(&scene);
+    assert_eq!(
+        (f.bezel.as_str(), f.choice, f.automatic.as_str()),
+        ("iPhone 16 Pro", BezelChoice::Pinned, "iPhone 16 Pro Max")
+    );
+    // Unknown pin: info, automatic choice.
+    let unknown = pinned.replace("bezel: iPhone 16 Pro", "bezel: iPhone 99");
+    let (scene, _) = render(&root, ix(), &unknown);
+    assert_eq!(imported(&scene).bezel, "iPhone 16 Pro Max");
+    assert!(has_bezel_info(&scene));
+    // Pinned through a variant override.
+    let variant = PROJECT
+        .replace(
+            "  backgrounds: [\"#FFFFFF\"]\n",
+            "  backgrounds: [\"#FFFFFF\"]\n  variants:\n    small:\n      overrides:\n        phone: {bezel: iPhone 16 Pro}\n",
+        )
+        .replace("  size: [500, 1000]\n", "  size: [500, 1000]\n  variant: small\n");
+    let (scene, _) = render(&root, ix(), &variant);
+    assert_eq!(
+        (imported(&scene).bezel.as_str(), imported(&scene).choice),
+        ("iPhone 16 Pro", BezelChoice::Pinned)
+    );
+    // No screenshot and a square target: the largest, with an info.
+    let square = PROJECT
+        .replace("    screenshot: shot\n", "")
+        .replace("size: [500, 1000]", "size: [800, 800]");
+    let (scene, _) = render(&root, ix(), &square);
+    assert_eq!(
+        (imported(&scene).bezel.as_str(), imported(&scene).choice),
+        ("iPhone 16 Pro Max", BezelChoice::Largest)
+    );
+    assert!(has_bezel_info(&scene));
 }

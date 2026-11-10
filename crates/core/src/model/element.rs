@@ -86,6 +86,9 @@ pub struct DeviceProps {
     pub orientation: Option<Orientation>,
     /// Overrides the project's frame style.
     pub frame: Option<FrameStyle>,
+    /// Imported frames: the vendor model whose bezel to use (`iPhone 18
+    /// Pro`); `None` = automatic per target (ADR 0012).
+    pub bezel: Option<String>,
     /// Colour variant of the catalog model (`midnight`) or a custom `#RRGGBB`.
     pub color: Option<String>,
     /// Browser chrome inside a laptop/desktop frame (`chrome: browser`).
@@ -242,6 +245,7 @@ impl ElementKindTag {
                 "model",
                 "orientation",
                 "frame",
+                "bezel",
                 "color",
                 "chrome",
                 "url",
@@ -646,6 +650,7 @@ element_fields! {
     model: String,
     orientation: Orientation,
     frame: FrameStyle,
+    bezel: String,
     color: String,
     chrome: Chrome,
     url: String,
@@ -780,10 +785,14 @@ impl TryFrom<ElementWire> for Element {
                 if let Some(c) = &w.color {
                     check_device_color(c)?;
                 }
+                if w.bezel.as_deref().is_some_and(|b| b.trim().is_empty()) {
+                    return Err(format!("element `{}`: `bezel` must not be empty", w.id));
+                }
                 ElementKind::Device(DeviceProps {
                     model,
                     orientation: w.orientation,
                     frame: w.frame.clone(),
+                    bezel: w.bezel.clone(),
                     color: w.color.clone(),
                     chrome: w.chrome,
                     url: w.url.clone(),
@@ -895,6 +904,7 @@ impl From<Element> for ElementWire {
             model: None,
             orientation: None,
             frame: None,
+            bezel: None,
             color: None,
             chrome: None,
             url: None,
@@ -933,6 +943,7 @@ impl From<Element> for ElementWire {
                 w.model = Some(p.model);
                 w.orientation = p.orientation;
                 w.frame = p.frame;
+                w.bezel = p.bezel;
                 w.color = p.color;
                 w.chrome = p.chrome;
                 w.url = p.url;

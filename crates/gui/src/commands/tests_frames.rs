@@ -55,6 +55,8 @@ fn import_list_render_and_remove() {
     // Plan: nothing written yet.
     let plan = call(&app, "frames_import_plan", json!({"path": pkg}));
     assert_eq!(plan["applied"], false);
+    assert_eq!(plan["psd"], 2);
+    assert_eq!(plan["licenses"].as_array().unwrap().len(), 1);
     assert_eq!(plan["unmatched"].as_array().unwrap().len(), 1);
     let name = plan["unmatched"][0]["name"].as_str().unwrap().to_owned();
     assert!(!app_dir.join("data/frames").exists());
@@ -84,7 +86,7 @@ fn import_list_render_and_remove() {
     let apple = &list["sources"][0];
     assert_eq!(apple["source"], "apple");
     assert_eq!(apple["verified"], false);
-    assert_eq!(apple["frames"].as_array().unwrap().len(), 6);
+    assert_eq!(apple["frames"].as_array().unwrap().len(), 8);
     assert!(
         apple["models"]
             .as_array()
@@ -92,6 +94,22 @@ fn import_list_render_and_remove() {
             .contains(&json!("iphone-island"))
     );
     assert!(missing_frames(&app) < before);
+
+    // The resolved device reports the chosen bezel: the example's iPhone
+    // screenshots (1206×2622) are not the 1/4-size synthetic screens, so
+    // the 1320×2868 target picks by aspect (Pro Max, the higher priority)
+    // and lists both models for the inspector.
+    let info = call(
+        &app,
+        "element_info",
+        json!({"target": "ios-iphone-69", "lang": "en", "id": "phone-plan"}),
+    );
+    let imported = &info["element"]["props"]["imported"];
+    assert_eq!(imported["bezel"], "iPhone 16 Pro Max", "{info}");
+    assert_eq!(
+        imported["bezels"],
+        json!(["iPhone 16 Pro", "iPhone 16 Pro Max"])
+    );
 
     // Rendering uses the frames (no asset issues).
     let file = apple["frames"][0]["file"].as_str().unwrap();
@@ -109,7 +127,26 @@ fn import_list_render_and_remove() {
 
     let n = call(&app, "frames_remove", json!({"model": "iphone-notch"}));
     assert_eq!(n, 1);
+    let n = call(&app, "frames_remove", json!({"bezel": "iPhone 16 Pro"}));
+    assert_eq!(n, 2);
     let n = call(&app, "frames_remove", json!({}));
     assert_eq!(n, 5);
     assert_eq!(missing_frames(&app), before);
+}
+
+#[test]
+fn dmg_licence_error_has_details() {
+    let e = package_error(arrangia_core::frame_import::attach_error(
+        std::path::Path::new("/tmp/Bezel-iPhone-18.dmg"),
+        "hdiutil: attach canceled",
+    ));
+    let v = serde_json::to_value(&e).unwrap();
+    assert_eq!(v["details"]["kind"], "dmg_license");
+    assert!(
+        v["details"]["volume"]
+            .as_str()
+            .unwrap()
+            .ends_with("Bezel-iPhone-18")
+    );
+    assert!(v["message"].as_str().unwrap().contains("licence agreement"));
 }

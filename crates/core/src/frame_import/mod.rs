@@ -5,9 +5,11 @@
 //! Package::open(folder | .zip | .dmg)       package (PNG entries)
 //!   → plan(store, package, rules, dry run)  match names (rules + user mapping),
 //!                                           analyse each PNG (screen rect, mask),
-//!                                           pick one file per model × colour × orientation
+//!                                           one file per model × colour × orientation ×
+//!                                           vendor model (iPhone 18 Pro, … Pro Max)
 //!   → install                               app-wide FrameStore (never a project)
 //! FrameIndex::load(root)                    what resolve / render use
+//! select_bezel(candidates, pin, sizes)      which vendor model a device shows
 //! ```
 //!
 //! Projects only say `frame: imported:apple` (plus model and colour);
@@ -26,10 +28,13 @@ pub use analyze::{
     ALPHA_THRESHOLD, MASK_GROW, PxRect, RgbaImage, ScreenAnalysis, analyze, decode_png,
     encode_gray_png, encode_rgba_png,
 };
-pub use package::{Package, PackageEntry, PackageKind};
-pub use rules::{FileMatch, Pattern, Rule, Rules, normalize_name, slug};
+pub use package::{
+    Package, PackageEntry, PackageError, PackageKind, attach_error, imageinfo_has_sla,
+    likely_volume,
+};
+pub use rules::{FileMatch, Pattern, Rule, Rules, normalize_name, slug, vendor_model};
 pub use store::{
-    Assignment, FrameIndex, FrameSourceIndex, FrameStore, INDEX_FILE, InstalledFrame,
+    Assignment, FrameIndex, FrameSourceIndex, FrameStore, INDEX_FILE, InstalledFrame, RemoveFilter,
     USER_MAPPING_FILE, UserMapping, today,
 };
 
@@ -53,7 +58,8 @@ pub enum Action {
     Install,
     /// Replaces an installed frame.
     Replace,
-    /// Another file wins for the same model × colour × orientation.
+    /// Another file (`by`, its path in the package) wins for the same
+    /// model × colour × orientation × vendor model (a duplicate).
     Superseded { by: String },
     /// The PNG could not be analysed (see `error`).
     Failed,
@@ -98,11 +104,18 @@ pub struct ImportPlan {
     pub source: String,
     pub package: String,
     pub kind: PackageKind,
-    /// The rules are not yet verified against a real package.
+    /// Some files matched rules that are not yet verified against a real
+    /// package (or nothing matched and the rules are not all verified).
     pub unverified_rules: bool,
     pub items: Vec<PlanItem>,
     pub unmatched: Vec<Unmatched>,
-    /// Non-PNG files (PSDs, licences …).
+    /// Photoshop files (ignored).
+    pub psd: usize,
+    /// Licence files of the package (absolute path for folders,
+    /// `<package>/<file>` for archives and disk images): the frames are
+    /// subject to them.
+    pub licenses: Vec<String>,
+    /// Other non-PNG files.
     pub skipped: usize,
     /// `false` = dry run.
     pub applied: bool,
@@ -136,10 +149,12 @@ pub fn import(
             Some(Some(a)) => Some(FileMatch {
                 model: a.model.clone(),
                 color: rules.color_id(&a.color),
+                apple_model: vendor_model(&name, &a.color),
                 color_label: a.color.clone(),
                 orientation: a.orientation,
                 priority: i32::MAX,
                 rule: None,
+                verified: true,
             }),
             Some(None) => {
                 unmatched.push(Unmatched {
@@ -165,6 +180,10 @@ pub fn import(
     if apply {
         let package_name = package.display_name();
         let date = today();
+        let license = package
+            .licenses
+            .first()
+            .map(|l| l.rsplit('/').next().unwrap_or(l).to_owned());
         for item in analysed
             .iter_mut()
             .filter(|i| matches!(i.action, Action::Install | Action::Replace))
@@ -181,13 +200,16 @@ pub fn import(
                 color: item.matched.color.clone(),
                 color_label: item.matched.color_label.clone(),
                 orientation: item.matched.orientation,
+                apple_model: item.matched.apple_model.clone(),
                 file: String::new(),
                 mask: String::new(),
                 size: a.size,
                 screen: a.screen,
                 radius: (a.radius * 10.0).round() / 10.0,
+                priority: item.matched.priority.clamp(-1000, 1000),
                 source_file: entry.name.clone(),
                 package: package_name.clone(),
+                license: license.clone(),
                 imported: date.clone(),
             };
             let mask_png = encode_gray_png(a.size.w, a.size.h, &a.mask)?;
@@ -198,9 +220,13 @@ pub fn import(
         source: source.to_owned(),
         package: package.display_name(),
         kind: package.kind,
-        unverified_rules: !rules.verified,
+        unverified_rules: !rules.verified
+            && (analysed.iter().any(|i| !i.matched.verified)
+                || (analysed.is_empty() && !unmatched.is_empty())),
         items: analysed,
         unmatched,
+        psd: package.psd,
+        licenses: package.license_display(),
         skipped: package.skipped,
         applied: apply,
     })
@@ -296,14 +322,15 @@ fn sanity(m: &FileMatch, a: &ScreenAnalysis) -> Vec<String> {
     out
 }
 
-/// One file per model × colour × orientation: highest priority, then the
-/// largest image, then the last name.
+/// One file per model × colour × orientation × vendor model (duplicates
+/// only): highest priority, then the largest image, then the last name.
 fn pick_winners(items: &mut [PlanItem], installed: &FrameSourceIndex) {
     let key = |i: &PlanItem| {
         (
             i.matched.model.clone(),
             i.matched.color.clone(),
             i.matched.orientation,
+            slug(&i.matched.apple_model),
         )
     };
     let rank = |i: &PlanItem| {
@@ -323,22 +350,118 @@ fn pick_winners(items: &mut [PlanItem], installed: &FrameSourceIndex) {
             .max_by(|&x, &y| rank(&items[x]).cmp(&rank(&items[y])))
             .unwrap_or(a);
         items[a].action = if best == a {
-            let (model, color, o) = key(&items[a]);
-            if installed
-                .frames
-                .iter()
-                .any(|f| f.model == model && f.color == color && f.orientation == o)
-            {
+            let (model, color, o, vendor) = key(&items[a]);
+            if installed.frames.iter().any(|f| {
+                f.model == model
+                    && f.color == color
+                    && f.orientation == o
+                    && slug(&f.apple_model) == vendor
+            }) {
                 Action::Replace
             } else {
                 Action::Install
             }
         } else {
             Action::Superseded {
-                by: items[best].name.clone(),
+                by: items[best].file.clone(),
             }
         };
     }
+}
+
+/// Why [`select_bezel`] chose a bezel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BezelChoice {
+    /// The element names it (`bezel:`).
+    Pinned,
+    /// Its screen has the target's page size (e.g. 1206×2622 →
+    /// iPhone 18 Pro for the 6.3" App Store slot).
+    Target,
+    /// Its screen has the screenshot's pixel size.
+    Screenshot,
+    /// Its screen aspect is closest to the screenshot (or page) aspect.
+    Aspect,
+    /// Nothing matched: the largest bezel (fallback).
+    Largest,
+}
+
+/// Picks one of the installed bezels `candidates` (one catalog model ×
+/// colour × orientation, several vendor models):
+///
+/// 1. `pin` (the element's `bezel:`), if installed;
+/// 2. screen size == `target_px` (the target's page size, either
+///    orientation): the bezel of the device the store slot stands for;
+/// 3. screen size == `screenshot_px` (either orientation);
+/// 4. screen aspect within [`ASPECT_TOLERANCE`] of the screenshot aspect
+///    (else the page aspect), closest first;
+/// 5. the largest screen.
+///
+/// Ties: higher rule priority, larger screen, then the vendor model name.
+/// An unknown `pin` falls through to the automatic choice.
+pub fn select_bezel<'f>(
+    candidates: &[&'f InstalledFrame],
+    pin: Option<&str>,
+    target_px: Option<PixelSize>,
+    screenshot_px: Option<PixelSize>,
+) -> Option<(&'f InstalledFrame, BezelChoice)> {
+    if candidates.is_empty() {
+        return None;
+    }
+    if let Some(p) = pin
+        && let Some(f) = candidates.iter().find(|f| f.is_bezel(p))
+    {
+        return Some((f, BezelChoice::Pinned));
+    }
+    let best = |pool: &mut dyn Iterator<Item = &'f InstalledFrame>| {
+        pool.max_by(|a, b| {
+            (
+                a.priority,
+                a.screen_area(),
+                std::cmp::Reverse(&a.apple_model),
+            )
+                .cmp(&(
+                    b.priority,
+                    b.screen_area(),
+                    std::cmp::Reverse(&b.apple_model),
+                ))
+        })
+    };
+    let same = |f: &InstalledFrame, px: PixelSize| {
+        (f.screen.w, f.screen.h) == (px.w, px.h) || (f.screen.w, f.screen.h) == (px.h, px.w)
+    };
+    for (px, choice) in [
+        (target_px, BezelChoice::Target),
+        (screenshot_px, BezelChoice::Screenshot),
+    ] {
+        if let Some(px) = px.filter(|p| p.w > 0 && p.h > 0)
+            && let Some(f) = best(&mut candidates.iter().copied().filter(|f| same(f, px)))
+        {
+            return Some((f, choice));
+        }
+    }
+    if let Some(px) = screenshot_px.or(target_px).filter(|p| p.w > 0 && p.h > 0) {
+        let want = f64::from(px.w) / f64::from(px.h);
+        let off = |f: &InstalledFrame| {
+            let a = f64::from(f.screen.w) / f64::from(f.screen.h.max(1));
+            // Either orientation: a landscape bezel for a portrait shot is
+            // still a match of the device, the aspect check warns anyway.
+            (a / want - 1.0).abs().min((a * want - 1.0).abs())
+        };
+        let close: Vec<_> = candidates
+            .iter()
+            .copied()
+            .filter(|f| off(f) <= ASPECT_TOLERANCE)
+            .collect();
+        if !close.is_empty() {
+            let min = close.iter().map(|f| off(f)).fold(f64::INFINITY, f64::min);
+            // Within 0.1 % of the best counts as equal (Pro vs Pro Max).
+            if let Some(f) = best(&mut close.into_iter().filter(|f| off(f) <= min + 0.001)) {
+                return Some((f, BezelChoice::Aspect));
+            }
+        }
+    }
+    best(&mut candidates.iter().copied()).map(|f| (f, BezelChoice::Largest))
 }
 
 /// Orientation name used in file names and the store.

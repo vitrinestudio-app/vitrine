@@ -1576,3 +1576,46 @@ fn rename_style_updates_every_reference() {
         );
     }
 }
+
+#[test]
+fn device_bezel_patch_and_yaml_round_trip() {
+    let mut p = sample();
+    apply_and_undo(
+        &mut p,
+        Op::UpdateElement {
+            id: ElementId::new("hero-phone"),
+            patch: patch("{ frame: imported:apple, bezel: iPhone 18 Pro }"),
+        },
+    );
+    let (_, e) = p.element("hero-phone").unwrap();
+    let arrangia_core::model::ElementKind::Device(d) = &e.kind else {
+        panic!("device")
+    };
+    assert_eq!(d.bezel.as_deref(), Some("iPhone 18 Pro"));
+    let yaml = p.to_yaml().unwrap();
+    assert!(yaml.contains("bezel: iPhone 18 Pro"), "{yaml}");
+    let back = io::project_from_yaml(&yaml).unwrap();
+    assert_eq!(back.element("hero-phone").unwrap().1, e);
+    // Removing it.
+    p.apply(Op::UpdateElement {
+        id: ElementId::new("hero-phone"),
+        patch: patch("{ bezel: ~ }"),
+    })
+    .unwrap();
+    assert!(!p.to_yaml().unwrap().contains("bezel:"));
+    // Empty names and non-device elements are rejected.
+    assert!(
+        p.apply(Op::UpdateElement {
+            id: ElementId::new("hero-phone"),
+            patch: patch("{ bezel: '' }"),
+        })
+        .is_err()
+    );
+    assert!(
+        p.apply(Op::UpdateElement {
+            id: ElementId::new("title-1"),
+            patch: patch("{ bezel: x }"),
+        })
+        .is_err()
+    );
+}

@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use anyhow::{Context, bail};
 use arrangia_core::frame_import::{
-    APP_DIR_ENV, Action, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, Package, Rules, import,
-    orientation_name,
+    APP_DIR_ENV, Action, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, Package, RemoveFilter,
+    Rules, import, orientation_name,
 };
 use arrangia_core::model::Orientation;
 use clap::{Args, Subcommand};
@@ -68,6 +68,9 @@ pub struct RemoveArgs {
     /// Only this orientation (`portrait`, `landscape`).
     #[arg(long)]
     pub orientation: Option<String>,
+    /// Only this vendor model (`"iPhone 18 Pro"` or `iphone-18-pro`).
+    #[arg(long)]
+    pub bezel: Option<String>,
     /// Required to remove everything of the source (no filter given).
     #[arg(long)]
     pub all: bool,
@@ -123,7 +126,9 @@ fn rules(source: &str) -> anyhow::Result<&'static Rules> {
 
 fn run_import(a: &ImportArgs, store: &FrameStore, global: &Global) -> anyhow::Result<u8> {
     let rules = rules(&a.source)?;
-    let package = Package::open(&a.path).map_err(anyhow::Error::msg)?;
+    // A disk image with a licence agreement gives a clear explanation
+    // (never accepted on the user's behalf).
+    let package = Package::open(&a.path).map_err(anyhow::Error::new)?;
     let plan = import(store, &package, rules, !a.dry_run).map_err(anyhow::Error::msg)?;
     drop(package);
     let failed = plan
@@ -148,10 +153,11 @@ fn print_plan(plan: &ImportPlan, root: &Path, global: &Global) {
     }
     for i in &plan.items {
         let what = format!(
-            "{} / {} / {}",
+            "{} / {} / {} / {}",
             i.matched.model,
             i.matched.color,
-            orientation_name(i.matched.orientation)
+            orientation_name(i.matched.orientation),
+            i.matched.apple_model
         );
         let (tag, extra) = match &i.action {
             Action::Install => (st.ok("install "), String::new()),
@@ -169,7 +175,7 @@ fn print_plan(plan: &ImportPlan, root: &Path, global: &Global) {
             .screen
             .map(|s| format!("  screen {}×{} at {},{}", s.w, s.h, s.x, s.y))
             .unwrap_or_default();
-        println!("{tag} {what:<44} ← {}{extra}", i.name);
+        println!("{tag} {what:<62} ← {}{extra}", i.name);
         if global.verbose && !screen.is_empty() {
             println!("         {}", st.dim(screen.trim()));
         }
@@ -187,19 +193,47 @@ fn print_plan(plan: &ImportPlan, root: &Path, global: &Global) {
     } else {
         "would import"
     };
+    let mut counts = vec![format!(
+        "{} unmatched",
+        plan.unmatched.iter().filter(|u| !u.ignored).count()
+    )];
+    if plan.psd > 0 {
+        counts.push(format!("{} Photoshop file(s) ignored", plan.psd));
+    }
+    if plan.skipped > 0 {
+        counts.push(format!("{} other file(s) skipped", plan.skipped));
+    }
     println!(
-        "{} {verb} {} from {} ({} unmatched, {} non-PNG file(s) skipped){}",
+        "{} {verb} {} from {} ({}){}",
         st.bold("frames:"),
         plural(n, "frame"),
         plan.package,
-        plan.unmatched.iter().filter(|u| !u.ignored).count(),
-        plan.skipped,
+        counts.join(", "),
         if plan.applied {
             format!(" → {}", root.join(&plan.source).display())
         } else {
             " (dry run)".to_owned()
         }
     );
+    print_license_notice(plan);
+}
+
+/// "These frames are subject to Apple's licence …" when the package has a
+/// licence file.
+fn print_license_notice(plan: &ImportPlan) {
+    let Some(first) = plan.licenses.first() else {
+        return;
+    };
+    let st = Style::stdout();
+    let name = first.rsplit(['/', '\\']).next().unwrap_or(first);
+    println!(
+        "{} these frames are subject to Apple's licence ({name} in the package). \
+         They are stored only on this computer and never in projects.",
+        st.warn("licence:")
+    );
+    for l in &plan.licenses {
+        println!("         {}", st.dim(l));
+    }
 }
 
 fn run_list(a: &ListArgs, store: &FrameStore) -> anyhow::Result<u8> {
@@ -218,10 +252,11 @@ fn run_list(a: &ListArgs, store: &FrameStore) -> anyhow::Result<u8> {
             }
             for f in frames {
                 println!(
-                    "{:<14} {:<20} {:<10} {}×{}  screen {}×{}  {}",
+                    "{:<14} {:<20} {:<10} {:<20} {}×{}  screen {}×{}  {}",
                     f.model,
                     f.color,
                     orientation_name(f.orientation),
+                    f.apple_model,
                     f.size.w,
                     f.size.h,
                     f.screen.w,
@@ -244,19 +279,25 @@ fn run_remove(a: &RemoveArgs, store: &FrameStore, global: &Global) -> anyhow::Re
         Some("landscape") => Some(Orientation::Landscape),
         Some(o) => bail!("invalid orientation `{o}` (portrait, landscape)"),
     };
-    if a.model.is_none() && a.color.is_none() && orientation.is_none() && !a.all {
+    let filter = RemoveFilter {
+        model: a.model.as_deref(),
+        color: a.color.as_deref(),
+        orientation,
+        bezel: a.bezel.as_deref(),
+    };
+    if filter.model.is_none()
+        && filter.color.is_none()
+        && filter.orientation.is_none()
+        && filter.bezel.is_none()
+        && !a.all
+    {
         bail!(
-            "pass --model/--color/--orientation, or --all to remove every `{}` frame",
+            "pass --model/--color/--orientation/--bezel, or --all to remove every `{}` frame",
             a.source
         );
     }
     let n = store
-        .remove(
-            &a.source,
-            a.model.as_deref(),
-            a.color.as_deref(),
-            orientation,
-        )
+        .remove(&a.source, &filter)
         .map_err(anyhow::Error::msg)?;
     if !global.quiet {
         println!("removed {}", plural(n, "frame"));

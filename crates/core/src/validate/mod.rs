@@ -98,6 +98,9 @@ finding_codes! {
     /// `frame: imported:<source>` but the frame is not installed on this
     /// machine; the parametric frame is used.
     ImportedFrameMissing = "imported_frame_missing",
+    /// The pinned `bezel` is not installed, or no installed bezel size
+    /// matches the target / screenshot (a fallback is used).
+    ImportedBezelFallback = "imported_bezel_fallback",
     UnsupportedOrientation = "unsupported_orientation",
     /// Unknown `@colour` (rendered magenta).
     UnknownColor = "unknown_color",
