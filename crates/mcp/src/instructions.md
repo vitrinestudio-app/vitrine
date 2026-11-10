@@ -25,7 +25,7 @@ Reference: docs_get {topic} returns markdown for overview, elements (all fields,
 Workflow
 1. project_open {dir} or project_create {dir, name, template: phone|minimal, langs: ["en", "de"]}.
 2. project_summary → strips, pages, element ids, targets, languages. Read view_get/selection_get when the user refers to "this" or "the selected element".
-3. Change things: element_add / element_update (patch with YAML field names) / element_move / element_resize / element_rotate, strings_set for texts, styles_update for colours and text styles, strip_update for pages/backgrounds, target_add for more store sizes. apply_ops for complex atomic edits (docs_get {topic: "ops"}).
+3. Change things: element_add / element_update (patch with YAML field names) / element_move / element_resize / element_rotate, strings_set for texts, styles_update for colours and text styles, strip_update for pages/backgrounds, target_add for more store sizes, strip_add / strip_duplicate for another canvas (e.g. a tablet set), strip_variant for per-format overrides. apply_ops for complex atomic edits (docs_get {topic: "ops"}).
 4. After every visual change call render_preview and LOOK at the image (default: first target, default language). Check other targets/languages too (view: gallery shows all images of a target with store gaps).
 5. layout_report for exact boxes, chosen font sizes, overflows, hyphenation and overlaps; fix overflows by shortening text, `\-`, a larger box or a smaller `shrink_to`.
 6. validate (errors must be 0 before export; missing screenshots are warnings while editing with preview: true).

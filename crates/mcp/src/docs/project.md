@@ -66,6 +66,7 @@ fills), `fonts/` (TTF/OTF; family names usable in styles).
 
 Tools per section: languages → language_add / language_remove (default
 language and fallbacks: apply_ops set_languages), styles → styles_update,
-strips → strip_add / strip_update, elements → element_*, variants →
+strips → strip_add / strip_duplicate / strip_rename / strip_remove /
+strip_update, elements → element_*, variants →
 strip_variant / element_update {scope: variant}, targets → target_add /
 target_update, import → screenshots_import.
