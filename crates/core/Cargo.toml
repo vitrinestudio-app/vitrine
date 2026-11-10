@@ -21,6 +21,7 @@ imagesize.workspace = true
 csv.workspace = true
 quick-xml.workspace = true
 png.workspace = true
+moxcms.workspace = true
 zip.workspace = true
 flate2.workspace = true
 

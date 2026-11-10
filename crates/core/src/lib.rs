@@ -33,10 +33,12 @@
 //! layout/     text layout and auto-fit
 //! validate/   findings per target × language (references, texts, screenshots, store rules)
 //! catalog/    devices, targets, gallery profiles (from data/*.yaml)
+//! colorspace  image colour profiles → sRGB (moxcms, ADR 0021)
 //! templates   built-in project templates (`arrangia new`, GUI)
 //! ```
 
 pub mod catalog;
+pub mod colorspace;
 pub mod edit;
 pub mod exchange;
 pub mod frame_import;
