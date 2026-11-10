@@ -45,6 +45,10 @@ fast_image_resize = "6.1.0"
 png = "0.18.1"
 # Image header parsing (dimensions only) for core::resolve / core::validate; pure Rust, no deps.
 imagesize = "0.14.0"
+# Frame package import (core::frame_import): zip archives with a pure-Rust
+# deflate backend (flate2 → miniz_oxide), no C zlib.
+zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2"] }
+flate2 = { version = "1.1.11", default-features = false, features = ["rust_backend"] }
 skrifa = "0.44.0"
 # Text layout (docs/adr/0001-render-pipeline.md, 0003-text-markup-and-layout.md).
 # No system font discovery: only bundled/project fonts are used.

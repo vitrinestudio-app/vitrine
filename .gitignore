@@ -40,3 +40,11 @@ Desktop.ini
 
 # Claude Code agent worktrees
 /.claude/worktrees/
+
+# Vendor device frames (Apple Design Resources etc.) must never be committed:
+# Arrangia imports them app-wide only (KONZEPT §4.2, ADR 0009). Guards against
+# a frame store, a downloaded package or an extracted bezel landing here.
+**/frames/apple/
+*.dmg
+**/Bezel-*/
+**/*Product Bezels*/
