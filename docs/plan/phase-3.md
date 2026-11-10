@@ -26,9 +26,9 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] CLI `arrangia import screenshots <dir> [--fastlane] [--dry-run]`; GUI import dialog (folder pick, preview table, apply)
 
 ## 3.4 Translation exchange
-- [ ] Export/import CSV (key, per-language columns, notes/context, max length hints) and XLIFF 1.2 + 2.0 (source = default language, target per language; markup kept as-is or mapped to inline tags — decide)
-- [ ] Import report: changed/new/unknown keys, markup diagnostics, overflow check per language after import
-- [ ] CLI `arrangia strings export|import`; GUI buttons in the translations panel
+- [x] Export/import CSV (key, per-language columns, notes/context, max length hints) and XLIFF 1.2 + 2.0 (source = default language, target per language; markup mapped to inline tags `<pc>/<ph>` resp. `<g>/<x/>` by default, as text optionally; ADR 0011)
+- [x] Import report: changed/new/unknown keys, markup diagnostics, overflow check per language after import
+- [x] CLI `arrangia strings export|import`; GUI buttons in the translations panel
 
 ## 3.5 Apple Design Resources import
 - [ ] Importer: DMG (macOS `hdiutil attach -readonly -nobrowse`), zip or extracted folder; recognise device/colour/orientation from file names via `crates/core/data/frame-import/apple.yaml` (data, not code)

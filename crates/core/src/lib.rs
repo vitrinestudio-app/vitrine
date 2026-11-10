@@ -38,6 +38,7 @@
 
 pub mod catalog;
 pub mod edit;
+pub mod exchange;
 pub mod geometry;
 pub mod io;
 pub mod layout;

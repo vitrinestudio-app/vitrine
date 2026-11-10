@@ -147,5 +147,15 @@ export const api = {
   assetsRemove: (paths) => invoke('assets_remove', { paths }),
   assetThumbnail: (path, maxEdge) => invoke('asset_thumbnail', { path, max_edge: maxEdge }),
   pickFiles: (args = {}) => invoke('dialog_pick_files', args),
+  /** Native save dialog (`null` when cancelled); `filters`: [{ name, extensions }]. */
+  saveFile: (title, defaultName, filters = []) => invoke('dialog_save_file', { title, default_name: defaultName, filters }),
+
+  // ----- translation exchange (3.4) -----
+  /** Writes CSV/XLIFF (`format`: csv | xliff20 | xliff12) to `path` (file or folder). */
+  stringsExport: (format, langs, path, options = {}) => invoke('strings_export', { format, langs, path, options }),
+  /** Dry run: diff, markup issues and layout findings of importing `paths`. */
+  stringsImportPlan: (paths, options = {}) => invoke('strings_import_plan', { paths, options }),
+  /** Applies a plan from `stringsImportPlan` as one undo step. */
+  stringsImportApply: (plan) => invoke('strings_import_apply', { plan }),
   catalogFonts: () => invoke('catalog_fonts'),
 };

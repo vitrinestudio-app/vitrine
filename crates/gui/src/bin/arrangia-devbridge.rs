@@ -10,8 +10,9 @@
 //! Options: `--port N` (default 0 = free port), `--project DIR` (open at
 //! start), `--ui DIR` (default `crates/gui/ui`), `--app-dir DIR` (settings
 //! and recent list; default a temp folder, so the real app data is left
-//! alone), `--pick-folder DIR` / `--pick-file FILE` (answers of the
-//! folder/file dialogs; otherwise dialogs are cancelled), `--copy` (open a
+//! alone), `--pick-folder DIR` / `--pick-file FILE` / `--save-file FILE`
+//! (answers of the folder/file/save dialogs; otherwise dialogs are
+//! cancelled), `--copy` (open a
 //! temporary copy of `--project`, so edits never touch e.g. the test
 //! fixture).
 
@@ -34,7 +35,7 @@ struct Options {
     copy: bool,
 }
 
-const USAGE: &str = "usage: arrangia-devbridge [--port N] [--project DIR] [--ui DIR] [--app-dir DIR] [--pick-folder DIR] [--pick-file FILE]... [--copy]";
+const USAGE: &str = "usage: arrangia-devbridge [--port N] [--project DIR] [--ui DIR] [--app-dir DIR] [--pick-folder DIR] [--pick-file FILE]... [--save-file FILE] [--copy]";
 
 fn parse() -> Result<Options, String> {
     let mut o = Options::default();
@@ -48,6 +49,7 @@ fn parse() -> Result<Options, String> {
             "--app-dir" => o.app_dir = Some(value()?.into()),
             "--pick-folder" => o.dialogs.folder = Some(value()?.into()),
             "--pick-file" => o.dialogs.files.push(value()?.into()),
+            "--save-file" => o.dialogs.save = Some(value()?.into()),
             "--copy" => o.copy = true,
             "-h" | "--help" => return Err(USAGE.to_owned()),
             _ => return Err(format!("unknown argument `{a}`\n{USAGE}")),

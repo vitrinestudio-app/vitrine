@@ -11,11 +11,13 @@
 //   header to switch the view language.
 // - Markers per cell from validation of all targets (`text_overflow`,
 //   `emergency_break`, `text_missing`), refreshed throttled after changes.
+// - Export…/Import… for translators (CSV, XLIFF; dialogs/exchange.js).
 //
 // The sidebar widens while this panel is shown (styles/translations.css).
 
 import { h, icon } from '../dom.js';
 import { checkbox, choiceDialog, confirmDialog, promptDialog } from '../dialogs/modal.js';
+import { openExchangeExport, openExchangeImport } from '../dialogs/exchange.js';
 
 const SOFT_HYPHEN = '­';
 const VALIDATE_DELAY = 600;
@@ -62,6 +64,8 @@ export function mount(el, { store, editor, api, t }) {
     counts,
     h('button', { type: 'button', class: 'btn btn-small', onclick: addKey, title: t('translations.add_key') }, icon('plus'), t('translations.key')),
     h('button', { type: 'button', class: 'btn btn-small', onclick: addLanguage, title: t('translations.add_lang') }, icon('plus'), t('translations.lang')),
+    h('button', { type: 'button', class: 'btn btn-small', onclick: () => openExchangeExport(), title: t('exchange.export.tip') }, t('exchange.export')),
+    h('button', { type: 'button', class: 'btn btn-small', onclick: () => openExchangeImport(editor), title: t('exchange.import.tip') }, t('exchange.import')),
   );
   const thead = h('thead');
   const tbody = h('tbody');

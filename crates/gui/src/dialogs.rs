@@ -18,6 +18,15 @@ pub trait Dialogs: Send + Sync {
     fn pick_folder(&self, title: &str) -> Option<PathBuf>;
     /// Files to open (empty = cancelled).
     fn pick_files(&self, title: &str, filters: &[FileFilter], multiple: bool) -> Vec<PathBuf>;
+    /// A file to save to, proposing `default_name` (`None` = cancelled).
+    fn save_file(
+        &self,
+        _title: &str,
+        _default_name: &str,
+        _filters: &[FileFilter],
+    ) -> Option<PathBuf> {
+        None
+    }
 }
 
 /// No dialogs: every dialog is cancelled.
@@ -34,11 +43,13 @@ impl Dialogs for NoDialogs {
     }
 }
 
-/// Fixed answers (bridge `--dialog-dir`, tests).
+/// Fixed answers (bridge `--pick-folder`/`--pick-file`/`--save-file`, tests).
 #[derive(Debug, Default, Clone)]
 pub struct FixedDialogs {
     pub folder: Option<PathBuf>,
     pub files: Vec<PathBuf>,
+    /// Answer of the save dialog.
+    pub save: Option<PathBuf>,
 }
 
 impl Dialogs for FixedDialogs {
@@ -48,5 +59,9 @@ impl Dialogs for FixedDialogs {
 
     fn pick_files(&self, _: &str, _: &[FileFilter], _: bool) -> Vec<PathBuf> {
         self.files.clone()
+    }
+
+    fn save_file(&self, _: &str, _: &str, _: &[FileFilter]) -> Option<PathBuf> {
+        self.save.clone()
     }
 }

@@ -376,3 +376,225 @@
   stroke-dasharray: 5 3;
   fill: none;
 }
+
+/* Translation exchange dialogs (js/dialogs/exchange.js). */
+.xc-opts {
+  margin-bottom: 10px;
+}
+
+.xc-section {
+  margin-bottom: 14px;
+}
+
+.xc-section h3 {
+  font-size: var(--fs);
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.xc-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.xc-files code {
+  font-size: var(--fs-small);
+}
+
+.xc-error,
+.xc-warn,
+.xc-ok {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.xc-error {
+  color: var(--danger);
+}
+
+.xc-warn {
+  color: var(--warning);
+}
+
+.xc-ok {
+  color: var(--success);
+}
+
+.xc-error svg.icon,
+.xc-warn svg.icon,
+.xc-ok svg.icon,
+.xc-list svg.icon,
+.xc-flag svg.icon {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  margin-top: 2px;
+}
+
+.xc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--fs-small);
+}
+
+.xc-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.xc-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--fs);
+}
+
+.xc-table th,
+.xc-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.xc-table th {
+  color: var(--fg-muted);
+  font-weight: 500;
+  font-size: var(--fs-small);
+  background: var(--bg-panel);
+  position: sticky;
+  top: 0;
+}
+
+.xc-sum td:not(:first-child),
+.xc-sum th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.xc-n-new {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.xc-n-changed {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.xc-n-removed {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.xc-scroll {
+  max-height: 46vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+}
+
+.xc-diff td.xc-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-small);
+  word-break: break-all;
+  width: 22%;
+}
+
+.xc-diff td.xc-old {
+  color: var(--fg-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--fg-faint);
+  width: 34%;
+}
+
+.xc-diff td.xc-new {
+  width: 34%;
+}
+
+.xc-none {
+  color: var(--fg-faint);
+  font-style: italic;
+}
+
+.xc-mark {
+  color: var(--accent);
+  padding: 0 1px;
+}
+
+.xc-kind {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.xc-kind-new {
+  background: rgb(47 158 91 / 14%);
+  color: var(--success);
+}
+
+.xc-kind-changed {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.xc-kind-removed {
+  background: rgb(229 72 77 / 12%);
+  color: var(--danger);
+}
+
+.xc-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.xc-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  margin-left: 4px;
+  border-radius: 8px;
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+
+.xc-marks .xc-flag {
+  margin-left: 0;
+}
+
+.xc-flag-error {
+  background: rgb(229 72 77 / 12%);
+  color: var(--danger);
+}
+
+.xc-flag-warn {
+  background: rgb(217 119 6 / 14%);
+  color: var(--warning);
+}
+
+.xc-flag-info {
+  background: var(--bg-hover);
+  color: var(--fg-muted);
+}
+
+.xc-code {
+  font-size: var(--fs-small);
+  padding: 1px 6px;
+  border-radius: var(--radius-small);
+  background: var(--bg-hover);
+}
