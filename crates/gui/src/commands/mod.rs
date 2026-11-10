@@ -21,6 +21,7 @@ mod catalog;
 #[macro_use]
 mod edit;
 mod add;
+mod exchange;
 mod export;
 mod inspect;
 mod os;
@@ -43,6 +44,7 @@ pub use add::*;
 pub use assets::*;
 pub use catalog::*;
 pub use edit::*;
+pub use exchange::*;
 pub use export::*;
 pub use inspect::*;
 pub use os::*;
@@ -225,6 +227,7 @@ command_table! {
         project_rename, language_add, language_remove, languages_set,
         default_language_impact, default_language_set, styles_get, styles_patch,
         dialog_pick_folder, reveal_path,
+        dialog_save_file, strings_export, strings_import_plan, strings_import_apply,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,
@@ -247,3 +250,6 @@ mod tests;
 
 #[cfg(test)]
 mod tests_texts;
+
+#[cfg(test)]
+mod tests_exchange;

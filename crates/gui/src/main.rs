@@ -73,6 +73,25 @@ impl Dialogs for TauriDialogs {
             .filter_map(|p| p.into_path().ok())
             .collect()
     }
+
+    fn save_file(
+        &self,
+        title: &str,
+        default_name: &str,
+        filters: &[FileFilter],
+    ) -> Option<PathBuf> {
+        let app = self.0.get()?;
+        let mut dialog = app
+            .dialog()
+            .file()
+            .set_title(title)
+            .set_file_name(default_name);
+        for f in filters {
+            let ext: Vec<&str> = f.extensions.iter().map(String::as_str).collect();
+            dialog = dialog.add_filter(&f.name, &ext);
+        }
+        dialog.blocking_save_file().and_then(|p| p.into_path().ok())
+    }
 }
 
 /// Runs a command on a blocking worker thread.
@@ -188,6 +207,10 @@ json_commands! {
     styles_patch: commands::StylesPatchArgs,
     dialog_pick_folder: commands::DialogPickFolderArgs,
     reveal_path: commands::RevealPathArgs,
+    dialog_save_file: commands::DialogSaveFileArgs,
+    strings_export: commands::StringsExportArgs,
+    strings_import_plan: commands::StringsImportPlanArgs,
+    strings_import_apply: commands::StringsImportApplyArgs,
 }
 
 image_commands! {
@@ -207,6 +230,7 @@ fn project_arg() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
+#[allow(clippy::too_many_lines)] // mostly the command list of `generate_handler!`
 fn main() {
     let events = Arc::new(TauriEvents::default());
     let dialogs = Arc::new(TauriDialogs::default());
@@ -294,6 +318,10 @@ fn main() {
             styles_patch,
             dialog_pick_folder,
             reveal_path,
+            dialog_save_file,
+            strings_export,
+            strings_import_plan,
+            strings_import_apply,
             render_image,
             render_canvas,
             render_gallery,

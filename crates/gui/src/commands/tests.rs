@@ -374,6 +374,7 @@ fn settings_and_dialogs() {
         Arc::new(FixedDialogs {
             folder: Some(dir.clone()),
             files: vec![dir.join("assets/logo.svg")],
+            save: None,
         }),
     )
     .without_watcher();
