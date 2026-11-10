@@ -14,7 +14,7 @@ use arrangia_core::model::{
     Aspect, ElementId, ElementKindTag, ElementPatch, Fill, Lang, StringKey, Strip, Variant,
     VariantId,
 };
-use arrangia_core::ops::{Op, StripPatch};
+use arrangia_core::ops::{Op, StripPatch, TargetPatch};
 use arrangia_core::resolve::{lang_chain, lookup_text};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -601,13 +601,20 @@ pub fn strip_patch(app: &AppState, args: StripPatchArgs) -> CmdResult<EditResult
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 #[allow(clippy::option_option)]
 pub enum VariantAction {
-    /// Add an empty variant (optionally with a content scale).
+    /// Add a variant: empty (optionally with a content scale) or a copy
+    /// of variant `from` (its content scale and overrides); `targets` of
+    /// the strip show it from then on (same undo step).
     Add {
         id: String,
         #[serde(default)]
         content_scale: Option<f64>,
+        #[serde(default)]
+        from: Option<String>,
+        #[serde(default)]
+        targets: Vec<String>,
     },
-    /// Remove a variant (refused while a target shows it).
+    /// Remove a variant; targets showing it fall back to the base layout
+    /// (same undo step).
     Remove { id: String },
     /// Rename a variant; targets follow.
     Rename { id: String, to: String },
@@ -626,32 +633,103 @@ pub struct StripVariantArgs {
     pub change: VariantAction,
 }
 
+/// Ops adding variant `id` to `strip` (empty, or a copy of `from` with
+/// `content_scale` replaced when given) and making `targets` show it.
+fn variant_add_ops(
+    project: &Project,
+    strip: &arrangia_core::model::StripId,
+    id: &str,
+    content_scale: Option<f64>,
+    from: Option<&str>,
+    targets: &[String],
+) -> CmdResult<Vec<Op>> {
+    let new = VariantId::parse(id).map_err(CommandError::invalid)?;
+    let variant = match from {
+        Some(f) => {
+            let mut v = project
+                .strip(strip.as_str())
+                .and_then(|s| s.variants.get(f))
+                .cloned()
+                .ok_or_else(|| {
+                    CommandError::not_found(format!("unknown variant `{f}` of `{strip}`"))
+                })?;
+            if content_scale.is_some() {
+                v.content_scale = content_scale;
+            }
+            v
+        }
+        None => Variant {
+            content_scale,
+            overrides: BTreeMap::new(),
+        },
+    };
+    let mut ops = vec![Op::AddVariant {
+        strip: strip.clone(),
+        id: new.clone(),
+        variant,
+    }];
+    for t in targets {
+        let target = project
+            .target(t)
+            .filter(|x| &x.strip == strip)
+            .ok_or_else(|| CommandError::invalid(format!("`{t}` is not a target of `{strip}`")))?;
+        ops.push(Op::UpdateTarget {
+            id: target.id.clone(),
+            patch: TargetPatch {
+                variant: Some(Some(new.clone())),
+                ..TargetPatch::default()
+            },
+        });
+    }
+    Ok(ops)
+}
+
 pub fn strip_variant(app: &AppState, args: StripVariantArgs) -> CmdResult<EditResult> {
     let session = app.session()?;
     let project = session.snapshot();
     let strip = strip_of(&project, &args.strip)?.id.clone();
     let vid = |s: &str| VariantId::parse(s).map_err(CommandError::invalid);
     let (ops, label, created) = match &args.change {
-        VariantAction::Add { id, content_scale } => (
-            vec![Op::AddVariant {
+        VariantAction::Add {
+            id,
+            content_scale,
+            from,
+            targets,
+        } => {
+            let ops = variant_add_ops(
+                &project,
+                &strip,
+                id,
+                *content_scale,
+                from.as_deref(),
+                targets,
+            )?;
+            let label = match from {
+                Some(f) => format!("Duplicate variant {f} as {id}"),
+                None => format!("Add variant {id}"),
+            };
+            (ops, label, vec![id.clone()])
+        }
+        VariantAction::Remove { id } => {
+            let v = vid(id)?;
+            let mut ops: Vec<Op> = project
+                .targets
+                .iter()
+                .filter(|t| t.strip == strip && t.variant.as_ref() == Some(&v))
+                .map(|t| Op::UpdateTarget {
+                    id: t.id.clone(),
+                    patch: TargetPatch {
+                        variant: Some(None),
+                        ..TargetPatch::default()
+                    },
+                })
+                .collect();
+            ops.push(Op::RemoveVariant {
                 strip: strip.clone(),
-                id: vid(id)?,
-                variant: Variant {
-                    content_scale: *content_scale,
-                    overrides: BTreeMap::new(),
-                },
-            }],
-            format!("Add variant {id}"),
-            vec![id.clone()],
-        ),
-        VariantAction::Remove { id } => (
-            vec![Op::RemoveVariant {
-                strip: strip.clone(),
-                id: vid(id)?,
-            }],
-            format!("Remove variant {id}"),
-            Vec::new(),
-        ),
+                id: v,
+            });
+            (ops, format!("Remove variant {id}"), Vec::new())
+        }
         VariantAction::Rename { id, to } => (
             vec![Op::RenameVariant {
                 strip: strip.clone(),
@@ -1161,6 +1239,13 @@ mod tests {
             "strip_variant",
             json!({"strip": "phone", "change": {"action": "remove", "id": "taller"}}),
         );
+        // A variant in use is removed too; its targets fall back to the base.
+        let r = call(
+            &app,
+            "strip_variant",
+            json!({"strip": "phone", "change": {"action": "remove", "id": "android"}}),
+        );
+        assert_eq!(last_undo(&r), "Remove variant android");
         let err = dispatch(
             &app,
             "strip_variant",
