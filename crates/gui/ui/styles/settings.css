@@ -161,6 +161,18 @@
   font-weight: 600;
 }
 
+.fp-license,
+.fp-guidance {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+}
+
+.fp-guidance p {
+  margin: 0 0 8px;
+}
+
 .fp-table-wrap {
   margin: 6px 0 14px;
 }

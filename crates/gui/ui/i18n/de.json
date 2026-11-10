@@ -750,5 +750,14 @@
   "frames.inspector.available": "Installierte Farben: {colors}",
   "frames.inspector.missing": "Auf diesem Rechner nicht installiert: Der eingebaute Frame wird verwendet (App-Einstellungen → Frame-Pakete).",
   "frames.inspector.color_missing": "Diese Farbe ist nicht installiert: Der eingebaute Frame wird verwendet. Unten eine installierte Farbe wählen.",
-  "frames.inspector.no_model": "Für dieses Modell gibt es keine importierten Frames: Der eingebaute Frame wird verwendet."
+  "frames.inspector.no_model": "Für dieses Modell gibt es keine importierten Frames: Der eingebaute Frame wird verwendet.",
+  "frames.dmg_license": "Dieses Disk-Image enthält eine Lizenzvereinbarung. Öffne es im Finder, akzeptiere die Lizenz und importiere dann das eingebundene Volume (z. B. {volume}).",
+  "frames.dmg_license.pick": "Eingebundenes Volume wählen…",
+  "frames.license_notice": "Diese Frames unterliegen Apples Lizenz ({file} im Paket). Sie werden nur auf diesem Rechner gespeichert und nie in Projekten.",
+  "frames.plan.psd": "{n} Photoshop-Dateien ignoriert.",
+  "frames.inspector.bezel": "Bezel",
+  "frames.inspector.bezel.auto": "Automatisch ({bezel} für dieses Ziel)",
+  "frames.inspector.bezel.not_installed": "{bezel} (nicht installiert)",
+  "frames.inspector.bezel.hint": "Für dieses Gerät sind mehrere Apple-Modelle installiert. Automatisch wählt das zur Bildgröße des Ziels passende (z. B. iPhone 18 Pro für 1206×2622), sonst das zur Screenshot-Größe passende.",
+  "frames.inspector.bezel.unknown": "Dieses Bezel ist auf diesem Rechner nicht installiert: Die automatische Auswahl wird verwendet."
 }

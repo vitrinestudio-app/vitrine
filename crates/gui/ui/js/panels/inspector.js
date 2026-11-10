@@ -214,7 +214,13 @@ export function mount(el, ctx) {
   async function loadExtras(info, st) {
     const out = {};
     if (info.kind === 'device') {
-      [out.devices, out.assets, out.frames] = await Promise.all([cache.devices(), cache.assets(), api.framesList().catch(() => null)]);
+      [out.devices, out.assets, out.frames, out.resolved] = await Promise.all([
+        cache.devices(),
+        cache.assets(),
+        api.framesList().catch(() => null),
+        // The resolved device (imported bezel choice for this view).
+        api.elementInfo(viewArgs(), info.id).catch(() => null),
+      ]);
     } else if (info.kind === 'text') {
       out.keys = await cache.keys(st.lang);
     } else if (info.kind === 'image' || info.kind === 'shape' || info.kind === 'background') {
@@ -449,6 +455,26 @@ export function mount(el, ctx) {
         { field: 'frame', info, hint: frameHint },
       ),
     );
+    // Imported frames: which Apple model's bezel (several sizes per device,
+    // e.g. iPhone 18 Pro and Pro Max). Automatic = per target.
+    const imp = extra.resolved?.element?.props?.imported;
+    if (effFrame?.startsWith('imported:') && (imp?.bezels?.length > 1 || e.bezel)) {
+      const bezels = imp?.bezels ?? [];
+      const known = !e.bezel || bezels.some((b) => b.toLowerCase() === e.bezel.toLowerCase());
+      const options = [
+        { value: '', label: imp?.automatic ? t('frames.inspector.bezel.auto').replace('{bezel}', imp.automatic) : t('inspector.default') },
+        ...bezels.map((b) => ({ value: b, label: b })),
+      ];
+      if (!known) options.push({ value: e.bezel, label: t('frames.inspector.bezel.not_installed').replace('{bezel}', e.bezel) });
+      const current = e.bezel ? (bezels.find((b) => b.toLowerCase() === e.bezel.toLowerCase()) ?? e.bezel) : '';
+      rows.push(
+        row(
+          t('frames.inspector.bezel'),
+          selectInput({ key: 'bezel', options, value: current, title: t('frames.inspector.bezel.hint'), onChange: (v) => set({ bezel: v || null }) }),
+          { field: 'bezel', info, hint: known ? null : t('frames.inspector.bezel.unknown') },
+        ),
+      );
+    }
     // Colour: catalog swatches + custom hex.
     const swatches = dev?.swatches ?? [];
     const current = e.color ?? null;

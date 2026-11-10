@@ -750,5 +750,14 @@
   "frames.inspector.available": "Installed colours: {colors}",
   "frames.inspector.missing": "Not installed on this computer: the built-in frame is used (App settings → Frame packages).",
   "frames.inspector.color_missing": "This colour is not installed: the built-in frame is used. Pick an installed colour below.",
-  "frames.inspector.no_model": "No imported frames exist for this model: the built-in frame is used."
+  "frames.inspector.no_model": "No imported frames exist for this model: the built-in frame is used.",
+  "frames.dmg_license": "This disk image contains a licence agreement. Open it in Finder, accept the licence, then import the mounted volume (e.g. {volume}).",
+  "frames.dmg_license.pick": "Choose the mounted volume…",
+  "frames.license_notice": "These frames are subject to Apple's licence ({file} in the package). They are stored only on this computer and never in projects.",
+  "frames.plan.psd": "{n} Photoshop files ignored.",
+  "frames.inspector.bezel": "Bezel",
+  "frames.inspector.bezel.auto": "Automatic ({bezel} for this target)",
+  "frames.inspector.bezel.not_installed": "{bezel} (not installed)",
+  "frames.inspector.bezel.hint": "Several Apple models are installed for this device. Automatic picks the one matching the target's image size (e.g. iPhone 18 Pro for 1206×2622), else the screenshot size.",
+  "frames.inspector.bezel.unknown": "This bezel is not installed on this computer: the automatic choice is used."
 }

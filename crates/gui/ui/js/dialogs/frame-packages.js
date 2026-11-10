@@ -41,8 +41,22 @@ export async function openFramePackages({ path } = {}) {
     } catch (e) {
       status.textContent = '';
       planEl.replaceChildren();
-      err.show(e);
+      if (e?.details?.kind === 'dmg_license') showLicenseGuidance(e.details);
+      else err.show(e);
     }
+  }
+
+  // A DMG with a licence agreement (SLA): Arrangia never accepts it for the
+  // user. Explain how to mount it in Finder and offer the folder picker.
+  function showLicenseGuidance(details) {
+    planEl.replaceChildren(
+      h(
+        'div',
+        { class: 'fp-guidance', role: 'status' },
+        h('p', {}, t('frames.dmg_license').replace('{volume}', details.volume ?? '/Volumes/…')),
+        h('button', { class: 'btn btn-primary', type: 'button', onclick: pickFolder }, t('frames.dmg_license.pick')),
+      ),
+    );
   }
 
   function installCount() {
@@ -60,7 +74,7 @@ export async function openFramePackages({ path } = {}) {
 
   function renderPlan() {
     const p = current.plan;
-    const label = (i) => `${i.model} · ${i.color_label} · ${t(`inspector.orientation.${i.orientation}`)}`;
+    const label = (i) => [h('span', {}, `${i.apple_model} · ${i.color_label} · ${t(`inspector.orientation.${i.orientation}`)}`), h('span', { class: 'muted small' }, ` (${i.model})`)];
     const actionText = (i) => t(`frames.action.${i.action}`);
     const notes = (i) => (i.action === 'superseded' ? `${t('frames.superseded_by')} ${i.by}` : (i.error ?? i.warnings?.join(' ') ?? ''));
     const rows = p.items.map((i) =>
@@ -116,8 +130,18 @@ export async function openFramePackages({ path } = {}) {
       .replace('{n}', String(p.items.filter((i) => i.action === 'install' || i.action === 'replace').length))
       .replace('{u}', String(p.unmatched.length))
       .replace('{s}', String(p.skipped));
+    const psd = p.psd ? ` ${t('frames.plan.psd').replace('{n}', String(p.psd))}` : '';
+    const licenseFile = p.licenses?.[0]?.split(/[\\/]/).pop();
     planEl.replaceChildren(
-      h('div', { class: 'fp-summary' }, summary),
+      h('div', { class: 'fp-summary' }, summary + psd),
+      licenseFile
+        ? h(
+            'div',
+            { class: 'fp-license' },
+            h('div', {}, t('frames.license_notice').replace('{file}', licenseFile)),
+            ...p.licenses.map((l) => h('div', { class: 'mono small selectable muted' }, l)),
+          )
+        : null,
       p.unverified_rules ? h('div', { class: 'form-hint' }, t('frames.unverified')) : null,
       h(
         'div',
@@ -201,8 +225,9 @@ export async function openFramePackages({ path } = {}) {
         h(
           'div',
           { class: 'fp-card-text' },
-          h('div', { class: 'fp-card-model' }, f.model),
+          h('div', { class: 'fp-card-model' }, f.apple_model || f.model),
           h('div', {}, f.color_label),
+          h('div', { class: 'muted small' }, `${f.model} · ${f.screen.w}×${f.screen.h}`),
           h('div', { class: 'muted small' }, `${t(`inspector.orientation.${f.orientation}`)} · ${f.size[0]}×${f.size[1]}`),
           h('div', { class: 'muted small fp-card-src', title: `${f.source_file} (${f.package}, ${f.imported})` }, f.source_file),
         ),
@@ -212,7 +237,7 @@ export async function openFramePackages({ path } = {}) {
             class: 'icon-btn fp-remove',
             type: 'button',
             title: t('frames.remove'),
-            onclick: () => remove({ model: f.model, color: f.color, orientation: f.orientation }),
+            onclick: () => remove({ model: f.model, color: f.color, orientation: f.orientation, bezel: f.apple_model || null }),
           },
           icon('trash'),
         ),
