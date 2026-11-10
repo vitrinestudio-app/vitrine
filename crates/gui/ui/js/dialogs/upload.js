@@ -26,6 +26,25 @@ import { openTargets } from './targets.js';
 
 const fmt = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
 
+/** Localized text of `prefix.<code>` with `vars`, else the Rust message. */
+function localized(prefix, code, vars, message) {
+  const key = `${prefix}.${code}`;
+  const text = t(key);
+  if (text === key || !vars) return message;
+  // A value the text needs is missing (e.g. no version yet): the Rust message.
+  const missing = [...text.matchAll(/\{(\w+)\}/g)].some(([, k]) => vars[k] == null);
+  return missing ? message : fmt(text, vars);
+}
+
+/** Button opening an allow-listed store page (`open_url`). */
+function linkButton(link, err) {
+  if (!link) return null;
+  return h('button', { class: 'btn btn-small', type: 'button', onclick: () => api.openUrl(link).catch((e) => err?.show(e)) }, t('upload.open_store'));
+}
+
+/** `m:ss` */
+const mmss = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+
 function kb(bytes) {
   return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
 }
@@ -40,12 +59,18 @@ function problemList(problems, cls = '') {
   return h(
     'ul',
     { class: `up-problems ${cls}`.trim() },
-    problems.map((p) => h('li', { class: `up-problem ${p.blocking ? 'bad' : p.level}` }, icon(p.blocking || p.level === 'error' ? 'error' : 'warning'), h('span', {}, p.message))),
+    problems.map((p) =>
+      h('li', { class: `up-problem ${p.blocking ? 'bad' : p.level}` }, icon(p.blocking || p.level === 'error' ? 'error' : 'warning'), h('span', {}, localized('upload.problem', p.code, p.vars, p.message)), linkButton(p.link)),
+    ),
   );
 }
 
 /** Opens the place that fixes a readiness step; resolves when it is closed. */
-async function openFix(fix) {
+async function openFix(fix, link) {
+  if (fix === 'app_store_connect') {
+    if (link) await api.openUrl(link);
+    return;
+  }
   const m = fix === 'app_settings_stores' ? await openAppSettings({ section: 'stores' }) : fix === 'project_settings_stores' ? openProjectSettings('stores') : await openTargets();
   await m?.closed;
 }
@@ -62,14 +87,14 @@ function checklist(readiness, onFixed) {
       'li',
       { class: `up-check-item ${st.blocking ? 'bad' : 'warn'}`, title: st.message },
       icon(st.blocking ? 'error' : 'warning'),
-      h('span', { class: 'up-check-text' }, fmt(t(`upload.ready.${st.code}`), { store }), h('span', { class: 'muted small' }, ` (${t(`upload.fix.where.${st.fix}`)})`)),
+      h('span', { class: 'up-check-text' }, st.vars ? localized('upload.ready', st.code, { store, ...st.vars }, st.message) : fmt(t(`upload.ready.${st.code}`), { store }), h('span', { class: 'muted small' }, ` (${t(`upload.fix.where.${st.fix}`)})`)),
       h(
         'button',
         {
           class: 'btn btn-small',
           type: 'button',
           onclick: async () => {
-            await openFix(st.fix);
+            await openFix(st.fix, st.link);
             onFixed?.();
           },
         },
@@ -98,7 +123,13 @@ export function planView(plan) {
         h('td', {}, s.lang),
         h('td', { class: 'mono' }, s.locale ?? '–'),
         h('td', {}, h('span', { class: `up-action up-action-${s.action}`, title: s.reason ?? '' }, t(`upload.action.${s.action}`))),
-        h('td', { class: 'num' }, s.action === 'skip' ? '–' : `${s.images.length}${s.remote_count != null ? ` (${fmt(t('upload.in_store'), { n: s.remote_count })})` : ''}`),
+        h(
+          'td',
+          { class: 'num' },
+          s.action === 'skip' ? '–' : `${s.images.length}${s.remote_count != null ? ` (${fmt(t('upload.in_store'), { n: s.remote_count })})` : ''}`,
+          s.processing ? h('div', { class: 'small up-processing' }, fmt(t('upload.processing_in_store'), { n: s.processing })) : null,
+          s.reusable ? h('div', { class: 'small muted' }, fmt(t('upload.reusable'), { n: s.reusable })) : null,
+        ),
         h('td', {}, problemList(s.problems, 'compact') ?? (s.reason ? h('span', { class: 'muted small' }, s.reason) : null)),
       ),
     );
@@ -141,13 +172,14 @@ export function openUpload() {
   let plan = null;
   let running = false;
   let unlisten = [];
+  let remoteBox = null;
 
   const err = errorLine();
   const tabs = h('div', { class: 'tabs up-tabs', role: 'tablist' });
   const options = h(
     'div',
     { class: 'inline wrap up-options' },
-    checkbox({ label: t('upload.remote'), checked: remote, title: t('upload.remote.hint'), onchange: (v) => ((remote = v), makePlan()) }),
+    (remoteBox = checkbox({ label: t('upload.remote'), checked: remote, title: t('upload.remote.hint'), onchange: (v) => ((remote = v), makePlan()) })),
     checkbox({ label: t('upload.force'), checked: force, onchange: (v) => ((force = v), makePlan()) }),
     h('button', { class: 'btn btn-small', type: 'button', onclick: () => makePlan() }, icon('reset'), t('upload.replan')),
   );
@@ -280,8 +312,9 @@ export function openUpload() {
         const status = h('span', { class: `up-status up-status-${x.status}` }, t(`upload.status.${x.status}`));
         const files = h('span', { class: 'muted small num' }, `${x.files_done}/${x.files_total}`);
         const error = h('div', { class: 'up-error small', hidden: !x.error }, x.error ?? '');
-        setRows.set(x.key, { status, files, error });
-        return h('tr', {}, h('td', {}, storeLabel(x.store)), h('td', {}, `${x.target} · ${x.lang}`), h('td', { class: 'mono' }, x.locale ?? ''), h('td', {}, status, error), h('td', {}, files));
+        const detail = h('div', { class: 'up-detail small muted', hidden: !x.note }, x.note ?? '');
+        setRows.set(x.key, { status, files, error, detail });
+        return h('tr', {}, h('td', {}, storeLabel(x.store)), h('td', {}, `${x.target} · ${x.lang}`), h('td', { class: 'mono' }, x.locale ?? ''), h('td', {}, status, detail, error), h('td', {}, files));
       });
     progress.replaceChildren(line, bar, h('table', { class: 'up-table' }, h('tbody', {}, rows)));
   }
@@ -291,9 +324,45 @@ export function openUpload() {
     if (!r) return;
     r.status.className = `up-status up-status-${x.status}`;
     r.status.textContent = t(`upload.status.${x.status}`);
-    r.files.textContent = `${x.files_done}/${x.files_total}`;
+    r.files.textContent = x.files_processing ? `${x.files_done}/${x.files_total} (+${x.files_processing})` : `${x.files_done}/${x.files_total}`;
     r.error.hidden = !x.error;
     r.error.textContent = x.error ?? '';
+    if (x.status !== 'running' && x.status !== 'paused') setDetail(x, x.note ?? '');
+  }
+
+  function setDetail(x, text) {
+    const r = x && setRows.get(x.key);
+    if (!r) return;
+    r.detail.hidden = !text;
+    r.detail.textContent = text;
+  }
+
+  /** What the current image of a set is doing (`upload-progress` step). */
+  function stepText(p) {
+    const f = p.file ?? {};
+    const name = f.file_name ?? '';
+    switch (p.step) {
+      case 'file_started':
+      case 'file_reserved':
+        return fmt(t('upload.step.reserving'), { file: name });
+      case 'transfer':
+        return fmt(t('upload.step.uploading'), { file: name, pct: f.bytes_total ? Math.floor((100 * (f.bytes_sent ?? 0)) / f.bytes_total) : 0 });
+      case 'file_commit':
+        return fmt(t('upload.step.committing'), { file: name });
+      case 'file_uploaded':
+        return fmt(t('upload.step.uploaded'), { file: name });
+      case 'processing':
+        return fmt(t('upload.step.processing'), { n: f.pending ?? 1, state: f.state ?? '', time: mmss(f.elapsed_secs ?? 0) });
+      case 'file_failed':
+        return fmt(t('upload.step.failed'), { file: name, error: f.error ?? '' });
+      case 'delete_existing':
+        return t('upload.step.delete_existing');
+      case 'set_order':
+      case 'verify':
+        return t('upload.step.set_order');
+      default:
+        return null;
+    }
   }
 
   function onProgress(p) {
@@ -303,6 +372,8 @@ export function openUpload() {
       bar.value = p.bytes_done + (p.step === 'transfer' ? p.file?.bytes_sent ?? 0 : 0);
     }
     updateSet(p.set);
+    const detail = stepText(p);
+    if (detail != null && p.set) setDetail(p.set, detail);
     if (line) {
       if (p.status === 'paused') line.textContent = t('upload.paused');
       else if (p.file?.file_name) line.textContent = `${t('upload.running')} ${p.file.file_name} · ${p.images_done}/${p.images_total}`;
@@ -319,29 +390,31 @@ export function openUpload() {
     startBtn.textContent = t('upload.again');
     startBtn.disabled = true;
     const good = run.status === 'completed';
+    const processing = run.images_processing ?? 0;
+    const backToPlan = (checkStore) => {
+      progress.hidden = true;
+      result.hidden = true;
+      config.hidden = false;
+      startBtn.textContent = t('upload.start');
+      if (checkStore && remoteBox) {
+        remote = true;
+        const box = remoteBox.querySelector('input');
+        if (box) box.checked = true;
+      }
+      makePlan();
+    };
     result.hidden = false;
     result.replaceChildren(
-      h('div', { class: `ex-result ${good ? 'good' : run.status === 'cancelled' || run.status === 'partial' ? 'warn' : 'bad'}` }, icon(good ? 'check' : 'warning'), h('strong', {}, t(`upload.result.${run.status}`))),
+      h('div', { class: `ex-result ${good && !processing ? 'good' : run.status === 'cancelled' || run.status === 'partial' || good ? 'warn' : 'bad'}` }, icon(good ? 'check' : 'warning'), h('strong', {}, t(`upload.result.${run.status}`))),
+      ...(run.store_failures ?? []).map((f) => h('p', { class: 'up-problem bad' }, icon('error'), h('span', {}, localized('upload.problem', f.code, f.vars, f.message)), linkButton(f.link, err))),
       h('p', { class: 'small' }, run.message ?? ''),
+      processing ? h('p', { class: 'small up-processing' }, fmt(t('upload.processing_hint'), { n: processing })) : null,
       good ? null : h('p', { class: 'muted small' }, t('upload.resume_hint')),
       h(
         'div',
         { class: 'inline' },
-        h(
-          'button',
-          {
-            class: 'btn',
-            type: 'button',
-            onclick: () => {
-              progress.hidden = true;
-              result.hidden = true;
-              config.hidden = false;
-              startBtn.textContent = t('upload.start');
-              makePlan();
-            },
-          },
-          t('upload.back'),
-        ),
+        h('button', { class: 'btn', type: 'button', onclick: () => backToPlan(false) }, t('upload.back')),
+        processing ? h('button', { class: 'btn btn-primary', type: 'button', onclick: () => backToPlan(true) }, t('upload.check_processing')) : null,
       ),
     );
   }
@@ -366,7 +439,7 @@ export function openUpload() {
           h(
             'ul',
             { class: 'small' },
-            r.sets.map((x) => h('li', {}, `${storeLabel(x.store)} ${x.locale} ${x.slot} (${x.target} · ${x.lang}): ${t(`upload.status.${x.status === 'done' ? 'done' : x.status}`)}${x.error ? ` – ${x.error}` : ''}`)),
+            r.sets.map((x) => h('li', {}, `${storeLabel(x.store)} ${x.locale} ${x.slot} (${x.target} · ${x.lang}): ${t(`upload.status.${x.status}`)}${x.error ? ` – ${x.error}` : ''}`)),
           ),
         ),
       );

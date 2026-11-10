@@ -119,18 +119,41 @@ impl EventSink for Progress {
                 p["file"]["store"].as_str().unwrap_or_default()
             ),
             "set_started" => format!("{name}: started"),
+            "file_uploaded" => format!(
+                "{name}: {} uploaded, Apple is processing it",
+                p["file"]["file_name"].as_str().unwrap_or_default(),
+            ),
             "file_done" => format!(
-                "{name}: {} uploaded ({}/{} images)",
+                "{name}: {} in the store ({}/{} images)",
                 p["file"]["file_name"].as_str().unwrap_or_default(),
                 p["images_done"],
                 p["images_total"]
             ),
+            "processing" => {
+                let secs = p["file"]["elapsed_secs"].as_u64().unwrap_or(0);
+                format!(
+                    "{name}: Apple is processing {} image(s) ({}, {}:{:02})",
+                    p["file"]["pending"],
+                    p["file"]["state"].as_str().unwrap_or_default(),
+                    secs / 60,
+                    secs % 60
+                )
+            }
+            "file_failed" => style.error(&format!(
+                "{name}: Apple could not process {}: {}",
+                p["file"]["file_name"].as_str().unwrap_or_default(),
+                p["file"]["error"].as_str().unwrap_or_default()
+            )),
             "set_finished" => format!(
-                "{name}: {}{}",
+                "{name}: {}{}{}",
                 set["status"].as_str().unwrap_or_default(),
                 set["error"]
                     .as_str()
                     .map(|e| format!(" – {e}"))
+                    .unwrap_or_default(),
+                set["note"]
+                    .as_str()
+                    .map(|n| format!(" ({n})"))
                     .unwrap_or_default()
             ),
             "paused" => style.warn(&format!(
@@ -298,6 +321,9 @@ fn print_problems(problems: &Value, indent: &str) {
             style.dim(p["code"].as_str().unwrap_or_default()),
             p["message"].as_str().unwrap_or_default()
         );
+        if let Some(link) = p["link"].as_str() {
+            println!("{indent}  → {link}");
+        }
     }
 }
 
@@ -357,7 +383,10 @@ fn print_plan(plan: &Value, global: &Global) {
                 s["slot"].as_str().unwrap_or_default()
             );
             if let Some(r) = s["reason"].as_str()
-                && (global.verbose || action == "skip")
+                && (global.verbose
+                    || action == "skip"
+                    || s.get("processing").is_some()
+                    || s.get("reusable").is_some())
             {
                 println!("    {}", style.dim(r));
             }
@@ -400,6 +429,16 @@ fn print_run(run: &Value) {
         "Upload {shown}: {}",
         run["message"].as_str().unwrap_or_default()
     );
+    for f in run["store_failures"].as_array().into_iter().flatten() {
+        println!(
+            "  {} {}",
+            style.error(f["store"].as_str().unwrap_or_default()),
+            f["message"].as_str().unwrap_or_default()
+        );
+        if let Some(link) = f["link"].as_str() {
+            println!("    → {link}");
+        }
+    }
     for s in run["sets"].as_array().into_iter().flatten() {
         if s["status"] == "skipped" {
             continue;
@@ -415,6 +454,14 @@ fn print_run(run: &Value) {
                 .as_str()
                 .map(|e| format!(" – {e}"))
                 .unwrap_or_default()
+        );
+        if let Some(n) = s["note"].as_str() {
+            println!("    {}", style.dim(n));
+        }
+    }
+    if run["images_processing"].as_u64().unwrap_or(0) > 0 {
+        println!(
+            "Apple is still processing some images. Check later with `arrangia upload plan --remote` (they are not uploaded again)."
         );
     }
     if status != "completed" {

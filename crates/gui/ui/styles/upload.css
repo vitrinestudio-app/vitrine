@@ -149,6 +149,7 @@
 }
 
 .up-status-paused,
+.up-status-uploaded_processing,
 .up-status-cancelled {
   color: var(--warning);
 }
@@ -160,6 +161,14 @@
 
 .up-error {
   color: var(--danger);
+}
+
+.up-detail {
+  overflow-wrap: anywhere;
+}
+
+.up-processing {
+  color: var(--warning);
 }
 
 .up-result {

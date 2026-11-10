@@ -173,7 +173,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Progress of the running (or last) store upload: status (running, paused for a rate limit, completed, partial, failed, cancelled), per set status and errors, images and bytes done; plus upload requests still waiting for the user's confirmation.",
+        description = "Progress of the running (or last) store upload: status (running, paused for a rate limit, completed, partial, failed, cancelled), per set status (done; uploaded_processing = in the store but Apple was still processing some images – not a failure, confirm later with upload_plan remote: true; failed; skipped) with errors and notes, images and bytes done, images Apple is still processing, store-level failures (e.g. no editable App Store version, reported once); plus upload requests still waiting for the user's confirmation.",
         annotations(read_only_hint = true)
     )]
     async fn upload_status(
