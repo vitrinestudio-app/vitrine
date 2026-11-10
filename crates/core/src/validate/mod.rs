@@ -167,6 +167,9 @@ finding_codes! {
     ScreenshotUpscale = "screenshot_upscale",
     /// A page of a `screenshot_only` target has no device (empty image).
     ScreenshotOnlyEmpty = "screenshot_only_empty",
+    /// The screenshot's embedded colour profile cannot be used (unreadable,
+    /// CMYK, HDR …); it is rendered as if it were sRGB (info).
+    ColorProfileUnsupported = "color_profile_unsupported",
     // ---- store rules
     /// Target size not accepted for the store slot.
     StoreSize = "store_size",

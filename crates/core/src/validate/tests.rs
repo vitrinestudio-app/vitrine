@@ -848,3 +848,52 @@ fn wear_os_decorations_and_screenshot_only() {
         Severity::Warn
     );
 }
+
+/// PNG header only (`w × h`, RGB) with extra chunks; enough for
+/// `imagesize` and `colorspace::sniff`.
+fn png_header(w: u32, h: u32, chunks: &[(&[u8; 4], &[u8])]) -> Vec<u8> {
+    let mut out = b"\x89PNG\r\n\x1a\n".to_vec();
+    let mut ihdr = Vec::new();
+    ihdr.extend_from_slice(&w.to_be_bytes());
+    ihdr.extend_from_slice(&h.to_be_bytes());
+    ihdr.extend_from_slice(&[8, 2, 0, 0, 0]);
+    let all = std::iter::once((b"IHDR", &ihdr[..]))
+        .chain(chunks.iter().copied())
+        .chain(std::iter::once((b"IEND", &[][..])));
+    for (kind, body) in all {
+        out.extend_from_slice(&(body.len() as u32).to_be_bytes());
+        out.extend_from_slice(kind);
+        out.extend_from_slice(body);
+        let mut crc = flate2::Crc::new();
+        crc.update(kind);
+        crc.update(body);
+        out.extend_from_slice(&crc.sum().to_be_bytes());
+    }
+    out
+}
+
+#[test]
+fn unusable_color_profile_is_info() {
+    let p = project(PHONE, "  screenshots: ios-phone\n");
+    let dir = tempfile::tempdir().unwrap();
+    let write = |lang: &str, bytes: &[u8]| {
+        let d = dir.path().join("screenshots").join(lang).join("ios-phone");
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(d.join("home.png"), bytes).unwrap();
+    };
+    // en: HDR (PQ) cICP – not tone-mapped; de: Display P3 cICP – fine.
+    write("en", &png_header(1206, 2622, &[(b"cICP", &[9, 16, 0, 1])]));
+    write("de", &png_header(1206, 2622, &[(b"cICP", &[12, 13, 0, 1])]));
+    let fs = crate::resolve::FsAssets::new(dir.path());
+    let r = run_with(&p, &fs);
+    let f: Vec<_> = r.with_code(FindingCode::ColorProfileUnsupported).collect();
+    assert_eq!(f.len(), 1, "{:?}", r.findings);
+    assert_eq!(f[0].level, Severity::Info);
+    assert!(f[0].lang.is_none());
+    assert!(f[0].message.contains("screenshots/en/ios-phone/home.png"));
+    assert!(f[0].message.contains("treated as sRGB"), "{}", f[0].message);
+    assert_eq!(
+        codes(&r),
+        [(Severity::Info, FindingCode::ColorProfileUnsupported)]
+    );
+}
