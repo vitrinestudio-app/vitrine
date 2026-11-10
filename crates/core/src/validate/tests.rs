@@ -253,6 +253,36 @@ fn emergency_break_without_hyphen() {
 }
 
 #[test]
+fn automatic_hyphenation_is_reported_as_info() {
+    let elements = "
+  - id: narrow
+    kind: text
+    page: 0
+    at: {x: 500, y: 500}
+    width: 300
+    text: word
+    hyphenate: true
+    langs:
+      ja: {font_size: 40}";
+    let mut p = project(elements, "");
+    for l in ["en", "de"] {
+        set(&mut p, l, "word", "Donaudampfschifffahrtsgesellschaft");
+    }
+    let r = run(&p);
+    let f = find(&r, FindingCode::Hyphenated);
+    assert_eq!(f.level, Severity::Info);
+    assert!(
+        f.message.contains("Donaudampfschifffahrtsgesellschaft"),
+        "{}",
+        f.message
+    );
+    assert!(!has(&r, FindingCode::EmergencyBreak));
+    // The override for a language outside `available` is reported.
+    let f = find(&r, FindingCode::LangNotAvailable);
+    assert!(f.message.contains("`ja`"), "{}", f.message);
+}
+
+#[test]
 fn text_fallback_levels() {
     let mut p = project(HEADLINE, "");
     p.languages.available.push(Lang::new("de-AT"));

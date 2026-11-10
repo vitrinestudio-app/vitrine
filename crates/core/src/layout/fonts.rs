@@ -2,7 +2,7 @@
 //! folder. System fonts are never used, so layouts are identical on every
 //! machine (golden tests, `docs/adr/0003-text-markup-and-layout.md`).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -45,6 +45,9 @@ pub enum FontSource {
     Bundled(&'static str),
     /// Loaded from a file (project `fonts/` folder).
     File(PathBuf),
+    /// A system font loaded as last-resort fallback (app setting, never
+    /// in tests/CI).
+    System(PathBuf),
     /// Added from memory.
     Memory,
 }
@@ -112,6 +115,9 @@ pub struct FontDirReport {
 pub struct FontLibrary {
     faces: Vec<FontFace>,
     fallbacks: BTreeMap<String, Vec<String>>,
+    /// Families loaded from system fonts as last resort (app setting,
+    /// never in tests/CI); appended to every family chain.
+    system_fallbacks: Vec<String>,
 }
 
 impl Default for FontLibrary {
@@ -126,6 +132,7 @@ impl FontLibrary {
         Self {
             faces: Vec::new(),
             fallbacks: BTreeMap::new(),
+            system_fallbacks: Vec::new(),
         }
     }
 
@@ -176,7 +183,7 @@ impl FontLibrary {
         if added.is_empty() {
             let name = match source {
                 FontSource::Bundled(n) => (*n).to_owned(),
-                FontSource::File(p) => p.display().to_string(),
+                FontSource::File(p) | FontSource::System(p) => p.display().to_string(),
                 FontSource::Memory => "<memory>".to_owned(),
             };
             return Err(FontError::Invalid(name));
@@ -256,21 +263,133 @@ impl FontLibrary {
         self.fallbacks.insert(family.to_owned(), fallbacks);
     }
 
+    /// Families added by [`Self::add_system_fallbacks`].
+    pub fn system_fallbacks(&self) -> &[String] {
+        &self.system_fallbacks
+    }
+
+    /// Does any face have a glyph for `c`?
+    pub fn covers(&self, c: char) -> bool {
+        self.faces.iter().any(|f| face_covers(f.data(), f.index, c))
+    }
+
+    /// Characters of `text` (ignoring whitespace and controls) that no face
+    /// of the library covers.
+    pub fn uncovered(&self, text: &str) -> BTreeSet<char> {
+        let mut seen = BTreeSet::new();
+        text.chars()
+            .filter(|c| !c.is_whitespace() && !c.is_control() && *c != '\u{AD}')
+            .filter(|c| seen.insert(*c))
+            .filter(|c| !self.covers(*c))
+            .collect()
+    }
+
+    /// Loads system fonts covering the characters of `text` that the
+    /// library lacks, as last-resort fallback families (appended to every
+    /// family chain). Only for the GUI's opt-in app setting: layouts then
+    /// depend on the machine, so tests and CI never call this. Returns the
+    /// families added.
+    pub fn add_system_fallbacks(&mut self, text: &str) -> Vec<String> {
+        self.add_fallbacks_from_dirs(text, &system_font_dirs())
+    }
+
+    /// [`Self::add_system_fallbacks`] with explicit font folders: picks
+    /// greedily the family (default face) covering most missing
+    /// characters, adds all its faces, repeats while characters remain (at
+    /// most 8 families). Hidden (`.`) families and `LastResort` are skipped.
+    pub fn add_fallbacks_from_dirs(&mut self, text: &str, dirs: &[PathBuf]) -> Vec<String> {
+        let mut missing = self.uncovered(text);
+        if missing.is_empty() || dirs.is_empty() {
+            return Vec::new();
+        }
+        let mut collection = Collection::new(CollectionOptions {
+            shared: false,
+            system_fonts: false,
+        });
+        collection.load_fonts_from_paths(dirs.iter().filter(|d| d.is_dir()));
+        let mut names: Vec<String> = collection
+            .family_names()
+            .filter(|n| !n.starts_with('.') && *n != "LastResort" && !self.has_family(n))
+            .map(str::to_owned)
+            .collect();
+        names.sort();
+        // Default face of every candidate family with its data.
+        let candidates: Vec<(String, Vec<SystemFace>)> = names
+            .into_iter()
+            .filter_map(|name| {
+                let fam = collection.family_by_name(&name)?;
+                let faces = fam
+                    .fonts()
+                    .iter()
+                    .filter_map(|f| {
+                        let path = match f.source().kind() {
+                            parley::fontique::SourceKind::Path(p) => Some(p.to_path_buf()),
+                            parley::fontique::SourceKind::Memory(_) => None,
+                        };
+                        Some((f.load(None)?, f.index(), path))
+                    })
+                    .collect::<Vec<_>>();
+                (!faces.is_empty()).then_some((name, faces))
+            })
+            .collect();
+        let mut added = Vec::new();
+        while !missing.is_empty() && added.len() < 8 {
+            let best = candidates
+                .iter()
+                .filter(|(n, _)| !added.contains(n))
+                .map(|(n, faces)| {
+                    let (blob, index, _) = &faces[0];
+                    let n_cov = missing
+                        .iter()
+                        .filter(|c| face_covers(blob.data(), *index, **c))
+                        .count();
+                    (n_cov, n, faces)
+                })
+                .filter(|(n_cov, _, _)| *n_cov > 0)
+                // Most covered; ties: the first name.
+                .max_by(|a, b| a.0.cmp(&b.0).then_with(|| b.1.cmp(a.1)));
+            let Some((_, name, faces)) = best else {
+                break;
+            };
+            let mut blobs = BTreeSet::new();
+            for (blob, _, path) in faces {
+                if blobs.insert(blob.id()) {
+                    let source = FontSource::System(path.clone().unwrap_or_default());
+                    let _ = self.add_blob(blob, &source);
+                }
+            }
+            missing.retain(|c| !self.covers(*c));
+            self.system_fallbacks.push(name.clone());
+            added.push(name.clone());
+        }
+        added
+    }
+
     pub fn fallbacks(&self, family: &str) -> &[String] {
         self.fallbacks.get(family).map_or(&[], Vec::as_slice)
     }
 
     /// The family list used for layout: `family`, its fallbacks, then
-    /// [`DEFAULT_FAMILY`].
+    /// [`DEFAULT_FAMILY`], then the system fallback families (if any).
     pub fn family_chain(&self, family: &str) -> Vec<String> {
+        self.family_chain_with(family, &[])
+    }
+
+    /// Like [`Self::family_chain`] with `extra` fallbacks (the project's
+    /// `styles.fonts`) tried before the library's own.
+    pub fn family_chain_with(&self, family: &str, extra: &[String]) -> Vec<String> {
         let mut out = vec![family.to_owned()];
-        for f in self.fallbacks(family) {
-            if !out.contains(f) {
+        let push = |f: &String, out: &mut Vec<String>| {
+            if !out.iter().any(|x| x.eq_ignore_ascii_case(f)) {
                 out.push(f.clone());
             }
+        };
+        for f in extra.iter().chain(self.fallbacks(family)) {
+            push(f, &mut out);
         }
-        if !out.iter().any(|f| f.eq_ignore_ascii_case(DEFAULT_FAMILY)) {
-            out.push(DEFAULT_FAMILY.to_owned());
+        push(&DEFAULT_FAMILY.to_owned(), &mut out);
+        for f in &self.system_fallbacks {
+            push(f, &mut out);
         }
         out
     }
@@ -305,6 +424,42 @@ impl FontLibrary {
             .min_by_key(|(_, f)| (f.italic != italic, rank(i32::from(f.weight))))
             .map(|(i, _)| FontId(i as u32))
     }
+}
+
+/// A system font face: data, face index, file.
+type SystemFace = (Blob<u8>, u32, Option<PathBuf>);
+
+/// Does face `index` of font file `data` map `c` to a glyph?
+fn face_covers(data: &[u8], index: u32, c: char) -> bool {
+    use skrifa::MetadataProvider;
+    skrifa::FontRef::from_index(data, index).is_ok_and(|f| f.charmap().map(c).is_some())
+}
+
+/// The platform's standard font folders (system and user).
+pub fn system_font_dirs() -> Vec<PathBuf> {
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    let mut out: Vec<PathBuf> = Vec::new();
+    if cfg!(target_os = "macos") {
+        out.push("/System/Library/Fonts".into());
+        out.push("/Library/Fonts".into());
+        out.extend(home.map(|h| h.join("Library/Fonts")));
+    } else if cfg!(target_os = "windows") {
+        let windir =
+            std::env::var_os("WINDIR").map_or_else(|| PathBuf::from(r"C:\Windows"), PathBuf::from);
+        out.push(windir.join("Fonts"));
+        out.extend(
+            std::env::var_os("LOCALAPPDATA")
+                .map(|d| PathBuf::from(d).join(r"Microsoft\Windows\Fonts")),
+        );
+    } else {
+        out.push("/usr/share/fonts".into());
+        out.push("/usr/local/share/fonts".into());
+        if let Some(h) = home {
+            out.push(h.join(".local/share/fonts"));
+            out.push(h.join(".fonts"));
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -368,5 +523,29 @@ mod tests {
         assert_eq!(report.errors.len(), 1);
         assert!(matches!(lib.faces()[0].source, FontSource::File(_)));
         assert!(lib.load_dir(&dir.path().join("missing")).errors.is_empty());
+    }
+
+    #[test]
+    fn fallbacks_from_font_folders_cover_missing_characters() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Inter-Regular.ttf"),
+            include_bytes!("../../../../assets/fonts/Inter-Regular.ttf"),
+        )
+        .unwrap();
+        let mut lib = FontLibrary::empty();
+        assert_eq!(lib.uncovered("ab a"), BTreeSet::from(['a', 'b']));
+        let added = lib.add_fallbacks_from_dirs("ab", &[dir.path().to_owned()]);
+        assert_eq!(added, ["Inter"]);
+        assert_eq!(lib.uncovered("ab"), BTreeSet::new());
+        assert!(matches!(lib.faces()[0].source, FontSource::System(_)));
+        assert_eq!(lib.family_chain("Brand"), ["Brand", "Inter"]);
+        // Nothing missing: nothing loaded.
+        let none = lib.add_fallbacks_from_dirs("ab", &[dir.path().to_owned()]);
+        assert_eq!(none, Vec::<String>::new());
+        // A character no font has stays missing.
+        let mut lib = FontLibrary::empty();
+        let none = lib.add_fallbacks_from_dirs("語", &[dir.path().to_owned()]);
+        assert_eq!(none, Vec::<String>::new());
     }
 }

@@ -78,6 +78,11 @@ pub struct Settings {
     pub default_frame_style: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub window: Option<WindowState>,
+    /// Use system fonts as a last resort for characters no bundled or
+    /// project font has (preview and export then depend on this machine's
+    /// fonts). Off by default; never used by tests, CLI or CI.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub system_font_fallback: bool,
 }
 
 impl Default for Settings {
@@ -87,6 +92,7 @@ impl Default for Settings {
             default_project_language: "en".to_owned(),
             default_frame_style: "detailed".to_owned(),
             window: None,
+            system_font_fallback: false,
         }
     }
 }
@@ -293,6 +299,7 @@ mod tests {
                 height: 800,
                 maximized: false,
             }),
+            system_font_fallback: true,
         };
         store.save(&s).unwrap();
         assert_eq!(store.load().unwrap(), s);

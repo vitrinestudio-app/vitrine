@@ -151,6 +151,9 @@ impl AppState {
     /// Opens `dir` as the current project (closing the previous one).
     pub fn open_project(&self, dir: &std::path::Path) -> CmdResult<Arc<Session>> {
         let session = Session::open(dir, self.events.clone())?;
+        if self.settings.load().is_ok_and(|s| s.system_font_fallback) {
+            session.set_system_font_fallback(true);
+        }
         if self.watch {
             session.watch()?;
         }

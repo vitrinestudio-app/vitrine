@@ -84,6 +84,7 @@ fn transform(s: &str, t: TextTransform) -> Cow<'_, str> {
     }
 }
 
+#[allow(clippy::too_many_lines, reason = "one pass over the parsed spans")]
 fn prepare(
     input: &TextInput<'_>,
     fonts: &FontLibrary,
@@ -96,11 +97,23 @@ fn prepare(
         offset: d.offset,
     }));
     let mut unknown_fonts = BTreeSet::new();
+    let extra = |family: &str| -> &[String] {
+        input
+            .fallbacks
+            .and_then(|m| {
+                m.iter()
+                    .find(|(k, _)| k.eq_ignore_ascii_case(family))
+                    .map(|(_, v)| v.as_slice())
+            })
+            .unwrap_or(&[])
+    };
+    // Missing fallback families are reported once per project by
+    // `core::validate`, not per text.
     let mut chain = |family: &str| {
         if !fonts.has_family(family) {
             unknown_fonts.insert(family.to_owned());
         }
-        fonts.family_chain(family)
+        fonts.family_chain_with(family, extra(family))
     };
     let base = RangeStyle {
         family: chain(&style.font),
@@ -185,6 +198,44 @@ fn prepare(
             0.0
         },
     }
+}
+
+/// `p` with soft hyphens at the pattern positions of its words; span
+/// ranges are moved accordingly.
+fn hyphenate_prepared(
+    p: &Prepared,
+    h: &super::hyphen::Hyphenator,
+) -> (Prepared, Vec<super::hyphen::Inserted>) {
+    let (text, inserted, map) = super::hyphen::hyphenate_text(h, &p.text);
+    let ranges = p
+        .ranges
+        .iter()
+        .map(|(r, s)| {
+            // A soft hyphen inserted right at a range start belongs to it.
+            let start = if r.start == 0 { 0 } else { map[r.start] };
+            let start = inserted
+                .iter()
+                .find(|i| i.at + SOFT_HYPHEN.len_utf8() == start)
+                .map_or(start, |i| i.at);
+            let end = inserted
+                .iter()
+                .find(|i| i.at + SOFT_HYPHEN.len_utf8() == map[r.end])
+                .map_or(map[r.end], |i| i.at);
+            (start..end, s.clone())
+        })
+        .collect();
+    (
+        Prepared {
+            text,
+            base: p.base.clone(),
+            ranges,
+            effects: p.effects.clone(),
+            size: p.size,
+            line_height: p.line_height,
+            tracking: p.tracking,
+        },
+        inserted,
+    )
 }
 
 /// Layout at one font size.
@@ -280,6 +331,7 @@ impl TextLayouter {
         };
 
         let first = self.attempt(&p, input.align, width, hi, false);
+        let mut hyphenated: Option<(Prepared, Vec<super::hyphen::Inserted>)> = None;
         let chosen = if fits(&first) {
             first
         } else {
@@ -288,7 +340,21 @@ impl TextLayouter {
             } else {
                 first
             };
-            if fits(&smallest) {
+            let hyphenator = input.hyphenate.and_then(super::hyphen::hyphenator);
+            if !fits(&smallest)
+                && let Some(h) = hyphenator
+            {
+                // Automatic hyphenation, only at `shrink_to` (ADR 0009).
+                let (hp, inserted) = hyphenate_prepared(&p, h);
+                let a = self.attempt(&hp, input.align, width, lo, false);
+                let a = if fits(&a) {
+                    a
+                } else {
+                    self.attempt(&hp, input.align, width, lo, true)
+                };
+                hyphenated = Some((hp, inserted));
+                a
+            } else if fits(&smallest) {
                 // Largest k with fits(lo + k·step); k = n + 1 stands for `hi`
                 // (known not to fit). Every returned layout was checked.
                 let n = ((hi - lo) / super::FIT_STEP).floor() as u32;
@@ -311,7 +377,36 @@ impl TextLayouter {
                 self.attempt(&p, input.align, width, lo, true)
             }
         };
-        finish(chosen, &p, input, width, max_height, max_lines, diagnostics)
+        match hyphenated {
+            None => finish(chosen, &p, input, width, max_height, max_lines, diagnostics),
+            Some((hp, inserted)) => {
+                let mut words: Vec<String> = Vec::new();
+                for l in &chosen.lines {
+                    if l.end != LineEnd::SoftHyphen {
+                        continue;
+                    }
+                    let t = hp.text[l.range.clone()].trim_end();
+                    let at = l.range.start + t.len() - SOFT_HYPHEN.len_utf8();
+                    if let Some(i) = inserted.iter().find(|i| i.at == at)
+                        && !words.contains(&i.word)
+                    {
+                        words.push(i.word.clone());
+                    }
+                }
+                if !words.is_empty() {
+                    diagnostics.push(TextDiagnostic::Hyphenated { words });
+                }
+                finish(
+                    chosen,
+                    &hp,
+                    input,
+                    width,
+                    max_height,
+                    max_lines,
+                    diagnostics,
+                )
+            }
+        }
     }
 
     fn build(&mut self, p: &Prepared, size: f32, emergency: bool) -> Layout<Paint> {

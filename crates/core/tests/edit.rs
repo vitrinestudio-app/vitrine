@@ -80,6 +80,23 @@ fn move_device_changes_home_page() {
     let mut p = sample();
     let c = ctx("ios-phone-69");
     let goal = Vec2::new(2500.0, 900.0);
+    // `lock_page: true` in the sample keeps the home page.
+    let ops = with_editor(&p, &c, |ed| {
+        ed.move_to("hero-phone", goal, MoveOptions::default())
+            .unwrap()
+    });
+    apply(&mut p.clone(), ops.clone());
+    let mut locked = p.clone();
+    locked.apply_ops(ops).unwrap();
+    assert_eq!(locked.element("hero-phone").unwrap().1.page, 0);
+    assert!(close(point(&locked, &c, "hero-phone"), goal));
+    apply(
+        &mut p,
+        vec![Op::UpdateElement {
+            id: ElementId::new("hero-phone"),
+            patch: io::from_yaml("{lock_page: ~}").unwrap(),
+        }],
+    );
     let ops = with_editor(&p, &c, |ed| {
         ed.move_to("hero-phone", goal, MoveOptions::default())
             .unwrap()
@@ -107,6 +124,11 @@ fn move_device_changes_home_page() {
 #[test]
 fn move_in_variant_writes_override() {
     let mut p = sample();
+    p.apply(Op::UpdateElement {
+        id: ElementId::new("hero-phone"),
+        patch: io::from_yaml("{lock_page: ~}").unwrap(),
+    })
+    .unwrap();
     let c = ctx("ios-ipad-13-landscape");
     let base_before = p.element("hero-phone").unwrap().1.clone();
     let iphone_before = point(&p, &ctx("ios-phone-69"), "hero-phone");
@@ -669,6 +691,86 @@ fn hidden_and_foreign_elements() {
 }
 
 #[test]
+fn language_scope_writes_language_overrides() {
+    let mut p = sample();
+    let c = EditContext::new("ios-phone-69", "es").unwrap().lang_only();
+    // Inspector edit: merged into the `es` override (created here).
+    let ops = with_editor(&p, &c, |ed| {
+        ed.patch("title-1", &io::from_yaml("{font_size: 50}").unwrap())
+            .unwrap()
+    });
+    let [
+        Op::SetLangOverride {
+            lang,
+            patch: Some(o),
+            ..
+        },
+    ] = &ops[..]
+    else {
+        panic!("{ops:?}")
+    };
+    assert_eq!(lang.as_str(), "es");
+    assert_eq!(o.fields(), ["font_size"]);
+    apply(&mut p, ops);
+    // Fields that are not per language are refused.
+    let err = with_editor(&p, &c, |ed| {
+        ed.patch("title-1", &io::from_yaml("{rotation: 5}").unwrap())
+    });
+    assert!(err.is_err(), "{err:?}");
+    // A drag moves the box in this language only; the home page stays.
+    let before_en = point(&p, &ctx("ios-phone-69"), "title-1");
+    let goal = point(&p, &c, "title-1") + Vec2::new(1200.0, 40.0);
+    let ops = with_editor(&p, &c, |ed| {
+        ed.move_to("title-1", goal, MoveOptions::default()).unwrap()
+    });
+    let [Op::SetLangOverride { patch: Some(o), .. }] = &ops[..] else {
+        panic!("{ops:?}")
+    };
+    assert_eq!(o.fields(), ["box", "font_size"], "merged, no `page`");
+    apply(&mut p, ops);
+    assert!(close(point(&p, &c, "title-1"), goal));
+    assert!(close(point(&p, &ctx("ios-phone-69"), "title-1"), before_en));
+    // Devices are not texts: edited as usual.
+    let ops = with_editor(&p, &c, |ed| {
+        ed.patch("hero-phone", &io::from_yaml("{width: 700}").unwrap())
+            .unwrap()
+    });
+    assert!(matches!(&ops[..], [Op::UpdateElement { .. }]));
+    // Overridden fields and reset per field / whole override.
+    with_editor(&p, &c, |ed| {
+        let (langs, fields) = ed.lang_overridden_fields("title-1");
+        assert_eq!(langs, [Lang::new("es")]);
+        assert_eq!(fields, ["box", "font_size"]);
+    });
+    let ops = with_editor(&p, &c, |ed| {
+        ed.reset_lang_override("title-1", Some("box")).unwrap()
+    });
+    assert!(matches!(&ops[..], [Op::ResetLangOverrideField { .. }]));
+    apply(&mut p, ops);
+    let ops = with_editor(&p, &c, |ed| {
+        ed.reset_lang_override("title-1", None).unwrap()
+    });
+    apply(&mut p, ops);
+    let (_, e) = p.element("title-1").unwrap();
+    assert!(!e.text_props().unwrap().langs.contains_key("es"));
+    // `de-AT` sees the `de` override; a reset there targets `de`.
+    let at = EditContext::new("ios-phone-69", "de-AT")
+        .unwrap()
+        .lang_only();
+    let ops = with_editor(&p, &at, |ed| {
+        assert_eq!(
+            ed.lang_overridden_fields("title-1").1,
+            ["style", "box", "font_size"]
+        );
+        ed.reset_lang_override("title-1", Some("style")).unwrap()
+    });
+    let [Op::ResetLangOverrideField { lang, .. }] = &ops[..] else {
+        panic!("{ops:?}")
+    };
+    assert_eq!(lang.as_str(), "de");
+}
+
+#[test]
 fn edit_context_json() {
     let c: EditContext = serde_json::from_str(r#"{"target": "t", "lang": "en"}"#).unwrap();
     assert_eq!(c.variant, None);
@@ -678,6 +780,9 @@ fn edit_context_json() {
     let c: EditContext =
         serde_json::from_str(r#"{"target": "t", "lang": "en", "variant": "v"}"#).unwrap();
     assert_eq!(c.variant, Some(Some(VariantId::new("v"))));
+    let c: EditContext =
+        serde_json::from_str(r#"{"target": "t", "lang": "de", "scope": "lang"}"#).unwrap();
+    assert_eq!(c.scope, arrangia_core::edit::EditScope::Lang);
 }
 
 #[test]

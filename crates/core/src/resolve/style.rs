@@ -222,6 +222,19 @@ impl<'a> StyleResolver<'a> {
         out
     }
 
+    /// Is automatic hyphenation on for a text element (element value,
+    /// else its style's, else off)?
+    pub fn hyphenate(&self, t: &TextProps) -> bool {
+        t.hyphenate
+            .or_else(|| {
+                t.style
+                    .as_ref()
+                    .and_then(|n| self.styles.text.get(n))
+                    .and_then(|s| s.hyphenate)
+            })
+            .unwrap_or(false)
+    }
+
     /// All span styles with concrete colours.
     pub fn spans(&self, d: &mut Diags) -> BTreeMap<String, ResolvedSpanStyle> {
         self.styles
@@ -291,6 +304,8 @@ mod tests {
             stroke: None,
             glow: None,
             shadow: None,
+            hyphenate: None,
+            langs: BTreeMap::new(),
         }
     }
 

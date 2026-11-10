@@ -106,6 +106,10 @@ elements:
       default_pivot:
         x: 0
         y: -627.24
+      font_fallbacks:
+        Inter:
+          - Noto Sans JP
+          - Noto Sans SC
       frame:
         auto_height: true
         margins: true
@@ -116,8 +120,8 @@ elements:
           y: 90
       key: hero.title
       kind: text
-      max_lines: 3
-      shrink_to: 52
+      max_lines: ~
+      shrink_to: 40
       style:
         color: "#1D1D1F"
         font: Inter

@@ -95,8 +95,27 @@ fn pages_target() {
     };
     assert_eq!(t.text.as_deref(), Some("Plane deine Beete **in Minuten**"));
     assert_eq!(t.text_lang.as_ref().unwrap().as_str(), "de");
+    // The `de` language override: box, style and size.
+    assert!(close(t.frame.rect.x, 60.0) && close(t.frame.rect.w, 880.0));
+    assert_eq!(t.style.weight, 500, "style `sub`");
+    assert!(close(t.style.size, 64.0));
+    assert!(t.hyphenate, "element value");
+    assert_eq!(t.font_fallbacks["Inter"], ["Noto Sans JP", "Noto Sans SC"]);
+    // English: no override.
+    let en = run(&p, "ios-phone-69", "en");
+    let ResolvedKind::Text(t) = &en.element("title-1").unwrap().props else {
+        panic!()
+    };
     assert!(close(t.frame.rect.x, 80.0) && close(t.frame.rect.w, 840.0));
     assert_eq!(t.style.weight, 800);
+    assert!(close(t.style.size, 72.0));
+    // French: `fit` and `hyphenate` replaced.
+    let fr = run(&p, "ios-phone-69", "fr");
+    let ResolvedKind::Text(t) = &fr.element("title-1").unwrap().props else {
+        panic!()
+    };
+    assert_eq!((t.shrink_to, t.max_lines), (Some(40.0), None));
+    assert!(!t.hyphenate);
     // Groups: the offset applies on top of the children's home page.
     let badge = s.element("badge").unwrap();
     assert!(close(badge.center.x, f.layout.page_x(2) + 820.0));
@@ -198,12 +217,12 @@ fn android_target_maps_devices_and_adapts_anchors() {
         hero.center.y,
         2172.0 + 2000.0 - 1000.0 * 2868.0 / 1320.0
     ));
-    // Title stays at the top.
+    // Title stays at the top; `de-AT` uses the `de` language override.
     let title = s.element("title-1").unwrap();
     let ResolvedKind::Text(t) = &title.props else {
         panic!()
     };
-    assert!(close(t.frame.rect.y, 140.0));
+    assert!(close(t.frame.rect.y, 120.0));
     assert_eq!(t.text_lang.as_ref().unwrap().as_str(), "de");
     // de-AT is not an available language; the chain still finds `de`.
     assert!(

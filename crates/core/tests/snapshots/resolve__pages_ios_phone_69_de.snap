@@ -77,7 +77,7 @@ elements:
     z: 0
   - center:
       x: 500
-      y: 1156.3636
+      y: 1146.3636
     clip:
       h: 2172.7273
       w: 1000
@@ -88,20 +88,25 @@ elements:
     page: 0
     pivot:
       x: 0
-      y: -938.6036
+      y: -946.3636
     props:
       align: center
       default_pivot:
         x: 0
-        y: -938.6036
+        y: -946.3636
+      font_fallbacks:
+        Inter:
+          - Noto Sans JP
+          - Noto Sans SC
       frame:
         auto_height: true
         margins: true
         rect:
-          h: 2032.7273
-          w: 840
-          x: 80
-          y: 140
+          h: 2052.7273
+          w: 880
+          x: 60
+          y: 120
+      hyphenate: true
       key: hero.title
       kind: text
       max_lines: 3
@@ -109,30 +114,20 @@ elements:
       style:
         color: "#1D1D1F"
         font: Inter
-        glow:
-          color: "#E8A33D"
-          opacity: 0.6
-          radius: 12
-          spread: 2
         italic: false
-        line_height: 1.08
+        line_height: 1.25
         shadow: []
-        size: 72
-        stroke:
-          color: "#FFFFFF"
-          join: round
-          position: outside
-          width: 3
+        size: 64
         tracking: 0
         transform: none
-        weight: 800
+        weight: 500
       text: Plane deine Beete **in Minuten**
       text_lang: de
       valign: top
     rotation: 0
     size:
-      x: 840
-      y: 2032.7273
+      x: 880
+      y: 2052.7273
     z: 0
   - center:
       x: 500
@@ -153,6 +148,10 @@ elements:
       default_pivot:
         x: 0
         y: -852.6136
+      font_fallbacks:
+        Inter:
+          - Noto Sans JP
+          - Noto Sans SC
       frame:
         auto_height: true
         margins: true

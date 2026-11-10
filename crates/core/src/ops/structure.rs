@@ -6,7 +6,8 @@ use std::collections::BTreeMap;
 
 use super::{Op, OpError, check_id, find_mut, invalid, list_mut};
 use crate::model::{
-    Element, ElementId, ElementKind, Lang, Project, StringKey, StripId, TargetId, VariantId,
+    ColorRef, Element, ElementId, ElementKind, ElementPatch, Lang, Project, StringKey, StripId,
+    StyleKind, TargetId, VariantId,
 };
 
 /// Visit every element of a list (and its descendants) mutably.
@@ -191,7 +192,7 @@ impl Project {
         element: ElementId,
         field: &str,
     ) -> Result<Op, OpError> {
-        if !crate::model::ElementPatch::is_field_name(field) {
+        if !ElementPatch::is_field_name(field) {
             return Err(invalid(format!("unknown element field `{field}`")));
         }
         let v = self.variant_mut(&strip, &variant)?;
@@ -230,6 +231,7 @@ impl Project {
         lang: Lang,
         index: Option<usize>,
         strings: BTreeMap<StringKey, String>,
+        lang_overrides: BTreeMap<ElementId, ElementPatch>,
     ) -> Result<Op, OpError> {
         if self.languages.is_available(lang.as_str()) {
             return Err(OpError::DuplicateId {
@@ -243,9 +245,16 @@ impl Project {
             )));
         }
         let index = super::check_index(index, self.languages.available.len())?;
+        let backup = self.clone();
         self.languages.available.insert(index, lang.clone());
         if !strings.is_empty() {
             self.strings.insert(lang.clone(), strings);
+        }
+        for (element, patch) in lang_overrides {
+            if let Err(e) = self.set_lang_override(element, lang.clone(), Some(patch)) {
+                *self = backup;
+                return Err(e);
+            }
         }
         Ok(Op::RemoveLanguage { lang })
     }
@@ -264,10 +273,21 @@ impl Project {
         self.check_languages_in_use(&languages)?;
         self.languages = languages;
         let strings = self.strings.remove(&lang).unwrap_or_default();
+        let mut lang_overrides = BTreeMap::new();
+        for s in &mut self.strips {
+            walk_mut(&mut s.elements, &mut |e| {
+                if let ElementKind::Text(t) = &mut e.kind
+                    && let Some(p) = t.langs.remove(&lang)
+                {
+                    lang_overrides.insert(e.id.clone(), p);
+                }
+            });
+        }
         Ok(Op::AddLanguage {
             lang,
             index: Some(index),
             strings,
+            lang_overrides,
         })
     }
 
@@ -330,4 +350,170 @@ impl Project {
         }
         Ok(Op::RenameStringKey { from: to, to: from })
     }
+
+    pub(super) fn rename_style(
+        &mut self,
+        kind: StyleKind,
+        from: String,
+        to: String,
+    ) -> Result<Op, OpError> {
+        check_id("style name", &to)?;
+        let st = &self.styles;
+        let (exists, taken) = match kind {
+            StyleKind::Color => (st.colors.contains_key(&from), st.colors.contains_key(&to)),
+            StyleKind::Text => (st.text.contains_key(&from), st.text.contains_key(&to)),
+            StyleKind::Span => (st.spans.contains_key(&from), st.spans.contains_key(&to)),
+            // A built-in name may be taken over (redefined) like any other.
+            StyleKind::Shadow => (st.shadows.contains_key(&from), st.shadows.contains_key(&to)),
+        };
+        if !exists {
+            return Err(invalid(format!("unknown style `{from}`")));
+        }
+        if from == to {
+            return Ok(Op::RenameStyle { kind, from, to });
+        }
+        if taken {
+            return Err(OpError::DuplicateId {
+                what: "style",
+                id: to,
+            });
+        }
+        if kind == StyleKind::Span
+            && self
+                .strings
+                .values()
+                .flat_map(|m| m.values())
+                .any(|v| v != &rename_span_markup(v, &to, "\u{0}"))
+        {
+            // `[to]` already appears (as an unknown span): undo could not
+            // tell the two apart.
+            return Err(invalid(format!(
+                "translations already use `[{to}]`; rename the span there first"
+            )));
+        }
+        let (f, t) = (from.as_str(), to.as_str());
+        let styles = &mut self.styles;
+        match kind {
+            StyleKind::Color => {
+                if let Some(v) = styles.colors.remove(f) {
+                    styles.colors.insert(to.clone(), v);
+                }
+                for c in styles.color_refs_mut() {
+                    rename_color(c, f, t);
+                }
+            }
+            StyleKind::Text => {
+                let v = styles.text.remove(f).unwrap_or_default();
+                styles.text.insert(to.clone(), v);
+            }
+            StyleKind::Span => {
+                let v = styles.spans.remove(f).unwrap_or_default();
+                styles.spans.insert(to.clone(), v);
+                for m in self.strings.values_mut() {
+                    for v in m.values_mut() {
+                        let renamed = rename_span_markup(v, f, t);
+                        if renamed != *v {
+                            *v = renamed;
+                        }
+                    }
+                }
+            }
+            StyleKind::Shadow => {
+                let v = styles.shadows.remove(f).unwrap_or_default();
+                styles.shadows.insert(to.clone(), v);
+                let refs = styles
+                    .text
+                    .values_mut()
+                    .map(|x| &mut x.shadow)
+                    .chain(styles.spans.values_mut().map(|x| &mut x.shadow));
+                for r in refs {
+                    if r.as_deref() == Some(f) {
+                        *r = Some(to.clone());
+                    }
+                }
+            }
+        }
+        for s in &mut self.strips {
+            if kind == StyleKind::Color {
+                for b in &mut s.backgrounds {
+                    for c in b.colors_mut() {
+                        rename_color(c, f, t);
+                    }
+                }
+            }
+            walk_mut(&mut s.elements, &mut |e| rename_element_refs(e, kind, f, t));
+            for v in s.variants.values_mut() {
+                for p in v.overrides.values_mut() {
+                    p.rename_style_refs(kind, f, t);
+                }
+            }
+        }
+        Ok(Op::RenameStyle {
+            kind,
+            from: to,
+            to: from,
+        })
+    }
+}
+
+fn rename_color(c: &mut ColorRef, from: &str, to: &str) {
+    if matches!(c, ColorRef::Named(n) if n == from) {
+        *c = ColorRef::Named(to.to_owned());
+    }
+}
+
+/// Style references of one element (not its children) and of its
+/// language overrides.
+fn rename_element_refs(e: &mut Element, kind: StyleKind, from: &str, to: &str) {
+    match kind {
+        StyleKind::Color => {
+            for c in e.color_refs_mut() {
+                rename_color(c, from, to);
+            }
+        }
+        StyleKind::Shadow => {
+            if let Some(s) = e.shadow_mut()
+                && s.as_deref() == Some(from)
+            {
+                *s = Some(to.to_owned());
+            }
+        }
+        StyleKind::Text => {
+            if let ElementKind::Text(t) = &mut e.kind
+                && t.style.as_deref() == Some(from)
+            {
+                t.style = Some(to.to_owned());
+            }
+        }
+        StyleKind::Span => {}
+    }
+    if let ElementKind::Text(t) = &mut e.kind {
+        for p in t.langs.values_mut() {
+            p.rename_style_refs(kind, from, to);
+        }
+    }
+}
+
+/// `text` with every span tag `[from]` replaced by `[to]` (escapes like
+/// `\[from]` stay literal, ADR 0003).
+pub(crate) fn rename_span_markup(text: &str, from: &str, to: &str) -> String {
+    let tag = format!("[{from}]");
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(c) = rest.chars().next() {
+        if c == '\\' {
+            let n = 1 + rest[1..].chars().next().map_or(0, char::len_utf8);
+            out.push_str(&rest[..n]);
+            rest = &rest[n..];
+        } else if rest.starts_with(&tag) {
+            out.push('[');
+            out.push_str(to);
+            out.push(']');
+            rest = &rest[tag.len()..];
+        } else {
+            out.push(c);
+            rest = &rest[c.len_utf8()..];
+        }
+    }
+    out
 }

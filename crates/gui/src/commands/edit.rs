@@ -17,7 +17,7 @@ use std::sync::Arc;
 
 use arrangia_core::Project;
 use arrangia_core::edit::{
-    EditContext, EditError, Editor, Handle, MoveOptions, Overlay, ResizeSpec, ZOrder,
+    EditContext, EditError, EditScope, Editor, Handle, MoveOptions, Overlay, ResizeSpec, ZOrder,
 };
 use arrangia_core::geometry::Vec2;
 use arrangia_core::model::{ElementId, VariantId};
@@ -88,6 +88,10 @@ pub struct ViewContext {
         skip_serializing_if = "Option::is_none"
     )]
     pub variant: Option<Option<String>>,
+    /// `lang`: field edits of text elements go into the language override
+    /// of `lang` (inspector toggle "only for <lang>"); default `all`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<EditScope>,
 }
 
 /// Declares an args struct with the view context fields
@@ -105,6 +109,8 @@ macro_rules! view_args {
             pub lang: Option<String>,
             #[serde(default, deserialize_with = "double_option")]
             pub variant: Option<Option<String>>,
+            #[serde(default)]
+            pub scope: Option<arrangia_core::edit::EditScope>,
             $($body)*
         }
 
@@ -115,6 +121,7 @@ macro_rules! view_args {
                     target: self.target.clone(),
                     lang: self.lang.clone(),
                     variant: self.variant.clone(),
+                    scope: self.scope,
                 }
             }
         }
@@ -154,7 +161,8 @@ impl ViewContext {
                 .ok_or_else(|| CommandError::not_found("the project has no targets"))?,
         };
         let lang = lang_or_default(session, self.lang.clone());
-        let ctx = EditContext::new(&target, &lang)?;
+        let mut ctx = EditContext::new(&target, &lang)?;
+        ctx.scope = self.scope.unwrap_or_default();
         Ok(match &self.variant {
             None => ctx,
             Some(None) => ctx.base(),
@@ -551,6 +559,10 @@ view_args! {
         /// YAML field name (e.g. `at`); default: the whole override.
         #[serde(default)]
         pub field: Option<String>,
+        /// Reset the language override of the view language instead of
+        /// the variant override.
+        #[serde(default)]
+        pub lang_override: bool,
     }
 }
 
@@ -685,7 +697,11 @@ pub fn edit_reset_override(app: &AppState, args: EditResetOverrideArgs) -> CmdRe
     };
     edit(app, &args.view(), label, |s, p, c| {
         let ops = with_editor(s, p, c, |e| {
-            e.reset_override(&args.id, args.field.as_deref())
+            if args.lang_override {
+                e.reset_lang_override(&args.id, args.field.as_deref())
+            } else {
+                e.reset_override(&args.id, args.field.as_deref())
+            }
         })?;
         Ok(Plan {
             ops,

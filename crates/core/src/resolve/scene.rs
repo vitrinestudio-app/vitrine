@@ -239,6 +239,13 @@ pub struct ResolvedText {
     /// Auto-fit lower bound (lu); `None` = no shrinking.
     pub shrink_to: Option<f64>,
     pub max_lines: Option<u32>,
+    /// Automatic hyphenation when the text does not fit at `shrink_to`
+    /// (style ← element ← language override; ADR 0009).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub hyphenate: bool,
+    /// Project font fallbacks (`styles.fonts`): family → fallback families.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub font_fallbacks: BTreeMap<String, Vec<String>>,
     /// Default rotation pivot as offset from the element centre (the frame
     /// centre): for auto-height boxes the centre of the laid-out content
     /// (ADR 0004, *Texts*), else zero. [`ResolvedElement::pivot`] is this

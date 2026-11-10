@@ -116,6 +116,17 @@ impl Fill {
             Self::Image { .. } => Vec::new(),
         }
     }
+
+    /// Mutable access to all colours of this fill (renaming a colour).
+    pub fn colors_mut(&mut self) -> Vec<&mut ColorRef> {
+        match self {
+            Self::Color { color } => vec![color],
+            Self::LinearGradient { stops, .. } | Self::RadialGradient { stops, .. } => {
+                stops.iter_mut().map(|s| &mut s.color).collect()
+            }
+            Self::Image { .. } => Vec::new(),
+        }
+    }
 }
 
 impl Serialize for Fill {

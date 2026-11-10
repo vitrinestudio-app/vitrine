@@ -103,6 +103,7 @@ elements:
         handle: w
     id: hero-phone
     kind: device
+    lock_page: true
     move_point:
       x: 1000
       y: 827.273

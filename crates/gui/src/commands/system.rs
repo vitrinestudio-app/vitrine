@@ -40,7 +40,11 @@ pub fn settings_get(app: &AppState, _: NoArgs) -> CmdResult<SettingsInfo> {
 }
 
 pub fn settings_set(app: &AppState, args: SettingsSetArgs) -> CmdResult<Settings> {
-    app.settings_store().update(&args.settings)
+    let settings = app.settings_store().update(&args.settings)?;
+    if let Ok(session) = app.session() {
+        session.set_system_font_fallback(settings.system_font_fallback);
+    }
+    Ok(settings)
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

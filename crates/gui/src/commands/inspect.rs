@@ -65,10 +65,21 @@ pub struct ElementInfo {
     /// The override of `variant` for this element.
     #[serde(rename = "override", skip_serializing_if = "Option::is_none")]
     pub r#override: Option<ElementPatch>,
-    /// Base with the override applied (what the view shows).
+    /// Base with the variant override, then the language override applied
+    /// (what the view shows).
     pub effective: Value,
     /// Fields set by the override (YAML names).
     pub overridden: Vec<&'static str>,
+    /// Language override(s) for the view language (texts), merged: `de`
+    /// then `de-AT` for `de-AT`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lang_override: Option<ElementPatch>,
+    /// Languages whose overrides apply, most general first.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub lang_override_langs: Vec<String>,
+    /// Fields set by the language override(s) (YAML names).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub lang_overridden: Vec<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<ElementText>,
 }
@@ -86,21 +97,26 @@ pub fn element_get(app: &AppState, args: ElementGetArgs) -> CmdResult<ElementInf
     let project = session.snapshot();
     let ctx = args.view().edit_context(&session, &project)?;
     let lang = ctx.lang.to_string();
-    let (variant, overridden) = with_editor(&session, &project, &ctx, |ed| {
-        // Checks that the element exists in the view's strip.
-        ed.kind(&args.id)
-            .ok_or_else(|| arrangia_core::edit::EditError::UnknownElement(args.id.clone()))?;
-        if project
-            .element(&args.id)
-            .is_none_or(|(s, _)| s.id != ed.strip().id)
-        {
-            return Err(arrangia_core::edit::EditError::WrongStrip {
-                element: args.id.clone(),
-                strip: ed.strip().id.to_string(),
-            });
-        }
-        Ok((ed.variant().cloned(), ed.overridden_fields(&args.id)))
-    })?;
+    let (variant, overridden, (lang_langs, lang_overridden)) =
+        with_editor(&session, &project, &ctx, |ed| {
+            // Checks that the element exists in the view's strip.
+            ed.kind(&args.id)
+                .ok_or_else(|| arrangia_core::edit::EditError::UnknownElement(args.id.clone()))?;
+            if project
+                .element(&args.id)
+                .is_none_or(|(s, _)| s.id != ed.strip().id)
+            {
+                return Err(arrangia_core::edit::EditError::WrongStrip {
+                    element: args.id.clone(),
+                    strip: ed.strip().id.to_string(),
+                });
+            }
+            Ok((
+                ed.variant().cloned(),
+                ed.overridden_fields(&args.id),
+                ed.lang_overridden_fields(&args.id),
+            ))
+        })?;
     let (strip, e) = project
         .element(&args.id)
         .ok_or_else(|| CommandError::not_found(format!("unknown element `{}`", args.id)))?;
@@ -112,6 +128,14 @@ pub fn element_get(app: &AppState, args: ElementGetArgs) -> CmdResult<ElementInf
     let effective = match &over {
         Some(p) => e.patched(p).map_or_else(|_| e.clone(), |(x, _)| x),
         None => e.clone(),
+    };
+    let lang_override = e
+        .text_props()
+        .and_then(|t| t.lang_override(&lang))
+        .map(|(_, p)| p);
+    let effective = match effective.for_lang(&lang) {
+        Ok(Some((_, x))) => x,
+        _ => effective,
     };
     let text = match &effective.kind {
         arrangia_core::model::ElementKind::Text(t) => {
@@ -146,6 +170,9 @@ pub fn element_get(app: &AppState, args: ElementGetArgs) -> CmdResult<ElementInf
         r#override: over,
         effective: element_json(&effective)?,
         overridden,
+        lang_override,
+        lang_override_langs: lang_langs.iter().map(ToString::to_string).collect(),
+        lang_overridden,
         text,
     })
 }
@@ -612,6 +639,68 @@ mod tests {
     fn last_undo(r: &Value) -> String {
         let u = r["history"]["undo"].as_array().unwrap();
         u.last().unwrap().as_str().unwrap().to_owned()
+    }
+
+    #[test]
+    fn language_scope_patch_reset_and_page_lock() {
+        let (_tmp, app) = app();
+        let de = json!({"target": "ios-iphone-69", "lang": "de", "scope": "lang"});
+        let with = |extra: Value| {
+            let mut v = de.clone();
+            v.as_object_mut()
+                .unwrap()
+                .extend(extra.as_object().unwrap().clone());
+            v
+        };
+        call(
+            &app,
+            "element_patch",
+            with(json!({"id": "title-plan", "patch": {"font_size": 70, "hyphenate": true}})),
+        );
+        let e = call(&app, "element_get", with(json!({"id": "title-plan"})));
+        assert_eq!(e["lang_overridden"], json!(["font_size", "hyphenate"]));
+        assert_eq!(e["lang_override_langs"], json!(["de"]));
+        assert_eq!(e["effective"]["font_size"], 70);
+        assert!(e["base"].get("font_size").is_none());
+        // English is unaffected.
+        let en = call(
+            &app,
+            "element_get",
+            json!({"target": "ios-iphone-69", "lang": "en", "id": "title-plan"}),
+        );
+        assert!(en["effective"].get("font_size").is_none());
+        assert!(en.get("lang_overridden").is_none());
+        // Not per language: refused.
+        assert!(
+            dispatch(
+                &app,
+                "element_patch",
+                with(json!({"id": "title-plan", "patch": {"rotation": 4}}))
+            )
+            .is_err()
+        );
+        // Per-field reset of the language override.
+        call(
+            &app,
+            "edit_reset_override",
+            with(json!({"id": "title-plan", "field": "font_size", "lang_override": true})),
+        );
+        let e = call(&app, "element_get", with(json!({"id": "title-plan"})));
+        assert_eq!(e["lang_overridden"], json!(["hyphenate"]));
+        // The page lock is a model field (written through the base).
+        call(
+            &app,
+            "element_patch",
+            json!({"target": "ios-iphone-69", "id": "phone-plan", "patch": {"lock_page": true}}),
+        );
+        let o = call(&app, "overlay", json!({"target": "ios-iphone-69"}));
+        let el = o["elements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["id"] == "phone-plan")
+            .unwrap();
+        assert_eq!(el["lock_page"], true);
     }
 
     #[test]

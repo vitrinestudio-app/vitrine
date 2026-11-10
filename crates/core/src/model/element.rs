@@ -15,13 +15,15 @@
 // Patch fields are `Option<Option<T>>` on purpose: unchanged / reset / set.
 #![allow(clippy::option_option)]
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use super::color::{ColorRef, Rgba};
 use super::common::{AnchorY, Clip, FitMode, Point, VisibleIn};
 use super::fill::Fill;
 use super::fmt::{double_option, flow_style, num};
-use super::ids::{ElementId, StringKey, is_valid_id};
+use super::ids::{ElementId, Lang, StringKey, is_valid_id};
 use super::style::{FrameStyle, Glow};
 
 /// An element on a strip.
@@ -32,6 +34,9 @@ pub struct Element {
     pub id: ElementId,
     /// Home page (0-based index). Always written to the file.
     pub page: u32,
+    /// Keep the home page when the element is dragged to another page
+    /// (edit intents default `keep_page` from it). Default `false`.
+    pub lock_page: bool,
     /// Position relative to the home page's top-left corner, in lu. For
     /// devices, images, shapes and free text boxes this is the centre of the
     /// element. Default `(0, 0)`.
@@ -117,6 +122,66 @@ pub struct TextProps {
     pub glow: Option<Glow>,
     /// Overrides the style shadow preset.
     pub shadow: Option<String>,
+    /// Automatic hyphenation (overrides the style), used only when the text
+    /// does not fit at `fit.shrink_to` (ADR 0009).
+    pub hyphenate: Option<bool>,
+    /// Per-language overrides (KONZEPT §5.1): language → patch with only
+    /// [`LANG_OVERRIDE_FIELDS`]. Applied after variant overrides; for
+    /// `de-AT` the `de` override applies first, then the `de-AT` one.
+    pub langs: BTreeMap<Lang, ElementPatch>,
+}
+
+/// Fields a per-language override of a text element may set: typography,
+/// box, fit and the size/position of a free box. Not the home page,
+/// rotation, pivot, layer, clip, opacity or visibility: those are layout
+/// decisions shared by all languages (`visible_in` covers languages).
+pub const LANG_OVERRIDE_FIELDS: [&str; 15] = [
+    "at",
+    "width",
+    "height",
+    "anchor_y",
+    "style",
+    "box",
+    "align",
+    "valign",
+    "fit",
+    "color",
+    "font_size",
+    "stroke",
+    "glow",
+    "shadow",
+    "hyphenate",
+];
+
+impl TextProps {
+    /// The language overrides that apply to `lang`, most general first:
+    /// those of its prefixes and its own (`de`, `de-AT` for `de-AT`).
+    pub fn lang_overrides_for(&self, lang: &str) -> Vec<(&Lang, &ElementPatch)> {
+        let mut out = Vec::new();
+        let mut l = lang;
+        loop {
+            if let Some(kv) = self.langs.get_key_value(l) {
+                out.push(kv);
+            }
+            match l.rfind('-') {
+                Some(i) => l = &l[..i],
+                None => break,
+            }
+        }
+        out.reverse();
+        out
+    }
+
+    /// The combined language override for `lang` (prefix overrides merged,
+    /// the most specific wins per field) and its most specific key.
+    pub fn lang_override(&self, lang: &str) -> Option<(&Lang, ElementPatch)> {
+        let list = self.lang_overrides_for(lang);
+        let key = list.last()?.0;
+        let patch = list
+            .iter()
+            .fold(ElementPatch::default(), |acc, (_, p)| acc.merged(p));
+        Some((key, patch))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -197,6 +262,8 @@ impl ElementKindTag {
                 "stroke",
                 "glow",
                 "shadow",
+                "hyphenate",
+                "langs",
             ],
             Self::Image => &["asset", "fit", "shadow"],
             Self::Shape => &["shape", "radius", "fill", "stroke", "shadow"],
@@ -206,8 +273,9 @@ impl ElementKindTag {
 }
 
 /// Fields every element kind has.
-const COMMON_FIELDS: [&str; 12] = [
+const COMMON_FIELDS: [&str; 13] = [
     "page",
+    "lock_page",
     "at",
     "width",
     "height",
@@ -419,6 +487,9 @@ macro_rules! element_fields {
                 #[serde(default, skip_serializing_if = "Option::is_none")]
                 pub $field: Option<$ty>,
             )*
+            /// Per-language overrides (text only; not patchable).
+            #[serde(default, skip_serializing_if = "Option::is_none")]
+            pub langs: Option<BTreeMap<Lang, ElementPatch>>,
             #[serde(default, skip_serializing_if = "Option::is_none")]
             pub children: Option<Vec<Element>>,
         }
@@ -439,6 +510,7 @@ macro_rules! element_fields {
             fn present_fields(&self) -> Vec<&'static str> {
                 let mut out = Vec::new();
                 $( if self.$field.is_some() { out.push(field_name(stringify!($field))); } )*
+                if self.langs.is_some() { out.push("langs"); }
                 if self.children.is_some() { out.push("children"); }
                 out
             }
@@ -512,12 +584,55 @@ macro_rules! element_fields {
     };
 }
 
+impl ElementPatch {
+    /// Rename style references set by this patch (`kind` `from` → `to`):
+    /// colours (`@name` in `color`, `fill`, `stroke`, `glow`), the text
+    /// style and the shadow preset.
+    pub fn rename_style_refs(&mut self, kind: super::style::StyleKind, from: &str, to: &str) {
+        use super::style::StyleKind;
+        let rename_str = |v: &mut Option<Option<String>>| {
+            if let Some(Some(s)) = v
+                && s == from
+            {
+                to.clone_into(s);
+            }
+        };
+        match kind {
+            StyleKind::Color => {
+                let named = |c: &mut ColorRef| {
+                    if matches!(c, ColorRef::Named(n) if n == from) {
+                        *c = ColorRef::Named(to.to_owned());
+                    }
+                };
+                if let Some(Some(c)) = &mut self.color
+                    && c.strip_prefix('@') == Some(from)
+                {
+                    *c = format!("@{to}");
+                }
+                if let Some(Some(f)) = &mut self.fill {
+                    f.colors_mut().into_iter().for_each(named);
+                }
+                if let Some(Some(s)) = &mut self.stroke {
+                    named(&mut s.color);
+                }
+                if let Some(Some(g)) = &mut self.glow {
+                    named(&mut g.color);
+                }
+            }
+            StyleKind::Text => rename_str(&mut self.style),
+            StyleKind::Shadow => rename_str(&mut self.shadow),
+            StyleKind::Span => {}
+        }
+    }
+}
+
 fn field_name(s: &'static str) -> &'static str {
     s.strip_prefix("r#").unwrap_or(s)
 }
 
 element_fields! {
     page: u32,
+    lock_page: bool,
     at: Point,
     #[serde(serialize_with = "num")]
     width: f64,
@@ -544,6 +659,7 @@ element_fields! {
     valign: VAlign,
     #[serde(serialize_with = "num")]
     font_size: f64,
+    hyphenate: bool,
     // image
     asset: String,
     // shape
@@ -581,6 +697,32 @@ fn check_device_color(v: &str) -> Result<(), String> {
     } else {
         check_name("device colour", v)
     }
+}
+
+/// A language override may only set [`LANG_OVERRIDE_FIELDS`], must not be
+/// empty and must give a valid text element.
+fn check_lang_override(w: &ElementWire, lang: &Lang, patch: &ElementPatch) -> Result<(), String> {
+    if patch.is_empty() {
+        return Err(format!(
+            "element `{}`: language override `{lang}` is empty",
+            w.id
+        ));
+    }
+    if let Some(f) = patch
+        .fields()
+        .into_iter()
+        .find(|f| !LANG_OVERRIDE_FIELDS.contains(f))
+    {
+        return Err(format!(
+            "element `{}`: field `{f}` cannot be overridden per language (`langs.{lang}`)",
+            w.id
+        ));
+    }
+    let mut base = w.clone();
+    base.langs = None;
+    patch.apply_to_wire(&mut base);
+    Element::try_from(base).map_err(|e| format!("language override `{lang}`: {e}"))?;
+    Ok(())
 }
 
 impl TryFrom<ElementWire> for Element {
@@ -668,6 +810,10 @@ impl TryFrom<ElementWire> for Element {
                 if let Some(g) = &w.glow {
                     g.check().map_err(|e| format!("element `{}`: {e}", w.id))?;
                 }
+                let langs = w.langs.clone().unwrap_or_default();
+                for (lang, patch) in &langs {
+                    check_lang_override(&w, lang, patch)?;
+                }
                 ElementKind::Text(TextProps {
                     text: w.text.clone().ok_or_else(|| missing("text"))?,
                     style: w.style.clone(),
@@ -685,6 +831,8 @@ impl TryFrom<ElementWire> for Element {
                     stroke: w.stroke.clone(),
                     glow: w.glow.clone(),
                     shadow: w.shadow.clone(),
+                    hyphenate: w.hyphenate,
+                    langs,
                 })
             }
             ElementKindTag::Image => ElementKind::Image(ImageProps {
@@ -712,6 +860,7 @@ impl TryFrom<ElementWire> for Element {
         Ok(Element {
             id: w.id,
             page: w.page.unwrap_or(0),
+            lock_page: w.lock_page.unwrap_or(false),
             at: w.at.unwrap_or_default(),
             width: w.width,
             height: w.height,
@@ -736,6 +885,7 @@ impl From<Element> for ElementWire {
             id: e.id,
             kind: ElementKindTag::Background,
             page: Some(e.page),
+            lock_page: e.lock_page.then_some(true),
             at: (!e.at.is_zero()).then_some(e.at),
             width: e.width,
             height: e.height,
@@ -756,6 +906,7 @@ impl From<Element> for ElementWire {
             align: None,
             valign: None,
             font_size: None,
+            hyphenate: None,
             asset: None,
             shape: None,
             radius: None,
@@ -769,6 +920,7 @@ impl From<Element> for ElementWire {
             clip: e.clip,
             visible: (!e.visible).then_some(false),
             visible_in: e.visible_in,
+            langs: None,
             children: None,
         };
         match e.kind {
@@ -802,6 +954,8 @@ impl From<Element> for ElementWire {
                 w.stroke = p.stroke;
                 w.glow = p.glow;
                 w.shadow = p.shadow;
+                w.hyphenate = p.hyphenate;
+                w.langs = (!p.langs.is_empty()).then_some(p.langs);
             }
             ElementKind::Image(p) => {
                 w.kind = ElementKindTag::Image;
@@ -905,6 +1059,38 @@ impl Element {
         }
     }
 
+    /// Mutable colour references of this element (not its children, not
+    /// its language overrides).
+    pub fn color_refs_mut(&mut self) -> Vec<&mut ColorRef> {
+        match &mut self.kind {
+            ElementKind::Background(p) => p.fill.colors_mut(),
+            ElementKind::Text(p) => {
+                let mut v: Vec<&mut ColorRef> = p.color.iter_mut().collect();
+                v.extend(p.stroke.as_mut().map(|s| &mut s.color));
+                v.extend(p.glow.as_mut().map(|g| &mut g.color));
+                v
+            }
+            ElementKind::Shape(p) => {
+                let mut v: Vec<&mut ColorRef> =
+                    p.fill.iter_mut().flat_map(Fill::colors_mut).collect();
+                v.extend(p.stroke.as_mut().map(|s| &mut s.color));
+                v
+            }
+            ElementKind::Device(_) | ElementKind::Image(_) | ElementKind::Group(_) => Vec::new(),
+        }
+    }
+
+    /// Mutable shadow preset reference of this element.
+    pub fn shadow_mut(&mut self) -> Option<&mut Option<String>> {
+        match &mut self.kind {
+            ElementKind::Device(p) => Some(&mut p.shadow),
+            ElementKind::Image(p) => Some(&mut p.shadow),
+            ElementKind::Shape(p) => Some(&mut p.shadow),
+            ElementKind::Text(p) => Some(&mut p.shadow),
+            _ => None,
+        }
+    }
+
     /// Shadow preset used by this element.
     pub fn shadow(&self) -> Option<&str> {
         match &self.kind {
@@ -914,6 +1100,38 @@ impl Element {
             ElementKind::Text(p) => p.shadow.as_deref(),
             _ => None,
         }
+    }
+
+    /// Text properties (text elements only).
+    pub fn text_props(&self) -> Option<&TextProps> {
+        match &self.kind {
+            ElementKind::Text(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    /// The element with its language override for `lang` applied (see
+    /// [`TextProps::lang_override`]); the matched key, or `None` if no
+    /// override applies. An override that does not apply cleanly is
+    /// returned as error.
+    pub fn for_lang(&self, lang: &str) -> Result<Option<(Lang, Element)>, String> {
+        let Some((key, patch)) = self.text_props().and_then(|t| t.lang_override(lang)) else {
+            return Ok(None);
+        };
+        let (e, _) = self.patched(&patch)?;
+        Ok(Some((key.clone(), e)))
+    }
+
+    /// The element once per language override (with that override applied).
+    pub fn lang_variants(&self) -> Vec<(Lang, Result<Element, String>)> {
+        self.text_props()
+            .map(|t| {
+                t.langs
+                    .iter()
+                    .map(|(l, p)| (l.clone(), self.patched(p).map(|(e, _)| e)))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// Text style used by this element.

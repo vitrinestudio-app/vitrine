@@ -246,6 +246,138 @@ fn emergency_break_is_reported() {
 }
 
 #[test]
+fn hyphenation_only_when_enabled_and_only_at_shrink_to() {
+    let mut l = layouter();
+    let style = headline(104.0);
+    let text = "**Mischkulturempfehlungen** für jedes Beet";
+    let input = |shrink: f32, lang: Option<&'static str>| TextInput {
+        fit: Fit {
+            shrink_to: Some(shrink),
+            max_lines: None,
+        },
+        hyphenate: lang,
+        ..TextInput::new(text, &style, 840.0)
+    };
+    // Off: emergency break as before.
+    let off = l.layout(&input(90.0, None));
+    assert!(matches!(
+        off.diagnostics.as_slice(),
+        [TextDiagnostic::EmergencyBreak { .. }]
+    ));
+    // On: hyphenated at `shrink_to` instead, with a visible hyphen.
+    let on = l.layout(&input(90.0, Some("de")));
+    assert!((on.font_size - 90.0).abs() < f32::EPSILON);
+    assert_eq!(
+        on.diagnostics,
+        [TextDiagnostic::Hyphenated {
+            words: vec!["Mischkulturempfehlungen".into()]
+        }],
+        "{:?}",
+        texts(&on)
+    );
+    assert_eq!(on.lines[0].end, LineEnd::SoftHyphen);
+    assert!(texts(&on)[0].ends_with('-'));
+    assert!(!on.overflow);
+    assert!(on.lines.iter().all(|line| line.width <= 840.01));
+    // Shrinking that suffices wins: no hyphenation although enabled.
+    let shrunk = l.layout(&input(40.0, Some("de")));
+    assert!(shrunk.diagnostics.is_empty(), "{:?}", shrunk.diagnostics);
+    assert!(texts(&shrunk).iter().all(|t| !t.ends_with('-')));
+    // A text that fits is never hyphenated.
+    let fits = l.layout(&TextInput {
+        hyphenate: Some("de"),
+        ..TextInput::new("Plane deine Beete", &style, 1200.0)
+    });
+    assert!(fits.diagnostics.is_empty(), "{:?}", fits.diagnostics);
+    // Languages without patterns behave as if hyphenation were off.
+    let ja = l.layout(&input(90.0, Some("ja")));
+    assert_eq!(ja.diagnostics, off.diagnostics);
+}
+
+#[test]
+fn hyphenation_leaves_english_and_manual_soft_hyphens_alone() {
+    let mut l = layouter();
+    let style = headline(72.0);
+    // English text that fits after shrinking is unaffected.
+    let en = l.layout(&TextInput {
+        fit: Fit {
+            shrink_to: Some(56.0),
+            max_lines: Some(2),
+        },
+        hyphenate: Some("en"),
+        ..TextInput::new("Plan your beds in minutes", &style, 840.0)
+    });
+    assert!(en.diagnostics.is_empty(), "{:?}", en.diagnostics);
+    // A word with a manual soft hyphen breaks only there.
+    let w = width_of(&mut l, "Mischkultur-", &style)
+        .max(width_of(&mut l, "empfehlungen", &style))
+        .max(width_of(&mut l, "Gartenplanungs-", &style))
+        .max(width_of(&mut l, "werkzeug", &style))
+        + 1.0;
+    let manual = l.layout(&TextInput {
+        fit: Fit {
+            shrink_to: Some(72.0),
+            max_lines: None,
+        },
+        hyphenate: Some("de"),
+        ..TextInput::new("Mischkultur\\-empfehlungen", &style, w)
+    });
+    assert_eq!(texts(&manual), ["Mischkultur-", "empfehlungen"]);
+    assert!(manual.diagnostics.is_empty(), "{:?}", manual.diagnostics);
+    // When hyphenation is needed, words with a manual soft hyphen keep it.
+    let mixed = l.layout(&TextInput {
+        fit: Fit {
+            shrink_to: Some(72.0),
+            max_lines: None,
+        },
+        hyphenate: Some("de"),
+        ..TextInput::new(
+            "Mischkultur\\-empfehlungen Gartenplanungswerkzeug",
+            &style,
+            w,
+        )
+    });
+    let lines = texts(&mixed);
+    assert_eq!(lines[0], "Mischkultur-", "{lines:?}");
+    assert_eq!(
+        mixed.diagnostics,
+        [TextDiagnostic::Hyphenated {
+            words: vec!["Gartenplanungswerkzeug".into()]
+        }],
+        "{lines:?}"
+    );
+}
+
+#[test]
+fn project_font_fallbacks_extend_the_chain() {
+    let mut l = layouter();
+    let style = headline(60.0);
+    let mut fb = BTreeMap::new();
+    fb.insert("Inter Display".to_owned(), vec!["Noto Sans JP".to_owned()]);
+    let out = l.layout(&TextInput {
+        fallbacks: Some(&fb),
+        ..TextInput::new("こんにちは", &style, 900.0)
+    });
+    // The fallback family is not installed: glyphs still missing (the
+    // unknown family is reported once per project by validation).
+    assert!(
+        !out.diagnostics
+            .iter()
+            .any(|d| matches!(d, TextDiagnostic::UnknownFont { .. }))
+    );
+    assert_eq!(
+        l.fonts()
+            .family_chain_with("Inter Display", &fb["Inter Display"]),
+        ["Inter Display", "Noto Sans JP", "Inter"]
+    );
+    assert!(
+        out.diagnostics
+            .iter()
+            .any(|d| matches!(d, TextDiagnostic::MissingGlyphs { .. }))
+    );
+}
+
+#[test]
 fn horizontal_alignment() {
     let mut l = layouter();
     let style = headline(60.0);

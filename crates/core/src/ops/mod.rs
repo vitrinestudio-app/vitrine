@@ -15,6 +15,7 @@
 //! reported by `core::validate`.
 
 mod history;
+mod lang;
 mod patch;
 mod structure;
 
@@ -28,8 +29,8 @@ pub use patch::{StripPatch, TargetPatch};
 use crate::catalog;
 use crate::model::{
     ColorRef, DeviceProps, Element, ElementId, ElementKind, ElementPatch, Lang, Languages, Project,
-    Region, StoreSlot, StringKey, Strip, StripId, Styles, Target, TargetId, Variant, VariantId,
-    is_valid_id,
+    Region, StoreSlot, StringKey, Strip, StripId, StyleKind, Styles, Target, TargetId, Variant,
+    VariantId, is_valid_id,
 };
 
 /// Overrides of removed elements, by variant, so that removal can be undone.
@@ -182,11 +183,16 @@ pub enum Op {
         index: Option<usize>,
         #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
         strings: BTreeMap<StringKey, String>,
+        /// Language overrides (`langs.<lang>`) of text elements, restored
+        /// when undoing a removal.
+        #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+        lang_overrides: BTreeMap<ElementId, ElementPatch>,
     },
-    /// Remove a language and its translations. Refused for the default
-    /// language and for languages still named by `visible_in` or a target's
-    /// `langs`. Explicit `languages.fallback` entries are kept (they may
-    /// name languages outside `available`).
+    /// Remove a language, its translations and the language overrides
+    /// for exactly this language. Refused for the default language and
+    /// for languages still named by `visible_in` or a target's `langs`.
+    /// Explicit `languages.fallback` entries are kept (they may name
+    /// languages outside `available`).
     RemoveLanguage {
         lang: Lang,
     },
@@ -195,6 +201,30 @@ pub enum Op {
     RenameStringKey {
         from: StringKey,
         to: StringKey,
+    },
+    /// Set (`Some`) or remove (`None`) the language override of a text
+    /// element (`langs.<lang>`, KONZEPT §5.1). Only
+    /// [`crate::model::LANG_OVERRIDE_FIELDS`] may be set; setting needs an
+    /// available language, removing works for any.
+    SetLangOverride {
+        element: ElementId,
+        lang: Lang,
+        patch: Option<ElementPatch>,
+    },
+    /// Remove one field from a language override; an override left empty
+    /// is removed.
+    ResetLangOverrideField {
+        element: ElementId,
+        lang: Lang,
+        field: String,
+    },
+    /// Rename a colour, text style, span style or shadow preset; every
+    /// reference follows (styles, elements, variant and language
+    /// overrides, strip backgrounds; span names in translations).
+    RenameStyle {
+        kind: StyleKind,
+        from: String,
+        to: String,
     },
 }
 
@@ -646,9 +676,21 @@ impl Project {
                 lang,
                 index,
                 strings,
-            } => self.add_language(lang, index, strings),
+                lang_overrides,
+            } => self.add_language(lang, index, strings, lang_overrides),
             Op::RemoveLanguage { lang } => self.remove_language(lang),
             Op::RenameStringKey { from, to } => self.rename_string_key(from, to),
+            Op::SetLangOverride {
+                element,
+                lang,
+                patch,
+            } => self.set_lang_override(element, lang, patch),
+            Op::ResetLangOverrideField {
+                element,
+                lang,
+                field,
+            } => self.reset_lang_override_field(element, lang, &field),
+            Op::RenameStyle { kind, from, to } => self.rename_style(kind, from, to),
         }
     }
 
@@ -755,6 +797,20 @@ impl Project {
     }
 
     fn check_element_own(
+        &self,
+        strip: &Strip,
+        e: &Element,
+        styles: &Styles,
+    ) -> Result<(), OpError> {
+        for (lang, patched) in e.lang_variants() {
+            let patched =
+                patched.map_err(|err| invalid(format!("language override `{lang}`: {err}")))?;
+            self.check_element_refs(strip, &patched, styles)?;
+        }
+        self.check_element_refs(strip, e, styles)
+    }
+
+    fn check_element_refs(
         &self,
         strip: &Strip,
         e: &Element,
@@ -889,6 +945,7 @@ impl Project {
             }
         }
         styles.check_effects().map_err(invalid)?;
+        styles.check_fonts().map_err(invalid)?;
         for strip in &self.strips {
             for b in &strip.backgrounds {
                 for c in b.colors() {
@@ -907,6 +964,15 @@ impl Project {
     }
 
     fn check_element_style_refs(e: &Element, styles: &Styles) -> Result<(), OpError> {
+        for (_, patched) in e.lang_variants() {
+            if let Ok(p) = patched {
+                Self::check_element_style_refs_own(&p, styles)?;
+            }
+        }
+        Self::check_element_style_refs_own(e, styles)
+    }
+
+    fn check_element_style_refs_own(e: &Element, styles: &Styles) -> Result<(), OpError> {
         for c in e.color_refs() {
             check_color(c, styles)?;
         }

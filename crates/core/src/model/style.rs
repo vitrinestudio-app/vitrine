@@ -34,6 +34,27 @@ pub struct Styles {
     /// Default device frame style of the project (default `detailed`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frame: Option<FrameStyle>,
+    /// Per-family font settings: fallback families for characters the
+    /// family lacks (CJK, Cyrillic …, KONZEPT §5.1), by family name.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub fonts: BTreeMap<String, FontSettings>,
+}
+
+/// Settings of one font family (`styles.fonts.<family>`).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(remote = "Self", deny_unknown_fields)]
+pub struct FontSettings {
+    /// Families tried in order for characters missing in this family,
+    /// before the default family (Inter).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fallback: Vec<String>,
+}
+flow_style!(FontSettings);
+
+/// Is `name` usable as a font family name (non-empty, no control
+/// characters, no leading/trailing spaces)?
+pub fn is_valid_family_name(name: &str) -> bool {
+    !name.is_empty() && name.trim() == name && !name.chars().any(char::is_control)
 }
 
 impl Styles {
@@ -95,6 +116,31 @@ impl Styles {
             .chain(self.spans.values().filter_map(|s| s.shadow.as_deref()))
     }
 
+    /// The fallback lists of `styles.fonts` (family → fallbacks), for
+    /// layout.
+    pub fn font_fallbacks(&self) -> BTreeMap<String, Vec<String>> {
+        self.fonts
+            .iter()
+            .filter(|(_, f)| !f.fallback.is_empty())
+            .map(|(k, f)| (k.clone(), f.fallback.clone()))
+            .collect()
+    }
+
+    /// Checks font family names in `fonts`.
+    pub fn check_fonts(&self) -> Result<(), String> {
+        for (family, f) in &self.fonts {
+            for name in std::iter::once(family).chain(&f.fallback) {
+                if !is_valid_family_name(name) {
+                    return Err(format!("invalid font family name `{name}`"));
+                }
+            }
+            if f.fallback.iter().any(|x| x.eq_ignore_ascii_case(family)) {
+                return Err(format!("font `{family}` lists itself as fallback"));
+            }
+        }
+        Ok(())
+    }
+
     /// Checks value ranges of the text effects (outline width, glow).
     pub fn check_effects(&self) -> Result<(), String> {
         let named = self
@@ -118,6 +164,20 @@ impl Styles {
         }
         Ok(())
     }
+}
+
+/// Which style map a name belongs to (renaming styles).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StyleKind {
+    /// `styles.colors`, referenced as `@name`.
+    Color,
+    /// `styles.text`.
+    Text,
+    /// `styles.spans`, referenced as `[name]…[/]` in translations.
+    Span,
+    /// `styles.shadows`.
+    Shadow,
 }
 
 /// Text transform.
@@ -171,6 +231,10 @@ pub struct TextStyle {
     /// Soft glow around the glyphs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub glow: Option<Glow>,
+    /// Automatic hyphenation when the text does not fit at
+    /// `fit.shrink_to` (ADR 0009). Default `false`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hyphenate: Option<bool>,
 }
 flow_style!(TextStyle);
 

@@ -106,6 +106,9 @@ pub struct FontsInfo {
     pub bundled: Vec<String>,
     /// Families from the open project's `fonts/` folder.
     pub project: Vec<String>,
+    /// System families loaded as last-resort fallback (app setting
+    /// `system_font_fallback`).
+    pub system: Vec<String>,
 }
 
 pub fn catalog_devices(_: &AppState, _: NoArgs) -> CmdResult<Vec<DeviceInfo>> {
@@ -186,19 +189,26 @@ pub fn catalog_fonts(app: &AppState, _: NoArgs) -> CmdResult<FontsInfo> {
         .into_iter()
         .map(str::to_owned)
         .collect();
-    let project = app.session().map_or_else(
-        |_| Vec::new(),
+    let (project, system) = app.session().map_or_else(
+        |_| (Vec::new(), Vec::new()),
         |s| {
-            s.render_context()
-                .fonts()
+            let ctx = s.render_context();
+            let fonts = ctx.fonts();
+            let system = fonts.system_fallbacks().to_vec();
+            let project = fonts
                 .families()
                 .into_iter()
-                .filter(|f| !bundled.iter().any(|b| b == f))
+                .filter(|f| !bundled.iter().any(|b| b == f) && !system.iter().any(|x| x == f))
                 .map(str::to_owned)
-                .collect()
+                .collect();
+            (project, system)
         },
     );
-    Ok(FontsInfo { bundled, project })
+    Ok(FontsInfo {
+        bundled,
+        project,
+        system,
+    })
 }
 
 #[cfg(test)]

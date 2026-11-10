@@ -128,6 +128,10 @@ finding_codes! {
     TextOverflow = "text_overflow",
     /// A word was broken without hyphen (add a soft hyphen `\-`).
     EmergencyBreak = "emergency_break",
+    /// Automatic hyphenation was needed to fit the text (info).
+    Hyphenated = "hyphenated",
+    /// `hyphenate` is on but no patterns are bundled for the language.
+    HyphenationUnavailable = "hyphenation_unavailable",
     /// Unbalanced inline markup, rendered literally.
     InvalidMarkup = "invalid_markup",
     UnknownFont = "unknown_font",
@@ -374,6 +378,40 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
                 ));
             }
         }
+    }
+    for (family, f) in &project.styles.fonts {
+        for fb in &f.fallback {
+            if !options.fonts.has_family(fb) {
+                out.push(root.finding(
+                    Severity::Warn,
+                    FindingCode::UnknownFont,
+                    false,
+                    None,
+                    None,
+                    format!(
+                        "fallback font `{fb}` of `{family}` is not available (put it into `fonts/`)"
+                    ),
+                ));
+            }
+        }
+    }
+    for s in &project.strips {
+        s.walk_elements(&mut |e| {
+            for l in e.text_props().into_iter().flat_map(|t| t.langs.keys()) {
+                if !project.languages.is_available(l.as_str()) {
+                    out.push(root.finding(
+                        Severity::Warn,
+                        FindingCode::LangNotAvailable,
+                        false,
+                        Some(e.page),
+                        Some(&e.id),
+                        format!(
+                            "language override `{l}` names a language not in `languages.available`"
+                        ),
+                    ));
+                }
+            }
+        });
     }
     for target in &project.targets {
         if options

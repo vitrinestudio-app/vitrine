@@ -24,6 +24,9 @@ pub struct ElementInfoArgs {
     pub lang: Option<String>,
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
+    /// Edit scope of the view (only used by gesture previews).
+    #[serde(default)]
+    pub scope: Option<arrangia_core::edit::EditScope>,
     pub id: String,
 }
 

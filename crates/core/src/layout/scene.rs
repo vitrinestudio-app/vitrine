@@ -181,6 +181,12 @@ pub fn layout_text(
             shrink_to: text.shrink_to.map(|v| v as f32),
             max_lines: text.max_lines,
         },
+        hyphenate: if text.hyphenate {
+            text.text_lang.as_ref().map(crate::model::Lang::as_str)
+        } else {
+            None
+        },
+        fallbacks: Some(&text.font_fallbacks),
     });
     let y = if text.frame.auto_height {
         let h = f64::from(layout.r#box.h);

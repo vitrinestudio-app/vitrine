@@ -7,11 +7,12 @@ use std::collections::BTreeMap;
 use arrangia_core::catalog;
 use arrangia_core::edit::{DefaultLanguageImpact, default_language_impact as impact};
 use arrangia_core::model::{
-    ColorRef, FrameStyle, Lang, Languages, Rgba, ShadowPreset, SpanStyle, Styles, TextStyle,
+    FontSettings, FrameStyle, Lang, Languages, Rgba, ShadowPreset, SpanStyle, StyleKind, Styles,
+    TextStyle,
 };
 use arrangia_core::ops::Op;
 use arrangia_core::resolve::FsAssets;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use super::edit::double_option;
 use super::{AppState, NoArgs};
@@ -53,6 +54,7 @@ pub fn language_add(app: &AppState, args: LanguageArgs) -> CmdResult<ApplyResult
             lang: lang.clone(),
             index: None,
             strings: BTreeMap::new(),
+            lang_overrides: BTreeMap::new(),
         }],
         Some(format!("Add language {lang}")),
     )
@@ -142,16 +144,6 @@ pub fn styles_get(app: &AppState, _: NoArgs) -> CmdResult<Styles> {
     Ok(app.session()?.with_project(|p| p.styles.clone()))
 }
 
-/// Which style map a rename applies to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum StyleKind {
-    Color,
-    Text,
-    Span,
-    Shadow,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StyleRename {
@@ -162,8 +154,9 @@ pub struct StyleRename {
 
 /// Partial update of the style tokens: per map `name → value` (`null`
 /// removes the entry), the frame style (`null` = default), and an
-/// optional rename (references inside the styles follow; references from
-/// elements make the op fail, as for a removal).
+/// optional rename (`Op::RenameStyle`: every reference follows – styles,
+/// elements, variant and language overrides, span tags in translations –
+/// in the same undo step).
 #[allow(clippy::option_option)]
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -176,6 +169,9 @@ pub struct StylesPatchArgs {
     pub spans: BTreeMap<String, Option<SpanStyle>>,
     #[serde(default)]
     pub shadows: BTreeMap<String, Option<ShadowPreset>>,
+    /// Per-family font settings (fallback lists).
+    #[serde(default)]
+    pub fonts: BTreeMap<String, Option<FontSettings>>,
     #[serde(default, deserialize_with = "double_option")]
     pub frame: Option<Option<String>>,
     #[serde(default)]
@@ -195,72 +191,46 @@ fn merge<T>(map: &mut BTreeMap<String, T>, patch: BTreeMap<String, Option<T>>) {
     }
 }
 
-fn rename_key<T>(map: &mut BTreeMap<String, T>, from: &str, to: &str) -> CmdResult<()> {
-    if map.contains_key(to) {
-        return Err(CommandError::invalid(format!("`{to}` exists already")));
-    }
-    let v = map
-        .remove(from)
-        .ok_or_else(|| CommandError::not_found(format!("unknown style `{from}`")))?;
-    map.insert(to.to_owned(), v);
-    Ok(())
-}
-
-fn rename_color_ref(c: &mut ColorRef, from: &str, to: &str) {
-    if matches!(c, ColorRef::Named(n) if n == from) {
-        *c = ColorRef::Named(to.to_owned());
-    }
-}
-
-fn apply_rename(styles: &mut Styles, r: &StyleRename) -> CmdResult<()> {
-    let (from, to) = (r.from.as_str(), r.to.as_str());
-    match r.kind {
-        StyleKind::Color => {
-            rename_key(&mut styles.colors, from, to)?;
-            for c in styles.color_refs_mut() {
-                rename_color_ref(c, from, to);
-            }
-        }
-        StyleKind::Text => rename_key(&mut styles.text, from, to)?,
-        StyleKind::Span => rename_key(&mut styles.spans, from, to)?,
-        StyleKind::Shadow => {
-            rename_key(&mut styles.shadows, from, to)?;
-            let refs = styles
-                .text
-                .values_mut()
-                .map(|t| &mut t.shadow)
-                .chain(styles.spans.values_mut().map(|s| &mut s.shadow));
-            for r in refs {
-                if r.as_deref() == Some(from) {
-                    *r = Some(to.to_owned());
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
 pub fn styles_patch(app: &AppState, args: StylesPatchArgs) -> CmdResult<ApplyResult> {
     let session = app.session()?;
-    let old = session.with_project(|p| p.styles.clone());
-    let mut styles = old.clone();
-    if let Some(r) = &args.rename {
-        apply_rename(&mut styles, r)?;
+    let mut ops = Vec::new();
+    let mut scratch = session.snapshot();
+    if let Some(r) = &args.rename
+        && r.from != r.to
+    {
+        let op = Op::RenameStyle {
+            kind: r.kind,
+            from: r.from.clone(),
+            to: r.to.clone(),
+        };
+        scratch.apply(op.clone())?;
+        ops.push(op);
     }
+    let old = scratch.styles.clone();
+    let mut styles = old.clone();
     merge(&mut styles.colors, args.colors);
     merge(&mut styles.text, args.text);
     merge(&mut styles.spans, args.spans);
     merge(&mut styles.shadows, args.shadows);
+    merge(&mut styles.fonts, args.fonts);
+    styles.fonts.retain(|_, f| !f.fallback.is_empty());
     if let Some(frame) = args.frame {
         styles.frame = frame
             .map(|f| FrameStyle::parse(&f))
             .transpose()
             .map_err(CommandError::invalid)?;
     }
-    if styles == old {
+    if styles != old {
+        ops.push(Op::SetStyles { styles });
+    }
+    if ops.is_empty() {
         return Ok(session.unchanged());
     }
-    session.apply_ops(vec![Op::SetStyles { styles }], Some("Edit styles".into()))
+    let label = match &args.rename {
+        Some(r) if ops.len() == 1 => format!("Rename {} to {}", r.from, r.to),
+        _ => "Edit styles".into(),
+    };
+    session.apply_ops(ops, Some(label))
 }
 
 #[cfg(test)]
@@ -350,6 +320,81 @@ mod tests {
 
         let r = call(&app, "styles_patch", json!({}));
         assert_eq!(r["applied"], false);
+    }
+
+    #[test]
+    fn renames_follow_element_references_in_one_step() {
+        let (_tmp, app) = opened();
+        let dir = std::path::PathBuf::from(
+            call(&app, "project_summary", Value::Null)["dir"]
+                .as_str()
+                .unwrap(),
+        );
+        let undo_depth = |app| {
+            call(app, "history_state", Value::Null)["undo"]
+                .as_array()
+                .map_or(0, Vec::len)
+        };
+        let before = undo_depth(&app);
+        // Text style, shadow preset, span style and colour used by
+        // elements and translations: renamed everywhere.
+        for (kind, from, to) in [
+            ("text", "headline", "title"),
+            ("shadow", "card", "lift"),
+            ("span", "green", "leafy"),
+            ("color", "deep", "forest"),
+        ] {
+            call(
+                &app,
+                "styles_patch",
+                json!({"rename": {"kind": kind, "from": from, "to": to}}),
+            );
+        }
+        let yaml = std::fs::read_to_string(dir.join("project.yaml")).unwrap();
+        assert!(!yaml.contains("style: headline"), "{yaml}");
+        assert!(yaml.contains("style: title"));
+        assert!(!yaml.contains("shadow: card") && yaml.contains("shadow: lift"));
+        assert!(!yaml.contains("@deep"));
+        let de = std::fs::read_to_string(dir.join("i18n").join("de.yaml")).unwrap();
+        assert!(
+            de.contains("[leafy]Zahlen[/]") && !de.contains("[green]"),
+            "{de}"
+        );
+        // Each rename is one undo step.
+        call(&app, "undo", Value::Null);
+        let s = call(&app, "styles_get", Value::Null);
+        assert!(s["colors"]["deep"].is_string());
+        assert_eq!(undo_depth(&app), before + 3);
+        assert!(
+            s["text"]["title"].is_object(),
+            "only the last rename undone"
+        );
+        // Rename + value change in one patch is still one step.
+        call(
+            &app,
+            "styles_patch",
+            json!({"rename": {"kind": "text", "from": "title", "to": "big"}, "text": {"big": {"size": 99}}}),
+        );
+        let s = call(&app, "styles_get", Value::Null);
+        assert_eq!(s["text"]["big"]["size"], 99);
+        call(&app, "undo", Value::Null);
+        let s = call(&app, "styles_get", Value::Null);
+        assert!(s["text"]["title"].is_object() && s["text"].get("big").is_none());
+        // Font fallbacks.
+        call(
+            &app,
+            "styles_patch",
+            json!({"fonts": {"Inter": {"fallback": ["Noto Sans JP"]}}}),
+        );
+        let s = call(&app, "styles_get", Value::Null);
+        assert_eq!(s["fonts"]["Inter"]["fallback"], json!(["Noto Sans JP"]));
+        call(
+            &app,
+            "styles_patch",
+            json!({"fonts": {"Inter": {"fallback": []}}}),
+        );
+        let s = call(&app, "styles_get", Value::Null);
+        assert!(s.get("fonts").is_none(), "{s}");
     }
 
     #[test]

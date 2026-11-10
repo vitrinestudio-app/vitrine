@@ -308,7 +308,7 @@ fn resolve_diagnostics(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mu
 }
 
 /// Text checks; returns the text's canvas bounds (rotated, unclipped).
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 fn text_checks(
     s: &Scope<'_>,
     scene: &ResolvedScene,
@@ -363,6 +363,7 @@ fn text_checks(
             TextDiagnostic::UnknownFont { .. } => (Severity::Warn, C::UnknownFont),
             TextDiagnostic::MissingGlyphs { .. } => (Severity::Warn, C::MissingGlyphs),
             TextDiagnostic::EmergencyBreak { .. } => (Severity::Warn, C::EmergencyBreak),
+            TextDiagnostic::Hyphenated { .. } => (Severity::Info, C::Hyphenated),
             d if d.is_overflow() => {
                 overflow.push(d.to_string());
                 continue;
@@ -385,6 +386,16 @@ fn text_checks(
                 l.font_size
             ),
         );
+        if t.hyphenate
+            && let Some(tl) = &t.text_lang
+            && crate::layout::hyphen::pattern_set_for(tl.as_str()).is_none()
+        {
+            push(
+                Severity::Info,
+                C::HyphenationUnavailable,
+                format!("no hyphenation patterns for `{tl}`; `hyphenate` has no effect"),
+            );
+        }
     }
     let content = placed.content_rect();
     if content.w <= 0.0 || content.h <= 0.0 {

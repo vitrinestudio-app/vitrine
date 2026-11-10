@@ -13,7 +13,7 @@ use arrangia_core::Project;
 use arrangia_core::io;
 use arrangia_core::model::{
     Aspect, ElementId, ElementPatch, Fill, Lang, PixelSize, Point, Rgba, StringKey, Strip, StripId,
-    Target, TargetId, VariantId,
+    StyleKind, Target, TargetId, VariantId,
 };
 use arrangia_core::ops::{History, Op, OpError, StripPatch, TargetPatch};
 
@@ -653,7 +653,7 @@ mod prop {
     fn make_op(p: &Project, kind: u8, a: u32, b: u32, x: f64) -> Option<Op> {
         let pick = Pick::new(p);
         let page = b % 6; // sometimes out of range on purpose
-        Some(match kind % 26 {
+        Some(match kind % 29 {
             0 => {
                 let (_, id, is_text) = pick.element(a)?;
                 let yaml = match b % 7 {
@@ -898,11 +898,49 @@ mod prop {
                 lang: Lang::new(["it", "nl", "de", "pt-BR"][a as usize % 4]),
                 index: (b % 2 == 0).then_some(b as usize % 3),
                 strings: Default::default(),
+                lang_overrides: Default::default(),
             },
             24 => Op::RemoveLanguage { lang: pick.lang(a) },
             25 => Op::RenameStringKey {
                 from: StringKey::new(["hero.title", "hero.sub", "nope"][a as usize % 3]),
                 to: StringKey::new(["hero.headline", "hero.sub", "x.y"][b as usize % 3]),
+            },
+            26 => {
+                let (_, id, _) = pick.element(a)?;
+                let yaml = match b % 5 {
+                    0 => format!("{{ font_size: {} }}", x.abs() + 1.0),
+                    1 => "{ style: sub, box: { top: 10 } }".into(),
+                    2 => "{ hyphenate: true, fit: { shrink_to: 20 } }".into(),
+                    3 => "{ rotation: 4 }".into(), // not allowed per language
+                    _ => "{ style: nope }".into(),
+                };
+                Op::SetLangOverride {
+                    element: id.clone(),
+                    lang: if a % 5 == 0 {
+                        Lang::new("ja")
+                    } else {
+                        pick.lang(b)
+                    },
+                    patch: (a % 4 != 0).then(|| io::from_yaml(&yaml).unwrap()),
+                }
+            }
+            27 => {
+                let (_, id, _) = pick.element(a)?;
+                Op::ResetLangOverrideField {
+                    element: id.clone(),
+                    lang: pick.lang(b),
+                    field: ["box", "font_size", "style", "fit", "nope"][b as usize % 5].into(),
+                }
+            }
+            28 => Op::RenameStyle {
+                kind: [
+                    StyleKind::Color,
+                    StyleKind::Text,
+                    StyleKind::Span,
+                    StyleKind::Shadow,
+                ][a as usize % 4],
+                from: ["accent", "headline", "soft", "primary", "sub"][b as usize % 5].into(),
+                to: ["renamed", "text", "hard", "accent2"][a as usize % 4].into(),
             },
             _ => {
                 let mut languages = p.languages.clone();
@@ -1228,6 +1266,7 @@ fn languages_default_add_remove() {
             lang: Lang::new("it"),
             index: Some(1),
             strings: Default::default(),
+            lang_overrides: Default::default(),
         },
     );
     assert_eq!(p.languages.available[1].as_str(), "it");
@@ -1331,4 +1370,195 @@ fn save_deletes_translation_file_of_removed_language() {
     let back = Project::load(dir.path()).unwrap();
     assert!(!back.strings.contains_key("de"));
     assert!(back.strings.contains_key("en"));
+}
+
+#[test]
+fn language_overrides_set_reset_and_follow_language_removal() {
+    let mut p = sample();
+    let title = ElementId::new("title-1");
+    let text = |p: &Project| {
+        p.element("title-1")
+            .unwrap()
+            .1
+            .text_props()
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(text(&p).langs.len(), 2, "sample has de + fr overrides");
+
+    // Set (merge is the caller's job: the op replaces the patch).
+    apply_and_undo(
+        &mut p,
+        Op::SetLangOverride {
+            element: title.clone(),
+            lang: Lang::new("es"),
+            patch: Some(patch("{ font_size: 50, align: left }")),
+        },
+    );
+    assert_eq!(
+        text(&p).langs[&Lang::new("es")].fields(),
+        ["align", "font_size"]
+    );
+
+    // Refused: unknown language, field not allowed per language, unknown
+    // style, non-text element.
+    for (lang, yaml, id) in [
+        ("ja", "{ font_size: 50 }", "title-1"),
+        ("es", "{ rotation: 5 }", "title-1"),
+        ("es", "{ page: 1 }", "title-1"),
+        ("es", "{ style: nope }", "title-1"),
+        ("es", "{ color: \"@nope\" }", "title-1"),
+        ("es", "{ width: 10 }", "hero-phone"),
+    ] {
+        let before = p.clone();
+        assert!(
+            p.apply(Op::SetLangOverride {
+                element: ElementId::new(id),
+                lang: Lang::new(lang),
+                patch: Some(patch(yaml)),
+            })
+            .is_err(),
+            "{lang} {yaml} {id}"
+        );
+        assert_eq!(p, before);
+    }
+
+    // Reset one field; the last field removes the override.
+    apply_and_undo(
+        &mut p,
+        Op::ResetLangOverrideField {
+            element: title.clone(),
+            lang: Lang::new("es"),
+            field: "align".into(),
+        },
+    );
+    apply_and_undo(
+        &mut p,
+        Op::ResetLangOverrideField {
+            element: title.clone(),
+            lang: Lang::new("es"),
+            field: "font_size".into(),
+        },
+    );
+    assert!(!text(&p).langs.contains_key("es"));
+    assert!(
+        p.apply(Op::ResetLangOverrideField {
+            element: title.clone(),
+            lang: Lang::new("es"),
+            field: "font_size".into(),
+        })
+        .is_err()
+    );
+
+    // Removing a style used only by a language override is refused.
+    let mut styles = p.styles.clone();
+    styles.text.remove("sub");
+    p.apply(Op::UpdateElement {
+        id: ElementId::new("sub-1"),
+        patch: patch("{ style: headline }"),
+    })
+    .unwrap();
+    assert!(matches!(
+        p.apply(Op::SetStyles { styles }),
+        Err(OpError::StillReferenced { .. })
+    ));
+
+    // Removing a language takes its overrides along; undo restores them.
+    let inv = apply_and_undo(
+        &mut p,
+        Op::RemoveLanguage {
+            lang: Lang::new("fr"),
+        },
+    );
+    let Op::AddLanguage { lang_overrides, .. } = inv else {
+        panic!("{inv:?}")
+    };
+    assert_eq!(lang_overrides.keys().collect::<Vec<_>>(), [&title]);
+    assert!(!text(&p).langs.contains_key("fr"));
+}
+
+#[test]
+fn rename_style_updates_every_reference() {
+    let mut p = sample();
+    // Use the colour from a variant override and a language override too.
+    p.apply(Op::SetVariantOverride {
+        strip: StripId::new("phone"),
+        variant: VariantId::new("tablet-landscape"),
+        element: ElementId::new("sub-1"),
+        patch: Some(patch("{ visible: false, color: \"@accent\" }")),
+    })
+    .unwrap();
+    p.apply(Op::SetLangOverride {
+        element: ElementId::new("title-1"),
+        lang: Lang::new("es"),
+        patch: Some(patch("{ color: \"@accent\", style: headline }")),
+    })
+    .unwrap();
+    apply_and_undo(
+        &mut p,
+        Op::RenameStyle {
+            kind: StyleKind::Color,
+            from: "accent".into(),
+            to: "highlight".into(),
+        },
+    );
+    let yaml = io::to_yaml(&p).unwrap();
+    assert!(!yaml.contains("@accent"), "{yaml}");
+    assert!(yaml.contains("fill: \"@highlight\""), "{yaml}");
+    assert!(
+        yaml.contains("color: \"@highlight\", style: headline"),
+        "{yaml}"
+    );
+
+    apply_and_undo(
+        &mut p,
+        Op::RenameStyle {
+            kind: StyleKind::Text,
+            from: "headline".into(),
+            to: "title".into(),
+        },
+    );
+    let yaml = io::to_yaml(&p).unwrap();
+    assert!(!yaml.contains("headline"), "{yaml}");
+
+    apply_and_undo(
+        &mut p,
+        Op::RenameStyle {
+            kind: StyleKind::Shadow,
+            from: "soft".into(),
+            to: "lift".into(),
+        },
+    );
+    let (_, phone) = p.element("hero-phone").unwrap();
+    assert_eq!(phone.shadow(), Some("lift"));
+    assert_eq!(p.styles.spans["accent"].shadow.as_deref(), Some("lift"));
+
+    apply_and_undo(
+        &mut p,
+        Op::RenameStyle {
+            kind: StyleKind::Span,
+            from: "accent".into(),
+            to: "pop".into(),
+        },
+    );
+    assert_eq!(
+        p.string("de", "hero.sub"),
+        Some("Mit [pop]Mischkultur[/] zu mehr Ernte")
+    );
+
+    // Taken names and unknown styles are refused.
+    for (kind, from, to) in [
+        (StyleKind::Color, "primary", "text"),
+        (StyleKind::Color, "nope", "x"),
+        (StyleKind::Text, "title", "sub"),
+    ] {
+        assert!(
+            p.apply(Op::RenameStyle {
+                kind,
+                from: from.into(),
+                to: to.into()
+            })
+            .is_err()
+        );
+    }
 }

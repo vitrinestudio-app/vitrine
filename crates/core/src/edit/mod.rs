@@ -41,8 +41,8 @@ pub use overlay::{
 use crate::geometry::{Rect, Vec2};
 use crate::model::fmt::double_option;
 use crate::model::{
-    Element, ElementId, ElementKind, ElementKindTag, ElementPatch, GroupProps, Lang, Point,
-    Project, Strip, StripId, Target, TextBox, VariantId,
+    Element, ElementId, ElementKind, ElementKindTag, ElementPatch, GroupProps,
+    LANG_OVERRIDE_FIELDS, Lang, Point, Project, Strip, StripId, Target, TextBox, VariantId,
 };
 use crate::ops::{Op, OpError};
 use crate::resolve::{
@@ -73,6 +73,32 @@ pub struct EditContext {
         skip_serializing_if = "Option::is_none"
     )]
     pub variant: Option<Option<VariantId>>,
+    /// Where field edits of **text** elements go: all languages (base or
+    /// variant, default) or a language override for `lang` only.
+    #[serde(default, skip_serializing_if = "EditScope::is_all")]
+    pub scope: EditScope,
+}
+
+/// Scope of text edits (ADR 0009).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EditScope {
+    /// Base element or variant override.
+    #[default]
+    All,
+    /// The language override of the view language (text elements only;
+    /// other kinds are edited as with `all`).
+    Lang,
+}
+
+impl EditScope {
+    #[allow(
+        clippy::trivially_copy_pass_by_ref,
+        reason = "serde skip_serializing_if"
+    )]
+    fn is_all(&self) -> bool {
+        *self == Self::All
+    }
 }
 
 impl EditContext {
@@ -82,7 +108,15 @@ impl EditContext {
             target: crate::model::TargetId::parse(target).map_err(EditError::Invalid)?,
             lang: Lang::parse(lang).map_err(EditError::Invalid)?,
             variant: None,
+            scope: EditScope::All,
         })
+    }
+
+    /// Write text edits to the language override of `lang`.
+    #[must_use]
+    pub fn lang_only(mut self) -> Self {
+        self.scope = EditScope::Lang;
+        self
     }
 
     /// Edit the base elements (no variant).
@@ -225,6 +259,12 @@ pub enum ZOrder {
 enum WriteTo {
     Base,
     Variant(VariantId),
+    /// The language override `lang` of a text element, seen through
+    /// `variant`.
+    Lang {
+        variant: Option<VariantId>,
+        lang: Lang,
+    },
 }
 
 /// Which point of an element the position solver steers.
@@ -414,6 +454,7 @@ pub struct Editor<'a> {
     strip: &'a Strip,
     lang: Lang,
     variant: Option<VariantId>,
+    scope: EditScope,
     /// The project as edits see it: the target shows `variant`.
     view: Project,
 }
@@ -470,6 +511,7 @@ impl<'a> Editor<'a> {
             strip,
             lang: ctx.lang.clone(),
             variant,
+            scope: ctx.scope,
             view,
         })
     }
@@ -494,8 +536,42 @@ impl<'a> Editor<'a> {
         )?)
     }
 
-    fn write_to(&self) -> WriteTo {
+    /// Where fields of element `id` are written: the language override
+    /// for texts in [`EditScope::Lang`], else the variant or the base.
+    fn write_to(&self, id: &str) -> WriteTo {
+        let is_text = self
+            .strip
+            .element(id)
+            .is_some_and(|e| matches!(e.kind, ElementKind::Text(_)));
+        if self.scope == EditScope::Lang && is_text {
+            return WriteTo::Lang {
+                variant: self.variant.clone(),
+                lang: self.lang.clone(),
+            };
+        }
         self.variant.clone().map_or(WriteTo::Base, WriteTo::Variant)
+    }
+
+    /// Does `id` write to a language override?
+    fn writes_lang(&self, id: &str) -> bool {
+        matches!(self.write_to(id), WriteTo::Lang { .. })
+    }
+
+    /// A language override can only take [`LANG_OVERRIDE_FIELDS`].
+    fn check_lang_fields(&self, id: &str, patch: &ElementPatch) -> Result<(), EditError> {
+        if !self.writes_lang(id) {
+            return Ok(());
+        }
+        match patch
+            .fields()
+            .into_iter()
+            .find(|f| !LANG_OVERRIDE_FIELDS.contains(f))
+        {
+            Some(f) => Err(EditError::Unsupported(format!(
+                "`{f}` cannot be set for one language only"
+            ))),
+            None => Ok(()),
+        }
     }
 
     // ----- lookups -----------------------------------------------------------
@@ -523,14 +599,26 @@ impl<'a> Editor<'a> {
             .element(id)
             .cloned()
             .unwrap_or_else(|| unreachable!("element checked by the caller"));
-        match to {
-            WriteTo::Base => e,
-            WriteTo::Variant(v) => s
-                .variants
+        let with_variant = |e: Element, v: &VariantId| {
+            s.variants
                 .get(v)
                 .and_then(|v| v.overrides.get(id))
                 .and_then(|p| e.patched(p).ok())
-                .map_or(e, |(p, _)| p),
+                .map_or_else(|| e.clone(), |(p, _)| p)
+        };
+        match to {
+            WriteTo::Base => e,
+            WriteTo::Variant(v) => with_variant(e, v),
+            WriteTo::Lang { variant, lang } => {
+                let e = match variant {
+                    Some(v) => with_variant(e, v),
+                    None => e,
+                };
+                match e.for_lang(lang.as_str()) {
+                    Ok(Some((_, p))) => p,
+                    _ => e,
+                }
+            }
         }
     }
 
@@ -540,7 +628,7 @@ impl<'a> Editor<'a> {
             self.project,
             &self.strip.id,
             id,
-            &self.write_to(),
+            &self.write_to(id),
         ))
     }
 
@@ -566,6 +654,19 @@ impl<'a> Editor<'a> {
                     patch: Some(existing.merged(&patch)),
                 }
             }
+            WriteTo::Lang { lang, .. } => {
+                let existing = project
+                    .element(id.as_str())
+                    .and_then(|(_, e)| e.text_props())
+                    .and_then(|t| t.langs.get(lang))
+                    .cloned()
+                    .unwrap_or_default();
+                Op::SetLangOverride {
+                    element: id.clone(),
+                    lang: lang.clone(),
+                    patch: Some(existing.merged(&patch)),
+                }
+            }
         }
     }
 
@@ -573,7 +674,7 @@ impl<'a> Editor<'a> {
         if patch.is_empty() {
             return Vec::new();
         }
-        vec![self.write_op(self.project, id, patch, &self.write_to())]
+        vec![self.write_op(self.project, id, patch, &self.write_to(id.as_str()))]
     }
 
     fn is_group(e: &Element) -> bool {
@@ -741,14 +842,16 @@ impl<'a> Editor<'a> {
 
     /// Move element `id` so that its [`move_point`] (bounding box centre
     /// for groups) lands on canvas point `point` in this target. The home
-    /// page follows the point unless `keep_page`; groups keep theirs (it
-    /// only matters for empty groups). Page backgrounds only change their
-    /// home page.
+    /// page follows the point unless `keep_page` or the element's
+    /// `lock_page`; groups keep theirs (it only matters for empty groups),
+    /// as do texts edited in a language override (the home page is shared
+    /// by all languages). Page backgrounds only change their home page.
     pub fn move_to(&self, id: &str, point: Vec2, opts: MoveOptions) -> Result<Vec<Op>, EditError> {
         let e = self.effective(id)?;
         let scene = self.scene()?;
         let mut fixed = ElementPatch::default();
-        if !opts.keep_page && !Self::is_group(&e) {
+        let keep = opts.keep_page || e.lock_page || self.writes_lang(id);
+        if !keep && !Self::is_group(&e) {
             let page = Self::page_at(&scene, point.x);
             if page != e.page {
                 fixed.page = Some(Some(page));
@@ -763,7 +866,7 @@ impl<'a> Editor<'a> {
             &fixed,
             Probe::Move,
             point,
-            &self.write_to(),
+            &self.write_to(id),
         )
     }
 
@@ -882,7 +985,7 @@ impl<'a> Editor<'a> {
             &patch,
             Probe::Handle(fixed),
             goal,
-            &self.write_to(),
+            &self.write_to(id),
         )
     }
 
@@ -900,7 +1003,7 @@ impl<'a> Editor<'a> {
                     self.project,
                     &self.strip.id,
                     g.id.as_str(),
-                    &self.write_to(),
+                    &self.write_to(g.id.as_str()),
                 )
                 .rotation
             })
@@ -923,6 +1026,11 @@ impl<'a> Editor<'a> {
         let own = clean(normalize_angle(degrees - self.ancestors_rotation(id)));
         if (own - e.rotation).abs() < 1e-12 {
             return Ok(Vec::new());
+        }
+        if self.writes_lang(id) {
+            return Err(EditError::Unsupported(
+                "the rotation cannot be set for one language only".into(),
+            ));
         }
         Ok(self.write(
             &e.id,
@@ -979,6 +1087,7 @@ impl<'a> Editor<'a> {
             pivot: Some(new),
             ..ElementPatch::default()
         };
+        self.check_lang_fields(id, &fixed)?;
         if !keep_visual_position {
             return Ok(self.write(&e.id, fixed));
         }
@@ -989,7 +1098,7 @@ impl<'a> Editor<'a> {
             &fixed,
             Probe::Move,
             goal,
-            &self.write_to(),
+            &self.write_to(id),
         )
     }
 
@@ -1019,6 +1128,7 @@ impl<'a> Editor<'a> {
             page: Some(Some(page)),
             ..ElementPatch::default()
         };
+        self.check_lang_fields(id, &fixed)?;
         if !keep_visual_position
             || Self::is_group(&e)
             || matches!(e.kind, ElementKind::Background(_))
@@ -1032,7 +1142,7 @@ impl<'a> Editor<'a> {
             &fixed,
             Probe::Move,
             goal,
-            &self.write_to(),
+            &self.write_to(id),
         )
     }
 
@@ -1178,6 +1288,7 @@ impl<'a> Editor<'a> {
         let group = Element {
             id: gid.clone(),
             page,
+            lock_page: false,
             at: Point::ZERO,
             width: None,
             height: None,
@@ -1231,6 +1342,7 @@ impl<'a> Editor<'a> {
             strip: self.strip,
             lang: self.lang.clone(),
             variant: None,
+            scope: EditScope::All,
             view: {
                 let mut v = self.project.clone();
                 if let Some(t) = v.targets.iter_mut().find(|t| t.id == self.target.id) {
@@ -1284,6 +1396,7 @@ impl<'a> Editor<'a> {
     /// valid for its kind (e.g. no `model` on a text).
     pub fn patch(&self, id: &str, patch: &ElementPatch) -> Result<Vec<Op>, EditError> {
         let e = self.effective(id)?;
+        self.check_lang_fields(id, patch)?;
         let (patched, _) = e
             .patched(patch)
             .map_err(|err| EditError::Invalid(format!("element `{id}`: {err}")))?;
@@ -1372,6 +1485,64 @@ impl<'a> Editor<'a> {
             None => Ok(Vec::new()),
             Some(v) => reset_override(self.project, &self.strip.id, v, &e.id, field),
         }
+    }
+
+    /// Reset field `field` of the language override that sets it for the
+    /// view language (the most specific of `de`, `de-AT` …), or without a
+    /// field the view language's own override. Empty if nothing is set.
+    pub fn reset_lang_override(&self, id: &str, field: Option<&str>) -> Result<Vec<Op>, EditError> {
+        let e = self.base_element(id)?;
+        let Some(t) = e.text_props() else {
+            return Ok(Vec::new());
+        };
+        let Some(f) = field else {
+            return Ok(if t.langs.contains_key(self.lang.as_str()) {
+                vec![Op::SetLangOverride {
+                    element: e.id.clone(),
+                    lang: self.lang.clone(),
+                    patch: None,
+                }]
+            } else {
+                Vec::new()
+            });
+        };
+        if !ElementPatch::is_field_name(f) {
+            return Err(EditError::Invalid(format!("unknown element field `{f}`")));
+        }
+        Ok(t.lang_overrides_for(self.lang.as_str())
+            .into_iter()
+            .rev()
+            .find(|(_, p)| p.fields().contains(&f))
+            .map(|(lang, _)| Op::ResetLangOverrideField {
+                element: e.id.clone(),
+                lang: lang.clone(),
+                field: f.to_owned(),
+            })
+            .into_iter()
+            .collect())
+    }
+
+    /// Fields of `id` set by language overrides for the view language
+    /// (YAML names) and the languages they come from (most general first).
+    pub fn lang_overridden_fields(&self, id: &str) -> (Vec<Lang>, Vec<&'static str>) {
+        let Some(t) = self.strip.element(id).and_then(Element::text_props) else {
+            return (Vec::new(), Vec::new());
+        };
+        let list = t.lang_overrides_for(self.lang.as_str());
+        let mut fields: Vec<&'static str> = Vec::new();
+        for (_, p) in &list {
+            for f in p.fields() {
+                if !fields.contains(&f) {
+                    fields.push(f);
+                }
+            }
+        }
+        (list.into_iter().map(|(l, _)| l.clone()).collect(), fields)
+    }
+
+    /// The scope text edits are written to.
+    pub fn scope(&self) -> EditScope {
+        self.scope
     }
 
     /// Fields of `id` overridden by the edit variant (YAML names).

@@ -78,6 +78,12 @@ pub struct OverlayElement {
     /// Fields overridden by the edit variant (YAML names).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub overridden: Vec<&'static str>,
+    /// Fields set by language overrides for the view language (texts).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub lang_overridden: Vec<&'static str>,
+    /// The home page is locked (`lock_page`): drags keep it.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub lock_page: bool,
     /// Clip rect (text: its home page/column).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub clip: Option<Rect>,
@@ -115,6 +121,9 @@ pub struct OverlayText {
     /// Words broken without a hyphen (emergency breaks), in line order.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub emergency_breaks: Vec<String>,
+    /// Words hyphenated automatically (`hyphenate`, ADR 0009).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub hyphenated: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -191,6 +200,16 @@ impl Editor<'_> {
                                 _ => None,
                             })
                             .collect(),
+                        hyphenated: placed
+                            .layout
+                            .diagnostics
+                            .iter()
+                            .filter_map(|d| match d {
+                                TextDiagnostic::Hyphenated { words } => Some(words.clone()),
+                                _ => None,
+                            })
+                            .flatten()
+                            .collect(),
                     });
                 } else if t.frame.auto_height {
                     // No text: a free box shrinks to its centre line.
@@ -229,6 +248,8 @@ impl Editor<'_> {
                 handles,
                 aspect_locked: kind == ElementKindTag::Device,
                 overridden: self.overridden_fields(r.id.as_str()),
+                lang_overridden: self.lang_overridden_fields(r.id.as_str()).1,
+                lock_page: self.effective(r.id.as_str()).is_ok_and(|e| e.lock_page),
                 clip: r.clip,
                 in_gap: frame.gaps.iter().any(|g| g.contains(visual_center)),
                 text,

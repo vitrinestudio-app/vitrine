@@ -21,6 +21,7 @@
 
 mod engine;
 pub mod fonts;
+pub mod hyphen;
 mod report;
 mod scene;
 
@@ -197,6 +198,13 @@ pub struct TextInput<'a> {
     /// Vertical alignment inside a box with `height`.
     pub valign: VAlign,
     pub fit: Fit,
+    /// Language of the text when automatic hyphenation is on (used only
+    /// when the text does not fit at `fit.shrink_to`, ADR 0009); `None` =
+    /// off. Languages without bundled patterns are not hyphenated.
+    pub hyphenate: Option<&'a str>,
+    /// Font fallbacks of the project (`styles.fonts`): family → families
+    /// tried for missing characters before the library's own fallbacks.
+    pub fallbacks: Option<&'a BTreeMap<String, Vec<String>>>,
 }
 
 impl<'a> TextInput<'a> {
@@ -211,6 +219,8 @@ impl<'a> TextInput<'a> {
             align: Align::Left,
             valign: VAlign::Top,
             fit: Fit::default(),
+            hyphenate: None,
+            fallbacks: None,
         }
     }
 }
@@ -317,6 +327,9 @@ pub enum TextDiagnostic {
     MissingGlyphs { text: String },
     /// A word had to be broken without hyphen (`line` is 0-based).
     EmergencyBreak { word: String, line: usize },
+    /// Automatic hyphenation broke these words (the text did not fit at
+    /// `shrink_to` otherwise).
+    Hyphenated { words: Vec<String> },
     /// More lines than `max_lines` even at `shrink_to`.
     OverflowLines { lines: usize, max_lines: u32 },
     /// Taller than the box even at `shrink_to`.
@@ -349,6 +362,9 @@ impl fmt::Display for TextDiagnostic {
                 "`{word}` broken without hyphen in line {} (add a soft hyphen `\\-`)",
                 line + 1
             ),
+            Self::Hyphenated { words } => {
+                write!(f, "hyphenated automatically: {}", words.join(", "))
+            }
             Self::OverflowLines { lines, max_lines } => {
                 write!(f, "text needs {lines} lines, max_lines is {max_lines}")
             }

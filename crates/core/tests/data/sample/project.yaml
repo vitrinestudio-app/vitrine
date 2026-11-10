@@ -12,7 +12,7 @@ styles:
     primary: "#2F6B3A"
     text: "#1D1D1F"
   text:
-    headline: {font: Inter, weight: 800, size: 72, line_height: 1.08, color: "@text", stroke: {color: "#FFFFFF", width: 3}, glow: {color: "@accent", radius: 12, opacity: 0.6, spread: 2}}
+    headline: {font: Inter, weight: 800, size: 72, line_height: 1.08, color: "@text", stroke: {color: "#FFFFFF", width: 3}, glow: {color: "@accent", radius: 12, opacity: 0.6, spread: 2}, hyphenate: true}
     sub: {font: Inter, weight: 500, size: 38, line_height: 1.25, color: "@text"}
   spans:
     accent: {color: "@accent", stroke: {color: "@text", width: 2, position: center, join: miter}, shadow: soft}
@@ -22,6 +22,8 @@ styles:
       - {color: "#0000006B", blur: 48, y: 46}
       - {color: "#0000004D", blur: 10, y: 10}
   frame: detailed
+  fonts:
+    Inter: {fallback: [Noto Sans JP, Noto Sans SC]}
 strips:
 - id: phone
   page: {aspect: 1320:2868, count: 5, ids: [hero, planner, harvest]}
@@ -33,6 +35,7 @@ strips:
   - id: hero-phone
     kind: device
     page: 0
+    lock_page: true
     at: {x: 1000, y: 2172}
     width: 820
     rotation: -8
@@ -49,7 +52,11 @@ strips:
     style: headline
     box: {top: 140, left: 80, right: 80}
     align: center
+    hyphenate: true
     fit: {shrink_to: 52, max_lines: 3}
+    langs:
+      de: {style: sub, box: {top: 120, left: 60, right: 60}, font_size: 64}
+      fr: {hyphenate: false, fit: {shrink_to: 40}}
   - id: sub-1
     kind: text
     page: 0

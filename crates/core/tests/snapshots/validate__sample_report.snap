@@ -3,6 +3,12 @@ source: crates/core/tests/validate.rs
 expression: report
 ---
 findings:
+  - level: warn
+    code: unknown_font
+    message: "fallback font `Noto Sans JP` of `Inter` is not available (put it into `fonts/`)"
+  - level: warn
+    code: unknown_font
+    message: "fallback font `Noto Sans SC` of `Inter` is not available (put it into `fonts/`)"
   - level: info
     code: screenshot_fallback
     target: ios-phone-69

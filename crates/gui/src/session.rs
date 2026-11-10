@@ -18,10 +18,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock, Weak};
 
 use arrangia_core::Project;
 use arrangia_core::io::PROJECT_FILE;
+use arrangia_core::layout::FontLibrary;
 use arrangia_core::model::Element;
 use arrangia_core::ops::{History, Op};
 use arrangia_render::scene::RenderContext;
@@ -196,6 +198,8 @@ pub struct Session {
     watcher: Mutex<Option<Watcher>>,
     /// Last scratch project of an edit preview (key, revision, project).
     edit_preview: Mutex<Option<(String, u64, Arc<Project>)>>,
+    /// App setting `system_font_fallback`: system fonts as last resort.
+    system_fonts: AtomicBool,
 }
 
 impl std::fmt::Debug for Session {
@@ -262,7 +266,75 @@ impl Session {
             events,
             watcher: Mutex::new(None),
             edit_preview: Mutex::new(None),
+            system_fonts: AtomicBool::new(false),
         }))
+    }
+
+    /// Turns the system font fallback (app setting) on or off; rebuilds
+    /// the render context when it changes.
+    pub fn set_system_font_fallback(&self, on: bool) {
+        if self.system_fonts.swap(on, Ordering::Relaxed) == on {
+            return;
+        }
+        let project = self.snapshot();
+        self.replace_context(self.context_for(&project));
+        let revision = project.revision;
+        self.emit_changed(
+            "assets",
+            revision,
+            Changes {
+                fonts: true,
+                ..Changes::default()
+            },
+            false,
+        );
+    }
+
+    /// A render context: bundled + project fonts, plus system fonts for
+    /// characters of the translations none of them has (if enabled).
+    fn context_for(&self, project: &Project) -> RenderContext {
+        if !self.system_fonts.load(Ordering::Relaxed) {
+            return RenderContext::new(&self.dir).0;
+        }
+        let mut fonts = FontLibrary::bundled();
+        let dir = self.dir.join("fonts");
+        if dir.is_dir() {
+            fonts.load_dir(&dir);
+        }
+        let text: Vec<&str> = project
+            .strings
+            .values()
+            .flat_map(|m| m.values().map(String::as_str))
+            .collect();
+        fonts.add_system_fallbacks(&text.join(" "));
+        RenderContext::with_fonts(&self.dir, fonts)
+    }
+
+    fn replace_context(&self, ctx: RenderContext) {
+        *self.ctx.write().unwrap_or_else(PoisonError::into_inner) = Arc::new(ctx);
+        self.preview.clear();
+    }
+
+    /// With the system fallback on: load more system fonts when changed
+    /// translations contain characters no loaded font has.
+    fn check_system_fallback(&self, project: &Project, changes: &Changes) {
+        if !self.system_fonts.load(Ordering::Relaxed) || changes.strings.is_empty() {
+            return;
+        }
+        let text: Vec<&str> = changes
+            .strings
+            .iter()
+            .filter_map(|r| project.string(&r.lang, &r.key))
+            .collect();
+        if self
+            .render_context()
+            .fonts()
+            .uncovered(&text.join(" "))
+            .is_empty()
+        {
+            return;
+        }
+        self.replace_context(self.context_for(project));
     }
 
     /// Starts the file watcher (reloads and events on external changes).
@@ -425,6 +497,7 @@ impl Session {
             return Err(err);
         }
         let changes = Changes::between(&inner.project, &project);
+        self.check_system_fallback(&project, &changes);
         inner.project = project;
         inner.history = history;
         let r = ApplyResult {
@@ -493,9 +566,8 @@ impl Session {
             }
         }
         if fonts {
-            let (ctx, _) = RenderContext::new(&self.dir);
-            *self.ctx.write().unwrap_or_else(PoisonError::into_inner) = Arc::new(ctx);
-            self.preview.clear();
+            let project = self.snapshot();
+            self.replace_context(self.context_for(&project));
         } else if !assets.is_empty() {
             self.preview.invalidate_assets(&assets);
         }

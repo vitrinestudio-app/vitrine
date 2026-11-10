@@ -64,6 +64,9 @@ pub struct RenderImageArgs {
     /// name = that variant of the target's strip (variant view).
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
+    /// Edit scope of the view (only used by gesture previews).
+    #[serde(default)]
+    pub scope: Option<arrangia_core::edit::EditScope>,
     /// Output image index, 0-based (a page, a page group or the banner).
     #[serde(default)]
     pub image: u32,
@@ -96,6 +99,9 @@ pub struct RenderCanvasArgs {
     /// name = that variant of the target's strip (variant view).
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
+    /// Edit scope of the view (only used by gesture previews).
+    #[serde(default)]
+    pub scope: Option<arrangia_core::edit::EditScope>,
     /// Only this canvas region (lu; e.g. a gap or a tile). Default: the
     /// whole canvas.
     #[serde(default)]
@@ -128,6 +134,9 @@ pub struct RenderGalleryArgs {
     /// name = that variant of the target's strip (variant view).
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
+    /// Edit scope of the view (only used by gesture previews).
+    #[serde(default)]
+    pub scope: Option<arrangia_core::edit::EditScope>,
     /// Image height in px (default 600, never above the target height).
     #[serde(default)]
     pub height: Option<u32>,
@@ -327,6 +336,9 @@ pub struct RenderPreviewEditArgs {
     pub lang: Option<String>,
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
+    /// Edit scope of the view (only used by gesture previews).
+    #[serde(default)]
+    pub scope: Option<arrangia_core::edit::EditScope>,
     /// The gesture in progress (as the matching `edit_*` command takes it,
     /// with `kind`: `move`, `move_by`, `resize`, `rotate`).
     pub edit: Gesture,
@@ -358,6 +370,7 @@ pub fn render_preview_edit(
         target: args.target.clone(),
         lang: args.lang.clone(),
         variant: args.variant.clone(),
+        scope: args.scope,
     };
     let project = preview_project(&session, &view, &args.edit)?;
     let (target, lang, scene) = scene(
@@ -371,6 +384,7 @@ pub fn render_preview_edit(
         target: None,
         lang: None,
         variant: None,
+        scope: None,
         image: args.image,
         max_edge: args.max_edge,
         width: args.width,
@@ -393,6 +407,9 @@ pub struct RenderPreviewStringArgs {
     pub lang: Option<String>,
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
+    /// Edit scope of the view (only used by gesture previews).
+    #[serde(default)]
+    pub scope: Option<arrangia_core::edit::EditScope>,
     /// Translation key and its uncommitted raw markup.
     pub key: String,
     pub value: String,
@@ -446,6 +463,7 @@ pub fn render_preview_string(
         target: None,
         lang: None,
         variant: None,
+        scope: None,
         image: args.image,
         max_edge: args.max_edge,
         width: args.width,

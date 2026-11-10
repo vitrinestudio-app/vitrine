@@ -113,19 +113,31 @@ impl Walker<'_, '_> {
         &self.inp.layout
     }
 
-    /// The element with the variant override applied (a copy).
+    /// The element with the variant override, then the language override
+    /// applied (a copy).
     fn patched(&self, e: &Element, d: &mut Diags) -> Element {
-        let Some(patch) = self.overrides.and_then(|o| o.get(&e.id)) else {
-            return e.clone();
+        let e = match self.overrides.and_then(|o| o.get(&e.id)) {
+            None => e.clone(),
+            Some(patch) => match e.patched(patch) {
+                Ok((p, _)) => p,
+                Err(err) => {
+                    d.warn(
+                        DiagnosticCode::InvalidOverride,
+                        format!("variant override not applied: {err}"),
+                    );
+                    e.clone()
+                }
+            },
         };
-        match e.patched(patch) {
-            Ok((p, _)) => p,
+        match e.for_lang(self.inp.lang) {
+            Ok(Some((_, p))) => p,
+            Ok(None) => e,
             Err(err) => {
                 d.warn(
                     DiagnosticCode::InvalidOverride,
-                    format!("variant override not applied: {err}"),
+                    format!("language override not applied: {err}"),
                 );
-                e.clone()
+                e
             }
         }
     }
@@ -559,6 +571,8 @@ impl Walker<'_, '_> {
             valign,
             shrink_to: t.fit.and_then(|f| f.shrink_to),
             max_lines: t.fit.and_then(|f| f.max_lines),
+            hyphenate: self.inp.styles.hyphenate(t),
+            font_fallbacks: self.inp.project.styles.font_fallbacks(),
             default_pivot: Vec2::ZERO,
         }
     }

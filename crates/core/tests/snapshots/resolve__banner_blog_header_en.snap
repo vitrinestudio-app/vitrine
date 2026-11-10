@@ -94,6 +94,10 @@ elements:
       default_pivot:
         x: 0
         y: -938.6036
+      font_fallbacks:
+        Inter:
+          - Noto Sans JP
+          - Noto Sans SC
       frame:
         auto_height: true
         margins: true
@@ -102,6 +106,7 @@ elements:
           w: 840
           x: 80
           y: 140
+      hyphenate: true
       key: hero.title
       kind: text
       max_lines: 3
@@ -153,6 +158,10 @@ elements:
       default_pivot:
         x: 0
         y: -852.6136
+      font_fallbacks:
+        Inter:
+          - Noto Sans JP
+          - Noto Sans SC
       frame:
         auto_height: true
         margins: true
