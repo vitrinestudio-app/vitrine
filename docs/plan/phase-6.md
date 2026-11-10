@@ -12,20 +12,28 @@ upload to and download from.
 
 Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 
-## 6.1 Colour management P3 → sRGB (started 2026-11-10)
-- [ ] Read embedded colour information of imported images: PNG `iCCP`,
-      `sRGB`, `cICP` chunks; JPEG APP2 ICC; (HEIC/WebP if we accept them)
-- [ ] Convert Display P3 (and any ICC profile) to sRGB once when an asset
-      is decoded (asset cache), with a pure-Rust CMS (`qcms`, KONZEPT §6.2;
-      compare with `lcms2`/`moxcms`, ADR); untagged images = sRGB
-- [ ] Output: tag exports as sRGB (PNG `sRGB` chunk / JPEG); decide whether
-      a "Display P3 output" option is worth it (Apple accepts P3) – ADR
-- [ ] Same pipeline for GUI preview, export and MCP (one renderer)
-- [ ] Colours in the model (`#RRGGBB`) stay sRGB; document it
-- [ ] Tests: P3-tagged fixture image (generated in the test, no vendor
-      material), known pixel values after conversion; golden images unchanged
-      for untagged input
-- [ ] Validation info when a screenshot carries a profile we cannot read
+## 6.1 Colour management P3 → sRGB (done 2026-11-10, ADR 0021)
+- [x] Read embedded colour information of imported images: PNG `iCCP`,
+      `sRGB`, `cICP` chunks; JPEG APP2 ICC (`core::colorspace::sniff`);
+      HEIC/WebP are not accepted as inputs, so nothing to do there
+- [x] Convert Display P3 (and any RGB/gray ICC profile, SDR cICP) to sRGB
+      once when an asset is decoded (asset cache) – `moxcms` 0.8.1 (already
+      in the tree via `image`; compared with `qcms`/`lcms2` in ADR 0021);
+      untagged images = sRGB; `gAMA`/`cHRM` ignored
+- [x] Output: PNG keeps the `sRGB` chunk, JPEG untagged (= sRGB); "Display
+      P3 output" not now (reasoning in ADR 0021)
+- [x] Same pipeline for GUI preview, export, upload, MCP and thumbnails
+      (`raster::SourceImage::decode`); imported bezels too (also the
+      swatch measurement in `frame_import`)
+- [x] Colours in the model (`#RRGGBB`) stay sRGB; documented (NOTES, ADR)
+- [x] Tests: P3/gray profiles generated with moxcms (no vendor material):
+      P3 red clips to sRGB red, gray stays gray, mid colour vs. matrix
+      reference, 16-bit, JPEG ICC, cICP, broken profiles; golden images
+      unchanged (fixture screenshots are `sRGB`-chunk only)
+- [x] Validation info `color_profile_unsupported` when a screenshot carries
+      a profile we cannot use (unreadable, CMYK, HDR cICP …)
+- [ ] Look at a real iPhone P3 screenshot and the imported iPhone 18 bezels
+      in the GUI (user)
 
 ## 6.2 Feature graphic (Google Play)
 Largely there: target preset `play-feature-graphic` (1024×500, banner,

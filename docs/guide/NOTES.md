@@ -102,6 +102,16 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 ### Images
 - PNG/JPEG/SVG. Shadows of transparent images follow the alpha (like CSS drop-shadow). Text inside SVGs is not rendered yet.
 
+### Colours (colour management, Phase 6.1, ADR 0021)
+- Arrangia works in sRGB. Colours you type (`#RRGGBB`) are sRGB.
+- Screenshots, images and imported Apple bezels with a colour profile are converted to sRGB when loaded: Display P3 (iPhone/Mac screenshots), Adobe RGB, gray profiles … Read from PNG `iCCP`/`cICP`/`sRGB` and JPEG ICC. Same result in the editor, export, upload and MCP previews.
+- No profile = sRGB. PNG `gAMA`/`cHRM` alone are ignored.
+- P3 colours outside sRGB are clipped to the nearest sRGB edge (very saturated reds/greens look slightly less vivid than on a P3 display – same as in any sRGB export).
+- Validation info `color_profile_unsupported` (per screenshot file): profile unreadable, CMYK JPEG, HDR (PQ/HLG) PNG or unknown cICP → the image is drawn as if it were sRGB. Fix: re-save as sRGB or Display P3 PNG.
+- 16-bit PNGs are converted at full precision, then reduced to 8 bit.
+- Exports: PNG with `sRGB` chunk, JPEG untagged (= sRGB). No Display P3 output (yet).
+- Bezel colour swatches measured before this change came from unconverted pixels (tiny difference).
+
 ### Export
 - Files: `export/<target>/<lang>/<nn>_<page-id>.png`, grouped `<nn>_<id1>+<id2>`, `banner.png`, `_gallery.png`.
 - Always opaque (no alpha), sRGB. Incremental: unchanged images are skipped (`--force` to re-render).

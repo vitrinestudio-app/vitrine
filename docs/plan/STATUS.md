@@ -28,7 +28,10 @@ current: update after each phase/merge and whenever the user decides something.
   - Next: user re-runs the real upload (new build; see the report for how to resume); then Google; user looks at the Upload dialog and the store settings; then decide (a)/(b) for good.
 - Catalog: new Apple formats (2026-11-10, worktree `agent-devices`): App Store creative assets (`ios-header` 21:9, `ios-search-results` 3:2, `ios-creative-universal` 16:9; banner presets with slot `placement: header|search_results|universal`, rules `apple-creative-*`), optional target `safe_area` (dashed canvas overlay, warning `text_outside_safe_area`; Apple's values unpublished → presets have none), Apple Watch (`watch-ultra`, `watch` parametric frames with crown/guard; presets `watch-ultra`, `watch-series`, `watch-series-7/-4/-3`), Wear OS `play-wear` (rules `decorations: false` → info `store_decorations`), target option `screenshot_only` (watch/Wear default), iPhone Duo frames (`iphone-duo` open / `iphone-duo-folded`, element field `fold`), Apple import rules for the real Duo and Watch Ultra 4 packages (verified with the user's DMGs, `skip:` rule for `Outer Open`).
   - For the upload agent: creative slots (`placement` set) and `APP_IPHONE_DUO` must go through the App Asset Library; the set-based plan must skip/block them.
-- Next phases per KONZEPT §12: 6 polish/website, 7 3D.
+- Phase 6 (polish → 1.0) started 2026-11-10, see `docs/plan/phase-6.md`.
+  - Done: 6.1 colour management (ADR 0021, worktree `agent-color`): `core::colorspace` (PNG `cICP`/`iCCP`/`sRGB`, JPEG APP2 ICC, CMYK detection; `moxcms` 0.8.1, already in the tree via `image`), conversion to sRGB once at decode in `raster::SourceImage::decode` (asset cache → preview/export/upload/MCP, thumbnails) and `frame_import::decode_png` (bezels + swatches); sRGB-equivalent profiles untouched (goldens unchanged); info `color_profile_unsupported`; exports PNG `sRGB` chunk, JPEG untagged; no P3 output for now. Benchmark: `cargo run -p arrangia-render --release --example color_bench`.
+    - Next: user checks a real P3 iPhone screenshot and the imported iPhone 18 bezels in the GUI.
+- Next phases per KONZEPT §12: 7 3D.
 
 ## Open questions for the user
 (asked 2026-11-10, Phase 5; move the answer to "Decisions taken with the user")
