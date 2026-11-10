@@ -65,10 +65,10 @@ async function showProject() {
       escape: () => {
         if (!shell.canvas?.cancel()) actions.clearSelection();
       },
-      zoomIn: () => shell.canvas?.zoomIn(),
-      zoomOut: () => shell.canvas?.zoomOut(),
-      fit: () => shell.canvas?.fit(),
-      zoomActual: () => shell.canvas?.zoomActual(),
+      zoomIn: () => shell.view?.zoomIn?.(),
+      zoomOut: () => shell.view?.zoomOut?.(),
+      fit: () => shell.view?.fit?.(),
+      zoomActual: () => shell.view?.zoomActual?.(),
     });
     installDropImport(() => shell.canvas);
   }

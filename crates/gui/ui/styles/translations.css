@@ -276,26 +276,34 @@
   flex: 1;
 }
 
-.lg-grid {
+/* Viewport below the head; the gutter holds the language labels. */
+.lg-stage.canvas-view {
+  position: relative;
+  inset: auto;
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
 }
 
-.lg-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.lg-gutter {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 150px;
+  overflow: hidden;
+  z-index: 1;
+  background: var(--bg-canvas);
+  border-right: 1px solid var(--border);
+  pointer-events: none;
 }
 
-.lg-row-head {
+.lg-label {
+  position: absolute;
+  left: 12px;
+  right: 8px;
   display: flex;
-  align-items: baseline;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .lg-lang strong {
@@ -328,40 +336,23 @@
   color: var(--success);
 }
 
-.lg-cells {
-  display: flex;
-  gap: 10px;
-}
-
 .lg-cell {
-  position: relative;
-  margin: 0;
-  flex: none;
   cursor: pointer;
 }
 
-.lg-cell canvas {
-  display: block;
-  border-radius: 3px;
-  box-shadow: var(--shadow-page);
-  background: var(--bg);
+.lg-cell:hover {
+  outline: calc(var(--px, 1px) * 2) solid var(--accent);
 }
 
-.lg-cell:hover canvas {
-  outline: 2px solid var(--accent);
-}
-
-.lg-cell figcaption {
-  font-size: var(--fs-small);
+.lg-caption {
   color: var(--label);
-  text-align: center;
-  padding-top: 2px;
 }
 
 .lg-marks {
   position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 
@@ -369,11 +360,11 @@
 .lg-emergency {
   fill: color-mix(in srgb, var(--danger) 14%, transparent);
   stroke: var(--danger);
-  stroke-width: 2;
+  stroke-width: calc(var(--px, 1px) * 2);
 }
 
 .lg-emergency {
-  stroke-dasharray: 5 3;
+  stroke-dasharray: calc(var(--px, 1px) * 5) calc(var(--px, 1px) * 3);
   fill: none;
 }
 

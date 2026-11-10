@@ -219,51 +219,120 @@
   color: var(--fg-muted);
 }
 
-/* Pages and gallery views. */
-.strip-view {
+/* Pixmap slots of the zoomable views (js/views/viewport.js). Sizes inside
+ * the world are in world units; `--px` (set in JS) is one screen pixel. */
+.vp-slot {
+  position: absolute;
+  overflow: hidden;
+}
+
+.vp-slot canvas.real {
   position: absolute;
   inset: 0;
-  overflow: auto;
-  display: flex;
-  align-items: center;
-  padding: 32px;
-}
-
-.strip-row {
-  display: flex;
-  align-items: flex-start;
-  margin: auto;
-}
-
-.strip-row figure {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.strip-row canvas {
+  width: 100%;
+  height: 100%;
   display: block;
+}
+
+.page-slot,
+.lg-cell {
   box-shadow: var(--shadow-page);
   background: var(--bg);
 }
 
-.strip-row figcaption {
+/* Loading placeholder: until the first bitmap of a slot arrives (re-renders
+ * keep the old bitmap). The spinner fades in late, so fast (cached) renders
+ * do not flash; it is sized relative to the slot (zoom-independent). */
+.vp-slot.slot-loading {
+  background: var(--slot-placeholder);
+}
+
+.vp-slot.slot-loading canvas.real {
+  visibility: hidden;
+}
+
+.slot-spinner {
+  display: none;
+}
+
+.slot-loading .slot-spinner {
+  display: block;
+  position: absolute;
+  left: 41%;
+  top: 50%;
+  width: 18%;
+  max-width: 18%;
+  aspect-ratio: 1;
+  translate: 0 -50%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 20%, var(--slot-spinner) 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent 76%, #000 78%);
+  mask: radial-gradient(farthest-side, transparent 76%, #000 78%);
+  opacity: 0;
+  animation:
+    slot-fade 0.25s ease 0.2s forwards,
+    slot-spin 0.9s linear infinite;
+}
+
+/* Gallery previews are wide: keep the spinner a sensible size. */
+.gallery-slot.slot-loading .slot-spinner {
+  left: calc(50% - 3%);
+  width: 6%;
+}
+
+@keyframes slot-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes slot-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot-loading .slot-spinner {
+    animation: slot-fade 0.25s ease 0.2s forwards;
+    background: none;
+    -webkit-mask: none;
+    mask: none;
+    border: calc(var(--px, 1px) * 3) solid var(--slot-spinner);
+    opacity: 0;
+  }
+}
+
+/* Zoomable non-editing views (pages, gallery, all languages): drag pans. */
+.zoom-view {
+  cursor: grab;
+}
+
+.zoom-view.panning {
+  cursor: grabbing;
+}
+
+/* Screen-space labels positioned from JS (captions under the images). */
+.vp-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.vp-label {
+  position: absolute;
+  translate: -50% 0;
+  white-space: nowrap;
   font-size: var(--fs-small);
   color: var(--fg-muted);
 }
 
-.gallery-frame {
-  margin: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.gallery-frame canvas {
-  display: block;
-  border-radius: 10px;
-  box-shadow: var(--shadow-page);
+.vp-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  text-align: center;
+  pointer-events: none;
 }

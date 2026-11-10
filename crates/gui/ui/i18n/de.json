@@ -70,6 +70,7 @@
   "zoom.in": "Vergrößern",
   "zoom.out": "Verkleinern",
   "zoom.fit": "An Fenster anpassen",
+  "zoom.fit.active": "An Fenster angepasst (folgt der Fenstergröße, bis du zoomst oder verschiebst)",
   "zoom.actual": "Originalgröße (Export-Pixel)",
   "status.variant": "Variante",
   "inspector.f.color": "Farbe",

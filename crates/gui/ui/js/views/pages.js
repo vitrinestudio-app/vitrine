@@ -1,63 +1,160 @@
 // Pages view: the output images of the current target side by side, spaced
 // like the store gallery (the target's gap width), each rendered exactly as
-// exported (`render_image`).
+// exported (`render_image`). Zoom/pan like the canvas (views/viewport.js):
+// world units are lu, the pixmaps are requested at zoom × devicePixelRatio.
 
 import { api, toImageBitmap } from '../api.js';
 import { h } from '../dom.js';
 import { editor } from '../editor.js';
+import { intersects } from '../geometry.js';
 import { t } from '../i18n.js';
-import { store, viewArgs } from '../store.js';
+import { currentTarget, store, viewArgs } from '../store.js';
+import { applyWorld, createViewport, densityFor, makeSlot, paintSlot } from './viewport.js';
 
 export function mountPages(root) {
-  const row = h('div', { class: 'strip-row' });
-  const el = h('div', { class: 'strip-view' }, row);
+  const world = h('div', { class: 'canvas-world' });
+  const labels = h('div', { class: 'vp-labels' });
+  const empty = h('div', { class: 'canvas-empty', hidden: true }, t('canvas.empty'));
+  const el = h('div', { class: 'canvas-view zoom-view', tabindex: '0' }, world, labels, empty);
   root.append(el);
-  let seq = 0;
 
-  async function render() {
-    const my = ++seq;
+  let slots = [];
+  let sig = null;
+  let content = null;
+  let resTimer = 0;
+
+  /** Export px per lu of the current target (100 % zoom). */
+  function exportScale() {
     const o = store.get().overlay;
-    if (!o) {
-      row.replaceChildren();
-      return;
+    const target = currentTarget();
+    if (!o?.images.length || !target) return 1;
+    return target.size[0] / o.images[0].rect.w;
+  }
+
+  const vp = createViewport(el, {
+    key: 'pages',
+    content: () => content,
+    unit: exportScale,
+    pointer: 'drag',
+    padding: 40,
+    inset: { bottom: 22 },
+    onChange() {
+      applyTransform();
+      scheduleResolution();
+    },
+    onResize: () => scheduleResolution(),
+  });
+
+  function applyTransform() {
+    const { zoom, panX, panY } = vp.view();
+    applyWorld(world, { zoom, panX, panY });
+    for (const slot of slots) {
+      slot.label.style.left = `${(slot.rect.x + slot.rect.w / 2) * zoom + panX}px`;
+      slot.label.style.top = `${(slot.rect.y + slot.rect.h) * zoom + panY + 6}px`;
     }
-    const height = Math.max(120, el.clientHeight - 110);
-    const dpr = window.devicePixelRatio || 1;
+  }
+
+  const signature = (o) => (o ? JSON.stringify([o.images.map((i) => [i.rect, i.pages]), o.gaps[0]?.w ?? 0]) : '');
+
+  function rebuild(o) {
+    world.replaceChildren();
+    labels.replaceChildren();
+    slots = [];
+    sig = signature(o);
+    empty.hidden = Boolean(o?.images.length);
+    content = null;
+    if (!o?.images.length) return;
     const gapLu = o.gaps[0]?.w ?? 0;
-    const figures = o.images.map((img) => {
-      const k = height / img.rect.h;
-      const canvas = h('canvas');
-      canvas.style.width = `${img.rect.w * k}px`;
-      canvas.style.height = `${height}px`;
+    let x = 0;
+    let maxH = 0;
+    for (const img of o.images) {
+      const rect = { x, y: 0, w: img.rect.w, h: img.rect.h };
+      const slot = makeSlot(world, rect, 'page-slot');
       const ids = img.pages.map((i) => o.pages.find((p) => p.index === i)?.id ?? i + 1).join(' + ');
-      const fig = h('figure', {}, canvas, h('figcaption', {}, `${t('canvas.image')} ${img.index + 1} · ${ids}`));
-      fig.style.marginRight = `${Math.max(8, gapLu * k)}px`;
-      return { img, canvas, width: Math.round(img.rect.w * k * dpr), fig };
-    });
-    row.replaceChildren(...figures.map((f) => f.fig));
-    const v = viewArgs();
-    await Promise.all(
-      figures.map(async (f) => {
-        const bitmap = await toImageBitmap(await api.renderImage(v, f.img.index, f.width));
-        if (my !== seq) return;
-        f.canvas.width = bitmap.width;
-        f.canvas.height = bitmap.height;
-        f.canvas.getContext('2d').drawImage(bitmap, 0, 0);
-      }),
-    ).catch((e) => editor.toast(e.message, true));
+      slot.label = h('div', { class: 'vp-label' }, `${t('canvas.image')} ${img.index + 1} · ${ids}`);
+      slot.index = img.index;
+      slot.source = img.rect;
+      labels.append(slot.label);
+      slots.push(slot);
+      x += img.rect.w + Math.max(gapLu, img.rect.h * 0.02);
+      maxH = Math.max(maxH, img.rect.h);
+    }
+    content = { x: 0, y: 0, w: slots[slots.length - 1].rect.x + slots[slots.length - 1].rect.w, h: maxH };
+  }
+
+  async function renderSlot(slot) {
+    const level = densityFor(vp.view().zoom, slot.rect, exportScale());
+    const gen = ++slot.gen;
+    slot.dirty = false;
+    try {
+      const bitmap = await toImageBitmap(await api.renderImage(viewArgs(), slot.index, Math.max(1, Math.round(slot.rect.w * level))));
+      if (gen !== slot.gen) {
+        bitmap.close?.();
+        return;
+      }
+      paintSlot(slot, bitmap, level);
+    } catch (e) {
+      if (gen === slot.gen) {
+        slot.dirty = true;
+        editor.toast(e.message, true);
+      }
+    }
+  }
+
+  function updateResolution() {
+    const zoom = vp.view().zoom;
+    for (const slot of slots) {
+      if (!vp.isVisible(slot.rect)) continue;
+      if (slot.dirty || Math.abs(slot.level - densityFor(zoom, slot.rect, exportScale())) > 1e-9) renderSlot(slot);
+    }
+  }
+
+  function scheduleResolution(delay = 160) {
+    clearTimeout(resTimer);
+    resTimer = setTimeout(updateResolution, delay);
+  }
+
+  /** Rebuilds the slots when the image geometry changed (and re-fits). */
+  function sync() {
+    const o = store.get().overlay;
+    if (signature(o) !== sig) {
+      rebuild(o);
+      if (content) vp.refresh(`${store.get().summary?.dir}|${content.w}x${content.h}`);
+    }
+    applyTransform();
+  }
+
+  function invalidate({ all, rects }) {
+    sync();
+    for (const slot of slots) {
+      if (all || (rects ?? []).some((r) => intersects(r, slot.source))) slot.dirty = true;
+    }
+    updateResolution();
   }
 
   const unsubs = [
-    editor.on('invalidate', render),
-    editor.on('reset', render),
+    store.select((st) => st.overlay, sync),
+    editor.on('invalidate', invalidate),
+    editor.on('reset', () => invalidate({ all: true })),
   ];
-  const ro = new ResizeObserver(() => render());
-  ro.observe(el);
-  render();
+  sync();
+  updateResolution();
   return {
+    el,
+    fit: vp.fit,
+    zoomIn: vp.zoomIn,
+    zoomOut: vp.zoomOut,
+    zoomTo: vp.zoomTo,
+    zoomActual: vp.zoomActual,
+    percent: vp.percent,
+    /** Fit mode: the view re-fits on resize until a manual zoom/pan. */
+    get fitMode() {
+      return vp.fitMode;
+    },
     unmount() {
+      clearTimeout(resTimer);
       unsubs.forEach((u) => u());
-      ro.disconnect();
+      vp.destroy();
       el.remove();
     },
   };

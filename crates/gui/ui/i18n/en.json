@@ -70,6 +70,7 @@
   "zoom.in": "Zoom in",
   "zoom.out": "Zoom out",
   "zoom.fit": "Fit to window",
+  "zoom.fit.active": "Fitted to window (follows window size until you zoom or pan)",
   "zoom.actual": "Actual size (export pixels)",
   "status.variant": "Variant",
   "inspector.f.color": "Colour",
