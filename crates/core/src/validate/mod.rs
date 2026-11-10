@@ -89,6 +89,10 @@ finding_codes! {
     UnknownOverrideElement = "unknown_override_element",
     /// A variant override does not apply to its element.
     InvalidOverride = "invalid_override",
+    /// A variant or language override set a field to `null` in the file;
+    /// it was ignored (an override only sets values) and is dropped on
+    /// the next save (info).
+    OverrideNull = "override_null",
     /// Unknown device model (the element is not rendered).
     UnknownDevice = "unknown_device",
     /// `device_map` names an unknown replacement model.
@@ -390,6 +394,19 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
                 ));
             }
         }
+    }
+    for place in &project.dropped_override_nulls {
+        out.push(root.finding(
+            Severity::Info,
+            FindingCode::OverrideNull,
+            false,
+            None,
+            None,
+            format!(
+                "override field set to null ({place}) was ignored: an override only sets \
+                 values; remove the field to use the base value (dropped on the next save)"
+            ),
+        ));
     }
     for (family, f) in &project.styles.fonts {
         for fb in &f.fallback {

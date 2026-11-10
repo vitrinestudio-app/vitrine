@@ -1,5 +1,6 @@
 //! Read-only resources: the project file, translation files, catalogs and
-//! the op reference.
+//! the documentation topics (`arrangia://docs/<topic>`, the same text as the
+//! `docs_get` tool).
 
 use arrangia_app::commands::AppState;
 use arrangia_core::io::PROJECT_FILE;
@@ -15,6 +16,7 @@ pub const I18N_PREFIX: &str = "arrangia://project/i18n/";
 pub const DEVICES_URI: &str = "arrangia://catalog/devices";
 pub const TARGETS_URI: &str = "arrangia://catalog/targets";
 pub const OPS_URI: &str = "arrangia://docs/ops";
+pub const DOCS_PREFIX: &str = "arrangia://docs/";
 
 /// Reference of the ops accepted by `apply_ops`.
 pub const OPS_DOC: &str = include_str!("ops.md");
@@ -63,12 +65,14 @@ pub fn list(app: &AppState) -> Vec<Resource> {
         "application/json",
         "Export target presets (store sizes, slots, galleries)",
     ));
-    out.push(res(
-        OPS_URI,
-        "op reference",
-        "text/markdown",
-        "JSON form of every op accepted by apply_ops",
-    ));
+    for (topic, what) in crate::docs::TOPICS {
+        out.push(res(
+            &format!("{DOCS_PREFIX}{topic}"),
+            &format!("docs: {topic}"),
+            "text/markdown",
+            what,
+        ));
+    }
     out
 }
 
@@ -100,7 +104,13 @@ fn mcp_err(e: &arrangia_app::CommandError) -> ErrorData {
 /// Reads resource `uri`.
 pub fn read(app: &AppState, uri: &str) -> Result<ReadResourceResult, ErrorData> {
     match uri {
-        OPS_URI => return Ok(text(uri, "text/markdown", OPS_DOC.to_owned())),
+        _ if uri.starts_with(DOCS_PREFIX) => {
+            return crate::docs::topic(&uri[DOCS_PREFIX.len()..])
+                .map(|body| text(uri, "text/markdown", body))
+                .ok_or_else(|| {
+                    ErrorData::resource_not_found(format!("unknown resource `{uri}`"), None)
+                });
+        }
         DEVICES_URI => {
             let v = cmd(app, "catalog_devices", Value::Null).map_err(|e| mcp_err(&e))?;
             return Ok(text(uri, "application/json", json_text(&v)));
@@ -154,7 +164,9 @@ mod tests {
         .without_watcher();
         // Without a project: catalogs and docs only.
         let uris: Vec<String> = list(&app).into_iter().map(|r| r.uri).collect();
-        assert_eq!(uris, [DEVICES_URI, TARGETS_URI, OPS_URI]);
+        assert_eq!(uris[..2], [DEVICES_URI, TARGETS_URI]);
+        assert!(uris.contains(&OPS_URI.to_owned()));
+        assert_eq!(uris.len(), 2 + crate::docs::TOPICS.len());
         assert!(read(&app, PROJECT_URI).is_err());
         let dir = tmp.path().join("p");
         arrangia_app::testutil::copy_project(&arrangia_app::testutil::example_fixture(), &dir)

@@ -20,11 +20,12 @@
 //! ```text
 //! server     ArrangiaMcp: tool calls (actor, blocking pool, disk sync), resources
 //! tools/*    one #[tool_router] per area (project, catalog, structure, elements,
-//!            strings, styles, assets, output, history)
+//!            strings, styles, assets, output, history, docs)
 //! params     shared arguments (edit scope → view context)
 //! output     tool results / tool errors
 //! progress   export progress → MCP progress notifications
-//! resources  project.yaml, i18n/<lang>.yaml, catalogs, op reference
+//! resources  project.yaml, i18n/<lang>.yaml, catalogs, docs topics
+//! docs       reference topics for `docs_get` (element fields generated)
 //! stdio      `arrangia mcp`: proxy to a running GUI, GUI autostart, headless
 //! discovery  `<app data>/mcp.json`: port + token of a running GUI
 //! proxy      (feature `proxy`) stdio ↔ Streamable HTTP forwarder
@@ -34,6 +35,7 @@
 //! ```
 
 pub mod discovery;
+pub mod docs;
 #[cfg(feature = "http")]
 pub mod host;
 #[cfg(feature = "http")]

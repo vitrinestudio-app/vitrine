@@ -446,6 +446,16 @@ pub fn reset_override(
     })
 }
 
+/// `existing` override with `patch` written into it: values set the
+/// field, `null` **resets** it (removes it from the override, so the base
+/// value shows again; an override never stores `null`). `None` when
+/// nothing is left.
+fn merge_override(existing: &ElementPatch, patch: &ElementPatch) -> Option<ElementPatch> {
+    let mut merged = existing.merged(patch);
+    merged.drop_nulls();
+    (!merged.is_empty()).then_some(merged)
+}
+
 /// Edit intents for one target × language × variant.
 pub struct Editor<'a> {
     project: &'a Project,
@@ -651,7 +661,7 @@ impl<'a> Editor<'a> {
                     strip: self.strip.id.clone(),
                     variant: v.clone(),
                     element: id.clone(),
-                    patch: Some(existing.merged(&patch)),
+                    patch: merge_override(&existing, &patch),
                 }
             }
             WriteTo::Lang { lang, .. } => {
@@ -664,7 +674,7 @@ impl<'a> Editor<'a> {
                 Op::SetLangOverride {
                     element: id.clone(),
                     lang: lang.clone(),
-                    patch: Some(existing.merged(&patch)),
+                    patch: merge_override(&existing, &patch),
                 }
             }
         }
@@ -674,7 +684,36 @@ impl<'a> Editor<'a> {
         if patch.is_empty() {
             return Vec::new();
         }
-        vec![self.write_op(self.project, id, patch, &self.write_to(id.as_str()))]
+        let op = self.write_op(self.project, id, patch, &self.write_to(id.as_str()));
+        // An override write that leaves the override as it is (e.g. a reset
+        // of a field it does not set) changes nothing.
+        let unchanged = match &op {
+            Op::SetVariantOverride {
+                strip,
+                variant,
+                element,
+                patch,
+            } => {
+                self.project
+                    .strip(strip.as_str())
+                    .and_then(|s| s.variants.get(variant))
+                    .and_then(|v| v.overrides.get(element))
+                    == patch.as_ref()
+            }
+            Op::SetLangOverride {
+                element,
+                lang,
+                patch,
+            } => {
+                self.project
+                    .element(element.as_str())
+                    .and_then(|(_, e)| e.text_props())
+                    .and_then(|t| t.langs.get(lang))
+                    == patch.as_ref()
+            }
+            _ => false,
+        };
+        if unchanged { Vec::new() } else { vec![op] }
     }
 
     fn is_group(e: &Element) -> bool {
@@ -1428,10 +1467,19 @@ impl<'a> Editor<'a> {
                 patch.color = Some(color);
             }
         }
+        // Into an override, `null` resets the field (the override then no
+        // longer sets it); only the values are checked against the element.
+        let to_override = self.write_to(id) != WriteTo::Base;
+        let mut values = patch.clone();
+        let resets = if to_override {
+            values.drop_nulls()
+        } else {
+            Vec::new()
+        };
         let (patched, _) = e
-            .patched(&patch)
+            .patched(&values)
             .map_err(|err| EditError::Invalid(format!("element `{id}`: {err}")))?;
-        if patched == e {
+        if patched == e && resets.is_empty() {
             return Ok(Vec::new());
         }
         Ok(self.write(&e.id, patch))

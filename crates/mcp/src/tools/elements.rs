@@ -132,19 +132,90 @@ pub struct StringValue {
 
 edit_params! {
     pub struct ElementUpdateParams {
-        /// The element (or `ids` to patch several the same way).
+        /// The element (or `ids` to patch several the same way; ids of
+        /// several strips are fine).
         #[serde(default)]
         pub id: Option<String>,
         #[serde(default)]
         pub ids: Vec<String>,
-        /// Fields to set (YAML names; `null` resets). With scope `variant`
-        /// or `lang` they go into that override.
+        /// Fields to set (YAML names). With scope `variant` or `lang` they
+        /// go into that override. `null`: in scope `base` resets the field
+        /// to its default; in scope `variant`/`lang` removes the field from
+        /// the override (back to the base value).
         #[serde(default)]
         pub patch: Map<String, Value>,
         /// Translations to set in the same undo step.
         #[serde(default)]
         pub strings: Vec<StringValue>,
+        /// More patches in the SAME undo step, each with its own ids,
+        /// scope, lang, variant (missing: those of this call), e.g. several
+        /// language overrides at once.
+        #[serde(default)]
+        pub updates: Vec<UpdateEntry>,
     }
+}
+
+/// One entry of `element_update.updates`.
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateEntry {
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub ids: Vec<String>,
+    /// Fields to set (`null` as in the call's `patch`).
+    #[serde(default)]
+    pub patch: Map<String, Value>,
+    #[serde(default)]
+    pub strings: Vec<StringValue>,
+    /// `base` | `variant` | `lang` (default: the call's scope).
+    #[serde(default)]
+    pub scope: Option<crate::params::Scope>,
+    /// Default: the call's variant.
+    #[serde(default)]
+    pub variant: Option<String>,
+    /// Default: the call's lang (required for scope `lang`).
+    #[serde(default)]
+    pub lang: Option<String>,
+    /// Default: the call's target.
+    #[serde(default)]
+    pub target: Option<String>,
+}
+
+/// Which override `element_reset_override` resets.
+#[derive(Debug, Clone, Copy, Deserialize, serde::Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum OverrideScope {
+    /// A variant override (`variants.<variant>.overrides.<id>`).
+    Variant,
+    /// A language override of a text element (`langs.<lang>`).
+    Lang,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResetOverrideParams {
+    /// The element (or `ids`; several strips are fine).
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub ids: Vec<String>,
+    /// `variant` or `lang`.
+    pub scope: OverrideScope,
+    /// scope `variant`: the variant (default: the variant of `target`, or
+    /// of the first target showing the element's strip).
+    #[serde(default)]
+    pub variant: Option<String>,
+    /// scope `lang`: the language whose override is reset (required).
+    #[serde(default)]
+    pub lang: Option<String>,
+    /// Fields (YAML names) to reset, e.g. `["at", "font_size"]`; omit to
+    /// remove the whole override.
+    #[serde(default)]
+    pub fields: Option<Vec<String>>,
+    /// Target whose variant is meant (scope `variant` without `variant`).
+    #[serde(default)]
+    pub target: Option<String>,
 }
 
 edit_params! {
@@ -216,7 +287,12 @@ edit_params! {
 
 edit_params! {
     pub struct ElementRotateParams {
-        pub id: String,
+        /// The element (or `ids` to rotate several to the same angle;
+        /// several strips are fine).
+        #[serde(default)]
+        pub id: Option<String>,
+        #[serde(default)]
+        pub ids: Vec<String>,
         /// Absolute rotation in degrees, positive = clockwise.
         pub degrees: f64,
     }
@@ -263,8 +339,10 @@ pub struct RenameParams {
 pub struct ApplyOpsParams {
     /// Ops applied atomically as one undo step, e.g. `[{"op":
     /// "update_element", "id": "title", "patch": {"font_size": 80}},
-    /// {"op": "set_string", "lang": "de", "key": "hero.title", "value":
-    /// "Hallo"}]`. Reference: resource `arrangia://docs/ops`.
+    /// {"op": "set_lang_override", "element": "title", "lang": "de",
+    /// "patch": {"font_size": 64}}, {"op": "set_string", "lang": "de",
+    /// "key": "hero.title", "value": "Hallo"}]`. Every op and field:
+    /// `docs_get {topic: "ops"}`.
     pub ops: Vec<Value>,
     /// Undo label (default: derived from the ops).
     #[serde(default)]
@@ -299,6 +377,14 @@ pub fn compact_info(info: &Value) -> Value {
         out["base"] = info["base"].clone();
     }
     out
+}
+
+/// Translations as the app's `strings` entries.
+fn string_values(strings: &[StringValue]) -> Vec<Value> {
+    strings
+        .iter()
+        .map(|s| json!({ "lang": s.lang, "key": s.key, "value": s.value }))
+        .collect()
 }
 
 fn edited(r: &Value) -> ToolOutput {
@@ -476,7 +562,7 @@ impl ArrangiaMcp {
 
     #[tool(
         description = concat!(
-            "Change element fields (one undo step), optionally with translations. Scope: base (default, everywhere), variant (override for a format), lang (override for one language; text elements). Examples: {\"id\": \"title\", \"patch\": {\"style\": \"sub\", \"fit\": {\"shrink_to\": 60, \"max_lines\": 2}}}; {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"de\", \"patch\": {\"box\": {\"top\": 160, \"left\": 40, \"right\": 40}}}; {\"id\": \"phone-1\", \"scope\": \"variant\", \"target\": \"ios-ipad-13\", \"patch\": {\"width\": 560}}.",
+            "Change element fields (one undo step), optionally with translations. Scope: base (default, everywhere), variant (override for a format), lang (override for one language; text elements). `null` in scope variant/lang removes the field from the override (back to the base value); element_reset_override removes whole overrides. `ids` may span several strips; `updates` puts several differently scoped patches into one undo step, e.g. {\"updates\": [{\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"de\", \"patch\": {\"font_size\": 64}}, {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"fr\", \"patch\": {\"font_size\": 66}}]}. All fields with types and defaults: docs_get {topic: \"elements\"}. Examples: {\"id\": \"title\", \"patch\": {\"style\": \"sub\", \"fit\": {\"shrink_to\": 60, \"max_lines\": 2}}}; {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"de\", \"patch\": {\"box\": {\"top\": 160, \"left\": 40, \"right\": 40}}}; {\"id\": \"phone-1\", \"scope\": \"variant\", \"target\": \"ios-ipad-13\", \"patch\": {\"width\": 560}}.",
             patch_fields_doc!()
         )
     )]
@@ -486,16 +572,45 @@ impl ArrangiaMcp {
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
-            let ids = all_ids(p.id.clone(), p.ids.clone())?;
-            let view = p.edit().view_for(app, &ids)?;
-            let strings: Vec<Value> = p
-                .strings
-                .iter()
-                .map(|s| json!({ "lang": s.lang, "key": s.key, "value": s.value }))
-                .collect();
+            let call = p.edit();
+            let ids = all_ids(p.id.clone(), p.ids.clone()).unwrap_or_default();
+            if ids.is_empty() && p.updates.is_empty() {
+                return Err(CommandError::invalid(
+                    "give `id`, `ids` or `updates` [{id, patch, scope?, lang?, variant?}]",
+                ));
+            }
+            let mut updates = Vec::new();
+            let mut first = ids.clone();
+            for u in &p.updates {
+                let u_ids = all_ids(u.id.clone(), u.ids.clone())?;
+                let ctx = EditCtx {
+                    target: u.target.clone().or_else(|| call.target.clone()),
+                    scope: u.scope.unwrap_or(call.scope),
+                    variant: u.variant.clone().or_else(|| call.variant.clone()),
+                    lang: u.lang.clone().or_else(|| call.lang.clone()),
+                };
+                let view = ctx.view_for(app, &u_ids)?;
+                if first.is_empty() {
+                    first.clone_from(&u_ids);
+                }
+                updates.push(merged(
+                    view,
+                    json!({ "ids": u_ids, "patch": u.patch, "strings": string_values(&u.strings) }),
+                ));
+            }
+            // The call's own view (the first update's target when it has
+            // no ids of its own; `lang` scope needs no `lang` then).
+            let mut own = call.clone();
+            if ids.is_empty() {
+                own.scope = crate::params::Scope::Base;
+            }
+            let view = own.view_for(app, &first)?;
             let args = merged(
                 view,
-                json!({ "ids": ids, "patch": p.patch, "strings": strings }),
+                json!({
+                    "ids": ids, "patch": p.patch, "strings": string_values(&p.strings),
+                    "updates": updates,
+                }),
             );
             Ok(edited(&cmd(app, "element_patch", args)?))
         })
@@ -503,7 +618,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Delete elements (groups with their children) in one undo step. Translations stay. Example: {\"ids\": [\"badge\", \"arrow\"]}."
+        description = "Delete elements (groups with their children) in one undo step; ids may span several strips. Translations stay. Example: {\"ids\": [\"badge\", \"arrow\"]}."
     )]
     async fn element_remove(
         &self,
@@ -586,7 +701,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Rotate an element to an absolute angle in degrees (positive = clockwise) around its pivot (default: centre). Example: {\"id\": \"phone-beds\", \"degrees\": -8}."
+        description = "Rotate elements to an absolute angle in degrees (positive = clockwise) around their pivot (default: centre); several `ids` (also of several strips) in one undo step. Example: {\"id\": \"phone-beds\", \"degrees\": -8}."
     )]
     async fn element_rotate(
         &self,
@@ -594,15 +709,19 @@ impl ArrangiaMcp {
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
-            let view = p.edit().view(app, Some(&p.id), None)?;
-            let args = merged(view, json!({ "id": p.id, "degrees": p.degrees }));
+            let ids = all_ids(p.id.clone(), p.ids.clone())?;
+            let view = p.edit().view_for(app, &ids)?;
+            let args = match ids.as_slice() {
+                [id] => merged(view, json!({ "id": id, "degrees": p.degrees })),
+                _ => merged(view, json!({ "ids": ids, "degrees": p.degrees })),
+            };
             Ok(edited(&cmd(app, "edit_rotate", args)?))
         })
         .await
     }
 
     #[tool(
-        description = "Change painting order within the element list: front, back, forward, backward (z stays). Example: {\"ids\": [\"badge\"], \"order\": \"front\"}."
+        description = "Change painting order within the element list: front, back, forward, backward (z stays). Ids may span several strips (one undo step). Example: {\"ids\": [\"title-plan\", \"ipad-title-plan\"], \"order\": \"front\"}."
     )]
     async fn element_reorder(
         &self,
@@ -674,7 +793,38 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Power tool: apply raw model ops atomically as ONE undo step (all or nothing). JSON form {\"op\": \"<name>\", …}; see resource arrangia://docs/ops for every op and field. Prefer the specific tools; use this for multi-part changes that must be one step."
+        description = "Remove variant or language overrides (back to the base value) in one undo step: whole overrides or only `fields`. Ids may span several strips. Examples: {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"en\"}; {\"ids\": [\"title\", \"sub\"], \"scope\": \"lang\", \"lang\": \"de\", \"fields\": [\"box\", \"font_size\"]}; {\"id\": \"phone-1\", \"scope\": \"variant\", \"variant\": \"tablet-landscape\", \"fields\": [\"at\"]}."
+    )]
+    async fn element_reset_override(
+        &self,
+        Parameters(p): Parameters<ResetOverrideParams>,
+        ctx: RequestContext<RoleServer>,
+    ) -> CallToolResult {
+        self.run(&ctx, move |app| {
+            let ids = all_ids(p.id.clone(), p.ids.clone())?;
+            let target = if let Some(t) = p.target {
+                Some(t)
+            } else {
+                let project = app.session()?.snapshot();
+                let strip = crate::params::strip_of_element(&project, &ids[0]);
+                crate::params::gui_target(&project, strip.as_deref())
+            };
+            let mut args = json!({ "ids": ids, "scope": p.scope });
+            for (k, v) in [("variant", p.variant), ("lang", p.lang), ("target", target)] {
+                if let Some(v) = v {
+                    args[k] = json!(v);
+                }
+            }
+            if let Some(f) = p.fields {
+                args["fields"] = json!(f);
+            }
+            Ok(edited(&cmd(app, "element_reset_override", args)?))
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Power tool: apply raw model ops atomically as ONE undo step (all or nothing). JSON form {\"op\": \"<name>\", …}. update_element always writes the base element; overrides use set_lang_override / reset_lang_override_field / set_variant_override / reset_override_field. Every op and field: call docs_get {topic: \"ops\"} (also resource arrangia://docs/ops). Prefer the specific tools; use this for multi-part changes that must be one step."
     )]
     async fn apply_ops(
         &self,

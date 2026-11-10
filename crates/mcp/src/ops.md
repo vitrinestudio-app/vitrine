@@ -2,10 +2,12 @@
 
 `apply_ops {ops: [...], label?}` applies all ops atomically as one undo step:
 either every op succeeds or nothing changes. Each op is a JSON object with an
-`"op"` tag. Field values use the YAML names of `project.yaml` (read the
-resource `arrangia://project/project.yaml` for real examples). Prefer the
-specific tools (element_update, strings_set …); use ops for multi-part
-changes that must be one step.
+`"op"` tag. Field values use the YAML names of `project.yaml` (docs_get
+{topic: "project"} and {topic: "elements"}; the resource
+`arrangia://project/project.yaml` has real examples). Prefer the specific
+tools (element_update, strings_set …); use ops for multi-part changes that
+must be one step. A failing op names its index: `op 2 of the transaction
+failed: …`.
 
 ## Value shapes
 - Ids: letters, digits, `-`, `_`, `.`; element ids are unique in the project.
@@ -15,8 +17,11 @@ changes that must be one step.
   (angle CSS-like: 0 = to top, 90 = to right, 180 = to bottom) |
   `{kind: radial-gradient, center?: {x, y} (fractions), radius?, stops}` |
   `{kind: image, asset, fit?: cover|contain|tile, …}`.
-- ElementPatch: object of element fields (see element_update); `null`
-  resets a field to its default.
+- ElementPatch: object of element fields (docs_get {topic: "elements"}).
+  In `update_element` a `null` resets the base field to its default. In
+  override patches (`set_variant_override`, `set_lang_override`) a `null`
+  field is ignored: an override only sets values, and the patch REPLACES
+  the whole override (fields left out are no longer overridden).
 
 ## Elements
 - `{"op": "add_element", "strip": "phone", "element": {"id": "badge", "kind": "shape", "page": 0, "at": {"x": 820, "y": 300}, "width": 200, "height": 80, "shape": "rect", "radius": 40, "fill": "@accent"}, "parent"?: "group-id", "index"?: 0}`
@@ -42,6 +47,9 @@ Element kinds and their fields:
   `opacity`, `z`, `clip` (none|page), `visible`, `visible_in: {targets, langs}`, `lock_page`
 
 ## Variants and language overrides
+`update_element` always changes the base element (all targets and
+languages). Per format or language use these ops (or element_update with
+`scope`, which merges into the existing override):
 - `{"op": "add_variant", "strip": "phone", "id": "tablet-landscape", "variant": {"content_scale": 0.75}}`
 - `{"op": "remove_variant", "strip": "phone", "id": "tablet-landscape"}`
 - `{"op": "rename_variant", "strip": "phone", "from": "a", "to": "b"}`
@@ -51,6 +59,15 @@ Element kinds and their fields:
 - `{"op": "set_lang_override", "element": "title", "lang": "de", "patch": {"box": {"top": 170, "left": 40, "right": 40}} | null}`
   (only at, width, height, anchor_y, style, box, align, valign, fit, color, font_size, stroke, glow, shadow, hyphenate)
 - `{"op": "reset_lang_override_field", "element": "title", "lang": "de", "field": "box"}`
+
+Several languages in one step:
+```json
+{"ops": [
+  {"op": "set_lang_override", "element": "title", "lang": "de", "patch": {"font_size": 64}},
+  {"op": "set_lang_override", "element": "title", "lang": "fr", "patch": {"font_size": 66, "box": {"top": 160, "left": 50, "right": 50}}},
+  {"op": "reset_lang_override_field", "element": "sub", "lang": "en", "field": "at"}
+]}
+```
 
 ## Strips
 - `{"op": "add_strip", "strip": {"id": "tablet", "page": {"aspect": "2064:2752", "count": 3, "ids"?: ["a", "b", "c"]}, "backgrounds"?: [fill, …]}, "index"?: n}`

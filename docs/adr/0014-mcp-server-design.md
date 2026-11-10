@@ -128,3 +128,38 @@ plus paths the caller passes explicitly (`export.out_dir`,
   settings UI are Phase 4.3b; `discover_gui` and `http::service` are the
   seams.
 - rmcp upgrades need a look at the macro and transport APIs (exact pin).
+
+## Amendment 2026-11-10: findings of a real session
+
+A Claude session created a project through the GUI-hosted server (Claude
+Desktop → `arrangia mcp` proxy). Changes:
+
+- **Override reset.** `element_update {scope: lang, patch: {at: null}}`
+  stored `langs.en: {at: null}` (= "reset `at` to (0, 0) in English")
+  instead of removing the override. Now overrides never hold `null`
+  (ADR 0009 amendment): in scope `variant`/`lang` a `null` removes the
+  field from the override (`core::edit::Editor::patch`), the override ops
+  drop `null` fields, loading drops hand-written ones (info
+  `override_null`). New tool `element_reset_override {id|ids, scope,
+  variant?, lang?, fields?}` (app command `element_reset_override`).
+- **One undo step for several scopes.** `element_update.updates` (app
+  `element_patch.updates`): parts with their own view context, planned in
+  order on a scratch copy, applied as one transaction. `apply_ops` already
+  accepted the override ops; they are now documented and named in the
+  tool description (`update_element` always writes the base).
+- **Ids across strips.** Multi-element edit commands plan each element on
+  the view's target when it shows the element's strip, else on the first
+  target showing it (`commands::edit::ctx_for`); a named variant must
+  exist in that strip. `element_rotate` takes `ids`.
+- **Docs reachable without resources.** Resources did work through the
+  proxy (capabilities advertised, `resources/*` forwarded; test
+  `proxy_forwards_resources_and_docs`), but Claude Desktop exposes MCP
+  resources only for the user to attach, not to the model. New tool
+  `docs_get {topic}` (overview, elements, ops, project, markup, targets,
+  scopes; `crates/mcp/src/docs.rs`, the element reference generated from
+  `ElementKindTag::fields`, `COMMON_FIELDS`, `LANG_OVERRIDE_FIELDS` plus a
+  description table a test keeps complete). The same topics are resources
+  `arrangia://docs/<topic>`.
+- **Assets.** Kind `asset` documented as any image (alias `image`);
+  `assets_import.files` imports single files with their own kind,
+  key/name, lang, variant in one call with per-file results and `dry_run`.

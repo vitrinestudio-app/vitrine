@@ -208,8 +208,48 @@ pub(super) struct Plan {
     pub created: Vec<String>,
 }
 
+/// The edit context for element `id`: `ctx` when its target shows the
+/// element's strip, else the same context on the first target showing that
+/// strip, so one command can edit elements of several strips in one undo
+/// step (e.g. "bring all titles to front" on the iPhone and iPad strips).
+/// A named variant must exist in that strip too.
+pub(super) fn ctx_for(project: &Project, ctx: &EditContext, id: &str) -> CmdResult<EditContext> {
+    let Some((strip, _)) = project.element(id) else {
+        return Ok(ctx.clone()); // the editor reports the unknown element
+    };
+    if project
+        .target(ctx.target.as_str())
+        .is_some_and(|t| t.strip == strip.id)
+    {
+        return Ok(ctx.clone());
+    }
+    let target = project
+        .targets
+        .iter()
+        .find(|t| t.strip == strip.id)
+        .ok_or_else(|| {
+            CommandError::invalid(format!(
+                "element `{id}`: no target shows its strip `{}`",
+                strip.id
+            ))
+        })?;
+    if let Some(Some(v)) = &ctx.variant
+        && !strip.variants.contains_key(v)
+    {
+        return Err(CommandError::not_found(format!(
+            "element `{id}`: strip `{}` has no variant `{v}`",
+            strip.id
+        )));
+    }
+    let mut out = ctx.clone();
+    out.target = target.id.clone();
+    Ok(out)
+}
+
 /// Plans `f` for each of `ids` in turn on a scratch copy of `project`, so
-/// later intents see the effect of earlier ones.
+/// later intents see the effect of earlier ones. Elements of other strips
+/// than the view's are planned on a target showing their strip
+/// ([`ctx_for`]).
 fn plan_each(
     session: &Session,
     project: &Project,
@@ -220,7 +260,8 @@ fn plan_each(
     let mut scratch = project.clone();
     let mut plan = Plan::default();
     for (i, id) in ids.iter().enumerate() {
-        let (ops, created) = with_editor(session, &scratch, ctx, |e| f(e, id))?;
+        let ctx = ctx_for(&scratch, ctx, id)?;
+        let (ops, created) = with_editor(session, &scratch, &ctx, |e| f(e, id))?;
         if ops.is_empty() {
             continue;
         }
@@ -502,7 +543,11 @@ view_args! {
 
 view_args! {
     pub struct EditRotateArgs {
+        /// The element (or `ids` to rotate several to the same angle).
+        #[serde(default)]
         pub id: String,
+        #[serde(default)]
+        pub ids: Vec<String>,
         pub degrees: f64,
     }
 }
@@ -605,11 +650,26 @@ pub fn edit_resize(app: &AppState, args: EditResizeArgs) -> CmdResult<EditResult
 }
 
 pub fn edit_rotate(app: &AppState, args: EditRotateArgs) -> CmdResult<EditResult> {
-    let g = Gesture::Rotate {
-        id: args.id.clone(),
-        degrees: args.degrees,
-    };
-    gesture(app, &args.view(), &g)
+    if args.ids.is_empty() {
+        let g = Gesture::Rotate {
+            id: args.id.clone(),
+            degrees: args.degrees,
+        };
+        return gesture(app, &args.view(), &g);
+    }
+    let ids: Vec<String> = (!args.id.is_empty())
+        .then(|| args.id.clone())
+        .into_iter()
+        .chain(args.ids.iter().cloned())
+        .collect();
+    let label = format!("Rotate {} to {:.1}°", subject(&ids), args.degrees);
+    edit(app, &args.view(), label, |s, p, c| {
+        finite(&[args.degrees])?;
+        let ids = top_level(p, &ids)?;
+        plan_each(s, p, c, &ids, |e, id| {
+            Ok((e.rotate_to(id, args.degrees)?, None))
+        })
+    })
 }
 
 pub fn edit_set_page(app: &AppState, args: EditSetPageArgs) -> CmdResult<EditResult> {
@@ -708,6 +768,202 @@ pub fn edit_reset_override(app: &AppState, args: EditResetOverrideArgs) -> CmdRe
             created: Vec::new(),
         })
     })
+}
+
+/// Which override [`element_reset_override`] resets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverrideScope {
+    /// A variant override (`variants.<v>.overrides.<id>`).
+    Variant,
+    /// A language override of a text element (`langs.<lang>`).
+    Lang,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ElementResetOverrideArgs {
+    #[serde(default)]
+    pub id: Option<String>,
+    /// Several elements, also of different strips (one undo step).
+    #[serde(default)]
+    pub ids: Vec<String>,
+    pub scope: OverrideScope,
+    /// `variant`: the variant (default: per strip, the variant of `target`
+    /// when it shows the strip, else of the first target showing it).
+    #[serde(default)]
+    pub variant: Option<String>,
+    /// `lang`: the language whose override is reset (exactly this one,
+    /// not its prefix languages). Required for `lang`.
+    #[serde(default)]
+    pub lang: Option<String>,
+    /// Fields (YAML names) to reset; missing = the whole override.
+    #[serde(default)]
+    pub fields: Option<Vec<String>>,
+    /// See `variant`.
+    #[serde(default)]
+    pub target: Option<String>,
+}
+
+/// The variant of `strip` an override reset without explicit variant
+/// works on: that of `target` when it shows the strip, else that of the
+/// first target showing the strip.
+fn default_variant(
+    project: &Project,
+    target: Option<&str>,
+    strip: &arrangia_core::model::Strip,
+) -> CmdResult<VariantId> {
+    let t = target
+        .and_then(|t| project.target(t))
+        .filter(|t| t.strip == strip.id)
+        .or_else(|| project.targets.iter().find(|t| t.strip == strip.id));
+    t.and_then(|t| t.variant.clone()).ok_or_else(|| {
+        CommandError::invalid(format!(
+            "no variant given and the target showing strip `{}` has none; pass `variant`",
+            strip.id
+        ))
+    })
+}
+
+/// Removes fields (or all) of variant or language overrides of elements –
+/// the explicit "back to the base value". Nothing set: `applied: false`.
+pub fn element_reset_override(
+    app: &AppState,
+    mut args: ElementResetOverrideArgs,
+) -> CmdResult<EditResult> {
+    use arrangia_core::model::{ElementPatch, Lang};
+
+    // Duplicates would reset a field twice.
+    if let Some(fields) = &mut args.fields {
+        let mut seen = BTreeSet::new();
+        fields.retain(|f| seen.insert(f.clone()));
+    }
+    let mut ids: Vec<String> = args.id.iter().chain(&args.ids).cloned().collect();
+    let mut seen = BTreeSet::new();
+    ids.retain(|i| seen.insert(i.clone()));
+    if ids.is_empty() {
+        return Err(CommandError::invalid("give `id` or `ids`"));
+    }
+    if let Some(t) = &args.target {
+        check_target(&app.session()?.snapshot(), t)?;
+    }
+    if let Some(fields) = &args.fields {
+        if fields.is_empty() {
+            return Err(CommandError::invalid(
+                "`fields` is empty; omit it to reset the whole override",
+            ));
+        }
+        if let Some(f) = fields.iter().find(|f| !ElementPatch::is_field_name(f)) {
+            return Err(CommandError::invalid(format!(
+                "unknown element field `{f}` (allowed: {})",
+                ElementPatch::field_names().join(", ")
+            )));
+        }
+    }
+    let lang = match (args.scope, &args.lang) {
+        (OverrideScope::Lang, None) => {
+            return Err(CommandError::invalid("scope `lang` needs `lang`"));
+        }
+        (OverrideScope::Lang, Some(l)) => Some(Lang::parse(l).map_err(CommandError::invalid)?),
+        (OverrideScope::Variant, _) => None,
+    };
+    let what = match &args.fields {
+        Some(f) => f.join(", "),
+        None => "overrides".to_owned(),
+    };
+    let whose = match (&lang, &args.variant) {
+        (Some(l), _) => format!(" ({l})"),
+        (None, Some(v)) => format!(" ({v})"),
+        (None, None) => String::new(),
+    };
+    let label = format!("Reset {what} of {}{whose}", subject(&ids));
+    let view = ViewContext {
+        target: args.target.clone(),
+        ..ViewContext::default()
+    };
+    edit(app, &view, label, |_, p, _| {
+        let mut ops = Vec::new();
+        for id in &ids {
+            ops.extend(match &lang {
+                Some(l) => reset_lang_ops(p, id, l, args.fields.as_deref())?,
+                None => reset_variant_ops(p, id, &args)?,
+            });
+        }
+        Ok(Plan {
+            ops,
+            created: Vec::new(),
+        })
+    })
+}
+
+/// Ops resetting `fields` (all: `None`) of the `lang` override of `id`.
+fn reset_lang_ops(
+    p: &Project,
+    id: &str,
+    lang: &arrangia_core::model::Lang,
+    fields: Option<&[String]>,
+) -> CmdResult<Vec<Op>> {
+    let (_, e) = p
+        .element(id)
+        .ok_or_else(|| CommandError::not_found(format!("unknown element `{id}`")))?;
+    let t = e.text_props().ok_or_else(|| {
+        CommandError::invalid(format!(
+            "element `{id}` is not a text: only texts have language overrides"
+        ))
+    })?;
+    let Some(current) = t.langs.get(lang) else {
+        return Ok(Vec::new());
+    };
+    Ok(match fields {
+        None => vec![Op::SetLangOverride {
+            element: e.id.clone(),
+            lang: lang.clone(),
+            patch: None,
+        }],
+        Some(fields) => {
+            let set = current.fields();
+            fields
+                .iter()
+                .filter(|f| set.contains(&f.as_str()))
+                .map(|f| Op::ResetLangOverrideField {
+                    element: e.id.clone(),
+                    lang: lang.clone(),
+                    field: f.clone(),
+                })
+                .collect()
+        }
+    })
+}
+
+/// Ops resetting the fields of `args` in the variant override of `id`.
+fn reset_variant_ops(p: &Project, id: &str, args: &ElementResetOverrideArgs) -> CmdResult<Vec<Op>> {
+    let (strip, e) = p
+        .element(id)
+        .ok_or_else(|| CommandError::not_found(format!("unknown element `{id}`")))?;
+    let v = match &args.variant {
+        Some(v) => VariantId::parse(v).map_err(CommandError::invalid)?,
+        None => default_variant(p, args.target.as_deref(), strip)?,
+    };
+    let Some(var) = strip.variants.get(&v) else {
+        return Err(CommandError::not_found(format!(
+            "strip `{}` has no variant `{v}`",
+            strip.id
+        )));
+    };
+    if !var.overrides.contains_key(&e.id) {
+        return Ok(Vec::new());
+    }
+    let fields: Vec<Option<&str>> = match &args.fields {
+        None => vec![None],
+        Some(f) => f.iter().map(|f| Some(f.as_str())).collect(),
+    };
+    let mut ops = Vec::new();
+    for f in fields {
+        ops.extend(arrangia_core::edit::reset_override(
+            p, &strip.id, &v, &e.id, f,
+        )?);
+    }
+    Ok(ops)
 }
 
 /// A scratch copy of the current project with `gesture` applied (drag

@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::AppState;
-use super::edit::{EditResult, Plan, ViewContext, double_option, edit, with_editor};
+use super::edit::{EditResult, Plan, ViewContext, ctx_for, double_option, edit, with_editor};
 use crate::error::{CmdResult, CommandError};
 
 view_args! {
@@ -205,15 +205,44 @@ view_args! {
         pub id: Option<String>,
         #[serde(default)]
         pub ids: Vec<String>,
-        /// Fields to set (YAML names; `null` = reset to the default). In a
-        /// variant view they go into the variant's override.
+        /// Fields to set (YAML names; `null` = reset: to the default in the
+        /// base, out of the override in a variant or language override).
+        /// In a variant view they go into the variant's override.
         #[serde(default)]
         pub patch: ElementPatch,
         /// Translations set in the same undo step (live text editing, a new
         /// key for a text element).
         #[serde(default)]
         pub strings: Vec<StringEdit>,
+        /// More patches in the same undo step, each with its own view
+        /// context (missing `target`/`lang`: those of the command), applied
+        /// in order after `id`/`ids`.
+        #[serde(default)]
+        pub updates: Vec<PatchUpdate>,
     }
+}
+
+/// One entry of [`ElementPatchArgs::updates`].
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(clippy::option_option)]
+pub struct PatchUpdate {
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub ids: Vec<String>,
+    #[serde(default)]
+    pub patch: ElementPatch,
+    #[serde(default)]
+    pub strings: Vec<StringEdit>,
+    #[serde(default)]
+    pub target: Option<String>,
+    #[serde(default)]
+    pub lang: Option<String>,
+    #[serde(default, deserialize_with = "double_option")]
+    pub variant: Option<Option<String>>,
+    #[serde(default)]
+    pub scope: Option<arrangia_core::edit::EditScope>,
 }
 
 fn string_ops(project: &Project, edits: &[StringEdit]) -> CmdResult<Vec<Op>> {
@@ -230,36 +259,91 @@ fn string_ops(project: &Project, edits: &[StringEdit]) -> CmdResult<Vec<Op>> {
     Ok(ops)
 }
 
+/// `id` and `ids` without duplicates (order kept).
+fn id_list(id: Option<&String>, ids: &[String]) -> Vec<String> {
+    let mut seen = std::collections::BTreeSet::new();
+    id.into_iter()
+        .chain(ids)
+        .filter(|i| seen.insert((*i).clone()))
+        .cloned()
+        .collect()
+}
+
+/// One part of an [`element_patch`]: view, ids, patch, strings.
+type PatchPart<'a> = (ViewContext, Vec<String>, &'a ElementPatch, &'a [StringEdit]);
+
 pub fn element_patch(app: &AppState, args: ElementPatchArgs) -> CmdResult<EditResult> {
-    let mut ids: Vec<String> = args.id.iter().chain(&args.ids).cloned().collect();
-    ids.dedup();
-    if ids.is_empty() {
+    let base_view = args.view();
+    let mut parts: Vec<PatchPart<'_>> = Vec::new();
+    let ids = id_list(args.id.as_ref(), &args.ids);
+    if !ids.is_empty() || !args.strings.is_empty() {
+        parts.push((base_view.clone(), ids, &args.patch, &args.strings));
+    }
+    for u in &args.updates {
+        let ids = id_list(u.id.as_ref(), &u.ids);
+        if ids.is_empty() && u.strings.is_empty() {
+            return Err(CommandError::invalid("an update needs `id` or `ids`"));
+        }
+        let view = ViewContext {
+            target: u.target.clone().or_else(|| base_view.target.clone()),
+            lang: u.lang.clone().or_else(|| base_view.lang.clone()),
+            // Like a view context of its own: missing = the target's own
+            // variant / all languages.
+            variant: u.variant.clone(),
+            scope: u.scope,
+        };
+        parts.push((view, ids, &u.patch, &u.strings));
+    }
+    let all: Vec<String> = parts.iter().flat_map(|p| p.1.iter().cloned()).collect();
+    let all = id_list(None, &all);
+    if all.is_empty() && parts.iter().all(|p| p.3.is_empty()) {
         return Err(CommandError::invalid("no element id given"));
     }
-    let mut what: Vec<&str> = args.patch.fields();
-    if !args.strings.is_empty() && !what.contains(&"text") {
-        what.push("text");
+    let mut what: Vec<&str> = Vec::new();
+    for (_, _, patch, strings) in &parts {
+        for f in patch.fields() {
+            if !what.contains(&f) {
+                what.push(f);
+            }
+        }
+        if !strings.is_empty() && !what.contains(&"text") {
+            what.push("text");
+        }
     }
-    let subject = if ids.len() == 1 {
-        ids[0].clone()
-    } else {
-        format!("{} elements", ids.len())
+    let subject = match all.as_slice() {
+        [one] => one.clone(),
+        [] => "texts".to_owned(),
+        _ => format!("{} elements", all.len()),
     };
     let label = if what.is_empty() {
         format!("Edit {subject}")
     } else {
         format!("Edit {} of {subject}", what.join(", "))
     };
-    edit(app, &args.view(), label, |s, p, c| {
-        // Strings first so a new key exists when the element points to it.
-        let mut ops = string_ops(p, &args.strings)?;
-        for id in &ids {
-            if p.element(id).is_none() {
-                return Err(CommandError::not_found(format!("unknown element `{id}`")));
+    edit(app, &base_view, label, |s, p, _| {
+        // Parts are planned in order on a scratch copy, so a later part
+        // sees (and merges into) the overrides written by an earlier one.
+        let mut scratch = p.clone();
+        let mut ops = Vec::new();
+        for (view, ids, patch, strings) in &parts {
+            let c = view.edit_context(s, &scratch)?;
+            // Strings first so a new key exists when the element points to it.
+            let mut part = string_ops(&scratch, strings)?;
+            for id in ids {
+                if scratch.element(id).is_none() {
+                    return Err(CommandError::not_found(format!("unknown element `{id}`")));
+                }
+                if !patch.is_empty() {
+                    // Each id has its own element and override: independent
+                    // ops (elements of other strips on a target showing
+                    // theirs).
+                    let c = ctx_for(&scratch, &c, id)?;
+                    part.extend(with_editor(s, &scratch, &c, |ed| ed.patch(id, patch))?);
+                }
             }
-            if !args.patch.is_empty() {
-                // Each id has its own element and override: independent ops.
-                ops.extend(with_editor(s, p, c, |ed| ed.patch(id, &args.patch))?);
+            if !part.is_empty() {
+                scratch.apply_ops(part.clone())?;
+                ops.extend(part);
             }
         }
         Ok(Plan {
@@ -732,6 +816,121 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(err.code, ErrorCode::NotFound);
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)]
+    fn overrides_reset_batch_updates_and_cross_strip_edits() {
+        let (_tmp, app) = app();
+        let get = |id: &str, lang: &str| {
+            call(
+                &app,
+                "element_get",
+                json!({"target": "ios-iphone-69", "lang": lang, "id": id}),
+            )
+        };
+        // The reported case: `at: null` in a language override resets it
+        // (no `en: {at: null}` left behind).
+        call(
+            &app,
+            "element_patch",
+            json!({"target": "ios-iphone-69", "variant": null, "lang": "en", "scope": "lang",
+                   "id": "title-plan", "patch": {"font_size": 70}}),
+        );
+        assert_eq!(get("title-plan", "en")["lang_override"]["font_size"], 70);
+        let r = call(
+            &app,
+            "element_patch",
+            json!({"target": "ios-iphone-69", "variant": null, "lang": "en", "scope": "lang",
+                   "id": "title-plan", "patch": {"font_size": null}}),
+        );
+        assert!(r["applied"].as_bool().unwrap());
+        assert!(get("title-plan", "en").get("lang_override").is_none());
+        let session = app.session().unwrap();
+        let yaml = std::fs::read_to_string(session.dir().join("project.yaml")).unwrap();
+        assert!(!yaml.contains("null"), "no null in overrides");
+
+        // Several language adjustments (and a base change) in one step.
+        let r = call(
+            &app,
+            "element_patch",
+            json!({"target": "ios-iphone-69", "variant": null, "updates": [
+                {"id": "title-plan", "scope": "lang", "lang": "de", "patch": {"font_size": 60}},
+                {"id": "title-plan", "scope": "lang", "lang": "fr", "patch": {"font_size": 62}},
+                {"ids": ["title-beds", "mac-title-plan"], "patch": {"align": "left"}},
+            ]}),
+        );
+        assert_eq!(last_undo(&r), "Edit font_size, align of 3 elements");
+        assert_eq!(get("title-plan", "de")["lang_override"]["font_size"], 60);
+        assert_eq!(get("title-plan", "fr")["lang_override"]["font_size"], 62);
+        let mac = call(
+            &app,
+            "element_get",
+            json!({"target": "mac", "id": "mac-title-plan"}),
+        );
+        assert_eq!(mac["base"]["align"], "left", "other strip, same step");
+        call(&app, "undo", Value::Null);
+        assert!(
+            get("title-plan", "de")["lang_override"]
+                .get("font_size")
+                .is_none()
+        );
+        assert!(get("title-plan", "fr").get("lang_override").is_none());
+
+        // Bring titles of two strips to front in one step.
+        let r = call(
+            &app,
+            "edit_reorder",
+            json!({"target": "ios-iphone-69", "ids": ["title-plan", "mac-title-plan"], "order": "front"}),
+        );
+        assert!(r["applied"].as_bool().unwrap());
+        let summary = call(&app, "project_get", Value::Null);
+        for (strip, id) in [(0, "title-plan"), (1, "mac-title-plan")] {
+            let els = summary["project"]["strips"][strip]["elements"]
+                .as_array()
+                .unwrap();
+            assert_eq!(els.last().unwrap()["id"], id, "{strip}");
+        }
+        // Rotate several across strips.
+        let r = call(
+            &app,
+            "edit_rotate",
+            json!({"target": "ios-iphone-69", "ids": ["phone-plan", "macbook-plan"], "degrees": 3}),
+        );
+        assert_eq!(last_undo(&r), "Rotate 2 elements to 3.0°");
+
+        // Explicit reset: variant override fields, language override.
+        let r = call(
+            &app,
+            "element_reset_override",
+            json!({"ids": ["phone-plan"], "scope": "variant", "target": "play-phone", "fields": ["at"]}),
+        );
+        assert!(r["applied"].as_bool().unwrap());
+        let e = call(
+            &app,
+            "element_get",
+            json!({"target": "play-phone", "id": "phone-plan"}),
+        );
+        assert!(!e["overridden"].as_array().unwrap().contains(&json!("at")));
+        let r = call(
+            &app,
+            "element_reset_override",
+            json!({"id": "title-companions", "scope": "lang", "lang": "de"}),
+        );
+        assert!(r["applied"].as_bool().unwrap());
+        let r = call(
+            &app,
+            "element_reset_override",
+            json!({"id": "title-companions", "scope": "lang", "lang": "de"}),
+        );
+        assert!(!r["applied"].as_bool().unwrap(), "nothing left to reset");
+        let err = dispatch(
+            &app,
+            "element_reset_override",
+            json!({"id": "phone-plan", "scope": "lang", "lang": "de"}),
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::InvalidArgs);
     }
 
     #[test]

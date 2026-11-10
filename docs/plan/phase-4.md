@@ -110,10 +110,18 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [ ] Register the server in Claude Code and Claude Desktop through the app
       settings ("Add to Claude Desktop", copied `claude mcp add` command) and
       check the live view with a real client
-- [ ] Scenario run by a Claude session: "Create screenshots for app X in en/de,
+- [~] Scenario run by a Claude session: "Create screenshots for app X in en/de,
       iPhone + iPad, translate, export" – judge the rendered result; fix tool
       ergonomics (descriptions, defaults, error messages) based on what the
       model struggles with
+  - [x] 2026-11-10 first real session (Claude Desktop via the proxy) →
+        fixes (ADR 0014/0009 amendments): override reset (`null` removes
+        the field, no `null` stored, `element_reset_override`), batch
+        updates in one undo step (`element_update.updates`, override ops
+        documented for `apply_ops`), ids across strips, `docs_get {topic}`
+        (resources are user-attached in Claude Desktop), `assets_import`
+        mapping list + kind alias `image`
+  - [ ] re-run the scenario with the fixes; judge the rendered result
 - [~] Docs: ADR (app crate + MCP design), CLAUDE.md, README, `docs/guide/NOTES.md`
       (setup snippets, tool list, example prompts) – done for the server
       and GUI hosting (ADR 0013, 0014, 0015); real-world findings follow

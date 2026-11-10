@@ -1679,3 +1679,86 @@ fn imported_frames_accept_vendor_colours() {
     assert!(q.clone().apply(set("{ color: burgundy }")).is_err());
     apply_and_undo(&mut q, set("{ frame: 'imported:apple', color: burgundy }"));
 }
+
+#[test]
+fn overrides_never_store_null() {
+    let mut p = sample();
+    let lang = Lang::new("es");
+    p.apply(Op::SetLangOverride {
+        element: ElementId::new("title-1"),
+        lang: lang.clone(),
+        patch: Some(patch("{ font_size: 50, at: null }")),
+    })
+    .unwrap();
+    let (_, e) = p.element("title-1").unwrap();
+    assert_eq!(e.text_props().unwrap().langs[&lang].fields(), ["font_size"]);
+    // A patch of nulls only is no override at all.
+    p.apply(Op::SetLangOverride {
+        element: ElementId::new("title-1"),
+        lang: lang.clone(),
+        patch: Some(patch("{ at: null }")),
+    })
+    .unwrap();
+    let (_, e) = p.element("title-1").unwrap();
+    assert!(!e.text_props().unwrap().langs.contains_key(&lang));
+    let set = Op::SetVariantOverride {
+        strip: StripId::new("phone"),
+        variant: VariantId::new("tablet-landscape"),
+        element: ElementId::new("hero-phone"),
+        patch: Some(patch("{ rotation: null, width: 500 }")),
+    };
+    apply_and_undo(&mut p, set);
+    let o = &p.strips[0].variants[&VariantId::new("tablet-landscape")].overrides
+        [&ElementId::new("hero-phone")];
+    assert_eq!(o.fields(), ["width"]);
+    assert!(!p.to_yaml().unwrap().contains("null"));
+}
+
+#[test]
+fn hand_written_override_nulls_are_dropped_and_reported() {
+    let tmp = tempfile::tempdir().unwrap();
+    let p = sample();
+    // The reported case: `langs: {en: {at: null}}` written into the file.
+    let yaml = p
+        .to_yaml()
+        .unwrap()
+        .replace(
+            "      fr: {hyphenate: false",
+            "      en: {at: null}\n      fr: {hyphenate: false",
+        )
+        .replace(
+            "sub-1: {visible: false}",
+            "sub-1: {visible: false, opacity: null}",
+        );
+    assert!(yaml.contains("en: {at: null}"), "{yaml}");
+    let mut p = io::project_from_yaml(&yaml).unwrap();
+    let (_, e) = p.element("title-1").unwrap();
+    assert!(!e.text_props().unwrap().langs.contains_key("en"));
+    assert_eq!(
+        p.dropped_override_nulls.len(),
+        2,
+        "{:?}",
+        p.dropped_override_nulls
+    );
+    assert!(p.dropped_override_nulls[0].contains("langs.en: at"));
+    let report = arrangia_core::validate::validate(
+        &p,
+        &arrangia_core::validate::ValidateOptions::new(&arrangia_core::resolve::NoAssets),
+    );
+    let infos: Vec<_> = report
+        .with_code(arrangia_core::validate::FindingCode::OverrideNull)
+        .collect();
+    assert_eq!(infos.len(), 2);
+    assert_eq!(infos[0].level, arrangia_core::validate::Severity::Info);
+    // Saving writes the file without them and clears the notes.
+    let dir = tmp.path().join("p");
+    p.revision = 0;
+    p.save(&dir).unwrap();
+    assert_eq!(p.dropped_override_nulls, Vec::<String>::new());
+    let text = std::fs::read_to_string(dir.join("project.yaml")).unwrap();
+    assert!(!text.contains("null"), "{text}");
+    assert_eq!(
+        Project::load(&dir).unwrap().dropped_override_nulls,
+        Vec::<String>::new()
+    );
+}

@@ -232,6 +232,48 @@ pub enum Op {
     },
 }
 
+impl Op {
+    /// Overrides never store `null` (ADR 0009 amendment): a `null` field in
+    /// an override patch carried by this op is dropped, i.e. the field is
+    /// not overridden. Empty override patches become "no override".
+    fn drop_override_nulls(&mut self) {
+        let clean = |p: &mut Option<ElementPatch>| {
+            if let Some(patch) = p {
+                patch.drop_nulls();
+                if patch.is_empty() {
+                    *p = None;
+                }
+            }
+        };
+        match self {
+            Op::SetVariantOverride { patch, .. } | Op::SetLangOverride { patch, .. } => {
+                clean(patch);
+            }
+            Op::AddElement {
+                element, overrides, ..
+            } => {
+                element.drop_lang_override_nulls();
+                for map in overrides.values_mut() {
+                    map.retain(|_, p| {
+                        p.drop_nulls();
+                        !p.is_empty()
+                    });
+                }
+            }
+            Op::AddStrip { strip, .. } => {
+                strip.drop_override_nulls();
+            }
+            Op::AddLanguage { lang_overrides, .. } => {
+                lang_overrides.retain(|_, p| {
+                    p.drop_nulls();
+                    !p.is_empty()
+                });
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Why an op was rejected. The project is unchanged in that case.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum OpError {
@@ -337,7 +379,8 @@ fn invalid(e: String) -> OpError {
 impl Project {
     /// Validate and apply one op. Returns the inverse op.
     #[allow(clippy::too_many_lines)]
-    pub fn apply(&mut self, op: Op) -> Result<Op, OpError> {
+    pub fn apply(&mut self, mut op: Op) -> Result<Op, OpError> {
+        op.drop_override_nulls();
         match op {
             Op::SetName { name } => {
                 let old = std::mem::replace(&mut self.name, name);

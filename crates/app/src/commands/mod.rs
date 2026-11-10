@@ -301,7 +301,7 @@ command_table! {
         overlay,
         edit_move, edit_move_by, edit_resize, edit_rotate, edit_set_page,
         edit_reorder, edit_duplicate, edit_remove, edit_group, edit_ungroup,
-        edit_reset_override,
+        edit_reset_override, element_reset_override,
         element_get, element_patch, edit_rename, edit_arrange, element_add,
         strip_get, strip_patch, strip_variant,
         validate, export, export_cancel,

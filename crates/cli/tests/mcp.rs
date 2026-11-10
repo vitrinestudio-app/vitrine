@@ -349,6 +349,140 @@ fn mcp_reloads_external_edits_and_reports_broken_files() {
     assert_eq!(s["name"], "other");
 }
 
+/// Feedback of a real session (2026-11-10): resetting overrides, several
+/// language adjustments in one step, edits across strips, docs without
+/// resources, a mapping-list asset import.
+#[test]
+fn mcp_overrides_batches_docs_and_asset_mapping() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app_dir = tmp.path().join("appdata");
+    let dir = tmp.path().join("example");
+    copy_dir(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/example"),
+        &dir,
+    );
+    let mut c = Client::start(
+        &[
+            "mcp",
+            "--headless",
+            "--project",
+            path_str(&dir),
+            "--app-dir",
+            path_str(&app_dir),
+        ],
+        &app_dir,
+        tmp.path(),
+    );
+    let file = dir.join("project.yaml");
+
+    // The reported case: a free text box moved for English only, then the
+    // English position reset with `at: null`.
+    c.call(
+        "element_add",
+        json!({"kind": "text", "page": 0, "id": "promo", "key": "promo.title", "text": "Hi",
+               "fields": {"at": {"x": 500, "y": 600}, "width": 800}}),
+    );
+    c.call(
+        "element_update",
+        json!({"id": "promo", "scope": "lang", "lang": "en", "patch": {"at": {"x": 520, "y": 640}}}),
+    );
+    let e = c.call("element_get", json!({"id": "promo", "lang": "en"}));
+    assert_eq!(e["lang_override"]["at"]["x"], 520, "{e}");
+    let r = c.call(
+        "element_update",
+        json!({"id": "promo", "scope": "lang", "lang": "en", "patch": {"at": null}}),
+    );
+    assert_eq!(r["applied"], true);
+    let e = c.call("element_get", json!({"id": "promo", "lang": "en"}));
+    assert!(e.get("lang_override").is_none(), "{e}");
+    assert_eq!(e["effective"]["at"], json!({"x": 500, "y": 600}));
+    let yaml = std::fs::read_to_string(&file).unwrap();
+    assert!(!yaml.contains("null"), "no null stored in overrides");
+
+    // Several language adjustments in ONE undo step.
+    let r = c.call(
+        "element_update",
+        json!({"updates": [
+            {"id": "title-plan", "scope": "lang", "lang": "de", "patch": {"font_size": 60}},
+            {"id": "title-plan", "scope": "lang", "lang": "fr", "patch": {"font_size": 62}},
+        ]}),
+    );
+    assert_eq!(r["step"], "Claude: Edit font_size of title-plan", "{r}");
+    let de = c.call("element_get", json!({"id": "title-plan", "lang": "de"}));
+    assert_eq!(de["lang_override"]["font_size"], 60);
+    c.call("history_undo", json!({}));
+    let fr = c.call("element_get", json!({"id": "title-plan", "lang": "fr"}));
+    assert!(fr.get("lang_override").is_none(), "undone together: {fr}");
+
+    // Ids of two strips in one call (phone and mac).
+    let r = c.call(
+        "element_reorder",
+        json!({"ids": ["title-plan", "mac-title-plan"], "order": "front"}),
+    );
+    assert_eq!(r["applied"], true);
+    let r = c.call(
+        "element_update",
+        json!({"ids": ["title-beds", "mac-title-plan"], "patch": {"align": "left"}}),
+    );
+    assert_eq!(r["changed"]["elements"].as_array().unwrap().len(), 2, "{r}");
+
+    // Explicit reset of override fields.
+    let r = c.call(
+        "element_reset_override",
+        json!({"id": "title-companions", "scope": "lang", "lang": "de", "fields": ["box"]}),
+    );
+    assert_eq!(r["applied"], true);
+    let de = c.call(
+        "element_get",
+        json!({"id": "title-companions", "lang": "de"}),
+    );
+    assert!(de["lang_override"].get("box").is_none(), "{de}");
+    assert!(de["lang_override"].get("fit").is_some(), "{de}");
+
+    // Override ops through apply_ops.
+    let r = c.call(
+        "apply_ops",
+        json!({"ops": [
+            {"op": "set_lang_override", "element": "title-plan", "lang": "de", "patch": {"font_size": 58}},
+            {"op": "set_lang_override", "element": "title-plan", "lang": "fr", "patch": {"font_size": 59}},
+            {"op": "reset_lang_override_field", "element": "title-companions", "lang": "de", "field": "fit"},
+        ]}),
+    );
+    assert_eq!(r["applied"], true, "{r}");
+
+    // Docs as a tool: every topic.
+    for topic in [
+        "overview", "elements", "ops", "project", "markup", "targets", "scopes",
+    ] {
+        let r = c.call_raw("docs_get", json!({"topic": topic}));
+        assert_eq!(r["isError"], false, "{topic}: {r}");
+        assert!(r["content"][0]["text"].as_str().unwrap().len() > 400);
+    }
+    let e = c.call_err("docs_get", json!({"topic": "nope"}));
+    assert_eq!(e["code"], "invalid_args");
+
+    // Mapping-list import: per-file kind/key/name, dry run first.
+    let shot = dir.join("screenshots/en/phone-sync.png");
+    let files = json!([
+        {"path": shot, "kind": "screenshot", "key": "promo-shot", "lang": "de", "variant": ""},
+        {"path": shot, "kind": "image", "name": "promo-bg"},
+        {"path": tmp.path().join("missing.png"), "kind": "asset"},
+    ]);
+    let r = c.call("assets_import", json!({"files": files, "dry_run": true}));
+    let items = r["files"].as_array().unwrap();
+    assert_eq!(items.len(), 3);
+    assert_eq!(items[0]["path"], "screenshots/de/promo-shot.png");
+    assert_eq!(items[1]["path"], "assets/promo-bg.png");
+    assert_eq!(items[2]["ok"], false);
+    assert!(
+        !dir.join("assets/promo-bg.png").exists(),
+        "dry run copies nothing"
+    );
+    c.call("assets_import", json!({"files": files}));
+    assert!(dir.join("screenshots/de/promo-shot.png").is_file());
+    assert!(dir.join("assets/promo-bg.png").is_file());
+}
+
 fn copy_dir(src: &Path, dst: &Path) {
     std::fs::create_dir_all(dst).unwrap();
     for entry in std::fs::read_dir(src).unwrap() {

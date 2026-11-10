@@ -128,7 +128,8 @@ impl ArrangiaMcp {
             + Self::style_tools()
             + Self::asset_tools()
             + Self::output_tools()
-            + Self::history_tools();
+            + Self::history_tools()
+            + Self::docs_tools();
         Self {
             app,
             progress,
