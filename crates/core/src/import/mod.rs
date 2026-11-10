@@ -693,13 +693,19 @@ fn plan_sources(
         }
     }
     for (dest, idx) in by_dest {
-        // Keep the most confident file (then the first by source path).
+        // Keep the most confident file; on a tie the one already in the
+        // project (a duplicate never overwrites it), then the first by
+        // source path.
+        let abs = project_dir.join(&dest);
+        let exists = abs.is_file();
         let keep = *idx
             .iter()
-            .max_by_key(|&&i| (items[i].confidence, std::cmp::Reverse(i)))
+            .max_by_key(|&&i| {
+                let same = idx.len() > 1 && exists && same_content(&items[i].path, &abs);
+                (items[i].confidence, same, std::cmp::Reverse(i))
+            })
             .unwrap_or(&idx[0]);
-        let abs = project_dir.join(&dest);
-        let action = if abs.is_file() {
+        let action = if exists {
             if same_content(&items[keep].path, &abs) {
                 Action::Unchanged
             } else {

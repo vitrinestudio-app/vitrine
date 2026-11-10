@@ -324,6 +324,37 @@ fn arrangia_convention() {
 }
 
 #[test]
+fn duplicates_keep_the_file_already_in_the_project() {
+    let d = dirs();
+    let p = project();
+    png(&d.source.join("en/ios-phone/home.png"), 1320, 2868, "same");
+    png(&d.source.join("en/home.png"), 1320, 2868, "other");
+    png(
+        &d.project.join("screenshots/en/ios-phone/home.png"),
+        1320,
+        2868,
+        "same",
+    );
+    let mut rules = ImportRules::default();
+    rules.overrides.insert(
+        "en/home.png".to_owned(),
+        ItemOverride {
+            variant: Some("ios-phone".into()),
+            ..ItemOverride::default()
+        },
+    );
+    let plan = plan(&d, &p, &rules);
+    // `en/home.png` sorts first and is as certain, but must not replace
+    // the identical file already in the project.
+    assert_eq!(
+        item(&plan, "en/ios-phone/home.png").action,
+        Action::Unchanged
+    );
+    assert_eq!(item(&plan, "en/home.png").action, Action::Duplicate);
+    assert_eq!(plan.to_copy(), 0);
+}
+
+#[test]
 fn project_screenshots_folder_as_source() {
     let d = dirs();
     png(
