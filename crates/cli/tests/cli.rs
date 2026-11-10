@@ -98,6 +98,7 @@ fn new_creates_project_folder() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn round_trip_new_validate_export() {
     let tmp = tempfile::tempdir().unwrap();
     let dir = new_project(&tmp, &["--lang", "en", "--lang", "de"]);
@@ -196,6 +197,35 @@ fn round_trip_new_validate_export() {
     assert_eq!(code(&o), 0);
     assert!(stdout(&o).is_empty(), "{}", stdout(&o));
     assert!(other.join("blog-header/de/banner.jpg").is_file());
+    assert!(other.join("index.html").is_file());
+    assert!(export.join("index.html").is_file());
+
+    // fastlane layout: deliver/supply folders, the blog banner left out.
+    let o = arrangia_in(
+        &dir,
+        &[
+            "export",
+            "--layout",
+            "fastlane",
+            "--lang",
+            "de",
+            "--no-html",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}\n{}", stdout(&o), stderr(&o));
+    let out = stdout(&o);
+    assert!(out.contains("no store slot"), "{out}");
+    let fl = export.join("fastlane");
+    assert_eq!(
+        png_size(&fl.join("screenshots/de-DE/01_ios-iphone-69.png")),
+        (1320, 2868)
+    );
+    assert_eq!(
+        png_size(&fl.join("metadata/android/de-DE/images/phoneScreenshots/03_de-DE.png")),
+        (1080, 2160)
+    );
+    assert!(!fl.join("index.html").exists());
+    assert!(!fl.join("screenshots/de-DE/_gallery.png").exists());
 }
 
 #[test]

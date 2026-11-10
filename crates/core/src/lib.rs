@@ -39,6 +39,7 @@
 pub mod catalog;
 pub mod edit;
 pub mod exchange;
+pub mod fastlane;
 pub mod frame_import;
 pub mod geometry;
 pub mod import;

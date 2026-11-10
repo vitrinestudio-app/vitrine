@@ -13,7 +13,15 @@
 //!   the pixel size via the device catalog (exact sizes, then aspect),
 //!   preferring the variants the project's targets use. Screen → key: the
 //!   `keys` map, else the screen name without a numeric prefix (`01_`),
-//!   slugified, matched against the keys the project's devices use.
+//!   slugified, matched against the keys the project's devices use
+//!   (`01Home` → `home`). A whole `fastlane/` folder may be picked:
+//!   `screenshots/` is read as snapshot output, `metadata/android/` as
+//!   screengrab output (`<locale>/images/<type>Screenshots/<name>_<millis>.png`,
+//!   variant from the folder via `data/fastlane.yaml`, timestamp dropped);
+//!   deliver metadata, Play store graphics, `iMessage/`/`appleTV/`,
+//!   frameit configs (`Framefile.json`, `*.strings`) and the backgrounds a
+//!   `Framefile.json` names are skipped with a reason. Locale folders also
+//!   match through the store locale maps (`zh-Hans`, `iw-IL` → `he`).
 //! - **Flat** (a folder of files, drag & drop): language, variant and
 //!   device from file-name tokens (and parent folder names), the variant
 //!   otherwise from the pixel size; no language → the default language.
@@ -46,16 +54,12 @@ pub use names::{
     variants_for_aspect, variants_for_size,
 };
 
+use crate::catalog;
 use crate::io::write_atomic;
-use crate::model::{ElementKind, ImportMapping, Lang, Project, is_valid_id};
+use crate::model::{ElementKind, ImportMapping, Lang, Project, StoreKind, is_valid_id};
 use crate::resolve::{
     AssetLookup, FsAssets, SCREENSHOT_EXTENSIONS, ScreenshotSource, lang_chain, lookup_screenshot,
 };
-
-/// File name fastlane writes next to the locale folders.
-const FASTLANE_REPORT: &str = "screenshots.html";
-/// Suffix of frameit output.
-const FRAMED_SUFFIX: &str = "_framed";
 
 /// Layout of the source folder.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -453,6 +457,24 @@ impl Ctx<'_> {
                 format!("language `{raw}` → {l}"),
             ));
         }
+        // Store locale folders (`zh-Hans`, `no`, Play's `iw-IL`): the project
+        // language whose App Store / Play locale (project map or default)
+        // this is.
+        for store in StoreKind::ALL {
+            let explicit = self.project.store.locales.get(store);
+            let codes = catalog::store_locales().store(store);
+            if let Some(l) = langs.iter().find(|l| {
+                codes
+                    .resolve(explicit, l.as_str())
+                    .is_some_and(|(c, _)| c.eq_ignore_ascii_case(&norm))
+            }) {
+                return Some((
+                    l.to_string(),
+                    Confidence::High,
+                    format!("locale `{raw}` → {l} ({store} store locale)"),
+                ));
+            }
+        }
         let mut cur = norm.as_str();
         while let Some(i) = cur.rfind('-') {
             cur = &cur[..i];
@@ -465,6 +487,21 @@ impl Ctx<'_> {
             }
         }
         None
+    }
+
+    /// Variant of a device name in the device map (exact, then any case).
+    fn mapped_device(&self, device: &str) -> Option<String> {
+        self.mapping
+            .devices
+            .get(device)
+            .or_else(|| {
+                self.mapping
+                    .devices
+                    .iter()
+                    .find(|(k, _)| k.eq_ignore_ascii_case(device))
+                    .map(|(_, v)| v)
+            })
+            .cloned()
     }
 
     /// Variant by pixel size: `(variant, confidence, candidates, note)`.
@@ -615,16 +652,21 @@ fn plan_sources(
         prefixes: DevicePrefixes::default(),
     };
 
-    // Strip a leading `screenshots/` (a project folder picked as source).
+    // Strip a leading `fastlane/` (a fastlane folder picked as source) and
+    // `screenshots/` (a project folder, or deliver's screenshots folder).
     let sources: Vec<Source> = sources
         .into_iter()
         .map(|mut s| {
+            if s.parts.len() > 1 && s.parts[0].eq_ignore_ascii_case("fastlane") {
+                s.parts.remove(0);
+            }
             if s.parts.len() > 1 && s.parts[0] == "screenshots" {
                 s.parts.remove(0);
             }
             s
         })
         .collect();
+    let backgrounds = frameit_backgrounds(&sources);
 
     let format = match rules.format {
         SourceFormat::Auto => detect_format(&ctx, &sources),
@@ -633,6 +675,7 @@ fn plan_sources(
     let stems: Vec<String> = sources.iter().map(Source::stem).collect();
     ctx.prefixes = DevicePrefixes::new(stems.iter().map(String::as_str));
 
+    let fl = catalog::fastlane();
     let mut items: Vec<PlannedFile> = Vec::new();
     let mut skipped: Vec<SkippedFile> = Vec::new();
     for src in sources {
@@ -642,8 +685,30 @@ fn plan_sources(
             reason: reason.to_owned(),
         };
         let name = src.parts.last().cloned().unwrap_or_default();
-        if name.eq_ignore_ascii_case(FASTLANE_REPORT) {
+        if name.eq_ignore_ascii_case(&fl.snapshot.report) {
             skipped.push(skip("fastlane report"));
+            continue;
+        }
+        if fl
+            .frameit
+            .config_files
+            .iter()
+            .any(|f| f.eq_ignore_ascii_case(&name))
+        {
+            skipped.push(skip("frameit configuration"));
+            continue;
+        }
+        if backgrounds.contains(&rel) {
+            skipped.push(skip("frameit background (Framefile.json)"));
+            continue;
+        }
+        let route = if format == SourceFormat::Fastlane {
+            fastlane_route(&src.parts)
+        } else {
+            Route::Snapshot
+        };
+        if let Route::Skip(reason) = &route {
+            skipped.push(skip(reason));
             continue;
         }
         let Some(ext) = src
@@ -655,12 +720,13 @@ fn plan_sources(
         };
         let ext = if ext == "jpeg" { "jpg".to_owned() } else { ext };
         let mut stem = src.stem();
-        if stem.ends_with(FRAMED_SUFFIX) {
+        let framed = &fl.frameit.framed_suffix;
+        if stem.ends_with(framed.as_str()) {
             if !rules.include_framed {
                 skipped.push(skip("framed screenshot (frameit)"));
                 continue;
             }
-            stem.truncate(stem.len() - FRAMED_SUFFIX.len());
+            stem.truncate(stem.len() - framed.len());
         }
         let ov = rules.overrides.get(&rel);
         if ov.is_some_and(|o| o.skip) {
@@ -672,7 +738,12 @@ fn plan_sources(
             .and_then(|s| Some((u32::try_from(s.width).ok()?, u32::try_from(s.height).ok()?)));
         let det = match format {
             SourceFormat::Arrangia => detect_arrangia(&ctx, &src, &stem, size),
-            SourceFormat::Fastlane => detect_fastlane(&ctx, &src, &stem, size),
+            SourceFormat::Fastlane => match &route {
+                Route::Screengrab { locale, kind } => {
+                    Ok(detect_screengrab(&ctx, locale, kind, &stem, size))
+                }
+                _ => detect_fastlane(&ctx, &src, &stem, size),
+            },
             SourceFormat::Flat | SourceFormat::Auto => Ok(detect_flat(&ctx, &src, &stem, size)),
         };
         let det = match det {
@@ -864,8 +935,23 @@ fn finish(
 fn detect_format(ctx: &Ctx<'_>, sources: &[Source]) -> SourceFormat {
     let mut fastlane = 0usize;
     let mut arrangia = 0usize;
+    let fl = catalog::fastlane();
     for s in sources {
-        if s.parts.len() == 1 && s.parts[0].eq_ignore_ascii_case(FASTLANE_REPORT) {
+        if s.parts.len() == 1
+            && (s.parts[0].eq_ignore_ascii_case(&fl.snapshot.report)
+                || fl
+                    .frameit
+                    .config_files
+                    .iter()
+                    .any(|f| f.eq_ignore_ascii_case(&s.parts[0])))
+        {
+            return SourceFormat::Fastlane;
+        }
+        // screengrab / supply: `<locale>/images/<type>/<file>`.
+        if s.parts.windows(2).any(|w| {
+            w[0].eq_ignore_ascii_case(&fl.supply.images_dir)
+                && fl.supply.screenshot_type(&w[1]).is_some()
+        }) {
             return SourceFormat::Fastlane;
         }
         let stem = s.stem();
@@ -957,18 +1043,7 @@ fn detect_fastlane(
             "locale `{locale}` matches no project language (map it)"
         ));
     }
-    let mapped = ctx
-        .mapping
-        .devices
-        .get(device)
-        .or_else(|| {
-            ctx.mapping
-                .devices
-                .iter()
-                .find(|(k, _)| k.eq_ignore_ascii_case(device))
-                .map(|(_, v)| v)
-        })
-        .cloned();
+    let mapped = ctx.mapped_device(device);
     let (_, _, candidates, _) = ctx.variant_by_size(size);
     if let Some(v) = mapped {
         d.notes
@@ -994,6 +1069,185 @@ fn detect_fastlane(
     }
     d.key = Some(ctx.key(screen, true));
     Ok(d)
+}
+
+/// Where a file of a fastlane folder belongs.
+enum Route {
+    /// snapshot / deliver: `<locale>/<Device Name>-<screen>.png`.
+    Snapshot,
+    /// screengrab / supply: `<locale>/images/<kind>/<name>.png`.
+    Screengrab { locale: String, kind: String },
+    /// Not a screenshot (reason).
+    Skip(String),
+}
+
+/// Sorts a file of a fastlane folder (parts relative to the source, a
+/// leading `fastlane/` and `screenshots/` already removed): screengrab's
+/// `metadata/android/<locale>/images/<type>/…` (also below a picked
+/// `metadata` or `android` folder), deliver metadata, iMessage / Apple TV
+/// folders, Play store graphics.
+fn fastlane_route(parts: &[String]) -> Route {
+    let fl = catalog::fastlane();
+    let images = fl.supply.images_dir.as_str();
+    let meta: Vec<&str> = fl.supply.metadata_dir.split('/').collect();
+    let eq = |a: &str, b: &str| a.eq_ignore_ascii_case(b);
+    let mut p = parts;
+    let mut android = false;
+    if p.len() > meta.len() && p.iter().zip(&meta).all(|(a, b)| eq(a, b)) {
+        p = &p[meta.len()..];
+        android = true;
+    } else if p.len() > 1 && meta.first().is_some_and(|m| eq(&p[0], m)) {
+        return Route::Skip("fastlane metadata (not a screenshot)".to_owned());
+    } else if p.len() > 3 && meta.last().is_some_and(|m| eq(&p[0], m)) && eq(&p[2], images) {
+        p = &p[1..];
+        android = true;
+    }
+    if p.len() >= 3 && eq(&p[1], images) {
+        if p.len() == 3 {
+            let stem = p[2].rsplit_once('.').map_or(p[2].as_str(), |(s, _)| s);
+            return Route::Skip(match fl.supply.image_type(stem) {
+                Some(t) => format!("Play store graphic `{t}` (not a screenshot)"),
+                None => "not in images/<type>/".to_owned(),
+            });
+        }
+        if p.len() == 4 {
+            return match fl.supply.screenshot_type(&p[2]) {
+                Some(kind) => Route::Screengrab {
+                    locale: p[0].clone(),
+                    kind: kind.to_owned(),
+                },
+                None => Route::Skip(format!("unknown Play image folder `{}`", p[2])),
+            };
+        }
+        return Route::Skip("not in <locale>/images/<type>/".to_owned());
+    }
+    if android {
+        return Route::Skip("fastlane metadata (not a screenshot)".to_owned());
+    }
+    // iMessage/<locale>/, appleTV/<locale>/ (deliver's `default/` folder is
+    // a locale folder for the import: map it with the locale map).
+    if p.len() > 1 && !eq(&p[0], "default") && fl.deliver.special_dirs.iter().any(|d| eq(d, &p[0]))
+    {
+        return Route::Skip(format!("`{}` screenshots are not imported", p[0]));
+    }
+    Route::Snapshot
+}
+
+/// The part of frameit's `Framefile.json` the import needs.
+#[derive(Deserialize)]
+struct Framefile {
+    #[serde(default)]
+    default: Option<FramefileEntry>,
+    #[serde(default)]
+    data: Option<Vec<FramefileEntry>>,
+}
+
+#[derive(Deserialize)]
+struct FramefileEntry {
+    #[serde(default)]
+    background: Option<String>,
+}
+
+/// Files a `Framefile.json` of the source names as `background`
+/// (relative to its folder), as source-relative paths.
+fn frameit_backgrounds(sources: &[Source]) -> BTreeSet<String> {
+    let mut out = BTreeSet::new();
+    for s in sources {
+        if !s
+            .parts
+            .last()
+            .is_some_and(|n| n.eq_ignore_ascii_case("Framefile.json"))
+        {
+            continue;
+        }
+        // JSON is YAML: read it with the YAML parser (no JSON dependency).
+        let Some(file) = std::fs::read_to_string(&s.abs)
+            .ok()
+            .and_then(|t| crate::io::from_yaml::<Framefile>(&t).ok())
+        else {
+            continue;
+        };
+        let found = file
+            .default
+            .iter()
+            .chain(file.data.iter().flatten())
+            .filter_map(|e| e.background.as_deref());
+        for b in found {
+            let mut parts: Vec<&str> = s.parts[..s.parts.len() - 1]
+                .iter()
+                .map(String::as_str)
+                .collect();
+            for seg in b.split(['/', '\\']) {
+                match seg {
+                    "" | "." => {}
+                    ".." => {
+                        parts.pop();
+                    }
+                    seg => parts.push(seg),
+                }
+            }
+            out.insert(parts.join("/"));
+        }
+    }
+    out
+}
+
+/// `home_1731234567890` → `home` (screengrab's timestamp suffix).
+fn strip_timestamp(stem: &str, min_digits: usize) -> &str {
+    match stem.rsplit_once('_') {
+        Some((head, tail))
+            if !head.is_empty()
+                && tail.len() >= min_digits
+                && tail.chars().all(|c| c.is_ascii_digit()) =>
+        {
+            head
+        }
+        _ => stem,
+    }
+}
+
+/// screengrab / supply file `<locale>/images/<kind>/<name>.png`.
+fn detect_screengrab(
+    ctx: &Ctx<'_>,
+    locale: &str,
+    kind: &str,
+    stem: &str,
+    size: Option<(u32, u32)>,
+) -> Detection {
+    let fl = catalog::fastlane();
+    let screen = strip_timestamp(stem, fl.screengrab.timestamp_min_digits);
+    let mut d = Detection {
+        locale: Some(locale.to_owned()),
+        screen: Some(screen.to_owned()),
+        ..Detection::default()
+    };
+    d.lang = ctx.lang(locale);
+    if d.lang.is_none() {
+        d.lang_problem = Some(format!(
+            "locale `{locale}` matches no project language (map it)"
+        ));
+    }
+    let (sv, sconf, candidates, snote) = ctx.variant_by_size(size);
+    d.candidates = candidates;
+    if let Some(v) = ctx.mapped_device(kind) {
+        d.device = Some(kind.to_owned());
+        d.notes.push(format!("`{kind}` → {v} (device map)"));
+        d.variant = Some(v);
+        d.variant_conf = Some(Confidence::High);
+    } else if let Some(v) = fl.supply.variant(kind) {
+        d.notes.push(format!("variant {v} (Play folder {kind})"));
+        d.variant = Some(v.to_owned());
+        d.variant_conf = Some(Confidence::High);
+    } else if let Some(v) = sv {
+        d.device = Some(kind.to_owned());
+        d.notes.push(format!("`{kind}` → {snote}"));
+        d.variant = Some(v);
+        d.variant_conf = Some(sconf);
+    } else {
+        d.variant_problem = Some(format!("`{kind}` ({snote}); map it to a variant"));
+    }
+    d.key = Some(ctx.key(screen, true));
+    d
 }
 
 fn detect_flat(ctx: &Ctx<'_>, src: &Source, stem: &str, size: Option<(u32, u32)>) -> Detection {

@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrangia_core::resolve::FsAssets;
 use arrangia_core::validate::{Severity, ValidateMode, ValidateOptions, ValidationReport};
-use arrangia_render::export::{ExportHooks, ExportOptions, ExportReport};
+use arrangia_render::export::{ExportHooks, ExportLayout, ExportOptions, ExportReport};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -78,12 +78,20 @@ pub struct ExportArgs {
     /// Render every file, ignoring the incremental cache.
     #[serde(default)]
     pub force: bool,
-    /// Export folder (default `<project>/export`).
+    /// Export folder (default `<project>/export`; fastlane layout
+    /// `<project>/export/fastlane`).
     #[serde(default)]
     pub out_dir: Option<PathBuf>,
-    /// Write `_gallery.png` previews (default true).
+    /// Write `_gallery.png` previews (default true; never in the fastlane
+    /// layout).
     #[serde(default)]
     pub gallery: Option<bool>,
+    /// Folder structure (`standard` | `fastlane`).
+    #[serde(default)]
+    pub layout: ExportLayout,
+    /// Write the `index.html` overview (default true).
+    #[serde(default)]
+    pub html: Option<bool>,
 }
 
 /// Clears the running-export slot when the export ends (also on panic).
@@ -137,6 +145,8 @@ pub fn export(app: &AppState, args: ExportArgs) -> CmdResult<ExportReport> {
         &ctx,
         &ExportOptions {
             out_dir: args.out_dir,
+            layout: args.layout,
+            html: args.html.unwrap_or(true),
             targets: args.targets,
             langs: args.langs,
             gallery: args.gallery.unwrap_or(true),

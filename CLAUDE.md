@@ -99,7 +99,9 @@ docs/gui/               screenshots of the editor (README)
 (`RenderContext`, asset cache, prepared scenes); `frames` – parametric
 device frames and browser chrome from the catalog; `text` – glyph outlines
 of `core::layout` results; `export` – page/banner files, gallery previews,
-incremental manifest; plus `paint`/`blur`/`raster` helpers.
+incremental manifest (stale-file cleanup), `index.html` overview, fastlane
+layout (paths/conflicts in `core::fastlane`, conventions in
+`data/fastlane.yaml`); plus `paint`/`blur`/`raster` helpers.
 
 `cli` – `arrangia new|render|export|validate|strings|import|frames` on
 top of `core` + `render` (templates in `core::templates`), plus `arrangia
@@ -298,8 +300,8 @@ CLI usage (`--project <DIR>`, default the current folder): `new <dir>
 [--template phone|minimal] [--lang …]`, `validate [--target] [--lang]
 [--preview] [--strict] [--format json]`, `render [--target] [--lang]
 [--page N | --image N | --canvas | --gallery] [--width|--max-edge|--scale]
-[-o file]`, `export [--target] [--lang] [--out dir] [--no-gallery]
-[--force] [--format json]`, `strings export [--format csv|xliff12|xliff20]
+[-o file]`, `export [--target] [--lang] [--out dir] [--layout
+standard|fastlane] [--no-gallery] [--no-html] [--force] [--format json]`, `strings export [--format csv|xliff12|xliff20]
 [--lang] [-o] [--missing-only] [--context]`, `strings import <file>…
 [--dry-run] [--create-keys] [--empty keep|remove]`, `import screenshots
 <dir> [--format auto|arrangia|fastlane|flat] [--device-map|--lang-map|--key-map
