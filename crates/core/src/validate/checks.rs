@@ -294,6 +294,7 @@ fn resolve_diagnostics(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mu
             D::MissingSize => (C::MissingSize, keep, false),
             D::PartialImage => (C::PartialImage, Severity::Info, false),
             D::RegionOutOfRange => (C::RegionOutOfRange, Severity::Warn, false),
+            D::ImportedFrameMissing => (C::ImportedFrameMissing, Severity::Info, false),
         };
         let page = d.element.as_ref().and_then(|id| s.page_of(id));
         out.push(ctx.finding(
@@ -536,6 +537,14 @@ fn screenshot_checks(
 /// browser bars of `chrome: browser` on a laptop / desktop (as drawn by
 /// the renderer).
 fn screen_lu(s: &Scope<'_>, e: &ResolvedElement, d: &ResolvedDevice) -> (f64, f64) {
+    if let Some(f) = &d.imported {
+        // The detected screen rect of the imported bezel.
+        let (bw, bh) = (f64::from(f.size.w.max(1)), f64::from(f.size.h.max(1)));
+        return (
+            e.size.x * f64::from(f.screen.w) / bw,
+            e.size.y * f64::from(f.screen.h) / bh,
+        );
+    }
     let (fx, fy) = d.device.display_fraction(d.orientation);
     let (w, h) = (e.size.x * fx, e.size.y * fy);
     if d.chrome == Some(Chrome::Browser)

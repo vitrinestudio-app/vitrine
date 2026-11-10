@@ -174,6 +174,7 @@ pub fn catalog_device(
         fit: FitMode::Cover,
         content_scale: 1.0,
         shadow: Vec::new(),
+        imported: None,
     })
 }
 

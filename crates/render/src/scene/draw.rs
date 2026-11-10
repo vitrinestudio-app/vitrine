@@ -6,8 +6,8 @@
 use arrangia_core::geometry::{Rect, Vec2, Viewport};
 use arrangia_core::model::{FitMode, ImageFillMode, Rgba, ShapeKind, StrokeJoin};
 use arrangia_core::resolve::{
-    ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedKind, ResolvedShadowLayer,
-    ResolvedShape, ResolvedStop, TextEffects,
+    ImportedFrame, ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedKind,
+    ResolvedShadowLayer, ResolvedShape, ResolvedStop, TextEffects,
 };
 use tiny_skia::{
     FillRule, FilterQuality, Mask, Path, PathBuilder, Pattern, Pixmap, PixmapPaint, Shader,
@@ -25,6 +25,9 @@ use crate::text::{TextPaths, draw_text_with_effects, to_paths};
 
 /// Shown where an image asset is missing or broken.
 const MISSING_ASSET: [u8; 4] = [0xFF, 0x00, 0xFF, 0x60];
+
+/// Screen of an imported frame without screenshot.
+const SCREEN_PLACEHOLDER: [u8; 4] = [0xE6, 0xE9, 0xEE, 0xFF];
 
 pub(super) fn paint(
     ctx: &RenderContext,
@@ -87,6 +90,13 @@ enum Item<'a> {
         geo: frames::DeviceGeometry,
         /// Element size (lu); the frame's outer box.
         size: Vec2,
+    },
+    /// A device drawn with an installed vendor frame (ADR 0009).
+    Imported {
+        dev: &'a ResolvedDevice,
+        frame: &'a ImportedFrame,
+        /// Element size (lu) = the bezel's outer box.
+        rect: Rect,
     },
     Text {
         paths: TextPaths,
@@ -330,6 +340,11 @@ impl Painter<'_> {
                     }
                 }
             },
+            ResolvedKind::Device(dev) if dev.imported.is_some() => Item::Imported {
+                dev,
+                frame: dev.imported.as_ref()?,
+                rect: centered(w, h),
+            },
             ResolvedKind::Device(dev) => {
                 let size = Vec2::new(w, h);
                 Item::Device {
@@ -356,9 +371,10 @@ impl Painter<'_> {
     /// Local bounds of what an item draws (before shadows).
     fn bounds(item: &Item<'_>) -> Option<tiny_skia::Rect> {
         match item {
-            Item::Fill { rect, .. } | Item::Image { rect, .. } | Item::Missing { rect } => {
-                tsr(*rect)
-            }
+            Item::Fill { rect, .. }
+            | Item::Image { rect, .. }
+            | Item::Missing { rect }
+            | Item::Imported { rect, .. } => tsr(*rect),
             Item::Shape { shape, path, .. } => {
                 let b = path.bounds();
                 let m = shape.stroke.as_ref().map_or(0.0, |s| s.width as f32) / 2.0 + 1.0;
@@ -544,6 +560,109 @@ impl Painter<'_> {
         }
     }
 
+    /// The device's screenshot resampled (and fitted) to `w × h` px.
+    fn screenshot(
+        &mut self,
+        dev: &ResolvedDevice,
+        e: &ResolvedElement,
+        w: f64,
+        h: f64,
+    ) -> Option<std::sync::Arc<Pixmap>> {
+        let path = dev.screenshot.as_ref()?.path.as_deref()?;
+        let mode = match dev.fit {
+            FitMode::Cover => Resample::Cover { focus: (0.5, 0.5) },
+            FitMode::Contain => Resample::ContainOn([0, 0, 0, 255]),
+            FitMode::Stretch => Resample::Stretch,
+        };
+        match self
+            .ctx
+            .assets
+            .pixmap(path, px(w), px(h), mode, self.filter)
+        {
+            Ok(p) => Some(p),
+            Err(err) => {
+                self.issue(Some(e), err.to_string());
+                None
+            }
+        }
+    }
+
+    /// An imported device at `scale` px/lu as one pixmap covering `rect`:
+    /// the screenshot in the detected screen rect, clipped by the screen
+    /// mask, the bezel PNG on top.
+    fn imported_device(
+        &mut self,
+        dev: &ResolvedDevice,
+        frame: &ImportedFrame,
+        rect: Rect,
+        e: &ResolvedElement,
+        scale: f64,
+    ) -> Result<Pixmap, String> {
+        let cache = self
+            .ctx
+            .frame_assets()
+            .ok_or("imported frames are not available")?;
+        let (cw, ch) = (px(rect.w * scale), px(rect.h * scale));
+        let bezel = cache
+            .pixmap(&frame.file, cw, ch, Resample::Stretch, self.filter)
+            .map_err(|e| e.to_string())?;
+        let mask = cache
+            .pixmap(&frame.mask, cw, ch, Resample::Stretch, Filter::Bilinear)
+            .map_err(|e| e.to_string())?;
+        let mut comp = Pixmap::new(cw, ch).ok_or("empty frame")?;
+        let (kx, ky) = (
+            f64::from(cw) / f64::from(frame.size.w.max(1)),
+            f64::from(ch) / f64::from(frame.size.h.max(1)),
+        );
+        let sr = Rect::new(
+            f64::from(frame.screen.x) * kx,
+            f64::from(frame.screen.y) * ky,
+            f64::from(frame.screen.w) * kx,
+            f64::from(frame.screen.h) * ky,
+        );
+        if let Some(p) = rect_path(sr) {
+            match self.screenshot(dev, e, sr.w, sr.h) {
+                Some(img) => {
+                    let paint = shader_paint(image_shader(&img, sr, SpreadMode::Pad));
+                    comp.fill_path(&p, &paint, FillRule::Winding, Transform::identity(), None);
+                }
+                None => {
+                    comp.fill_path(
+                        &p,
+                        &solid(SCREEN_PLACEHOLDER),
+                        FillRule::Winding,
+                        Transform::identity(),
+                        None,
+                    );
+                }
+            }
+        }
+        // Clip by the mask (grey value; the mask PNG is opaque).
+        for (px, m) in comp
+            .data_mut()
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .zip(mask.data().as_chunks::<4>().0)
+        {
+            let k = u16::from(m[0]);
+            if k < 255 {
+                for c in px.iter_mut() {
+                    *c = ((u16::from(*c) * k + 127) / 255) as u8;
+                }
+            }
+        }
+        comp.draw_pixmap(
+            0,
+            0,
+            bezel.as_ref().as_ref(),
+            &PixmapPaint::default(),
+            Transform::identity(),
+            None,
+        );
+        Ok(comp)
+    }
+
     #[allow(clippy::too_many_lines, reason = "one arm per element kind")]
     fn draw_item(&mut self, pm: &mut Pixmap, item: &Item<'_>, e: &ResolvedElement, lt: Transform) {
         let shadows = Self::shadows(e);
@@ -657,31 +776,31 @@ impl Painter<'_> {
                     self.shadow(pm, &geo.silhouette, lt, shadows);
                 }
                 let s = scale_of(lt);
-                let shot = dev
-                    .screenshot
-                    .as_ref()
-                    .and_then(|sh| sh.path.as_deref())
-                    .and_then(|path| {
-                        let mode = match dev.fit {
-                            FitMode::Cover => Resample::Cover { focus: (0.5, 0.5) },
-                            FitMode::Contain => Resample::ContainOn([0, 0, 0, 255]),
-                            FitMode::Stretch => Resample::Stretch,
-                        };
-                        match self.ctx.assets.pixmap(
-                            path,
-                            px(geo.screen.w * s),
-                            px(geo.screen.h * s),
-                            mode,
-                            self.filter,
-                        ) {
-                            Ok(p) => Some(p),
-                            Err(err) => {
-                                self.issue(Some(e), err.to_string());
-                                None
-                            }
-                        }
-                    });
+                let shot = self.screenshot(dev, e, geo.screen.w * s, geo.screen.h * s);
                 frames::draw_device(&mut pm.as_mut(), dev, *size, shot.as_deref(), lt);
+            }
+            Item::Imported { dev, frame, rect } => {
+                match self.imported_device(dev, frame, *rect, e, scale_of(lt)) {
+                    Ok(comp) => {
+                        if let Some(p) = rect_path(*rect) {
+                            let paint = shader_paint(image_shader(&comp, *rect, SpreadMode::Pad));
+                            if !shadows.is_empty() {
+                                self.alpha_shadow(pm, &p, &paint, lt, shadows);
+                            }
+                            pm.fill_path(&p, &paint, FillRule::Winding, lt, None);
+                        }
+                    }
+                    Err(err) => {
+                        // Unreadable frame files: the parametric frame,
+                        // squeezed into the bezel's box.
+                        self.issue(Some(e), err);
+                        let size = Vec2::new(rect.w, rect.h);
+                        let geo = frames::device_geometry(dev, size);
+                        let s = scale_of(lt);
+                        let shot = self.screenshot(dev, e, geo.screen.w * s, geo.screen.h * s);
+                        frames::draw_device(&mut pm.as_mut(), dev, size, shot.as_deref(), lt);
+                    }
+                }
             }
             Item::Text { paths, origin } => {
                 let ts = lt.pre_translate(origin.0, origin.1);

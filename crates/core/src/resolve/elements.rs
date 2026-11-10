@@ -8,18 +8,19 @@ use std::collections::BTreeMap;
 
 use super::lookup::{lookup_screenshot, lookup_text};
 use super::scene::{
-    DeviceColor, DiagnosticCode, ResolvedDevice, ResolvedElement, ResolvedImage, ResolvedKind,
-    ResolvedShadowLayer, ResolvedShape, ResolvedSpanStyle, ResolvedText, ScreenshotSource,
-    TextFrame,
+    DeviceColor, DiagnosticCode, ImportedFrame, ResolvedDevice, ResolvedElement, ResolvedImage,
+    ResolvedKind, ResolvedShadowLayer, ResolvedShape, ResolvedSpanStyle, ResolvedText,
+    ScreenshotSource, TextFrame,
 };
 use super::style::StyleResolver;
 use super::{Diags, ResolveOptions};
 use crate::catalog::Device;
+use crate::frame_import::FrameIndex;
 use crate::geometry::{CanvasLayout, Rect, Vec2};
 use crate::model::{
     Align, AnchorY, Clip, DeviceProps, Element, ElementId, ElementKind, ElementPatch, FitMode,
-    FrameStyle, ImageProps, Project, Rgba, ShapeKind, ShapeProps, Strip, Target, TextProps, VAlign,
-    VariantId,
+    FrameStyle, ImageProps, Orientation, Project, Rgba, ShapeKind, ShapeProps, Strip, Target,
+    TextProps, VAlign, VariantId,
 };
 
 /// Device width when an element sets none, lu.
@@ -347,7 +348,26 @@ impl Walker<'_, '_> {
             );
             DEFAULT_DEVICE_WIDTH
         });
-        let (color, palette) = self.device_color(p, device, mapped_from.is_some(), d);
+        let requested = p.frame.clone().unwrap_or_else(|| self.frame_style.clone());
+        let imported = self.imported_frame(p, &requested, &model, device, orientation, d);
+        let (color, palette) = match &imported {
+            Some(f) => (
+                DeviceColor::Named(f.color.clone()),
+                catalog.devices.colors.get(&f.color).cloned(),
+            ),
+            // Vendor colour names of an imported frame that is missing here
+            // are expected: an info, not a warning.
+            None => self.device_color(
+                p,
+                device,
+                mapped_from.is_some() || matches!(requested, FrameStyle::Imported(_)),
+                d,
+            ),
+        };
+        let frame = match (&requested, &imported) {
+            (FrameStyle::Imported(_), None) => FrameStyle::Detailed,
+            _ => requested,
+        };
         let variant = self
             .inp
             .target
@@ -393,10 +413,11 @@ impl Walker<'_, '_> {
             _ => device.clone(),
         };
         let outer = device.outer_size();
-        let ratio = if orientation == device.natural {
-            outer.h / outer.w
-        } else {
-            outer.w / outer.h
+        let ratio = match &imported {
+            // The bezel PNG is already in its orientation.
+            Some(f) if f.size.w > 0 => f64::from(f.size.h) / f64::from(f.size.w),
+            _ if orientation == device.natural => outer.h / outer.w,
+            _ => outer.w / outer.h,
         };
         let k = self.content_scale;
         let shadow = self
@@ -412,7 +433,7 @@ impl Walker<'_, '_> {
                 mapped_from,
                 device,
                 orientation,
-                frame: p.frame.clone().unwrap_or_else(|| self.frame_style.clone()),
+                frame,
                 color,
                 palette,
                 chrome: p.chrome,
@@ -423,9 +444,59 @@ impl Walker<'_, '_> {
                 fit: p.fit.unwrap_or(FitMode::Cover),
                 content_scale: k,
                 shadow,
+                imported,
             },
             Vec2::new(width, width * ratio),
         ))
+    }
+
+    /// The installed vendor frame for `frame: imported:<source>`, or an
+    /// info when it is missing on this machine (parametric fallback).
+    fn imported_frame(
+        &self,
+        p: &DeviceProps,
+        requested: &FrameStyle,
+        model: &str,
+        device: &Device,
+        orientation: Orientation,
+        d: &mut Diags,
+    ) -> Option<ImportedFrame> {
+        let FrameStyle::Imported(source) = requested else {
+            return None;
+        };
+        if crate::frame_import::Rules::builtin(source).is_some_and(|r| !r.covers(model)) {
+            // No vendor frame exists for this model (browser, Android …).
+            return None;
+        }
+        let color = p.color.as_deref().filter(|c| !c.starts_with('#'));
+        let found = self.inp.options.frames.and_then(|ix| {
+            ix.find(
+                source,
+                model,
+                color,
+                device.default_color.as_deref(),
+                orientation,
+            )
+        });
+        let Some(f) = found else {
+            d.info(
+                DiagnosticCode::ImportedFrameMissing,
+                format!(
+                    "no imported `{source}` frame installed for `{model}` ({}, {}); using the parametric frame",
+                    color.unwrap_or("any colour"),
+                    crate::frame_import::orientation_name(orientation)
+                ),
+            );
+            return None;
+        };
+        Some(ImportedFrame {
+            source: source.clone(),
+            file: FrameIndex::rel_path(source, &f.file),
+            mask: FrameIndex::rel_path(source, &f.mask),
+            size: f.size,
+            screen: f.screen,
+            color: f.color.clone(),
+        })
     }
 
     fn device_color(
