@@ -12,3 +12,4 @@ pub mod project;
 pub mod strings;
 pub mod structure;
 pub mod styles;
+pub mod upload;

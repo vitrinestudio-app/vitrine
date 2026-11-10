@@ -100,6 +100,11 @@ fn hint(code: ErrorCode) -> Option<&'static str> {
         ErrorCode::Busy => "wait for the running export to finish",
         ErrorCode::InvalidArgs => "check the tool's input schema and the argument values",
         ErrorCode::OpRejected => "the project is unchanged; adjust the change and retry",
+        ErrorCode::NotConfirmed => {
+            "nothing was uploaded; make a new plan (upload_plan) if it changed or expired, and \
+             only retry when the user asks for the upload"
+        }
+        ErrorCode::Forbidden => "not allowed for an AI assistant; tell the user",
         _ => return None,
     })
 }

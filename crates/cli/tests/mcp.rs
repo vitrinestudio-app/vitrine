@@ -496,6 +496,49 @@ fn mcp_overrides_batches_docs_and_asset_mapping() {
     );
     assert!(e.to_string().contains("not available over MCP"), "{e}");
     assert!(!std::fs::read_to_string(&file).unwrap().contains("com.x.y"));
+
+    // Uploads: the plan works (blocked: no store mapped), executing is
+    // refused headless (app setting `mcp_allow_headless_upload` is off).
+    let tools = c.request("tools/list", json!({}))["tools"].clone();
+    let names: Vec<&str> = tools
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["name"].as_str().unwrap())
+        .collect();
+    for want in [
+        "upload_plan",
+        "upload_execute",
+        "upload_status",
+        "upload_log",
+    ] {
+        assert!(names.contains(&want), "tool {want} missing");
+    }
+    let execute = tools
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["name"] == "upload_execute")
+        .unwrap();
+    assert!(
+        execute["description"]
+            .as_str()
+            .unwrap()
+            .contains("OUTWARD-FACING")
+    );
+    let plan = c.call("upload_plan", json!({}));
+    assert_eq!(plan["blocked"], true);
+    assert_eq!(plan["problems"][0]["code"], "no_store");
+    let e = c.call_err(
+        "upload_execute",
+        json!({"confirm_token": plan["confirm_token"]}),
+    );
+    assert_eq!(e["code"], "forbidden", "{e}");
+    assert!(e.to_string().contains("mcp_allow_headless_upload"));
+    let s = c.call("upload_status", json!({}));
+    assert!(s["run"].is_null());
+    let l = c.call("upload_log", json!({}));
+    assert_eq!(l["runs"], json!([]));
 }
 
 fn copy_dir(src: &Path, dst: &Path) {
