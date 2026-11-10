@@ -132,3 +132,46 @@ fn plan_execute_checks_and_log() {
     assert_eq!(out.status.code(), Some(0));
     assert!(text(&out.stdout).contains("No uploads yet"));
 }
+
+#[test]
+fn refdata_needs_an_apple_account_and_its_key() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("empty");
+    let app = tmp.path().join("app");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::create_dir_all(app.join("config")).unwrap();
+    std::fs::write(app.join("config/settings.yaml"), SETTINGS).unwrap();
+    // No project, only a Google account: nothing to read with.
+    let out = run(&dir, &app, &["refdata"]);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        text(&out.stderr).contains("no App Store Connect account"),
+        "{}",
+        text(&out.stderr)
+    );
+    // An Apple account whose key is not in this process' keychain: refused
+    // before any network call.
+    std::fs::write(
+        app.join("config/settings.yaml"),
+        format!(
+            "{SETTINGS}- id: apple-team\n  kind: apple\n  label: Team\n  apple: {{issuer_id: 57246542-96fe-1a63-e053-0824d011072a, key_id: ABCDE12345}}\n"
+        ),
+    )
+    .unwrap();
+    let out = run(&dir, &app, &["refdata", "--format", "json"]);
+    assert_eq!(out.status.code(), Some(2), "{}", text(&out.stdout));
+    assert!(
+        text(&out.stderr).contains("keychain") || text(&out.stderr).contains("key"),
+        "{}",
+        text(&out.stderr)
+    );
+    let out = Command::new(env!("CARGO_BIN_EXE_arrangia"))
+        .args(["upload", "refdata", "--help"])
+        .output()
+        .unwrap();
+    assert!(
+        text(&out.stdout).contains("asset types"),
+        "{}",
+        text(&out.stdout)
+    );
+}

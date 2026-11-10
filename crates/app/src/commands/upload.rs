@@ -258,3 +258,203 @@ pub fn upload_confirm(app: &AppState, args: UploadConfirmArgs) -> CmdResult<Uplo
         ok: app.upload().confirmations().answer(&args.id, args.approved),
     })
 }
+
+// ----- App Asset Library reference data (read-only, ADR 0019) -------------------------
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UploadRefdataArgs {
+    /// Apple account id (default: the open project's Apple account, else
+    /// the only Apple account of the app settings).
+    #[serde(default)]
+    pub account: Option<String>,
+    /// App: numeric Apple ID or bundle id (default: the open project's
+    /// app). Adds the app's asset library id (proves library access).
+    #[serde(default)]
+    pub app: Option<String>,
+}
+
+/// The app part of [`RefdataReport`].
+#[derive(Debug, Clone, Serialize)]
+pub struct RefdataApp {
+    pub id: String,
+    pub name: String,
+    pub bundle_id: String,
+    /// `GET /v1/apps/{id}/assetLibrary` answered: the app can use the
+    /// asset library.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub library_id: Option<String>,
+    /// Why the library could not be read (then `auto` uses the set API).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub library_error: Option<String>,
+}
+
+/// How one Arrangia slot resolves against the real ref data.
+#[derive(Debug, Clone, Serialize)]
+pub struct RefdataMapping {
+    /// Display type (`APP_IPHONE_67`) or creative placement (`header`).
+    pub slot: String,
+    pub placement_types: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_class: Option<String>,
+    pub platforms: Vec<String>,
+    /// Matching groups with their image sizes (`IPHONE_DUO_OUTER_PROFILE
+    /// 1398x2034`), per placement type.
+    pub groups: Vec<String>,
+    /// Only the asset library can upload it.
+    pub asset_library_only: bool,
+}
+
+/// `upload_refdata`: Apple's catalog plus how Arrangia's mapping resolves.
+#[derive(Debug, Clone, Serialize)]
+pub struct RefdataReport {
+    pub account: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app: Option<RefdataApp>,
+    /// `GET /v1/appAssetLibraryRefData` as Apple sent it (camelCase).
+    pub ref_data: arrangia_publish::apple::RefData,
+    pub mapping: Vec<RefdataMapping>,
+    /// Date `data/asset-library.yaml` was checked.
+    pub mapping_checked: String,
+}
+
+/// Reads App Store Connect's asset library reference data with an Apple
+/// account (read-only GETs: ref data, optionally the app and its library)
+/// and resolves Arrangia's slot mapping against it. For checking the
+/// runtime group ids with a real key (`arrangia upload refdata`, GUI "Show
+/// App Store asset types").
+pub fn upload_refdata(app: &AppState, args: UploadRefdataArgs) -> CmdResult<RefdataReport> {
+    let project = app.session().ok().map(|s| s.snapshot());
+    let account_id = match args.account {
+        Some(a) => a,
+        None => match project
+            .as_ref()
+            .and_then(|p| p.store.account(StoreKind::Apple))
+        {
+            Some(a) => a.to_owned(),
+            None => {
+                let apple: Vec<_> = app
+                    .settings_store()
+                    .load()?
+                    .store_accounts
+                    .into_iter()
+                    .filter(|a| a.kind == StoreKind::Apple)
+                    .collect();
+                match apple.as_slice() {
+                    [one] => one.id.clone(),
+                    [] => {
+                        return Err(CommandError::not_found(
+                            "no App Store Connect account is set up (App settings → Stores)",
+                        ));
+                    }
+                    _ => {
+                        return Err(CommandError::invalid(
+                            "several App Store Connect accounts: choose one (`account`)",
+                        ));
+                    }
+                }
+            }
+        },
+    };
+    let app_ref = match args.app {
+        Some(a) if !a.is_empty() && a.bytes().all(|b| b.is_ascii_digit()) => {
+            Some(arrangia_publish::apple::AppRef::Id(a))
+        }
+        Some(a) if !a.is_empty() => Some(arrangia_publish::apple::AppRef::BundleId(a)),
+        _ => project.as_ref().and_then(remote::apple_app_ref),
+    };
+    let (account, secret) = super::account_with_secret(app, &account_id, StoreKind::Apple)?;
+    let config = app.upload().config();
+    let options = arrangia_publish::ClientOptions {
+        request_timeout: Duration::from_secs(60),
+        ..super::interactive_options()
+    };
+    let (ref_data, app_info) = remote::block_on(async {
+        let client = remote::apple_client(&config, &account, &secret, options)?;
+        let ref_data = client
+            .ref_data(&arrangia_publish::apple::RefDataFilter::default())
+            .await?;
+        let app_info = match &app_ref {
+            None => None,
+            Some(r) => {
+                let found = client.find_app(r).await?;
+                let (library_id, library_error) = match client.asset_library(&found.id).await {
+                    Ok(l) => (Some(l.id), None),
+                    Err(e) => (None, Some(remote::store_message(StoreKind::Apple, &e))),
+                };
+                Some(RefdataApp {
+                    id: found.id,
+                    name: found.name,
+                    bundle_id: found.bundle_id,
+                    library_id,
+                    library_error,
+                })
+            }
+        };
+        Ok::<_, arrangia_publish::Error>((ref_data, app_info))
+    })?
+    .map_err(|e| super::store_failure(StoreKind::Apple, &e))?;
+    Ok(RefdataReport {
+        account: account.id,
+        app: app_info,
+        mapping: refdata_mapping(&ref_data),
+        ref_data,
+        mapping_checked: arrangia_core::catalog::asset_library().checked.clone(),
+    })
+}
+
+/// Arrangia's slots resolved against `rd` (all candidate groups).
+fn refdata_mapping(rd: &arrangia_publish::apple::RefData) -> Vec<RefdataMapping> {
+    use arrangia_core::model::{ApplePlacement, AppleSlot};
+    let lib = arrangia_core::catalog::asset_library();
+    let mut slots: Vec<(String, AppleSlot)> = lib
+        .screenshots
+        .keys()
+        .map(|k| (k.clone(), AppleSlot::screenshots(k.clone())))
+        .collect();
+    for p in [
+        ApplePlacement::Header,
+        ApplePlacement::SearchResults,
+        ApplePlacement::HeaderAndSearch,
+    ] {
+        slots.push((
+            p.as_str().to_owned(),
+            AppleSlot {
+                placement: Some(p),
+                ..AppleSlot::default()
+            },
+        ));
+    }
+    slots
+        .into_iter()
+        .filter_map(|(name, slot)| {
+            let sp = lib.slot(&slot)?;
+            let groups = sp
+                .placement_types
+                .iter()
+                .flat_map(|t| {
+                    rd.groups_for(t, sp.display_class.as_deref(), &sp.platforms)
+                        .into_iter()
+                        .map(move |g| {
+                            let sizes: Vec<String> = rd
+                                .image_specs_for(t, &g.placement_profile_group_id)
+                                .iter()
+                                .map(|s| s.size_label())
+                                .collect();
+                            format!("{t} → {} {}", g.placement_profile_group_id, sizes.join(" "))
+                                .trim_end()
+                                .to_owned()
+                        })
+                })
+                .collect();
+            Some(RefdataMapping {
+                slot: name,
+                placement_types: sp.placement_types,
+                display_class: sp.display_class,
+                platforms: sp.platforms,
+                groups,
+                asset_library_only: sp.asset_library_only,
+            })
+        })
+        .collect()
+}

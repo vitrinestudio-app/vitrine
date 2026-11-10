@@ -104,6 +104,8 @@ struct Asc {
     failing: Vec<String>,
     /// Serve the App Asset Library (else 404: `auto` falls back to sets).
     library: bool,
+    /// The key may not read the app's library (403); ref data still works.
+    deny_library: bool,
     /// Library images by id.
     images: BTreeMap<String, LibImg>,
     /// Placements by id.
@@ -291,6 +293,12 @@ impl Asc {
             return None;
         }
         Some(match (method, seg) {
+            ("GET", ["v1", "apps", _, "assetLibrary"]) if self.deny_library => {
+                ResponseTemplate::new(403).set_body_json(json!({"errors": [{
+                    "status": "403", "code": "FORBIDDEN_ERROR",
+                    "title": "This request is forbidden for security reasons",
+                    "detail": "The API key in use does not allow this request"}]}))
+            }
             ("GET", ["v1", "apps", _, "assetLibrary"]) => {
                 ok(json!({"data": {"type": "appAssetLibraries", "id": "lib-1"}}))
             }
@@ -2239,4 +2247,62 @@ async fn auto_uses_the_set_api_for_a_slot_without_group() {
         e.asc.lock().unwrap().checksums("en-US", "APP_IPHONE_65"),
         plan_images(&r, "iphone", "en", "md5")
     );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn refdata_is_read_only_and_resolves_the_mapping() {
+    let e = env().await;
+    e.asc.lock().unwrap().library = true;
+    let r = call(&e.app, "upload_refdata", json!({}));
+    assert_eq!(r["account"], "apple-team");
+    assert_eq!(r["app"]["id"], "1234567890");
+    assert_eq!(r["app"]["library_id"], "lib-1");
+    assert_eq!(
+        r["ref_data"]["placementProfileGroups"]
+            .as_array()
+            .unwrap()
+            .len(),
+        6
+    );
+    let row = |slot: &str| {
+        r["mapping"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["slot"] == slot)
+            .unwrap_or_else(|| panic!("{slot}"))
+            .clone()
+    };
+    assert_eq!(
+        row("APP_IPHONE_DUO")["groups"],
+        json!([
+            "APP_SCREENSHOT → IPHONE_DUO_INNER_PROFILE 2007x2853",
+            "APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE 1398x2034"
+        ])
+    );
+    assert_eq!(row("APP_IPHONE_DUO")["asset_library_only"], true);
+    assert_eq!(row("APP_IPHONE_65")["groups"], json!([]));
+    assert_eq!(
+        row("header_and_search")["groups"].as_array().unwrap().len(),
+        2
+    );
+    let asc = e.asc.lock().unwrap();
+    assert!(
+        asc.seen.iter().all(|s| s.starts_with("GET ")),
+        "read-only: {:?}",
+        asc.seen
+    );
+    drop(asc);
+    // Without library access: the reason instead of the id.
+    e.asc.lock().unwrap().deny_library = true;
+    let r = call(&e.app, "upload_refdata", json!({ "app": "1234567890" }));
+    assert!(r["app"].get("library_id").is_none());
+    assert!(r["app"]["library_error"].is_string());
+    // `auto` falls back to the set API on 403 too.
+    let p = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "remote": true }),
+    );
+    assert_eq!(p["stores"][0]["flow"], "screenshot_sets");
+    assert!(p["stores"][0]["flow_note"].is_string());
 }

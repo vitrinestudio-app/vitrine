@@ -411,6 +411,7 @@ command_table! {
         store_apps_list, store_package_check, open_url,
         project_store_get, project_store_patch, store_config_get,
         upload_readiness, upload_plan, upload_execute, upload_status, upload_cancel, upload_log, upload_confirm,
+        upload_refdata,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,

@@ -26,6 +26,12 @@ fn use_color(tty: bool) -> bool {
 }
 
 impl Style {
+    /// Without colours (tests).
+    #[cfg(test)]
+    pub fn plain() -> Self {
+        Self { color: false }
+    }
+
     pub fn stdout() -> Self {
         Self {
             color: use_color(std::io::stdout().is_terminal()),
