@@ -14,7 +14,8 @@ current: update after each phase/merge and whenever the user decides something.
   - Done: 4.1 `arrangia-app` extracted (shared session/commands layer, no Tauri; ADR 0013) + actor labels, `project-edited` event, `view_set`/`view_get`.
   - Done: 4.2–4.4 headless MCP server (`arrangia-mcp`, rmcp =3.9.0, ADR 0014): ~50 tools, resources, instructions, `arrangia mcp [--project] [--app-dir] [--headless]`; stdio integration tests (`crates/cli/tests/mcp.rs`). `element_add` in `arrangia-app` gained `id`/`key`/`fields`.
   - Done: 4.3b GUI hosting (ADR 0015): in-app Streamable HTTP endpoint (`arrangia_mcp::host`, 127.0.0.1, bearer token, Host/Origin checks, discovery file `<app data>/mcp.json`, on/off setting), `arrangia mcp` stdio proxy (GUI autostart, reconnect, headless fallback), app settings "Claude / MCP" (status, Add to Claude Desktop with confirm + backup, Claude Code commands), live aids (top-bar indicator + activity list, canvas glow, toasts, projects opened by Claude open in the GUI, tools default to the GUI's target/language); dev bridge `--mcp`; tests `crates/cli/tests/mcp_proxy.rs`.
-  - Next: 4.5 real-world check with Claude Desktop/Code (confirm Claude Desktop's clientInfo name, tool ergonomics).
+  - 4.5 in progress: first real session with Claude Desktop done; its ergonomics findings fixed (override reset, batch updates, cross-strip ids, `docs_get`, asset mapping import; ADR 0014/0009 amendments).
+  - Next: re-run the 4.5 scenario with the fixes (confirm Claude Desktop's clientInfo name).
 - Next phases per KONZEPT §12: 5 store upload, 6 polish/website, 7 3D.
 
 ## How we work
@@ -33,6 +34,7 @@ current: update after each phase/merge and whenever the user decides something.
 - 2026-11-10 Bezel import: keep all sizes (6.3" Pro needed for the required ASC set), auto-select by size, manual pin, clear hint for DMGs with licence agreement, show Apple licence notice.
 - 2026-11-10 Documentation: user guide in **English**, start collecting notes now (not prose); document a lot (also to survive context compression).
 - 2026-11-10 MCP: the GUI hosts the MCP server; no terminal needed; Claude Desktop starts a stdio proxy that connects to the running GUI; changes visible live, undoable, commentable in Claude.
+- 2026-11-10 Real MCP session feedback (Claude Desktop → proxy → GUI) → fixes: language/variant override reset (`null` in scope variant/lang removes the field; overrides never store `null`, hand-written ones dropped + info `override_null`; tool `element_reset_override`), several scoped patches in one undo step (`element_update.updates`), multi-element tools accept ids of several strips, `docs_get {topic}` because Claude Desktop does not let the model read resources (they work through the proxy), `assets_import` mapping list (`files`, `dry_run`) and kind alias `image`.
 - 2026-11-10 User test of the real iPhone 18 package → fixes: project-wide default "Apple (imported)" in project settings; vendor colours (Burgundy…) accepted with imported frames (was an op error); one colour row with the installed colours as real swatches (measured at import); colour follows a frame-source switch (closest colour, same undo step); uninstalled colour → default installed colour + info; short bezel/frame labels in the inspector; dialogs collapsed in WebKit (app settings) fixed (`.dlg-body` flex basis auto).
 - License of the project: still open (no LICENSE file, `publish = false`). Swedish hyphenation patterns (LPPL 1.2) wait for this decision.
 

@@ -34,8 +34,9 @@ overrides. Task 3.6 adds Phase 2 follow-ups that touch the same model
 
 - `langs` exists on **text elements only** (images have language
   variants of their assets; devices their screenshots). It is a map
-  language → `ElementPatch` (same syntax and `null` semantics as variant
-  overrides), written after all other fields, sorted by language.
+  language → `ElementPatch` (same syntax as variant overrides; since
+  2026-11-10 without `null`, see the amendment), written after all other
+  fields, sorted by language.
 - Allowed fields (`model::LANG_OVERRIDE_FIELDS`): `at`, `width`,
   `height`, `anchor_y`, `style`, `box`, `align`, `valign`, `fit`,
   `color`, `font_size`, `stroke`, `glow`, `shadow`, `hyphenate`. Typography,
@@ -183,3 +184,25 @@ styles:
   `hyphen.rs`.
 - With system fonts on, a project may render differently on another
   machine; validation still reports characters no project font covers.
+
+## Amendment 2026-11-10: overrides hold no `null`
+
+A `null` in an override meant "reset this field to the kind's default in
+this language/variant" – never what an override is wanted for, and the
+MCP tools wrote it when asked to *reset an override* (`langs.en: {at:
+null}` moved an English title to (0, 0)). Now:
+
+- Overrides (variant and language) only set values. "Back to the base" is
+  the absence of the field.
+- Edits in a variant or language scope treat a `null` field as "remove it
+  from the override" (`Editor::patch`; an override left empty disappears).
+- `SetVariantOverride`, `SetLangOverride`, `AddElement` (`langs`,
+  `overrides`), `AddStrip`, `AddLanguage` drop `null` fields from override
+  patches (`ElementPatch::drop_nulls`).
+- Loading drops `null` fields inside overrides of a hand-written file
+  (`Project::drop_override_nulls`, recorded in
+  `Project::dropped_override_nulls`); `validate` reports each as info
+  `override_null` until the next save writes the file without them.
+- Lost on purpose: switching a field *off* only for one variant/language
+  by `null` (e.g. no shadow on iPad). Use an explicit value instead
+  (`shadow: none`, `stroke.width: 0`, `glow.opacity: 0`, `visible: false`).
