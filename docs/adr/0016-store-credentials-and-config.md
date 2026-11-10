@@ -58,9 +58,30 @@ references an account id; a missing reference is reported
 
 `store_account_test` reads the secret, validates it again and calls
 `AppState::connection_tester()` (`trait ConnectionTester` in
-`arrangia_app::stores`). Until the App Store Connect / Google Play clients
-(5.3/5.4) are wired in, there is none and the command answers
-`not_implemented` with `details: {secret: "ok"}`.
+`arrangia_app::stores`). Without a tester (CLI, headless MCP) the command
+answers `not_implemented` with `details: {secret: "ok"}`.
+
+Wired 2026-11-10 (after the clients, ADR 0017, were merged):
+`arrangia_app::store_test::StoreClientTester`, installed by the GUI
+(`main.rs`) and the dev bridge. Read-only on purpose:
+
+- Apple: signs an ES256 token and calls `GET /v1/apps?limit=1`
+  (`apple::Client::apps_overview`) → `apps_visible` (`meta.paging.total`)
+  and `first_app`; summary e.g. "key accepted, 3 apps visible (first: …)",
+  0 apps → hint to check the key's role / app access.
+- Google: only fetches an OAuth access token (`google::Client::authenticate`,
+  no package name needed) → `client_email`. No edit is opened, so Play
+  Console permissions are only checked at upload time.
+- Failures are `io` errors with a user-facing message and
+  `details.reason`: `key_rejected` (401 / OAuth 400–403), `no_permission`
+  (Apple 403), `offline` (network error), `store_error` (5xx, unexpected
+  answers), `rate_limited`, `timeout`, `invalid_key`, `other`.
+- Short timeout (20 s) and one retry. The test runs on its own thread with
+  a current-thread tokio runtime (callers may already be inside a runtime).
+- Dev bridge only: `ARRANGIA_ASC_BASE_URL`, `ARRANGIA_PLAY_BASE_URL`,
+  `ARRANGIA_PLAY_TOKEN_URL` redirect it to a mock server; only loopback
+  `http://127.0.0.1:` / `localhost:` / `[::1]:` URLs are accepted. Tests:
+  `crates/app/tests/store_connection.rs` (wiremock, in-memory keychain).
 
 ### Project mapping (`store:` in `project.yaml`, `core::model::store`)
 

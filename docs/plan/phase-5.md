@@ -25,7 +25,8 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Store accounts in app settings (app-wide, not in the project):
       Apple (issuer id, key id, `.p8` → keychain), Google (service account JSON →
       keychain); list/test/remove; "test connection" call (seam
-      `ConnectionTester`; answers `not_implemented` until 5.3/5.4 wire the clients)
+      `ConnectionTester`, wired 2026-11-10 with the clients: Apple
+      `GET /v1/apps?limit=1`, Google token fetch; read-only; GUI + dev bridge)
 - [x] Project ↔ store mapping in `project.yaml`: Apple app id / bundle id,
       Google package name; language → store locale map (`de` → `de-DE`,
       configurable, defaults per store in `data/store-locales.yaml`)

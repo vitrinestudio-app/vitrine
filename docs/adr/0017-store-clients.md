@@ -205,6 +205,17 @@ status, errors:[{reason, message}]}}`.
 ## Consequences
 
 - No keychain, config, plan or executor code here (5.1/5.2/5.5).
-- Apple's set-based endpoints are deprecated; see the open question above.
+- Apple's set-based endpoints are deprecated; see the open question above
+  (also in `docs/plan/STATUS.md`, "Open questions for the user").
 - Real behaviour (editable states, processing times, Play review flag)
   is confirmed only in the user's real run (5.6).
+
+## Amendment 2026-11-10 – connection test
+
+Two read-only calls were added for "Test connection" (ADR 0016,
+`arrangia_app::store_test`): `apple::Client::apps_overview`
+(`GET /v1/apps?fields[apps]=bundleId,name&limit=1` → `meta.paging.total`
++ first app) and `google::Client::authenticate` (token fetch only). The
+Google package name is now checked when an edit URL is built instead of in
+`Client::new`, so a token-only client needs none. The asset-library
+question is listed in `docs/plan/STATUS.md` → "Open questions for the user".

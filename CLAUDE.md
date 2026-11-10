@@ -19,7 +19,9 @@ Status: pre-alpha. Phase 1 (core + CLI) and Phase 2 (GUI editor) are
 done and reviewed; Phase 3 (languages & import, `docs/plan/phase-3.md`)
 is nearly done; Phase 4 (MCP, `docs/plan/phase-4.md`) is in progress (MCP
 server, GUI hosting + Claude Desktop integration done; real-world check
-with Claude next). Current state and decisions: `docs/plan/STATUS.md`. See
+with Claude next); Phase 5 (store upload, `docs/plan/phase-5.md`) has
+started (5.1 accounts/config, 5.3/5.4 store clients). Current state and
+decisions: `docs/plan/STATUS.md`. See
 the roadmap in KONZEPT.md §12.
 
 ## Core ideas
@@ -134,10 +136,18 @@ order-keeping JSON merge with backup; `ARRANGIA_CLAUDE_DESKTOP_CONFIG`
 redirects it – never write the real config in tests), `stores` (app-wide
 store accounts in `settings.yaml`, `ConnectionTester` seam; commands
 `store_account_*`, `project_store_get/patch`, `store_config_get`; ADR
-0016). `publish::credentials` validates key files and wraps the keychain
+0016), `store_test` (`StoreClientTester`: read-only connection test with
+the store clients, installed by GUI + dev bridge only; dev bridge
+endpoint overrides `ARRANGIA_ASC_BASE_URL`/`ARRANGIA_PLAY_TOKEN_URL`,
+loopback only). `publish::credentials` validates key files and wraps the keychain
 (`keyring`, service `app.arrangia`, user `<id>/<kind>`;
 `ARRANGIA_KEYRING=mock` = in-memory, `ARRANGIA_KEYRING_SERVICE` renames;
 unit tests use `SecretStore::mock()`, never touch the real keychain).
+`publish::{apple, google}` (ADR 0017) – App Store Connect (ES256 JWT,
+screenshot sets: reserve/upload parts/commit MD5/poll/reorder) and Google
+Play (service-account OAuth, edits, `deleteall`, upload, commit) REST
+clients with retry/backoff, cancellation, observer and progress hooks;
+no network in tests (wiremock, `crates/publish/tests/`).
 Project store mapping: `store:` in `project.yaml` (`core::model::store`,
 op `set_store`, locale defaults `data/store-locales.yaml`). `mcp` (ADR 0014,
 0015) – `ArrangiaMcp` over an `Arc<AppState>` (headless: own state; GUI:
