@@ -46,7 +46,9 @@ pub fn run(args: &ValidateArgs, global: &Global) -> anyhow::Result<u8> {
     project::check_targets(&project, &args.targets)?;
     project::check_langs(&args.langs)?;
     let fs = FsAssets::new(root);
+    let frames = crate::frames::installed();
     let mut opts = ValidateOptions::new(&fs);
+    opts.frames = frames.as_deref();
     opts.fonts = project::fonts(root, global.quiet);
     opts.targets = (!args.targets.is_empty()).then(|| args.targets.clone());
     opts.langs = (!args.langs.is_empty()).then(|| args.langs.clone());

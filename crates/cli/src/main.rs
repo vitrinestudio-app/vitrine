@@ -1,7 +1,8 @@
 //! `arrangia` – command line interface.
 //!
 //! Commands: `new` (project from a template), `render` (preview/debug PNG),
-//! `export` (all files of targets × languages) and `validate`. The CLI only
+//! `export` (all files of targets × languages), `validate` and `frames`
+//! (import/list/remove vendor device frames, app-wide). The CLI only
 //! formats what `arrangia-core` and `arrangia-render` compute; it never
 //! edits project fields directly.
 //!
@@ -14,6 +15,7 @@
 //! | 2 | the command could not run: usage error (clap), project not loadable, IO error |
 
 mod export;
+mod frames;
 mod new;
 mod project;
 mod render;
@@ -85,6 +87,8 @@ enum Command {
     Export(export::ExportArgs),
     /// Validate a project and report infos, warnings and errors.
     Validate(validate::ValidateArgs),
+    /// Import, list and remove vendor device frames (Apple Product Bezels).
+    Frames(frames::FramesArgs),
 }
 
 impl Command {
@@ -95,6 +99,7 @@ impl Command {
             Self::Render(_) => "render",
             Self::Export(_) => "export",
             Self::Validate(_) => "validate",
+            Self::Frames(_) => "frames",
         }
     }
 }
@@ -106,6 +111,7 @@ fn main() -> ExitCode {
         Command::Render(args) => render::run(args, &cli.global),
         Command::Export(args) => export::run(args, &cli.global),
         Command::Validate(args) => validate::run(args, &cli.global),
+        Command::Frames(args) => frames::run(args, &cli.global),
     };
     match result {
         Ok(code) => ExitCode::from(code),
