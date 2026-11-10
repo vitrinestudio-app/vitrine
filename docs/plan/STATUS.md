@@ -40,6 +40,7 @@ current: update after each phase/merge and whenever the user decides something.
 - Subagents sometimes leave a background process; stop finished agents with TaskStop and check `ps aux | grep arrangia`.
 
 ## How we work
+- CI note (2026-11-10): Linux/Windows clippy was red from the Phase 3 merges until 30eadeb (macOS-only DMG enum variant). Always check per-OS results (`curl -s https://api.github.com/repos/Looking4Cache/arrangia/commits/<sha>/check-runs`). Cross-clippy from the Mac: see CLAUDE.md (cargo-zigbuild, zig, mingw-w64 installed).
 - Coordinator session plans and reviews (incl. looking at rendered images); subagents implement (worktrees for parallel work, merged with `--no-ff`).
 - Every commit: fmt, clippy `-D warnings`, `cargo test --all`, `cargo build -p arrangia-gui`.
 - CI on GitHub (Linux/macOS/Windows) must stay green; LF line endings enforced by `.gitattributes`.
