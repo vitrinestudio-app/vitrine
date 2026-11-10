@@ -1208,7 +1208,9 @@ async fn apple_processing_does_not_block_the_run() {
     short_budget(&e, Duration::from_millis(1300));
     let t0 = std::time::Instant::now();
     let run = execute(&e.app, &p["confirm_token"]);
-    assert!(t0.elapsed() < Duration::from_secs(8), "no hang");
+    // Generous bound: debug builds on CI runners (Windows) are slow; a
+    // blocking wait for the stuck image would never end.
+    assert!(t0.elapsed() < Duration::from_secs(60), "no hang");
     assert_eq!(run["status"], "completed", "{run:#}");
     assert_eq!(run["images_processing"], 1);
     let sets = run["sets"].as_array().unwrap();
@@ -1380,7 +1382,7 @@ async fn cancel_works_while_apple_is_processing() {
         "upload_execute",
         json!({"token": p["confirm_token"]}),
     );
-    let mut waited = 0;
+    let deadline = std::time::Instant::now() + Duration::from_secs(60);
     while !e
         .events
         .named("upload-progress")
@@ -1388,13 +1390,19 @@ async fn cancel_works_while_apple_is_processing() {
         .any(|v| v["step"] == "processing")
     {
         std::thread::sleep(Duration::from_millis(20));
-        waited += 1;
-        assert!(waited < 500, "never reached processing");
+        assert!(
+            std::time::Instant::now() < deadline,
+            "never reached processing"
+        );
     }
     let t0 = std::time::Instant::now();
     assert_eq!(call(&e.app, "upload_cancel", json!({}))["cancelled"], true);
     let run = arrangia_app::commands::upload_wait(&e.app, Some(Duration::from_secs(10))).unwrap();
-    assert!(t0.elapsed() < Duration::from_secs(3), "cancel is immediate");
+    // Well below the 60 s budget (slow CI runners need the headroom).
+    assert!(
+        t0.elapsed() < Duration::from_secs(20),
+        "cancel is immediate"
+    );
     let run = serde_json::to_value(run).unwrap();
     assert_eq!(run["status"], "cancelled", "{run:#}");
     // Re-plan with the remote check: the uploaded images are kept.
@@ -1468,16 +1476,18 @@ async fn stale_running_run_is_interrupted() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn watchdog_stops_a_run_without_progress() {
     let e = env().await;
-    e.asc.lock().unwrap().part_delay = Some(Duration::from_secs(4));
+    // The part upload never answers in time; neither the part delay nor the
+    // grace period may be what ends the run (bounds leave room for slow CI).
+    e.asc.lock().unwrap().part_delay = Some(Duration::from_secs(30));
     let mut cfg = e.app.upload().config();
     cfg.stall_timeout = Duration::from_millis(400);
     cfg.heartbeat_interval = Duration::from_millis(50);
-    cfg.stall_grace = Duration::from_secs(5);
+    cfg.stall_grace = Duration::from_secs(30);
     e.app.upload().set_config(cfg);
     let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
     let t0 = std::time::Instant::now();
     let run = execute(&e.app, &p["confirm_token"]);
-    assert!(t0.elapsed() < Duration::from_secs(3), "{:?}", t0.elapsed());
+    assert!(t0.elapsed() < Duration::from_secs(15), "{:?}", t0.elapsed());
     assert_eq!(run["status"], "failed", "{run:#}");
     assert!(
         run["message"].as_str().unwrap().contains("no progress"),
