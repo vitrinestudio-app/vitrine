@@ -11,7 +11,7 @@ use crate::catalog::{DeviceClass, PresetStatus, SizePolicy, TargetPreset};
 use crate::geometry::{Rect, Vec2};
 use crate::layout::{TextDiagnostic, TextLayouter, layout_text, span_styles};
 use crate::model::{
-    Chrome, ElementId, FitMode, ImageFormat, PixelSize, Project, Strip, Target, TargetKind,
+    Canvas, Chrome, ElementId, FitMode, ImageFormat, PixelSize, Project, Target, TargetKind,
 };
 use crate::resolve::{
     DiagnosticCode, Frame, Level, ResolvedDevice, ResolvedElement, ResolvedKind, ResolvedScene,
@@ -24,13 +24,13 @@ const CLIP_EPS: f64 = 0.5;
 pub(super) struct Scope<'a> {
     pub project: &'a Project,
     pub target: &'a Target,
-    pub strip: &'a Strip,
+    pub canvas: &'a Canvas,
     pub options: &'a ValidateOptions<'a>,
 }
 
 impl Scope<'_> {
     fn page_of(&self, id: &ElementId) -> Option<u32> {
-        self.strip.element(id.as_str()).map(|e| e.page)
+        self.canvas.element(id.as_str()).map(|e| e.page)
     }
 }
 
@@ -100,7 +100,7 @@ pub(super) fn frame_checks(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out:
                 None,
                 None,
                 format!(
-                    "page height {:.0} lu differs from the strip's {:.0} lu by {:+.0} %; \
+                    "page height {:.0} lu differs from the canvas's {:.0} lu by {:+.0} %; \
                      anchors alone may not be enough, consider a variant",
                     layout.page_height,
                     layout.reference_page_height,

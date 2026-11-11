@@ -67,7 +67,7 @@ pub fn default_language_impact(
     after.languages.default = new_default.clone();
 
     let mut keys = BTreeSet::new();
-    for s in &project.strips {
+    for s in &project.canvases {
         s.walk_elements(&mut |e| {
             if let ElementKind::Text(t) = &e.kind {
                 keys.insert(t.text.clone());
@@ -100,16 +100,16 @@ pub fn default_language_impact(
 
     let mut screenshots = BTreeSet::new();
     for t in &project.targets {
-        let Some(strip) = project.strip(t.strip.as_str()) else {
+        let Some(canvas) = project.canvas(t.canvas.as_str()) else {
             continue;
         };
         let overrides = t
             .variant
             .as_ref()
-            .and_then(|v| strip.variants.get(v))
+            .and_then(|v| canvas.variants.get(v))
             .map(|v| &v.overrides);
         let mut wanted = BTreeSet::new();
-        strip.walk_elements(&mut |e| {
+        canvas.walk_elements(&mut |e| {
             let e = overrides
                 .and_then(|o| o.get(&e.id))
                 .and_then(|p| e.patched(p).ok())

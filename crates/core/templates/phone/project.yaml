@@ -1,6 +1,6 @@
 # Vitrine Studio project (format: docs/KONZEPT.md §3, docs/adr/0002-project-file-format.md).
 #
-# One phone strip of three pages, rendered for the iPhone 6.9" App Store
+# One phone canvas of three pages, rendered for the iPhone 6.9" App Store
 # set, the Google Play phone set and a blog banner. Put your screenshots in
 # screenshots/<lang>/<variant>/<name>.png (variant = the target's
 # `screenshots` folder, e.g. ios-phone) or screenshots/<lang>/<name>.png;
@@ -24,7 +24,7 @@ styles:
       layers:
       - {color: "#00000055", blur: 48, y: 40}
       - {color: "#00000033", blur: 10, y: 8}
-strips:
+canvases:
 - id: phone
   page: {aspect: 1320:2868, count: 3, ids: [welcome, features, start]}
   backgrounds:
@@ -88,13 +88,13 @@ strips:
     shadow: soft
 targets:
 - id: ios-iphone-69
-  strip: phone
+  canvas: phone
   size: [1320, 2868]
   screenshots: ios-phone
   gallery: appstore-iphone
   store: {apple: {display_type: APP_IPHONE_67}}
 - id: play-phone
-  strip: phone
+  canvas: phone
   size: [1080, 2160]
   screenshots: android-phone
   gallery: play-phone
@@ -102,7 +102,7 @@ targets:
   store: {google: {image_type: phoneScreenshots}}
 - id: blog-header
   kind: banner
-  strip: phone
+  canvas: phone
   size: [2400, 1000]
   fit: cover
   gaps: none

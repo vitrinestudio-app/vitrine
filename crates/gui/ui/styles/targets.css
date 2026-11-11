@@ -112,14 +112,14 @@
   flex-wrap: wrap;
 }
 
-/* Strips (canvases) in the list and the strip pane. */
+/* Canvases in the list and the canvas pane. */
 .tg-list-head {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
 
-.tg-strip-head {
+.tg-canvas-head {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -136,27 +136,27 @@
   cursor: pointer;
 }
 
-.tg-strip-head:hover {
+.tg-canvas-head:hover {
   background: var(--bg-hover);
 }
 
-.tg-strip-head[aria-selected="true"] {
+.tg-canvas-head[aria-selected="true"] {
   background: var(--accent);
   color: var(--accent-fg);
 }
 
-.tg-strip-head[aria-selected="true"] .muted {
+.tg-canvas-head[aria-selected="true"] .muted {
   color: rgb(255 255 255 / 75%);
 }
 
-.tg-strip-head .grow {
+.tg-canvas-head .grow {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.tg-strip-head .muted {
+.tg-canvas-head .muted {
   font-weight: 400;
 }
 

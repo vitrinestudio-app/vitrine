@@ -121,9 +121,9 @@ fn new_project_saves_into_empty_folder() {
 #[test]
 fn sample_model_content() {
     let p = Project::load(sample_dir()).unwrap();
-    assert_eq!(p.strips.len(), 2);
-    let (strip, phone) = p.element("hero-phone").unwrap();
-    assert_eq!(strip.id.as_str(), "phone");
+    assert_eq!(p.canvases.len(), 2);
+    let (canvas, phone) = p.element("hero-phone").unwrap();
+    assert_eq!(canvas.id.as_str(), "phone");
     assert!(matches!(phone.kind, ElementKind::Device(_)));
     // Group children are found as well.
     assert!(p.element("badge-ring").is_some());
@@ -131,7 +131,7 @@ fn sample_model_content() {
         p.string("de", "hero.title"),
         Some("Plane deine Beete **in Minuten**")
     );
-    let variant = &strip.variants[&vitrine_core::model::VariantId::new("tablet-landscape")];
+    let variant = &canvas.variants[&vitrine_core::model::VariantId::new("tablet-landscape")];
     assert_eq!(variant.overrides.len(), 3);
 }
 
@@ -185,14 +185,14 @@ const HEAD: &str = "format: vitrine/1\nname: x\nlanguages: { default: en, availa
 #[test]
 fn errors_name_file_line_and_field() {
     let err = load_err(&format!(
-        "{HEAD}strips:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elemnts: []\n"
+        "{HEAD}canvases:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elemnts: []\n"
     ));
     assert!(err.contains("project.yaml"), "{err}");
     assert!(err.contains("unknown field `elemnts`"), "{err}");
     assert!(err.contains("line 7"), "{err}");
 
     let err = load_err(&format!(
-        "{HEAD}strips:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elements:\n      - {{ id: t, kind: text, text: a, model: x }}\n"
+        "{HEAD}canvases:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elements:\n      - {{ id: t, kind: text, text: a, model: x }}\n"
     ));
     assert!(
         err.contains("field `model` is not allowed on text elements"),
@@ -200,7 +200,7 @@ fn errors_name_file_line_and_field() {
     );
 
     let err = load_err(&format!(
-        "{HEAD}strips:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    backgrounds: [\"red\"]\n"
+        "{HEAD}canvases:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    backgrounds: [\"red\"]\n"
     ));
     assert!(err.contains("invalid colour `red`"), "{err}");
 
@@ -214,8 +214,25 @@ fn errors_name_file_line_and_field() {
         "{err}"
     );
 
+    // Before 2026-11-11 the canvas was called "strip": say what to rename.
+    let old = "strips:\n  - id: s\n    page: { aspect: \"1:2\", count: 1 }\ntargets:\n  - id: t\n    strip: s\n    size: [100, 200]\n";
+    let err = load_err(&format!("{HEAD}{old}"));
+    assert!(
+        err.contains("`strips:` to `canvases:`")
+            && err.contains("`strip:` to `canvas:`")
+            && !err.contains("format:"),
+        "{err}"
+    );
     let err = load_err(&format!(
-        "{HEAD}strips:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elements:\n      - {{ id: a, kind: text, text: a }}\n      - {{ id: a, kind: text, text: b }}\n"
+        "format: arrangia/1\nname: x\nlanguages: {{ default: en, available: [en] }}\n{old}"
+    ));
+    assert!(
+        err.contains("`canvases:`") && err.contains("`format:` to `vitrine/1`"),
+        "{err}"
+    );
+
+    let err = load_err(&format!(
+        "{HEAD}canvases:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elements:\n      - {{ id: a, kind: text, text: a }}\n      - {{ id: a, kind: text, text: b }}\n"
     ));
     assert!(err.contains("duplicate element id `a`"), "{err}");
 
@@ -227,15 +244,15 @@ fn errors_name_file_line_and_field() {
 fn yaml_12_booleans_only() {
     // `y`/`no` are strings, not booleans (YAML 1.2 core schema).
     let p = io::project_from_yaml(&format!(
-        "{HEAD}strips:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elements:\n      - {{ id: d, kind: device, model: no, at: {{ x: 1, y: 2 }} }}\n"
+        "{HEAD}canvases:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elements:\n      - {{ id: d, kind: device, model: no, at: {{ x: 1, y: 2 }} }}\n"
     ))
     .unwrap();
-    let ElementKind::Device(d) = &p.strips[0].elements[0].kind else {
+    let ElementKind::Device(d) = &p.canvases[0].elements[0].kind else {
         panic!()
     };
     assert_eq!(d.model, "no");
     assert!(io::project_from_yaml(&format!(
-        "{HEAD}strips:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elements:\n      - {{ id: d, kind: text, text: a, visible: yes }}\n"
+        "{HEAD}canvases:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elements:\n      - {{ id: d, kind: text, text: a, visible: yes }}\n"
     ))
     .is_err());
 }
@@ -246,7 +263,7 @@ fn concept_example_loads() {
     let yaml = include_str!("data/konzept-3.7.yaml");
     let p = io::project_from_yaml(yaml).unwrap();
     assert_eq!(p.targets.len(), 4);
-    assert_eq!(p.strips[0].elements.len(), 2);
+    assert_eq!(p.canvases[0].elements.len(), 2);
     let again = io::project_from_yaml(&p.to_yaml().unwrap()).unwrap();
     assert_eq!(again, p);
 }

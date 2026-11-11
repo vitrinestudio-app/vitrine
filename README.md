@@ -63,10 +63,10 @@ the task lists in [`docs/plan/`](docs/plan/) (`phase-1.md` …
 
 ### Desktop editor
 
-One canvas per strip with the store gaps hatched, direct manipulation
+Each canvas in one continuous view with the store gaps hatched, direct manipulation
 (move, resize, rotate, snapping), an inspector per element kind, layers,
 assets with drag & drop import, a translations table and inline text
-editing, canvases (strips), targets from store presets and variants
+editing, canvases, targets from store presets and variants
 managed in one dialog, a validation panel, an export dialog and an upload
 dialog. On macOS the app menu also lives in the native menu bar. Every
 preview is rendered by the same Rust pipeline as the export; every change

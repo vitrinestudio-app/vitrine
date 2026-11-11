@@ -29,7 +29,7 @@ This ADR records how `core::geometry` and `core::resolve` answer them.
   dimensions (`dimensions(path) -> Option<(u32, u32)>`, default `None`).
   Implementations: `FsAssets` (reads only the image header via the
   `imagesize` crate), `NoAssets`, `BTreeSet<String>` (no dimensions),
-  `BTreeMap<String, (u32, u32)>` (tests). Only an unknown target, an unknown strip or an
+  `BTreeMap<String, (u32, u32)>` (tests). Only an unknown target, an unknown canvas or an
   invalid language code are errors; everything else becomes a diagnostic.
 - `ResolvedScene` is `Serialize` (not `Deserialize`): frame, canvas-wide
   backgrounds, a flat z-ordered element list in canvas lu, resolved span
@@ -39,7 +39,7 @@ This ADR records how `core::geometry` and `core::resolve` answer them.
 ### Frame geometry
 
 - Page (column) height `H = k · 1000 · h / w` from the target size and
-  `group: k` (ADR 0001). The reference height `H0` is the strip's aspect.
+  `group: k` (ADR 0001). The reference height `H0` is the canvas's aspect.
 - Export images are always `k` columns wide, also the last one when the
   page count is not a multiple of `k` (it gets empty columns; info
   `partial_image`). The canvas extends to the right edge of the last image.
@@ -48,9 +48,9 @@ This ADR records how `core::geometry` and `core::resolve` answer them.
   with `GalleryProfile::page_lu_per_unit(image px, k)`. A target `gap`
   override with an unknown preset assumes the width basis (warning
   `unknown_gallery`). No gallery = no gaps.
-- **Banners** keep the strip's own page height (anchors are a no-op).
+- **Banners** keep the canvas's own page height (anchors are a no-op).
   `gaps: none` (default) → gap 0; `as_store` → the target's gallery
-  converted for page images in the strip aspect (no gallery: warning
+  converted for page images in the canvas aspect (no gallery: warning
   `no_gallery`, no gaps). `region: {pages: [a, b]}` covers
   `page_x(a) … page_x(b) + 1000` (clamped, warning on overflow), `rect` is
   relative to its page. `fit: cover` (default) keeps the horizontal centre

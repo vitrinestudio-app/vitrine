@@ -1,4 +1,4 @@
-// Canvas view: the strip of the current target as Rust-rendered pixmaps
+// Canvas view: the canvas of the current target as Rust-rendered pixmaps
 // (one per output image, plus the gaps rendered separately, shown
 // semi-transparent under a hatch) positioned in canvas lu, a screen-space
 // SVG overlay, zoom/pan (shared viewport, views/viewport.js) and direct manipulation (select, marquee, move,

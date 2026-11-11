@@ -267,8 +267,8 @@ pub struct TargetPreset {
     /// not published.
     #[serde(default)]
     pub safe_area: Option<SafeArea>,
-    /// Banner presets: default region of the strip (`None` = whole strip;
-    /// page ranges are clamped to the strip when a target is added).
+    /// Banner presets: default region of the canvas (`None` = whole canvas;
+    /// page ranges are clamped to the canvas when a target is added).
     #[serde(default)]
     pub region: Option<Region>,
     /// Banner presets: default fit.

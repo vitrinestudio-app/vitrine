@@ -213,13 +213,13 @@ export function mount(el, { store, editor, api, t }) {
     // Keys used by devices without a file in the default language for a
     // target variant (no fallback at all → placeholder in the render).
     const missing = [];
-    // Per key: the screenshot variants of the targets of the strips whose
+    // Per key: the screenshot variants of the targets of the canvases whose
     // devices use it.
-    const stripOf = new Map();
-    for (const sp of s.strips) for (const e of sp.elements) stripOf.set(e.id, sp.id);
+    const canvasOf = new Map();
+    for (const sp of s.canvases) for (const e of sp.elements) canvasOf.set(e.id, sp.id);
     for (const [key, ids] of Object.entries(l.screenshot_keys)) {
-      const strips = new Set(ids.map((i) => stripOf.get(i)));
-      const variants = [...new Set(s.targets.filter((tg) => strips.has(tg.strip)).map((tg) => tg.screenshots).filter(Boolean))];
+      const canvases = new Set(ids.map((i) => canvasOf.get(i)));
+      const variants = [...new Set(s.targets.filter((tg) => canvases.has(tg.canvas)).map((tg) => tg.screenshots).filter(Boolean))];
       for (const v of variants) {
         const ok = l.screenshots.some((f) => f.lang === def && f.key === key && (f.variant == null || f.variant === v));
         if (!ok) missing.push({ key, variant: v, ids });

@@ -3,7 +3,7 @@
 An element has **base** fields. Two kinds of overrides change some of them
 for part of the outputs:
 
-- **Variant override** (`strips[].variants.<variant>.overrides.<id>`): for the
+- **Variant override** (`canvases[].variants.<variant>.overrides.<id>`): for the
   targets that use the variant (e.g. `tablet-landscape` for iPad with
   `group: 2`). Any element field except `id`, `kind`, `children`.
 - **Language override** (`langs.<lang>` on a text element): for one language
@@ -25,7 +25,7 @@ reported as info `override_null` and dropped on the next save).
   that language.
 
 Several scopes in ONE undo step: `element_update {updates: [{id, scope,
-lang?, variant?, patch}, …]}`; ids may come from several strips.
+lang?, variant?, patch}, …]}`; ids may come from several canvases.
 
 ## Resetting (back to the base value)
 - In scope `variant`/`lang`, a field set to `null` in `patch` is **removed
@@ -40,8 +40,8 @@ lang?, variant?, patch}, …]}`; ids may come from several strips.
 
 ## With apply_ops
 `update_element` always writes the base element. Overrides:
-`set_variant_override {strip, variant, element, patch | null}` (replaces the
-whole override), `reset_override_field {strip, variant, element, field}`,
+`set_variant_override {canvas, variant, element, patch | null}` (replaces the
+whole override), `reset_override_field {canvas, variant, element, field}`,
 `set_lang_override {element, lang, patch | null}` (replaces the whole
 override), `reset_lang_override_field {element, lang, field}`.
 

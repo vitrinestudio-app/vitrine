@@ -34,8 +34,8 @@ macro_rules! edit_params {
             $($body)*
             /// Target whose page geometry is used (page heights, gaps,
             /// grouping). Default: the target the user looks at in the GUI
-            /// (when it shows the element's strip), else the first target
-            /// showing the strip.
+            /// (when it shows the element's canvas), else the first target
+            /// showing the canvas.
             #[serde(default)]
             pub target: Option<String>,
             /// Where the change goes: `base` (default; all targets and
@@ -107,12 +107,12 @@ impl Drop for RestoreView {
 }
 
 /// The GUI's current target, when it exists in `project` and shows
-/// `strip` (any strip when `None`).
-pub fn gui_target(project: &Project, strip: Option<&str>) -> Option<String> {
+/// `canvas` (any canvas when `None`).
+pub fn gui_target(project: &Project, canvas: Option<&str>) -> Option<String> {
     let t = GUI_VIEW.with(|v| v.borrow().as_ref().and_then(|v| v.target.clone()))?;
     project
         .target(&t)
-        .filter(|tg| strip.is_none_or(|s| tg.strip.as_str() == s))
+        .filter(|tg| canvas.is_none_or(|s| tg.canvas.as_str() == s))
         .map(|_| t)
 }
 
@@ -122,22 +122,22 @@ pub fn gui_lang(project: &Project) -> Option<String> {
     project.languages.is_available(&l).then_some(l)
 }
 
-/// Strip holding element `id`.
-pub fn strip_of_element(project: &Project, id: &str) -> Option<String> {
-    project.strips.iter().find_map(|s| {
+/// Canvas holding element `id`.
+pub fn canvas_of_element(project: &Project, id: &str) -> Option<String> {
+    project.canvases.iter().find_map(|s| {
         let mut found = false;
         s.walk_elements(&mut |e| found |= e.id.as_str() == id);
         found.then(|| s.id.to_string())
     })
 }
 
-/// The target for an edit on `strip`: `given`, else (GUI-hosted) the
-/// target the user looks at when it shows the strip, else the first target
-/// showing the strip.
+/// The target for an edit on `canvas`: `given`, else (GUI-hosted) the
+/// target the user looks at when it shows the canvas, else the first target
+/// showing the canvas.
 pub fn target_for(
     project: &Project,
     given: Option<&str>,
-    strip: Option<&str>,
+    canvas: Option<&str>,
 ) -> Result<String, CommandError> {
     if let Some(t) = given {
         if project.target(t).is_none() {
@@ -145,16 +145,16 @@ pub fn target_for(
         }
         return Ok(t.to_owned());
     }
-    if let Some(t) = gui_target(project, strip) {
+    if let Some(t) = gui_target(project, canvas) {
         return Ok(t);
     }
-    let pick = match strip {
-        Some(s) => project.targets.iter().find(|t| t.strip.as_str() == s),
+    let pick = match canvas {
+        Some(s) => project.targets.iter().find(|t| t.canvas.as_str() == s),
         None => project.targets.first(),
     };
-    pick.map(|t| t.id.to_string()).ok_or_else(|| match strip {
+    pick.map(|t| t.id.to_string()).ok_or_else(|| match canvas {
         Some(s) => CommandError::invalid(format!(
-            "no target shows strip `{s}` yet; add one with target_add {{preset, strip: \"{s}\"}}"
+            "no target shows canvas `{s}` yet; add one with target_add {{preset, canvas: \"{s}\"}}"
         )),
         None => CommandError::invalid("the project has no targets; add one with target_add"),
     })
@@ -162,24 +162,24 @@ pub fn target_for(
 
 impl EditCtx {
     /// The view context JSON (`target`, `lang`, `variant`, `scope`) of the
-    /// app's edit commands for an edit of `element` (or on `strip`).
+    /// app's edit commands for an edit of `element` (or on `canvas`).
     pub fn view(
         &self,
         app: &AppState,
         element: Option<&str>,
-        strip: Option<&str>,
+        canvas: Option<&str>,
     ) -> Result<Map<String, Value>, CommandError> {
         let session = app.session()?;
         let project = session.snapshot();
-        let strip = match (strip, element) {
+        let canvas = match (canvas, element) {
             (Some(s), _) => Some(s.to_owned()),
             (None, Some(id)) => Some(
-                strip_of_element(&project, id)
+                canvas_of_element(&project, id)
                     .ok_or_else(|| CommandError::not_found(format!("unknown element `{id}`")))?,
             ),
             (None, None) => None,
         };
-        let target = target_for(&project, self.target.as_deref(), strip.as_deref())?;
+        let target = target_for(&project, self.target.as_deref(), canvas.as_deref())?;
         let mut v = Map::new();
         v.insert("target".into(), json!(target));
         if let Some(lang) = self.lang.clone().or_else(|| gui_lang(&project)) {

@@ -35,7 +35,7 @@ pub fn list(app: &AppState) -> Vec<Resource> {
             PROJECT_URI,
             "project.yaml",
             "application/yaml",
-            "The open project's file (strips, elements, styles, targets)",
+            "The open project's file (canvases, elements, styles, targets)",
         ));
         let langs: Vec<String> = session.with_project(|p| {
             p.languages

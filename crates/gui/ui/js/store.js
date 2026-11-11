@@ -13,15 +13,15 @@
 export const initialState = {
   /** `project_summary` result (null = no project open). */
   summary: null,
-  /** Current strip id. */
-  strip: null,
+  /** Current canvas id. */
+  canvas: null,
   /** Current target id. */
   target: null,
   /** Current content language. */
   lang: null,
   /**
    * Variant shown and edited: `undefined` = the target's own variant,
-   * `null` = the base elements, a string = that variant of the strip.
+   * `null` = the base elements, a string = that variant of the canvas.
    */
   variant: undefined,
   /** `canvas` | `pages` | `gallery` | `languages`. */
@@ -42,8 +42,8 @@ export const initialState = {
   validation: null,
   /** Validation in preview mode (missing screenshots are warnings). */
   validationPreview: true,
-  /** Left sidebar tab: `strips` | `layers` | `assets` | `translations`. */
-  sidebarTab: 'strips',
+  /** Left sidebar tab: `canvases` | `layers` | `assets` | `translations`. */
+  sidebarTab: 'canvases',
   /** Short status line (bottom bar). */
   status: '',
   /** Inspector toggle "only for <lang>": text edits go into the language override. */
@@ -107,9 +107,9 @@ export function currentTarget(state = store.get()) {
   return state.summary?.targets.find((t) => t.id === state.target) ?? null;
 }
 
-/** Strip summary of the current strip. */
-export function currentStrip(state = store.get()) {
-  return state.summary?.strips.find((s) => s.id === state.strip) ?? null;
+/** Canvas summary of the current canvas. */
+export function currentCanvas(state = store.get()) {
+  return state.summary?.canvases.find((s) => s.id === state.canvas) ?? null;
 }
 
 /** The variant actually shown (resolves `undefined` to the target's own). */

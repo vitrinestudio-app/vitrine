@@ -61,7 +61,7 @@ pub struct RenderImageArgs {
     #[serde(default)]
     pub lang: Option<String>,
     /// Missing = the target's own variant, `null` = the base elements, a
-    /// name = that variant of the target's strip (variant view).
+    /// name = that variant of the target's canvas (variant view).
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
     /// Edit scope of the view (only used by gesture previews).
@@ -96,7 +96,7 @@ pub struct RenderCanvasArgs {
     #[serde(default)]
     pub lang: Option<String>,
     /// Missing = the target's own variant, `null` = the base elements, a
-    /// name = that variant of the target's strip (variant view).
+    /// name = that variant of the target's canvas (variant view).
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
     /// Edit scope of the view (only used by gesture previews).
@@ -131,7 +131,7 @@ pub struct RenderGalleryArgs {
     #[serde(default)]
     pub lang: Option<String>,
     /// Missing = the target's own variant, `null` = the base elements, a
-    /// name = that variant of the target's strip (variant view).
+    /// name = that variant of the target's canvas (variant view).
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
     /// Edit scope of the view (only used by gesture previews).
@@ -164,10 +164,10 @@ fn with_variant(
         None => None,
         Some(v) => {
             let id = VariantId::parse(v).map_err(CommandError::invalid)?;
-            let strip = project
+            let canvas = project
                 .target(target)
-                .and_then(|t| project.strip(t.strip.as_str()));
-            if !strip.is_some_and(|s| s.variants.contains_key(&id)) {
+                .and_then(|t| project.canvas(t.canvas.as_str()));
+            if !canvas.is_some_and(|s| s.variants.contains_key(&id)) {
                 return Err(CommandError::not_found(format!(
                     "unknown variant `{v}` for target `{target}`"
                 )));

@@ -21,7 +21,7 @@ const PROJECT: &str = r##"
 format: vitrine/1
 name: render-test
 languages: {default: en, available: [en, de]}
-strips:
+canvases:
 - id: s
   page: {aspect: 1000:2000, count: 4, ids: [hero, two]}
   backgrounds: ["#FFFFFF"]
@@ -93,24 +93,24 @@ strips:
     screenshot: shot
 targets:
 - id: pages
-  strip: s
+  canvas: s
   size: [500, 1000]
   gallery: {gap: 100}
 - id: grouped
-  strip: s
+  canvas: s
   size: [1000, 1000]
   group: 2
   gallery: {gap: 100}
   langs: [en]
 - id: banner
   kind: banner
-  strip: s
+  canvas: s
   size: [800, 400]
   format: jpeg
   quality: 80
   langs: [en]
 - id: web
-  strip: web
+  canvas: web
   size: [1600, 1000]
   langs: [en]
 "##;

@@ -1,4 +1,4 @@
-//! Strips (canvases), page specs and variants.
+//! Canvases, page specs and variants.
 
 use std::collections::BTreeMap;
 
@@ -8,13 +8,13 @@ use super::common::Aspect;
 use super::element::{Element, ElementPatch};
 use super::fill::Fill;
 use super::fmt::{flow_seq, flow_style, num};
-use super::ids::{ElementId, StripId, VariantId, is_valid_id};
+use super::ids::{CanvasId, ElementId, VariantId, is_valid_id};
 
 /// A continuous canvas of `page.count` equally sized pages.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Strip {
-    pub id: StripId,
+pub struct Canvas {
+    pub id: CanvasId,
     pub page: PageSpec,
     /// Canvas-wide backgrounds (bottom to top), running over pages and gaps.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -27,8 +27,8 @@ pub struct Strip {
     pub variants: BTreeMap<VariantId, Variant>,
 }
 
-impl Strip {
-    pub fn new(id: StripId, aspect: Aspect, count: u32) -> Self {
+impl Canvas {
+    pub fn new(id: CanvasId, aspect: Aspect, count: u32) -> Self {
         Self {
             id,
             page: PageSpec {
@@ -50,7 +50,7 @@ impl Strip {
     }
 
     /// Removes `null` fields from the variant overrides and the language
-    /// overrides of the strip's elements (see
+    /// overrides of the canvas's elements (see
     /// [`super::Project::drop_override_nulls`]); returns where they were.
     pub fn drop_override_nulls(&mut self) -> Vec<String> {
         let mut out = Vec::new();
@@ -61,7 +61,7 @@ impl Strip {
             v.overrides.retain(|id, p| {
                 for f in p.drop_nulls() {
                     out.push(format!(
-                        "strip `{}`, variant `{vid}`, element `{id}`: {f}",
+                        "canvas `{}`, variant `{vid}`, element `{id}`: {f}",
                         self.id
                     ));
                 }
@@ -83,7 +83,7 @@ impl Strip {
     }
 }
 
-/// Page geometry of a strip: `page: { aspect: "1320:2868", count: 5 }`,
+/// Page geometry of a canvas: `page: { aspect: "1320:2868", count: 5 }`,
 /// optionally with page ids used in export file names
 /// (`ids: [hero, planner]` → `01_hero.png`, `02_planner.png`, `03_page-03.png`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -94,7 +94,7 @@ pub struct PageSpec {
     /// Number of pages (>= 1).
     pub count: u32,
     /// Optional page ids by index (may be shorter than `count`; missing ids
-    /// default to `page-01`, `page-02` …). Unique within the strip.
+    /// default to `page-01`, `page-02` …). Unique within the canvas.
     #[serde(
         default,
         skip_serializing_if = "Vec::is_empty",
@@ -139,7 +139,7 @@ impl PageSpec {
     }
 }
 
-/// Derived geometry of a strip for another format (§3.4). Only the
+/// Derived geometry of a canvas for another format (§3.4). Only the
 /// overridden properties differ; everything else is shared.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

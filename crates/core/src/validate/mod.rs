@@ -39,7 +39,7 @@ use crate::resolve::{AssetLookup, ResolveError, ResolveOptions, resolve};
 pub const DEFAULT_MAX_UPSCALE: f64 = 1.15;
 
 /// Default for [`Thresholds::variant_aspect`]: page height deviation
-/// between target and strip (relative) above which a variant is suggested
+/// between target and canvas (relative) above which a variant is suggested
 /// (KONZEPT §3.4). 15 % covers iPhone 6.9″ ↔ Google Play 1:2 (8 %) with
 /// anchors alone but flags grouped tablet columns (≈ 30 %).
 pub const DEFAULT_VARIANT_ASPECT: f64 = 0.15;
@@ -79,8 +79,8 @@ finding_codes! {
     // ---- references and structure
     /// A target filter names an unknown target.
     UnknownTarget = "unknown_target",
-    /// A target refers to an unknown strip (the target is skipped).
-    UnknownStrip = "unknown_strip",
+    /// A target refers to an unknown canvas (the target is skipped).
+    UnknownCanvas = "unknown_canvas",
     /// A language code is invalid.
     InvalidLang = "invalid_lang",
     /// A language is not in `languages.available`.
@@ -119,9 +119,9 @@ finding_codes! {
     UnknownGallery = "unknown_gallery",
     /// `gaps: as_store` on a banner without gallery.
     NoGallery = "no_gallery",
-    /// An element's home page is outside the strip.
+    /// An element's home page is outside the canvas.
     PageOutOfRange = "page_out_of_range",
-    /// A banner region exceeds the strip.
+    /// A banner region exceeds the canvas.
     RegionOutOfRange = "region_out_of_range",
     /// A required size is missing; a default is used.
     MissingSize = "missing_size",
@@ -194,7 +194,7 @@ finding_codes! {
     /// Two targets fill the same store slot for the same language.
     StoreSlotDuplicate = "store_slot_duplicate",
     // ---- layout
-    /// Target page height deviates strongly from the strip: suggest a variant.
+    /// Target page height deviates strongly from the canvas: suggest a variant.
     VariantSuggested = "variant_suggested",
     /// An element lies entirely outside every page.
     ElementOutside = "element_outside",
@@ -274,7 +274,7 @@ pub struct Thresholds {
     pub screenshot_aspect: f64,
     /// Max screenshot enlargement factor ([`DEFAULT_MAX_UPSCALE`]).
     pub max_upscale: f64,
-    /// Max relative page height deviation target vs strip without a variant
+    /// Max relative page height deviation target vs canvas without a variant
     /// ([`DEFAULT_VARIANT_ASPECT`]).
     pub variant_aspect: f64,
 }
@@ -448,7 +448,7 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
             }
         }
     }
-    for s in &project.strips {
+    for s in &project.canvases {
         s.walk_elements(&mut |e| {
             for l in e.text_props().into_iter().flat_map(|t| t.langs.keys()) {
                 if !project.languages.is_available(l.as_str()) {
@@ -517,16 +517,16 @@ fn validate_target(
         target: Some(target.id.clone()),
         lang: None,
     };
-    let Some(strip) = project.strip(target.strip.as_str()) else {
+    let Some(canvas) = project.canvas(target.canvas.as_str()) else {
         out.push(ctx.finding(
             Severity::Error,
-            FindingCode::UnknownStrip,
+            FindingCode::UnknownCanvas,
             false,
             None,
             None,
             format!(
-                "target `{}` refers to unknown strip `{}`",
-                target.id, target.strip
+                "target `{}` refers to unknown canvas `{}`",
+                target.id, target.canvas
             ),
         ));
         return;
@@ -534,7 +534,7 @@ fn validate_target(
     let scope = checks::Scope {
         project,
         target,
-        strip,
+        canvas,
         options,
     };
     checks::target_checks(&scope, &ctx, out);
@@ -560,7 +560,7 @@ fn validate_target(
                 ));
                 continue;
             }
-            // Target and strip exist (checked above).
+            // Target and canvas exist (checked above).
             Err(e) => unreachable!("{e}"),
         };
         if !frame_checked {

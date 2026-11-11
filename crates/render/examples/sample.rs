@@ -9,7 +9,7 @@
 //! The sample project is copied to `<out-dir>/project` and given
 //! screenshots (the Phase 0 spike test screens in `assets/spike/` plus
 //! generated wide "web" and landscape screens), an SVG badge, a `web` target
-//! and a `devices` strip exercising more frames (landscape phone and tablet,
+//! and a `devices` canvas exercising more frames (landscape phone and tablet,
 //! desktop with browser chrome, frameless screenshot, a missing screenshot
 //! placeholder). Writes `<out-dir>/previews/*`, `<out-dir>/canvas/*` and
 //! exports to `<out-dir>/project/export/`.
@@ -24,8 +24,8 @@ use vitrine_render::export::{ExportOptions, export};
 use vitrine_render::raster::{encode_png_rgb_with, save_png_rgb};
 use vitrine_render::scene::{CanvasOptions, RenderContext, RenderOptions};
 
-/// Extra strip and targets appended to the copied sample project.
-const DEVICES_STRIP: &str = r##"- id: devices
+/// Extra canvas and targets appended to the copied sample project.
+const DEVICES_CANVAS: &str = r##"- id: devices
   page: {aspect: 16:10, count: 3}
   backgrounds:
   - kind: linear-gradient
@@ -87,14 +87,14 @@ const DEVICES_STRIP: &str = r##"- id: devices
 
 const EXTRA_TARGETS: &str = r"- id: web
   kind: banner
-  strip: web
+  canvas: web
   size: [2880, 900]
   region: {pages: [0, 1]}
   fit: cover
   gaps: none
 - id: devices
   kind: banner
-  strip: devices
+  canvas: devices
   size: [4320, 900]
   region: {pages: [0, 2]}
   fit: cover
@@ -149,7 +149,7 @@ fn setup(out: &Path) -> anyhow::Result<PathBuf> {
     }
     let yaml = project.join("project.yaml");
     let text = std::fs::read_to_string(&yaml)?
-        .replace("\ntargets:\n", &format!("\n{DEVICES_STRIP}targets:\n"))
+        .replace("\ntargets:\n", &format!("\n{DEVICES_CANVAS}targets:\n"))
         + EXTRA_TARGETS;
     std::fs::write(&yaml, text)?;
     std::fs::create_dir_all(project.join("assets"))?;

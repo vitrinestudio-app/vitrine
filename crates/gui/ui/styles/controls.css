@@ -227,7 +227,7 @@
   background: rgb(229 72 77 / 12%);
 }
 
-/* Lists (strips, layers). */
+/* Lists (canvases, layers). */
 .list {
   list-style: none;
   margin: 0;
@@ -264,7 +264,7 @@
   white-space: nowrap;
 }
 
-/* Buttons below a sidebar list (e.g. "New strip…"). */
+/* Buttons below a sidebar list (e.g. "New canvas…"). */
 .panel-actions {
   display: flex;
   flex-wrap: wrap;

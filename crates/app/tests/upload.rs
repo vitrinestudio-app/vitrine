@@ -865,7 +865,7 @@ name: "Upload test"
 languages:
   default: en
   available: [en, de]
-strips:
+canvases:
 - id: main
   page: {aspect: 1320:2868, count: 2, ids: [one, two]}
   backgrounds:
@@ -887,12 +887,12 @@ strips:
     align: center
 targets:
 - id: iphone
-  strip: main
+  canvas: main
   size: [1320, 2868]
   gallery: appstore-iphone
   store: {apple: {display_type: APP_IPHONE_67}}
 - id: play
-  strip: main
+  canvas: main
   size: [1080, 2160]
   gallery: play-phone
   store: {google: {image_type: phoneScreenshots}}
@@ -1942,7 +1942,7 @@ name: "Library test"
 languages:
   default: en
   available: [en, de]
-strips:
+canvases:
 - id: main
   page: {aspect: 1320:2868, count: 2, ids: [one, two]}
   backgrounds:
@@ -1964,16 +1964,16 @@ strips:
     align: center
 targets:
 - id: iphone
-  strip: main
+  canvas: main
   size: [1320, 2868]
   store: {apple: {display_type: APP_IPHONE_67}}
 - id: duo
-  strip: main
+  canvas: main
   size: [1398, 2034]
   store: {apple: {display_type: APP_IPHONE_DUO}}
 - id: header
   kind: banner
-  strip: main
+  canvas: main
   size: [3840, 1646]
   region: {pages: [0, 1]}
   fit: cover

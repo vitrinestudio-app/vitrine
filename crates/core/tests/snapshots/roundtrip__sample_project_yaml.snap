@@ -28,7 +28,7 @@ styles:
   frame: detailed
   fonts:
     Inter: {fallback: [Noto Sans JP, Noto Sans SC]}
-strips:
+canvases:
 - id: phone
   page: {aspect: 1320:2868, count: 5, ids: [hero, planner, harvest]}
   backgrounds:
@@ -143,20 +143,20 @@ strips:
     fit: contain
 targets:
 - id: ios-phone-69
-  strip: phone
+  canvas: phone
   size: [1320, 2868]
   screenshots: ios-phone
   gallery: appstore-iphone
   store: {apple: {display_type: APP_IPHONE_67}}
 - id: android-phone
-  strip: phone
+  canvas: phone
   size: [1080, 2160]
   screenshots: android-phone
   gallery: {preset: play-phone, gap: 30}
   device_map: {iphone-island: android-punchhole}
   store: {google: {image_type: phoneScreenshots}}
 - id: ios-ipad-13-landscape
-  strip: phone
+  canvas: phone
   variant: tablet-landscape
   group: 2
   size: [2752, 2064]
@@ -166,7 +166,7 @@ targets:
   store: {apple: {display_type: APP_IPAD_PRO_3GEN_129}}
 - id: blog-header
   kind: banner
-  strip: phone
+  canvas: phone
   size: [2400, 1000]
   region: {pages: [0, 2]}
   fit: cover

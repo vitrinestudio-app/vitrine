@@ -1,5 +1,5 @@
-//! Canvas (strip) management: create (empty, with a starter layout or as
-//! a copy of another strip, optionally with a first target), rename and
+//! Canvas management: create (empty, with a starter layout or as
+//! a copy of another canvas, optionally with a first target), rename and
 //! remove (with the targets showing it). Every command is one undo step;
 //! the ops are built here, never in a front end.
 
@@ -9,9 +9,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use vitrine_core::Project;
 use vitrine_core::catalog;
-use vitrine_core::edit::{copy_strip, fresh_element_id, unique_string_key, unique_strip_id};
+use vitrine_core::edit::{copy_canvas, fresh_element_id, unique_canvas_id, unique_string_key};
 use vitrine_core::model::{
-    Aspect, Element, ElementId, Fill, Lang, PixelSize, Strip, StripId, Target, TargetId,
+    Aspect, Canvas, CanvasId, Element, ElementId, Fill, Lang, PixelSize, Target, TargetId,
 };
 use vitrine_core::ops::Op;
 
@@ -20,10 +20,10 @@ use super::edit::EditResult;
 use super::targets::{TargetAddArgs, preset_target, unique_target_id};
 use crate::error::{CmdResult, CommandError, ErrorCode};
 
-/// What a new strip starts with.
+/// What a new canvas starts with.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum StripStart {
+pub enum CanvasStart {
     /// Only the canvas background.
     #[default]
     Empty,
@@ -33,12 +33,12 @@ pub enum StripStart {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct StripAddArgs {
-    /// Strip id (default: made unique from `canvas`, or from the copied
-    /// strip's id).
+pub struct CanvasAddArgs {
+    /// Canvas id (default: made unique from `canvas`, or from the copied
+    /// canvas's id).
     #[serde(default)]
     pub id: Option<String>,
-    /// Copy this strip (pages, backgrounds, elements with new ids,
+    /// Copy this canvas (pages, backgrounds, elements with new ids,
     /// variants); `aspect`/`count`/`start` are then ignored.
     #[serde(default)]
     pub duplicate_of: Option<String>,
@@ -62,8 +62,8 @@ pub struct StripAddArgs {
     #[serde(default)]
     pub backgrounds: Option<Vec<Fill>>,
     #[serde(default)]
-    pub start: StripStart,
-    /// Also add a target from this catalog preset showing the new strip.
+    pub start: CanvasStart,
+    /// Also add a target from this catalog preset showing the new canvas.
     #[serde(default)]
     pub target_preset: Option<String>,
     /// Size of that target (default: the preset's default size).
@@ -71,18 +71,18 @@ pub struct StripAddArgs {
     pub target_size: Option<PixelSize>,
 }
 
-/// Result of [`strip_add`].
+/// Result of [`canvas_add`].
 #[derive(Debug, Clone, Serialize)]
-pub struct StripAddResult {
+pub struct CanvasAddResult {
     #[serde(flatten)]
     pub edit: EditResult,
-    /// Id of the new strip.
-    pub strip: String,
+    /// Id of the new canvas.
+    pub canvas: String,
     /// Ids of the targets added with it.
     pub targets: Vec<String>,
 }
 
-/// Default canvas background of a new strip.
+/// Default canvas background of a new canvas.
 const DEFAULT_BACKGROUND: &str = "#EEF1F6";
 /// Placeholder of the starter headlines (default language).
 const STARTER_TEXT: &str = "Your headline";
@@ -94,23 +94,23 @@ fn default_backgrounds() -> CmdResult<Vec<Fill>> {
         .map_err(|e| CommandError::internal(format!("default background: {e}")))
 }
 
-fn strip_of<'p>(p: &'p Project, id: &str) -> CmdResult<&'p Strip> {
-    p.strip(id)
-        .ok_or_else(|| CommandError::not_found(format!("unknown strip `{id}`")))
+fn canvas_of<'p>(p: &'p Project, id: &str) -> CmdResult<&'p Canvas> {
+    p.canvas(id)
+        .ok_or_else(|| CommandError::not_found(format!("unknown canvas `{id}`")))
 }
 
-fn new_strip_id(p: &Project, id: Option<&str>, base: &str) -> CmdResult<StripId> {
+fn new_canvas_id(p: &Project, id: Option<&str>, base: &str) -> CmdResult<CanvasId> {
     match id {
         Some(id) => {
-            let id = StripId::parse(id.trim()).map_err(CommandError::invalid)?;
-            if p.strip(id.as_str()).is_some() {
+            let id = CanvasId::parse(id.trim()).map_err(CommandError::invalid)?;
+            if p.canvas(id.as_str()).is_some() {
                 return Err(CommandError::invalid(format!(
                     "a canvas `{id}` already exists"
                 )));
             }
             Ok(id)
         }
-        None => Ok(unique_strip_id(p, base)),
+        None => Ok(unique_canvas_id(p, base)),
     }
 }
 
@@ -118,11 +118,11 @@ fn new_strip_id(p: &Project, id: Option<&str>, base: &str) -> CmdResult<StripId>
 /// without depending on project styles other than an existing `headline`).
 fn starter_elements(
     p: &Project,
-    strip: &Strip,
+    canvas: &Canvas,
     device: &str,
     ops: &mut Vec<Op>,
 ) -> CmdResult<Vec<Element>> {
-    let page_h = strip.page.aspect.page_height();
+    let page_h = canvas.page.aspect.page_height();
     let dev = catalog::device(device)
         .ok_or_else(|| CommandError::not_found(format!("unknown device `{device}`")))?;
     // The device fills at most 60 % of the page width and 55 % of its
@@ -135,9 +135,9 @@ fn starter_elements(
     let mut taken = BTreeSet::new();
     let mut keys = BTreeSet::new();
     let mut out = Vec::new();
-    for i in 0..strip.page.count {
-        let page_id = strip.page.page_id(i);
-        let key = unique_string_key(p, &format!("{}.{page_id}.title", strip.id), &keys);
+    for i in 0..canvas.page.count {
+        let page_id = canvas.page.page_id(i);
+        let key = unique_string_key(p, &format!("{}.{page_id}.title", canvas.id), &keys);
         keys.insert(key.to_string());
         ops.push(Op::SetString {
             lang: lang.clone(),
@@ -145,8 +145,8 @@ fn starter_elements(
             value: Some(STARTER_TEXT.to_owned()),
         });
         let title: ElementId =
-            fresh_element_id(p, &format!("{}-title-{}", strip.id, i + 1), &mut taken);
-        let device_id = fresh_element_id(p, &format!("{}-device-{}", strip.id, i + 1), &mut taken);
+            fresh_element_id(p, &format!("{}-title-{}", canvas.id, i + 1), &mut taken);
+        let device_id = fresh_element_id(p, &format!("{}-device-{}", canvas.id, i + 1), &mut taken);
         let mut text = json!({
             "id": title, "kind": "text", "page": i, "anchor_y": "top",
             "text": key, "box": { "top": (page_h * 0.07).round(), "left": 80, "right": 80 },
@@ -190,9 +190,9 @@ fn starter_device(preset: Option<&str>) -> String {
         .unwrap_or_else(|| "iphone-island".to_owned())
 }
 
-/// A new strip from `args` (aspect, count, backgrounds, starter layout);
+/// A new canvas from `args` (aspect, count, backgrounds, starter layout);
 /// string ops of the starter texts go to `ops`.
-fn fresh_strip(p: &Project, args: &StripAddArgs, ops: &mut Vec<Op>) -> CmdResult<Strip> {
+fn fresh_canvas(p: &Project, args: &CanvasAddArgs, ops: &mut Vec<Op>) -> CmdResult<Canvas> {
     let preset = args
         .target_preset
         .as_deref()
@@ -222,49 +222,49 @@ fn fresh_strip(p: &Project, args: &StripAddArgs, ops: &mut Vec<Op>) -> CmdResult
     if count == 0 || count > 99 {
         return Err(CommandError::invalid("a canvas has 1 to 99 pages"));
     }
-    let id = new_strip_id(p, args.id.as_deref(), "canvas")?;
-    let mut strip = Strip::new(id, aspect, count);
-    strip.page.ids.clone_from(&args.ids);
-    strip.backgrounds = args
+    let id = new_canvas_id(p, args.id.as_deref(), "canvas")?;
+    let mut canvas = Canvas::new(id, aspect, count);
+    canvas.page.ids.clone_from(&args.ids);
+    canvas.backgrounds = args
         .backgrounds
         .clone()
         .map_or_else(default_backgrounds, Ok)?;
-    if args.start == StripStart::Starter {
+    if args.start == CanvasStart::Starter {
         let device = starter_device(args.target_preset.as_deref());
-        strip.elements = starter_elements(p, &strip, &device, ops)?;
+        canvas.elements = starter_elements(p, &canvas, &device, ops)?;
     }
-    Ok(strip)
+    Ok(canvas)
 }
 
-/// Adds a strip (canvas) as one undo step: empty, with a starter layout
-/// or as a copy of another strip, optionally with a first target.
-pub fn strip_add(app: &AppState, args: StripAddArgs) -> CmdResult<StripAddResult> {
+/// Adds a canvas as one undo step: empty, with a starter layout
+/// or as a copy of another canvas, optionally with a first target.
+pub fn canvas_add(app: &AppState, args: CanvasAddArgs) -> CmdResult<CanvasAddResult> {
     let session = app.session()?;
     let p = session.snapshot();
     let mut ops = Vec::new();
     let mut targets: Vec<Target> = Vec::new();
     let mut taken_targets = BTreeSet::new();
 
-    let strip = if let Some(src_id) = &args.duplicate_of {
-        let src = strip_of(&p, src_id)?;
-        let id = new_strip_id(&p, args.id.as_deref(), src.id.as_str())?;
-        let copy = copy_strip(&p, src, id.clone(), args.copy_strings);
+    let canvas = if let Some(src_id) = &args.duplicate_of {
+        let src = canvas_of(&p, src_id)?;
+        let id = new_canvas_id(&p, args.id.as_deref(), src.id.as_str())?;
+        let copy = copy_canvas(&p, src, id.clone(), args.copy_strings);
         ops.extend(copy.string_ops);
         if args.copy_targets {
-            for t in p.targets.iter().filter(|t| t.strip == src.id) {
+            for t in p.targets.iter().filter(|t| t.canvas == src.id) {
                 let mut t = t.clone();
                 let new_id = unique_target_id(&p, &format!("{}-{id}", t.id), &taken_targets);
                 taken_targets.insert(new_id.clone());
                 t.id = TargetId::parse(&new_id).map_err(CommandError::invalid)?;
-                t.strip = id.clone();
+                t.canvas = id.clone();
                 // `visible_in` of the copied elements still names the
                 // original targets; the copies show everything.
                 targets.push(t);
             }
         }
-        copy.strip
+        copy.canvas
     } else {
-        fresh_strip(&p, &args, &mut ops)?
+        fresh_canvas(&p, &args, &mut ops)?
     };
 
     if let Some(preset) = &args.target_preset {
@@ -272,20 +272,26 @@ pub fn strip_add(app: &AppState, args: StripAddArgs) -> CmdResult<StripAddResult
             &p,
             &TargetAddArgs {
                 preset: preset.clone(),
-                strip: strip.id.to_string(),
+                canvas: canvas.id.to_string(),
                 id: None,
                 size: args.target_size,
                 orientation: None,
             },
-            strip.page.count,
+            canvas.page.count,
             &taken_targets,
         )?;
         targets.push(target);
     }
 
-    let id = strip.id.to_string();
+    let id = canvas.id.to_string();
     let target_ids: Vec<String> = targets.iter().map(|t| t.id.to_string()).collect();
-    ops.insert(0, Op::AddStrip { strip, index: None });
+    ops.insert(
+        0,
+        Op::AddCanvas {
+            canvas,
+            index: None,
+        },
+    );
     ops.extend(targets.into_iter().map(|target| Op::AddTarget {
         target,
         index: None,
@@ -295,29 +301,29 @@ pub fn strip_add(app: &AppState, args: StripAddArgs) -> CmdResult<StripAddResult
         None => format!("Add canvas {id}"),
     };
     let result = session.apply_ops(ops, Some(label))?;
-    Ok(StripAddResult {
+    Ok(CanvasAddResult {
         edit: EditResult {
             result,
             created: vec![id.clone()],
         },
-        strip: id,
+        canvas: id,
         targets: target_ids,
     })
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct StripRenameArgs {
-    pub strip: String,
+pub struct CanvasRenameArgs {
+    pub canvas: String,
     pub to: String,
 }
 
-/// Renames a strip; targets showing it follow.
-pub fn strip_rename(app: &AppState, args: StripRenameArgs) -> CmdResult<EditResult> {
+/// Renames a canvas; targets showing it follow.
+pub fn canvas_rename(app: &AppState, args: CanvasRenameArgs) -> CmdResult<EditResult> {
     let session = app.session()?;
     let p = session.snapshot();
-    let from = strip_of(&p, &args.strip)?.id.clone();
-    let to = StripId::parse(args.to.trim()).map_err(CommandError::invalid)?;
+    let from = canvas_of(&p, &args.canvas)?.id.clone();
+    let to = CanvasId::parse(args.to.trim()).map_err(CommandError::invalid)?;
     if to == from {
         return Ok(EditResult {
             result: session.unchanged(),
@@ -325,7 +331,7 @@ pub fn strip_rename(app: &AppState, args: StripRenameArgs) -> CmdResult<EditResu
         });
     }
     let result = session.apply_ops(
-        vec![Op::RenameStrip {
+        vec![Op::RenameCanvas {
             from: from.clone(),
             to: to.clone(),
         }],
@@ -337,21 +343,21 @@ pub fn strip_rename(app: &AppState, args: StripRenameArgs) -> CmdResult<EditResu
     })
 }
 
-/// Removes a strip with its elements and the targets showing it (one
-/// undo step). Refused for the last strip and while an element of another
-/// strip limits its visibility to one of those targets.
-pub fn strip_remove(app: &AppState, args: super::inspect::StripArgs) -> CmdResult<EditResult> {
+/// Removes a canvas with its elements and the targets showing it (one
+/// undo step). Refused for the last canvas and while an element of another
+/// canvas limits its visibility to one of those targets.
+pub fn canvas_remove(app: &AppState, args: super::inspect::CanvasArgs) -> CmdResult<EditResult> {
     let session = app.session()?;
     let p = session.snapshot();
-    let s = strip_of(&p, &args.strip)?;
-    if p.strips.len() <= 1 {
+    let s = canvas_of(&p, &args.canvas)?;
+    if p.canvases.len() <= 1 {
         return Err(CommandError::new(
             ErrorCode::OpRejected,
             "the last canvas cannot be removed",
         ));
     }
-    // Elements first (their `visible_in` may name the strip's targets),
-    // then the targets, then the strip itself.
+    // Elements first (their `visible_in` may name the canvas's targets),
+    // then the targets, then the canvas itself.
     let mut ops: Vec<Op> = s
         .elements
         .iter()
@@ -361,10 +367,10 @@ pub fn strip_remove(app: &AppState, args: super::inspect::StripArgs) -> CmdResul
     ops.extend(
         p.targets
             .iter()
-            .filter(|t| t.strip == s.id)
+            .filter(|t| t.canvas == s.id)
             .map(|t| Op::RemoveTarget { id: t.id.clone() }),
     );
-    ops.push(Op::RemoveStrip { id: s.id.clone() });
+    ops.push(Op::RemoveCanvas { id: s.id.clone() });
     let result = session.apply_ops(ops, Some(format!("Remove canvas {}", s.id)))?;
     Ok(EditResult {
         result,
@@ -379,9 +385,9 @@ mod tests {
     use crate::commands::dispatch;
     use crate::commands::targets::tests::{call, opened};
 
-    fn strips(app: &crate::AppState) -> Vec<String> {
+    fn canvases(app: &crate::AppState) -> Vec<String> {
         let s = call(app, "project_summary", Value::Null);
-        s["strips"]
+        s["canvases"]
             .as_array()
             .unwrap()
             .iter()
@@ -394,38 +400,38 @@ mod tests {
         let (_tmp, app) = opened();
         let r = call(
             &app,
-            "strip_add",
+            "canvas_add",
             json!({"aspect": "2064:2752", "count": 2}),
         );
-        assert_eq!(r["strip"], "canvas");
+        assert_eq!(r["canvas"], "canvas");
         assert_eq!(r["targets"], json!([]));
-        let s = call(&app, "strip_get", json!({"strip": "canvas"}));
+        let s = call(&app, "canvas_get", json!({"canvas": "canvas"}));
         assert_eq!(s["count"], 2);
         assert_eq!(s["backgrounds"].as_array().unwrap().len(), 1);
 
         let r = call(
             &app,
-            "strip_add",
+            "canvas_add",
             json!({"id": "tablet", "start": "starter", "target_preset": "ios-ipad-13"}),
         );
-        assert_eq!(r["strip"], "tablet");
+        assert_eq!(r["canvas"], "tablet");
         let target = r["targets"][0].as_str().unwrap().to_owned();
         let t = call(&app, "target_get", json!({"id": target}));
-        assert_eq!(t["target"]["strip"], "tablet");
-        let s = call(&app, "strip_get", json!({"strip": "tablet"}));
+        assert_eq!(t["target"]["canvas"], "tablet");
+        let s = call(&app, "canvas_get", json!({"canvas": "tablet"}));
         // Portrait aspect from the preset → 3 pages, headline + device each.
         assert_eq!(s["count"], 3);
         let o = call(&app, "overlay", json!({"target": target}));
         assert_eq!(o["elements"].as_array().unwrap().len(), 6);
 
-        // One undo step removes strip, target and strings.
+        // One undo step removes canvas, target and strings.
         call(&app, "undo", Value::Null);
-        assert!(!strips(&app).contains(&"tablet".to_owned()));
+        assert!(!canvases(&app).contains(&"tablet".to_owned()));
         assert!(dispatch(&app, "target_get", json!({"id": target})).is_err());
 
         // Duplicate id and missing aspect are refused.
-        assert!(dispatch(&app, "strip_add", json!({"id": "phone", "aspect": "1:2"})).is_err());
-        assert!(dispatch(&app, "strip_add", json!({})).is_err());
+        assert!(dispatch(&app, "canvas_add", json!({"id": "phone", "aspect": "1:2"})).is_err());
+        assert!(dispatch(&app, "canvas_add", json!({})).is_err());
     }
 
     #[test]
@@ -433,14 +439,14 @@ mod tests {
         let (_tmp, app) = opened();
         let r = call(
             &app,
-            "strip_add",
+            "canvas_add",
             json!({"duplicate_of": "phone", "id": "phone-copy", "copy_targets": true}),
         );
-        assert_eq!(r["strip"], "phone-copy");
+        assert_eq!(r["canvas"], "phone-copy");
         let targets = r["targets"].as_array().unwrap().clone();
         assert_ne!(targets, Vec::<Value>::new());
-        let copy = call(&app, "strip_get", json!({"strip": "phone-copy"}));
-        let orig = call(&app, "strip_get", json!({"strip": "phone"}));
+        let copy = call(&app, "canvas_get", json!({"canvas": "phone-copy"}));
+        let orig = call(&app, "canvas_get", json!({"canvas": "phone"}));
         assert_eq!(copy["count"], orig["count"]);
         assert_eq!(
             copy["variants"].as_array().unwrap().len(),
@@ -450,18 +456,18 @@ mod tests {
 
         let r = call(
             &app,
-            "strip_rename",
-            json!({"strip": "phone-copy", "to": "tablet"}),
+            "canvas_rename",
+            json!({"canvas": "phone-copy", "to": "tablet"}),
         );
         assert_eq!(r["created"], json!(["tablet"]));
         let t = call(&app, "target_get", json!({"id": targets[0]}));
-        assert_eq!(t["target"]["strip"], "tablet");
+        assert_eq!(t["target"]["canvas"], "tablet");
 
-        call(&app, "strip_remove", json!({"strip": "tablet"}));
-        assert!(!strips(&app).contains(&"tablet".to_owned()));
+        call(&app, "canvas_remove", json!({"canvas": "tablet"}));
+        assert!(!canvases(&app).contains(&"tablet".to_owned()));
         assert!(dispatch(&app, "target_get", json!({"id": targets[0]})).is_err());
         call(&app, "undo", Value::Null);
-        assert!(strips(&app).contains(&"tablet".to_owned()));
+        assert!(canvases(&app).contains(&"tablet".to_owned()));
         call(&app, "target_get", json!({"id": targets[0]}));
     }
 
@@ -470,11 +476,11 @@ mod tests {
         let (_tmp, app) = opened();
         let r = call(
             &app,
-            "strip_variant",
-            json!({"strip": "phone", "change": {"action": "add", "id": "android-2", "from": "android", "targets": ["ios-iphone-63"]}}),
+            "canvas_variant",
+            json!({"canvas": "phone", "change": {"action": "add", "id": "android-2", "from": "android", "targets": ["ios-iphone-63"]}}),
         );
         assert_eq!(r["created"], json!(["android-2"]));
-        let s = call(&app, "strip_get", json!({"strip": "phone"}));
+        let s = call(&app, "canvas_get", json!({"canvas": "phone"}));
         let v = |id: &str| {
             s["variants"]
                 .as_array()
@@ -490,8 +496,8 @@ mod tests {
         // Removing a variant in use detaches its targets (one undo step).
         call(
             &app,
-            "strip_variant",
-            json!({"strip": "phone", "change": {"action": "remove", "id": "android"}}),
+            "canvas_variant",
+            json!({"canvas": "phone", "change": {"action": "remove", "id": "android"}}),
         );
         let t = call(&app, "target_get", json!({"id": "play-phone"}));
         assert!(t["target"].get("variant").is_none());
@@ -499,13 +505,13 @@ mod tests {
         let t = call(&app, "target_get", json!({"id": "play-phone"}));
         assert_eq!(t["target"]["variant"], "android");
 
-        // Targets of another strip are refused.
-        let other = call(&app, "strip_get", json!({"strip": "mac"}))["targets"][0].clone();
+        // Targets of another canvas are refused.
+        let other = call(&app, "canvas_get", json!({"canvas": "mac"}))["targets"][0].clone();
         assert!(
             dispatch(
                 &app,
-                "strip_variant",
-                json!({"strip": "phone", "change": {"action": "add", "id": "x", "targets": [other]}}),
+                "canvas_variant",
+                json!({"canvas": "phone", "change": {"action": "add", "id": "x", "targets": [other]}}),
             )
             .is_err()
         );

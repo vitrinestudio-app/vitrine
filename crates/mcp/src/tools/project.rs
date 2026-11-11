@@ -62,7 +62,7 @@ fn text_keys(app: &AppState) -> Result<BTreeMap<String, String>, CommandError> {
     let session = app.session()?;
     Ok(session.with_project(|p| {
         let mut out = BTreeMap::new();
-        for s in &p.strips {
+        for s in &p.canvases {
             s.walk_elements(&mut |e| {
                 if let ElementKind::Text(t) = &e.kind {
                     out.insert(e.id.to_string(), t.text.to_string());
@@ -73,7 +73,7 @@ fn text_keys(app: &AppState) -> Result<BTreeMap<String, String>, CommandError> {
     }))
 }
 
-/// Compact element list of a summary strip.
+/// Compact element list of a summary canvas.
 fn compact_elements(elements: &Value, keys: &BTreeMap<String, String>) -> Vec<Value> {
     elements
         .as_array()
@@ -105,7 +105,7 @@ fn compact_elements(elements: &Value, keys: &BTreeMap<String, String>) -> Vec<Va
 pub fn compact_summary(app: &AppState) -> Result<Value, CommandError> {
     let s = cmd(app, "project_summary", Value::Null)?;
     let keys = text_keys(app)?;
-    let strips: Vec<Value> = s["strips"]
+    let canvases: Vec<Value> = s["canvases"]
         .as_array()
         .into_iter()
         .flatten()
@@ -126,7 +126,7 @@ pub fn compact_summary(app: &AppState) -> Result<Value, CommandError> {
         .flatten()
         .map(|t| {
             let mut c = json!({
-                "id": t["id"], "kind": t["kind"], "strip": t["strip"],
+                "id": t["id"], "kind": t["kind"], "canvas": t["canvas"],
                 "size": format!("{}x{}", t["size"][0], t["size"][1]),
                 "group": t["group"],
             });
@@ -146,7 +146,7 @@ pub fn compact_summary(app: &AppState) -> Result<Value, CommandError> {
         "name": s["name"],
         "revision": s["revision"],
         "languages": s["languages"],
-        "strips": strips,
+        "canvases": canvases,
         "targets": targets,
         "styles": s["styles"],
     }))
@@ -154,17 +154,17 @@ pub fn compact_summary(app: &AppState) -> Result<Value, CommandError> {
 
 fn summary_line(v: &Value) -> String {
     let n = |k: &str| v[k].as_array().map_or(0, Vec::len);
-    let elements: usize = v["strips"]
+    let elements: usize = v["canvases"]
         .as_array()
         .into_iter()
         .flatten()
         .map(|s| s["elements"].as_array().map_or(0, Vec::len))
         .sum();
     format!(
-        "project `{}` (revision {}): {} strip(s), {elements} element(s), {} target(s), languages {}",
+        "project `{}` (revision {}): {} canvas(s), {elements} element(s), {} target(s), languages {}",
         v["name"].as_str().unwrap_or_default(),
         v["revision"],
-        n("strips"),
+        n("canvases"),
         n("targets"),
         v["languages"]["available"]
     )
@@ -173,7 +173,7 @@ fn summary_line(v: &Value) -> String {
 #[tool_router(router = project_tools, vis = "pub(crate)")]
 impl VitrineMcp {
     #[tool(
-        description = "Open a Vitrine Studio project folder (closes the current one) and return its compact summary (strips, pages, elements, targets, languages, styles). Example: {\"dir\": \"/Users/me/Screens/MyApp\"}."
+        description = "Open a Vitrine Studio project folder (closes the current one) and return its compact summary (canvases, pages, elements, targets, languages, styles). Example: {\"dir\": \"/Users/me/Screens/MyApp\"}."
     )]
     async fn project_open(
         &self,
@@ -212,7 +212,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Compact overview of the open project: strips (aspect, page height in lu, page ids, variants, elements with id/kind/home page/label and translation key), targets (id, kind, strip, size WxH, group, variant), languages, style names, revision. Call it first and whenever ids are unclear.",
+        description = "Compact overview of the open project: canvases (aspect, page height in lu, page ids, variants, elements with id/kind/home page/label and translation key), targets (id, kind, canvas, size WxH, group, variant), languages, style names, revision. Call it first and whenever ids are unclear.",
         annotations(read_only_hint = true)
     )]
     async fn project_summary(
@@ -228,7 +228,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "What the user is looking at in the Vitrine Studio GUI: strip, target, language, variant and selected element ids. Use it when the user says \"this page\", \"here\" or \"the selected text\". Headless (no GUI) the view is empty unless a GUI pushed one.",
+        description = "What the user is looking at in the Vitrine Studio GUI: canvas, target, language, variant and selected element ids. Use it when the user says \"this page\", \"here\" or \"the selected text\". Headless (no GUI) the view is empty unless a GUI pushed one.",
         annotations(read_only_hint = true)
     )]
     async fn view_get(

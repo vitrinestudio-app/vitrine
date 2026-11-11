@@ -35,7 +35,7 @@ single override field, languages).
   `overlay`, free functions `unique_id`, `reset_override`,
   `move_point`, `local_to_canvas` and `default_language_impact`.
 - Errors are `EditError` (unknown element/variant, element of another
-  strip, not drawn, unsupported, unsolvable, op/resolve errors).
+  canvas, not drawn, unsupported, unsolvable, op/resolve errors).
 
 ### Mapping rules
 
@@ -111,7 +111,7 @@ single override field, languages).
 
 ### New ops
 
-`RenameElement` (overrides follow), `RenameStrip` (targets follow),
+`RenameElement` (overrides follow), `RenameCanvas` (targets follow),
 `RenameTarget` (`visible_in` in elements and overrides follows),
 `RenameVariant` (targets follow), `MoveElementTo` (into/out of a group,
 reorder; no position compensation), `ResetOverrideField`,

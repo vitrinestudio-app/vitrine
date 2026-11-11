@@ -22,7 +22,7 @@ export const api = {
   summary: () => invoke('project_summary'),
   openDialog: () => invoke('dialog_open_project'),
   historyState: () => invoke('history_state'),
-  /** Tells the backend what the user looks at (`{strip, target, lang, variant?, selection}`; read by MCP `view_get`). */
+  /** Tells the backend what the user looks at (`{canvas, target, lang, variant?, selection}`; read by MCP `view_get`). */
   viewSet: (view) => invoke('view_set', view),
   undo: () => invoke('undo'),
   redo: () => invoke('redo'),
@@ -71,7 +71,7 @@ export const api = {
   catalogDevices: () => invoke('catalog_devices'),
   catalogFonts: () => invoke('catalog_fonts'),
   targetGet: (id) => invoke('target_get', { id }),
-  targetAddFromPreset: (preset, strip, opts = {}) => invoke('target_add_from_preset', { preset, strip, ...opts }),
+  targetAddFromPreset: (preset, canvas, opts = {}) => invoke('target_add_from_preset', { preset, canvas, ...opts }),
   /** `patch`: TargetPatch fields (null resets); `rename`: new id. */
   targetPatch: (id, patch = {}, rename) => invoke('target_patch', { id, patch, ...(rename ? { rename } : {}) }),
   targetRemove: (id) => invoke('target_remove', { id }),
@@ -136,7 +136,7 @@ export const api = {
   resetOverride: (view, id, field, langOverride = false) =>
     invoke('edit_reset_override', { ...view, id, field, ...(langOverride ? { lang_override: true } : {}) }),
 
-  // ----- inspector, layers, strip settings (task 2.6) -----
+  // ----- inspector, layers, canvas settings (task 2.6) -----
   /** One element: `{ base, override, effective, overridden, text, … }`. */
   elementGet: (view, id) => invoke('element_get', { ...view, id }),
   /**
@@ -154,24 +154,24 @@ export const api = {
   elementAdd: (view, kind, page, opts = {}) => invoke('element_add', { ...view, kind, page, ...opts }),
   /** Into group `parent` (null = top level) at `index` (null = top). */
   arrange: (view, id, parent, index) => invoke('edit_arrange', { ...view, id, parent, index }),
-  stripGet: (strip) => invoke('strip_get', { strip }),
+  canvasGet: (canvas) => invoke('canvas_get', { canvas }),
   /** `patch`: any of `{ aspect: 'w:h', count, ids: [..], backgrounds: [fill] }`. */
-  stripPatch: (strip, patch) => invoke('strip_patch', { strip, ...patch }),
+  canvasPatch: (canvas, patch) => invoke('canvas_patch', { canvas, ...patch }),
   /**
    * `change`: `{ action: 'add'|'remove'|'rename'|'scale', id, to?, content_scale? }`;
    * add also takes `from` (variant to copy) and `targets` (they show it).
    * Removing detaches the targets showing it.
    */
-  stripVariant: (strip, change) => invoke('strip_variant', { strip, change }),
+  canvasVariant: (canvas, change) => invoke('canvas_variant', { canvas, change }),
   /**
-   * New strip (one undo step): `{ id?, aspect?, count?, start: 'empty'|'starter',
+   * New canvas (one undo step): `{ id?, aspect?, count?, start: 'empty'|'starter',
    * target_preset?, target_size?, duplicate_of?, copy_targets?, copy_strings? }`
-   * → `{ strip, targets, … }`.
+   * → `{ canvas, targets, … }`.
    */
-  stripAdd: (args) => invoke('strip_add', args),
-  stripRename: (strip, to) => invoke('strip_rename', { strip, to }),
-  /** Removes the strip with its elements and the targets showing it. */
-  stripRemove: (strip) => invoke('strip_remove', { strip }),
+  canvasAdd: (args) => invoke('canvas_add', args),
+  canvasRename: (canvas, to) => invoke('canvas_rename', { canvas, to }),
+  /** Removes the canvas with its elements and the targets showing it. */
+  canvasRemove: (canvas) => invoke('canvas_remove', { canvas }),
   catalogDevices: () => invoke('catalog_devices'),
   catalogTargets: () => invoke('catalog_targets'),
 

@@ -10,6 +10,7 @@ backgrounds:
         pos: 0
       - color: "#B7D9A6"
         pos: 1
+canvas: phone
 diagnostics: []
 elements:
   - center:
@@ -367,6 +368,5 @@ spans:
       join: miter
       position: center
       width: 2
-strip: phone
 target: blog-header
 variant: ~

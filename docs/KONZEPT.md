@@ -36,7 +36,7 @@ Bisherige Tools denken in **Export-Bildern**: Jedes Bild ist ein Container, dara
 Vitrine Studio dreht das um:
 
 ```
-Leinwand (Strip) ─ ein durchgehendes Querformat
+Leinwand (Canvas) ─ ein durchgehendes Querformat
 ┌─────────────┬─────────────┬─────────────┬─────────────┬─────────────┐
 │   Seite 1   │   Seite 2   │   Seite 3   │   Seite 4   │   Seite 5   │
 │  ┌───────┐  │             │             │             │             │
@@ -62,7 +62,7 @@ Leinwand (Strip) ─ ein durchgehendes Querformat
 | Begriff | Bedeutung |
 |---|---|
 | **Projekt** | Ordner mit `project.yaml`, Übersetzungen, Assets. Enthält eine oder mehrere Leinwände. |
-| **Leinwand (Strip)** | Durchgehende Fläche aus *n* gleich großen Seiten. Typisch: eine Leinwand für Handys, eine für Tablets, eine für Mac. |
+| **Leinwand (Canvas)** | Durchgehende Fläche aus *n* gleich großen Seiten. Typisch: eine Leinwand für Handys, eine für Tablets, eine für Mac. |
 | **Seite (Page)** | Ein Ausschnitt der Leinwand. Normalerweise ein Export-Bild; bei Seitengruppierung bilden mehrere Seiten zusammen ein Export-Bild (3.4). |
 | **Lücke (Gap)** | Abstand zwischen zwei Export-Bildern, wie ihn der Store bei der Anzeige einfügt. Inhalt in der Lücke wird in Seiten-Exports weggelassen. |
 | **Heimatseite** | Die Seite, an der ein Element hängt. Positionen werden relativ zur Heimatseite gespeichert; das Element darf beliebig in Nachbarseiten hineinragen. |
@@ -215,7 +215,7 @@ styles:
   spans:
     accent:   { color: "@accent" }
 
-strips:
+canvases:
   - id: phone
     page: { aspect: "1320:2868", count: 5 }
     backgrounds:
@@ -254,14 +254,14 @@ strips:
 
 targets:
   - id: ios-phone-69
-    strip: phone
+    canvas: phone
     size: [1320, 2868]
     screenshots: ios-phone            # welche Screenshot-Variante
     gallery: appstore-iphone          # Lücken-Preset
     store: { apple: { display_type: APP_IPHONE_67 } }   # gegen aktuelle API prüfen
 
   - id: android-phone
-    strip: phone
+    canvas: phone
     size: [1080, 2160]                # ≤ 2:1, Anker passen Layout an
     screenshots: android-phone
     device_map: { iphone-island: android-punchhole }    # Gerätetausch
@@ -269,7 +269,7 @@ targets:
     store: { google: { image_type: phoneScreenshots } }
 
   - id: ios-ipad-13-landscape
-    strip: phone
+    canvas: phone
     variant: tablet-landscape
     group: 2                          # 2 Handy-Seiten → 1 Querformat-Bild
     size: [2752, 2064]
@@ -280,7 +280,7 @@ targets:
 
   - id: blog-header
     kind: banner                      # ein durchgehendes Bild statt Einzelseiten
-    strip: phone
+    canvas: phone
     region: { pages: [0, 2] }         # Seiten 1–3; alternativ freies Rechteck
     size: [2400, 1000]
     fit: cover
@@ -494,7 +494,7 @@ Kein SDK, direkte REST-Aufrufe mit `reqwest` + rustls; JWT mit `jsonwebtoken`. E
 |---|---|
 | `project_open`, `project_create`, `project_summary` | Projekt öffnen/anlegen, kompakte Übersicht (Leinwände, Seiten, Elemente, Sprachen, Ziele) |
 | `catalog_devices`, `catalog_targets`, `catalog_fonts` | verfügbare Geräte, Ziel-Presets, Schriften |
-| `strip_add`, `strip_update` | Leinwand anlegen/ändern (Seitenzahl, Seitenverhältnis, Hintergrund) |
+| `canvas_add`, `canvas_update` | Leinwand anlegen/ändern (Seitenzahl, Seitenverhältnis, Hintergrund) |
 | `element_add`, `element_update`, `element_remove`, `element_list` | Elemente bearbeiten |
 | `apply_ops` | mehrere Operationen atomar in einem Schritt (ein Undo-Schritt) |
 | `strings_get`, `strings_set`, `strings_missing` | Übersetzungen lesen, setzen, fehlende auflisten (für Übersetzen durch Claude) |
@@ -591,11 +591,11 @@ Jede Änderung am Projekt ist eine serialisierbare Operation:
 
 ```rust
 pub enum Op {
-    AddElement { strip: StripId, element: Element },
+    AddElement { canvas: CanvasId, element: Element },
     UpdateElement { id: ElementId, patch: ElementPatch },
     RemoveElement { id: ElementId },
     SetString { lang: Lang, key: Key, value: Option<String> },
-    AddStrip { strip: Strip },
+    AddCanvas { canvas: Canvas },
     // …
 }
 ```
