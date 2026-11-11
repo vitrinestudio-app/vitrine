@@ -933,3 +933,131 @@ fn dispatch_as_labels_steps_by_an_assistant() {
     assert_eq!(ev[0]["actor"]["name"], "Test Client");
     assert_eq!(ev[1]["actor"]["kind"], "user");
 }
+
+#[test]
+fn copy_cut_paste_elements() {
+    let f = fixture();
+    open(&f);
+    assert_eq!(call(&f.app, "edit_clipboard", Value::Null)["count"], 0);
+    let e = dispatch(&f.app, "edit_paste", json!({})).unwrap_err();
+    assert_eq!(e.code, ErrorCode::InvalidArgs);
+
+    let info = call(
+        &f.app,
+        "edit_copy",
+        json!({"ids": ["title-plan", "phone-plan"]}),
+    );
+    assert_eq!(info, json!({"count": 2, "canvas": "phone"}));
+    // Copying changes nothing.
+    assert_eq!(
+        call(&f.app, "history_state", Value::Null)["can_undo"],
+        false
+    );
+    let at = |id: &str| element_yaml(&f, id)["at"].clone();
+    let x0 = at("phone-plan")["x"].as_f64().unwrap();
+
+    // Pasting over the originals moves the copies, one step per paste.
+    let r = call(&f.app, "edit_paste", json!({}));
+    assert_eq!(r["created"], json!(["title-plan-2", "phone-plan-2"]));
+    assert_eq!(r["history"]["undo"], json!(["Paste 2 elements"]));
+    let x1 = at("phone-plan-2")["x"].as_f64().unwrap();
+    assert!((x1 - x0 - 40.0).abs() < 1e-6, "{x0} → {x1}");
+    let r = call(&f.app, "edit_paste", json!({}));
+    assert_eq!(r["created"], json!(["title-plan-3", "phone-plan-3"]));
+    let x2 = at("phone-plan-3")["x"].as_f64().unwrap();
+    assert!((x2 - x0 - 80.0).abs() < 1e-6, "{x0} → {x2}");
+
+    // Onto another page: same page-relative position there.
+    let r = call(&f.app, "edit_paste", json!({"page": 2}));
+    let id = r["created"][1].as_str().unwrap().to_owned();
+    assert_eq!(element_yaml(&f, &id)["page"], 2);
+    assert_eq!(at(&id), at("phone-plan"));
+
+    // Cut = copy + delete in one step; pasting brings the ids back in place.
+    let r = call(&f.app, "edit_cut", json!({"ids": ["phone-plan"]}));
+    assert_eq!(
+        r["history"]["undo"].as_array().unwrap().last().unwrap(),
+        "Cut phone-plan"
+    );
+    assert!(dispatch(&f.app, "element_get", json!({"id": "phone-plan"})).is_err());
+    let r = call(&f.app, "edit_paste", json!({}));
+    assert_eq!(r["created"], json!(["phone-plan"]));
+    assert!((at("phone-plan")["x"].as_f64().unwrap() - x0).abs() < 1e-9);
+    call(&f.app, "undo", Value::Null);
+    assert!(dispatch(&f.app, "element_get", json!({"id": "phone-plan"})).is_err());
+}
+
+#[test]
+fn locked_is_an_element_field_in_the_overlay() {
+    let f = fixture();
+    open(&f);
+    call(
+        &f.app,
+        "element_patch",
+        json!({"target": "ios-iphone-69", "id": "band", "patch": {"locked": true}}),
+    );
+    assert_eq!(element_yaml(&f, "band")["locked"], true);
+    let o = call(&f.app, "overlay", json!({"target": "ios-iphone-69"}));
+    assert_eq!(overlay_element(&o, "band")["locked"], true);
+    assert!(overlay_element(&o, "title-plan").get("locked").is_none());
+    // In a variant view and with the language scope it still goes into
+    // the base (the lock is not part of the look).
+    call(
+        &f.app,
+        "element_patch",
+        json!({"target": "ios-ipad-13-landscape", "id": "title-plan", "patch": {"locked": true}}),
+    );
+    call(
+        &f.app,
+        "element_patch",
+        json!({"target": "ios-iphone-69", "scope": "lang", "lang": "de",
+               "id": "sub-plan", "patch": {"locked": true}}),
+    );
+    assert_eq!(element_yaml(&f, "title-plan")["locked"], true);
+    assert_eq!(element_yaml(&f, "sub-plan")["locked"], true);
+    let o = call(
+        &f.app,
+        "overlay",
+        json!({"target": "ios-ipad-13-landscape"}),
+    );
+    assert_eq!(overlay_element(&o, "title-plan")["locked"], true);
+    assert!(
+        overlay_element(&o, "title-plan")
+            .get("overridden")
+            .is_none()
+    );
+}
+
+/// Regression (GUI "Close project" → open another one showed no pixmaps):
+/// a project opened after a close starts with a fresh session – no view,
+/// no clipboard, no cached previews – and renders straight away.
+#[test]
+fn close_then_open_another_project_starts_fresh() {
+    let f = fixture();
+    open(&f);
+    let view = json!({
+        "canvas": "phone", "target": "ios-iphone-69", "lang": "de", "selection": ["band"],
+    });
+    call(&f.app, "view_set", view);
+    call(&f.app, "edit_copy", json!({"ids": ["band"]}));
+    let args = json!({"target": "ios-iphone-69", "image": 0, "max_edge": 200});
+    image(&f.app, "render_image", args.clone());
+    call(&f.app, "project_close", Value::Null);
+    assert_eq!(
+        dispatch(&f.app, "overlay", json!({})).unwrap_err().code,
+        ErrorCode::NoProject
+    );
+
+    let (_tmp2, other) = example_copy();
+    call(&f.app, "project_open", json!({"dir": other}));
+    assert_eq!(
+        call(&f.app, "view_get", Value::Null),
+        json!({"canvas": null, "target": null, "lang": null, "selection": []})
+    );
+    assert_eq!(call(&f.app, "edit_clipboard", Value::Null)["count"], 0);
+    assert_eq!(call(&f.app, "preview_stats", Value::Null)["hits"], 0);
+    let img = image(&f.app, "render_image", args);
+    assert_eq!(img.height, 200);
+    let o = call(&f.app, "overlay", json!({"target": "ios-iphone-69"}));
+    assert_ne!(o["images"].as_array().unwrap().len(), 0);
+}

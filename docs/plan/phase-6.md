@@ -40,10 +40,20 @@ Largely there: target preset `play-feature-graphic` (1024×500, banner,
 `slot: google.image_type featureGraphic`, rules `google-feature-graphic`)
 and the Play client knows `featureGraphic`. Close to Apple's header /
 search-results creatives (banners from a canvas region).
-- [ ] Check end to end: example fixture target, export, store rules (24-bit
-      PNG/JPEG, no alpha), upload plan + Play upload as single image
-- [ ] Template / quick action "banner from this canvas" shared with the Apple
-      creatives (region + fit), GUI wording
+- [x] Check end to end (2026-11-11): example target `play-feature-graphic`
+      (phone canvas, `banner` variant, Android frames) + golden; exports are
+      always opaque (PNG RGB 8-bit / JPEG), validation checks size/format;
+      upload plan + Play upload as one `featureGraphic` image per language
+      (test `feature_graphic_uploads_as_one_opaque_png`, fake Play); specs
+      re-checked against Google's and Apple's pages (targets.yaml G1/G4/AC1)
+- [x] Quick action "banner from this canvas" (2026-11-11): app commands
+      `canvas_banner_options` / `target_add_banner` (page range fitted to
+      the banner aspect, cover, no gaps, screenshots/device map/variant of
+      the same store's target), GUI canvas pane, MCP `banner_add`; no CLI
+      (the CLI does not edit projects)
+- [ ] Owner: look at the canvas pane in the real app; decide whether the
+      example's feature graphic should drop the phones (Google: "avoid
+      device imagery")
 
 ## 6.3 Templates (+ web gallery) – app side done 2026-11-11, gallery backend skeleton (ADR 0023)
 KONZEPT §9 "Vorlagen": duplicate a canvas, save as template, new project
@@ -95,19 +105,29 @@ and downloadable from a gallery.
 KONZEPT §4.2 (frames, point 3): any PNG or SVG frame plus a small
 `frame.yaml` (screen rectangle, mask / corner radius, model mapping) in the
 project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
-- [ ] `frame.yaml` format (reuse the imported-bezel store and screen
-      detection from `core::frame_import`, ADR 0012): images per
-      orientation/colour, screen rect or auto-detect, mask/corner radius,
-      maps to catalog model(s) or defines a new device class/size
-- [ ] Sources: project `frames/` (travels with the project, Git) and
-      app-wide; `frame: pack:<name>` (or `imported:<vendor>`) resolution
-- [ ] SVG frames via `resvg`
+- [x] `frame.yaml` format `vitrine-frame/1` (ADR 0024, reference
+      `docs/guide/frame-packs.md`): images per orientation/colour/bezel,
+      detected screen or `screen` + `radius` or `mask`, `cut_screen` for
+      painted screens, `models` (empty = any device: new devices/sizes)
+- [x] Sources: project `frames/<id>/` and app-wide `<app data>/frames/packs/<id>/`
+      (project wins), compiled caches with stamps; `frame: pack:<id>`
+- [x] SVG frames via `resvg` (`vitrine_render::frame_packs::ResvgRasterizer`)
+- [x] Synthetic test pack (`synthetic::write_pack`, example
+      `synthetic_frame_pack`), tests in core/render/app/CLI
+- [x] Vendor research `docs/research/2026-11-11-vendor-frames.md`
+- [ ] Follow-ups: recompile on file changes in `frames/` while a project is
+      open (watcher); rotate portrait frames for landscape devices; share
+      packs through the gallery (6.3/6.6)
 - [x] User 2026-11-10: agreed as described (PNG/SVG + `frame.yaml`, project
       `frames/` or app-wide, reuse of the bezel import machinery)
 - [ ] Use cases: vendor kits the user downloads (Samsung, Google Pixel,
       Figma exports), clay/flat mockups, branded frames; could later be
       shared through the same web gallery as templates
-- [ ] GUI: frames manager lists packs; import pack folder/zip; inspector
+- [x] GUI: frames manager lists packs; import pack folder/zip (this
+      computer / this project); inspector + project default frame pickers
+      (not looked at in the real app yet)
+- [x] CLI `frames import <pack> [--to] [--id]`, `frames list --packs`,
+      `frames remove --pack`; MCP `frames_list` returns packs
 
 ## 6.5 Installer & signing (planned for 2026-11-11)
 - [ ] Bundles via Tauri bundler: macOS `.app` + `.dmg` (universal or per

@@ -27,7 +27,7 @@ use crate::server::{VitrineMcp, cmd};
 macro_rules! patch_fields_doc {
     () => {
         " Fields (YAML names; `null` resets to the default). \
-All kinds: page (home page, 0-based), lock_page, at {x, y} (centre, lu relative to the home page), \
+All kinds: page (home page, 0-based), lock_page, locked (GUI canvas lock), at {x, y} (centre, lu relative to the home page), \
 width, height, rotation (degrees, clockwise), pivot {x, y}, anchor_y (top|bottom|center|stretch), \
 opacity (0..1), z (layer), clip (none|page), visible, visible_in {targets, langs}. \
 device: model, orientation (portrait|landscape), frame (stylized|detailed|imported:apple), bezel, \

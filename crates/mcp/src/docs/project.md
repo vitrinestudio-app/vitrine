@@ -24,7 +24,7 @@ styles:
              background?: colour, stroke?, glow?, shadow?}
   shadows:                # presets; soft, hard, none are built in
     lifted: {layers: [{color: "#00000033", blur: 30, x: 0, y: 20}]}
-  frame: detailed         # default device frame: stylized | detailed | imported:apple
+  frame: detailed         # default device frame: stylized | detailed | imported:apple | pack:<id> (frames_list)
   fonts:                  # per family: fallbacks for missing characters
     Inter: {fallback: [Noto Sans JP]}
 canvases:

@@ -51,6 +51,10 @@
   /* loading placeholder of rendered images (js/views/viewport.js) */
   --slot-placeholder: #f1f1f3;
   --slot-spinner: rgb(60 60 67 / 45%);
+  /* overlay scrollbars of the centre views (js/views/viewport.js) */
+  --scroll-thumb: rgb(0 0 0 / 28%);
+  --scroll-thumb-hover: rgb(0 0 0 / 46%);
+  --scroll-track: rgb(0 0 0 / 5%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -81,6 +85,9 @@
     --assistant-soft: rgb(232 145 111 / 18%);
     --slot-placeholder: #2a2a2d;
     --slot-spinner: rgb(235 235 245 / 45%);
+    --scroll-thumb: rgb(255 255 255 / 26%);
+    --scroll-thumb-hover: rgb(255 255 255 / 44%);
+    --scroll-track: rgb(255 255 255 / 6%);
   }
 }
 
@@ -111,6 +118,9 @@
   --assistant-soft: rgb(232 145 111 / 18%);
   --slot-placeholder: #2a2a2d;
   --slot-spinner: rgb(235 235 245 / 45%);
+  --scroll-thumb: rgb(255 255 255 / 26%);
+  --scroll-thumb-hover: rgb(255 255 255 / 44%);
+  --scroll-track: rgb(255 255 255 / 6%);
 }
 
 *,

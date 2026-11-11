@@ -600,7 +600,7 @@ impl Painter<'_> {
     ) -> Result<Pixmap, String> {
         let cache = self
             .ctx
-            .frame_assets()
+            .frame_assets(&frame.source)
             .ok_or("imported frames are not available")?;
         let (cw, ch) = (px(rect.w * scale), px(rect.h * scale));
         let bezel = cache

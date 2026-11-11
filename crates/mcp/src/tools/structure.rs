@@ -155,6 +155,36 @@ pub struct TargetAddParams {
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct BannerAddParams {
+    /// Canvas the banner shows a region of.
+    pub canvas: String,
+    /// Store banner preset: `play-feature-graphic` (Google Play feature
+    /// graphic 1024x500), `ios-header` (App Store product page header
+    /// 21:9), `ios-search-results` (3:2), `ios-creative-universal` (16:9).
+    /// Omit to only list the proposals (page ranges) without adding.
+    #[serde(default)]
+    pub preset: Option<String>,
+    /// Page range `[first, last]` (0-based) of the region; default: as many
+    /// pages from `page` as fit the banner's aspect.
+    #[serde(default)]
+    pub pages: Option<[u32; 2]>,
+    /// First page of the default range (default 0).
+    #[serde(default)]
+    pub page: Option<u32>,
+    /// `cover` (default) or `contain`.
+    #[serde(default)]
+    pub fit: Option<String>,
+    /// Variant (default: the one of the store's screenshot target on this
+    /// canvas).
+    #[serde(default)]
+    pub variant: Option<String>,
+    /// Target id (default: the preset id, made unique).
+    #[serde(default)]
+    pub id: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct TargetUpdateParams {
     /// Target id.
     pub id: String,
@@ -363,6 +393,55 @@ impl VitrineMcp {
                 args["orientation"] = json!(o);
             }
             Ok(edited(&cmd(app, "target_add_from_preset", args)?))
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Banner from this canvas: a store banner (Google Play feature graphic, App Store header / search results / universal creative) showing a page range of a canvas, seamless, cover fit; screenshots, device map and variant follow the store's screenshot target on that canvas (Play → Android frames). Without `preset` it only lists the proposals. Example: {\"canvas\": \"phone\", \"preset\": \"play-feature-graphic\"}."
+    )]
+    async fn banner_add(
+        &self,
+        Parameters(p): Parameters<BannerAddParams>,
+        ctx: RequestContext<RoleServer>,
+    ) -> CallToolResult {
+        self.run(&ctx, move |app| {
+            let Some(preset) = p.preset else {
+                let mut args = json!({ "canvas": p.canvas });
+                if let Some(page) = p.page {
+                    args["page"] = json!(page);
+                }
+                let v = cmd(app, "canvas_banner_options", args)?;
+                let lines: Vec<String> = v
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|o| {
+                        format!(
+                            "{} ({}x{}): pages {}-{}",
+                            o["preset"].as_str().unwrap_or_default(),
+                            o["size"][0],
+                            o["size"][1],
+                            o["pages"][0],
+                            o["pages"][1]
+                        )
+                    })
+                    .collect();
+                return Ok(ToolOutput::new(lines.join("\n"), json!({ "options": v })));
+            };
+            let mut args = json!({ "canvas": p.canvas, "preset": preset });
+            for (k, v) in [
+                ("pages", p.pages.map(|x| json!(x))),
+                ("page", p.page.map(|x| json!(x))),
+                ("fit", p.fit.map(|x| json!(x))),
+                ("variant", p.variant.map(|x| json!(x))),
+                ("id", p.id.map(|x| json!(x))),
+            ] {
+                if let Some(v) = v {
+                    args[k] = v;
+                }
+            }
+            Ok(edited(&cmd(app, "target_add_banner", args)?))
         })
         .await
     }

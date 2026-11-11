@@ -93,6 +93,10 @@ const FIELD_DOCS: &[(&str, &str)] = &[
         "bool – keep the home page when moved onto another page (default false)",
     ),
     (
+        "locked",
+        "bool – locked in the GUI editor: the canvas does not select or drag it (default false; no effect on rendering)",
+    ),
+    (
         "at",
         "{x, y} lu – centre of the element relative to the top-left corner of its home page (default {x: 0, y: 0}!). Text with `box` ignores it",
     ),

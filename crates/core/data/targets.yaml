@@ -79,6 +79,17 @@ sources:
   G1:
     url: https://support.google.com/googleplay/android-developer/answer/9866151?hl=en
     kind: primary
+    note: >-
+      Feature graphic re-checked 2026-11-11: 1024x500, "JPEG or 24-bit PNG
+      (no alpha)", required to publish; no file size limit stated (the
+      1024 KB limit there is the icon's). Also in G4.
+  G4:
+    url: https://support.google.com/googleplay/android-developer/answer/1078870
+    kind: primary
+    note: >-
+      Graphic assets guidance, checked 2026-11-11: feature graphic focal
+      point centred, key content away from the edges, avoid device imagery,
+      no "Best"/"#1"/"Free" or Play badges.
   G2:
     url: https://developers.google.com/android-publisher/api-ref/rest/v3/AppImageType
     kind: primary
@@ -95,7 +106,9 @@ sources:
       Creative assets (product page header, search results, universal),
       checked 2026-11-10: header 21:9 3840x1646 exact (jpeg/png); search
       results 3:2 from 1920x1280 to 3840x2560 (jpeg/png); universal 16:9
-      5244x2950 (png only); no alpha. iOS/iPadOS 27 and later.
+      5244x2950 (png only); no alpha. iOS/iPadOS 27 and later. Re-checked
+      2026-11-11: unchanged; no colour space, file size limit or numeric
+      safe area published.
   AC2:
     url: https://developer.apple.com/app-store/asset-best-practices/
     kind: primary
@@ -210,9 +223,10 @@ rules:
     max_file_size: null
     note: >-
       Required to publish. Keep key content away from the edges and centred;
-      avoid pure white/black/dark grey backgrounds. File size limit not
-      stated on G1 (API transport limit 15 MB, G3).
-    sources: [G1, G3]
+      avoid pure white/black/dark grey backgrounds; avoid device imagery
+      (G4). File size limit not stated on G1 (API transport limit 15 MB,
+      G3). Checked 2026-11-11.
+    sources: [G1, G3, G4]
 
   apple-creative-header:
     label: App Store product page header

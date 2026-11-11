@@ -48,6 +48,7 @@ fn mcp_session_creates_designs_translates_and_exports() {
         "canvas_duplicate",
         "canvas_remove",
         "target_add",
+        "banner_add",
         "element_add",
         "element_update",
         "element_move",

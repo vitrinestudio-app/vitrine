@@ -287,3 +287,112 @@ fn bezel_is_chosen_per_target_screenshot_or_pin() {
     );
     assert!(has_bezel_info(&scene));
 }
+
+// ----- own frame packs (ADR 0024) ------------------------------------------------------
+
+/// The synthetic "Clay phone" pack in the project's `frames/` folder.
+fn pack_setup() -> (
+    tempfile::TempDir,
+    std::path::PathBuf,
+    Option<Arc<FrameIndex>>,
+) {
+    let (dir, _) = setup();
+    let root = dir.path().join("project");
+    synthetic::write_pack(&root.join("frames/clay-phone"), 4).unwrap();
+    let index = vitrine_render::frame_packs::frame_index(None, Some(&root));
+    (dir, root, index)
+}
+
+fn device_frame(scene: &ResolvedScene) -> &vitrine_core::resolve::ImportedFrame {
+    let ResolvedKind::Device(dev) = &scene.elements[0].props else {
+        panic!()
+    };
+    dev.imported.as_ref().expect("pack frame")
+}
+
+/// Colour at a point of the bezel (bezel pixels) of the first element.
+fn at_bezel(scene: &ResolvedScene, r: &Rendered, bx: f64, by: f64) -> [u8; 3] {
+    let e = &scene.elements[0];
+    let f = device_frame(scene);
+    let px_per_lu = 0.5;
+    let k = e.size.x * px_per_lu / f64::from(f.size.w);
+    let left = (e.center.x - e.size.x / 2.0) * px_per_lu;
+    let top = (e.center.y - e.size.y / 2.0) * px_per_lu;
+    rgb(&r.pixmap, left + bx * k, top + by * k)
+}
+
+#[test]
+fn project_frame_packs_png_svg_and_painted_screens() {
+    let (_dir, root, index) = pack_setup();
+    let index = index.expect("packs loaded");
+    assert_eq!(
+        index
+            .installed_colors("pack:clay-phone", "iphone-island")
+            .iter()
+            .map(|c| c.id.as_str())
+            .collect::<Vec<_>>(),
+        ["ink", "outline", "painted", "sand"],
+        "the SVG frame compiles with the renderer"
+    );
+    let yaml = PROJECT.replace("frame: imported:apple", "frame: pack:clay-phone");
+    for (color, frame_rgb) in [
+        ("sand", [0xD9, 0xC8, 0xAE]),
+        ("outline", [0x3A, 0x6E, 0xA5]),
+    ] {
+        let y = yaml.replace("color: black-titanium", &format!("color: {color}"));
+        let (scene, r) = render(&root, Some(index.clone()), &y);
+        assert!(
+            !scene
+                .diagnostics
+                .iter()
+                .any(|d| d.code == DiagnosticCode::ImportedFrameMissing),
+            "{:?}",
+            scene.diagnostics
+        );
+        let f = device_frame(&scene);
+        assert_eq!(f.source, "pack:clay-phone");
+        assert_eq!(f.color, color);
+        let s = f.screen;
+        let centre = at_bezel(
+            &scene,
+            &r,
+            f64::from(s.x) + f64::from(s.w) / 2.0,
+            f64::from(s.y) + f64::from(s.h) / 2.0,
+        );
+        assert!(
+            is_green(centre),
+            "{color}: screenshot in the screen {centre:?}"
+        );
+        let border = at_bezel(&scene, &r, f64::from(s.x) / 2.0, f64::from(f.size.h) / 2.0);
+        assert!(
+            border
+                .iter()
+                .zip(frame_rgb)
+                .all(|(a, b)| a.abs_diff(b) < 30),
+            "{color}: frame colour {border:?}"
+        );
+    }
+    // Painted screen: cut out, so the screenshot shows.
+    let y = yaml.replace("color: black-titanium", "color: painted");
+    let (scene, r) = render(&root, Some(index.clone()), &y);
+    let s = device_frame(&scene).screen;
+    let c = at_bezel(
+        &scene,
+        &r,
+        f64::from(s.x) + f64::from(s.w) / 2.0,
+        f64::from(s.y) + f64::from(s.h) / 2.0,
+    );
+    assert!(is_green(c), "painted screen cut out {c:?}");
+    // Without the pack: parametric fallback with an info.
+    let (scene, _) = render(&root, None, &yaml);
+    let ResolvedKind::Device(dev) = &scene.elements[0].props else {
+        panic!()
+    };
+    assert!(dev.imported.is_none());
+    assert!(
+        scene
+            .diagnostics
+            .iter()
+            .any(|d| d.code == DiagnosticCode::ImportedFrameMissing)
+    );
+}

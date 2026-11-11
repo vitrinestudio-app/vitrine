@@ -3,8 +3,12 @@
 // dropped), review the plan (matched files, unmatched files with manual
 // assignment, sanity warnings), apply, and list/remove installed frames.
 // Frames live in the app data folder, never in a project.
+// Own frame packs (6.4, ADR 0024): a folder or .zip with `frame.yaml` is
+// recognised on pick/drop, checked (compiled), and imported for this
+// computer or into the open project (`frames/<id>/`, travels with it).
 
 import { api } from '../api.js';
+import { store } from '../store.js';
 import { h, icon } from '../dom.js';
 import { t } from '../i18n.js';
 import { setDropHook } from '../panels/importer.js';
@@ -27,12 +31,30 @@ export async function openFramePackages({ path } = {}) {
 
   const source = () => list.sources[0];
 
+  const hasProject = () => Boolean(store.get().summary);
+  let packTarget = 'app';
+
   async function plan(p) {
     current = null;
     applyBtn.disabled = true;
     err.show(null);
     status.textContent = t('frames.import.analysing');
     planEl.replaceChildren(h('div', { class: 'muted' }, `${t('frames.import.analysing')} ${p}`));
+    // An own frame pack (frame.yaml)? Otherwise a vendor package.
+    try {
+      const result = await api.framesPackImport(p, { dry_run: true, target: packTarget === 'project' && hasProject() ? 'project' : 'app' });
+      current = { kind: 'pack', path: p, result };
+      status.textContent = '';
+      renderPackPlan();
+      return;
+    } catch (e) {
+      if (e?.details?.kind !== 'not_a_pack') {
+        status.textContent = '';
+        planEl.replaceChildren();
+        err.show(e);
+        return;
+      }
+    }
     try {
       const result = await api.framesImportPlan(p);
       current = { path: p, plan: result, assign: new Map() };
@@ -59,8 +81,58 @@ export async function openFramePackages({ path } = {}) {
     );
   }
 
+  function renderPackPlan() {
+    const r = current.result;
+    const pk = r.pack;
+    const files = [];
+    for (const f of pk.frames) if (!files.some((x) => x.file === f.file)) files.push(f);
+    const rows = files.map((f) =>
+      h(
+        'tr',
+        {},
+        h('td', { class: 'fp-file', title: f.source_file }, f.source_file),
+        h('td', {}, `${f.apple_model} · ${f.color_label} · ${t(`inspector.orientation.${f.orientation}`)}`),
+        h('td', { class: 'mono small' }, `${f.screen.w}×${f.screen.h}`),
+      ),
+    );
+    const models = pk.models.length ? pk.models.join(', ') : t('frames.pack.any_model');
+    const targetSel = select({
+      options: [
+        { value: 'app', label: t('frames.pack.target.app') },
+        ...(hasProject() ? [{ value: 'project', label: t('frames.pack.target.project') }] : []),
+      ],
+      value: packTarget === 'project' && hasProject() ? 'project' : 'app',
+      onchange: (v) => {
+        packTarget = v;
+      },
+    });
+    planEl.replaceChildren(
+      h('div', { class: 'fp-summary' }, t('frames.pack.summary').replace('{name}', pk.name).replace('{id}', r.id).replace('{n}', String(files.length)).replace('{models}', models)),
+      pk.license || pk.author || pk.attribution
+        ? h('div', { class: 'fp-license' }, [pk.license && `${t('frames.pack.license')}: ${pk.license}`, pk.author && `${t('frames.pack.author')}: ${pk.author}`, pk.attribution].filter(Boolean).join(' · '))
+        : null,
+      r.replaces ? h('div', { class: 'form-hint' }, t('frames.pack.replaces').replace('{id}', r.id)) : null,
+      ...pk.errors.map((e) => h('div', { class: 'hint-warn small' }, e)),
+      ...pk.warnings.map((w) => h('div', { class: 'muted small' }, w)),
+      h('div', { class: 'fp-assign' }, h('span', {}, t('frames.pack.target')), targetSel),
+      h(
+        'div',
+        { class: 'ex-matrix-wrap fp-table-wrap' },
+        h(
+          'table',
+          { class: 'fp-table' },
+          h('thead', {}, h('tr', {}, ...['frames.col.file', 'frames.col.frame', 'frames.col.screen'].map((k) => h('th', {}, t(k))))),
+          h('tbody', {}, ...rows),
+        ),
+      ),
+    );
+    applyBtn.disabled = files.length === 0;
+    applyBtn.textContent = t('frames.pack.import');
+  }
+
   function installCount() {
     if (!current) return 0;
+    if (current.kind === 'pack') return current.result.pack.frames.length;
     const items = current.plan.items.filter((i) => i.action === 'install' || i.action === 'replace').length;
     const assigned = [...current.assign.values()].filter((a) => a && a.model && a.color && a.orientation).length;
     return items + assigned;
@@ -174,6 +246,23 @@ export async function openFramePackages({ path } = {}) {
     if (!current) return;
     applyBtn.disabled = true;
     status.textContent = t('frames.import.importing');
+    if (current.kind === 'pack') {
+      try {
+        const target = packTarget === 'project' && hasProject() ? 'project' : 'app';
+        const r = await api.framesPackImport(current.path, { target });
+        status.textContent = t('frames.pack.done').replace('{frame}', r.pack.frame);
+        current = null;
+        updateApply();
+        planEl.replaceChildren();
+        list = await api.framesList();
+        renderInstalled();
+      } catch (e) {
+        status.textContent = '';
+        err.show(e);
+        applyBtn.disabled = false;
+      }
+      return;
+    }
     const assignments = [...current.assign.entries()]
       .filter(([, a]) => a === null || (a.model && a.color && a.orientation))
       .map(([name, a]) => (a === null ? { name } : { name, ...a }));
@@ -214,10 +303,10 @@ export async function openFramePackages({ path } = {}) {
     }
   }
 
-  function thumb(file) {
+  function thumb(file, source = 'apple') {
     const img = h('img', { class: 'fp-thumb', alt: '', draggable: 'false' });
     api
-      .framesThumbnail(file, Math.round(THUMB * (window.devicePixelRatio || 1)))
+      .framesThumbnail(file, Math.round(THUMB * (window.devicePixelRatio || 1)), source)
       .then((p) => {
         const url = URL.createObjectURL(new Blob([p.data], { type: 'image/png' }));
         thumbs.push(url);
@@ -266,7 +355,72 @@ export async function openFramePackages({ path } = {}) {
       ),
       frames.length ? h('div', { class: 'fp-grid' }, cards) : h('div', { class: 'muted' }, t('frames.none')),
       h('div', { class: 'muted small fp-root' }, `${t('frames.store')}: `, h('span', { class: 'mono selectable' }, list.root)),
+      ...packsSection(),
     );
+  }
+
+  async function removePack(p) {
+    const ok = await choiceDialog({
+      title: t('frames.pack.remove'),
+      body: h('p', {}, t(`frames.pack.remove.confirm.${p.origin}`).replace('{name}', p.name)),
+      buttons: [
+        { label: t('project.dialog.cancel'), value: false },
+        { label: t('frames.pack.remove'), danger: true, value: true },
+      ],
+    });
+    if (!ok) return;
+    try {
+      await api.framesPackRemove(p.id, p.origin);
+      list = await api.framesList();
+      renderInstalled();
+    } catch (e) {
+      err.show(e);
+    }
+  }
+
+  /** Own frame packs: one block per pack with a thumbnail per image. */
+  function packsSection() {
+    const packs = list.packs ?? [];
+    const blocks = packs.map((p) => {
+      const files = [];
+      for (const f of p.frames) if (!files.some((x) => x.file === f.file)) files.push(f);
+      const cards = files.map((f) =>
+        h(
+          'div',
+          { class: 'fp-card' },
+          thumb(f.file, p.frame),
+          h(
+            'div',
+            { class: 'fp-card-text' },
+            h('div', { class: 'fp-card-model' }, f.apple_model),
+            h('div', {}, f.color_label),
+            h('div', { class: 'muted small' }, `${t(`inspector.orientation.${f.orientation}`)} · ${f.screen.w}×${f.screen.h}`),
+            h('div', { class: 'muted small fp-card-src', title: f.source_file }, f.source_file),
+          ),
+        ),
+      );
+      const meta = [t(`frames.pack.origin.${p.origin}`), p.models.length ? p.models.join(', ') : t('frames.pack.any_model'), p.license && `${t('frames.pack.license')}: ${p.license}`].filter(Boolean).join(' · ');
+      return h(
+        'div',
+        { class: 'fp-pack' },
+        h(
+          'div',
+          { class: 'fp-installed-head' },
+          h('h4', {}, p.name, ' ', h('span', { class: 'mono small muted selectable' }, p.frame)),
+          h('span', { class: 'spacer' }),
+          h('button', { class: 'icon-btn', type: 'button', title: t('frames.pack.remove'), onclick: () => removePack(p) }, icon('trash')),
+        ),
+        h('div', { class: 'muted small' }, meta),
+        p.shadows_app_pack ? h('div', { class: 'form-hint' }, t('frames.pack.shadows')) : null,
+        ...p.errors.map((e) => h('div', { class: 'hint-warn small' }, e)),
+        cards.length ? h('div', { class: 'fp-grid' }, cards) : null,
+      );
+    });
+    return [
+      h('div', { class: 'fp-installed-head' }, h('h3', {}, `${t('frames.pack.title')} (${packs.length})`)),
+      h('p', { class: 'muted small' }, t('frames.pack.intro')),
+      ...(blocks.length ? blocks : [h('div', { class: 'muted' }, t('frames.pack.none'))]),
+    ];
   }
 
   const pickArchive = async () => {

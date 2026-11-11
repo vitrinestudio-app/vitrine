@@ -331,7 +331,7 @@ impl AppState {
         if self.settings.load().is_ok_and(|s| s.system_font_fallback) {
             session.set_system_font_fallback(true);
         }
-        session.set_frames(self.frame_index(), false);
+        session.set_frames(self.frame_index_for(Some(session.dir())), false);
         if self.watch {
             session.watch()?;
         }
@@ -391,6 +391,7 @@ command_table! {
         overlay,
         edit_move, edit_move_by, edit_resize, edit_rotate, edit_set_page,
         edit_reorder, edit_duplicate, edit_remove, edit_group, edit_ungroup,
+        edit_copy, edit_cut, edit_paste, edit_clipboard,
         edit_reset_override, element_reset_override,
         element_get, element_patch, edit_rename, edit_arrange, element_add,
         canvas_get, canvas_patch, canvas_variant, canvas_add, canvas_rename, canvas_remove,
@@ -403,12 +404,14 @@ command_table! {
         preview_stats,
         element_info, markup_check, assets_probe, assets_upload,
         target_get, target_add_from_preset, target_patch, target_remove,
+        canvas_banner_options, target_add_banner,
         project_rename, language_add, language_remove, languages_set,
         default_language_impact, default_language_set, styles_get, styles_patch,
         dialog_pick_folder, reveal_path,
         dialog_save_file, strings_export, strings_import_plan, strings_import_apply,
         import_plan, import_apply,
         frames_import_plan, frames_import_apply, frames_list, frames_remove,
+        frames_pack_import, frames_pack_remove,
         view_get, view_set,
         mcp_status, mcp_set_enabled, claude_desktop_plan, claude_desktop_install,
         store_accounts_list, store_account_import, store_account_remove, store_account_test,

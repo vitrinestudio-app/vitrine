@@ -83,10 +83,18 @@ export function createViewport(el, opts) {
   let fitFrame = 0;
 
   const view = () => state.get();
+  const bars = createScrollbars(el, {
+    view,
+    content: () => opts.content(),
+    inset,
+    padding,
+    pan: (panX, panY) => setView(view().zoom, panX, panY),
+  });
 
   function apply(zoom, panX, panY, fit) {
     mem.fitMode = fit;
     state.set(clamp(zoom, minZoom, maxZoom), panX, panY);
+    bars.update();
     notify();
   }
 
@@ -270,6 +278,7 @@ export function createViewport(el, opts) {
         if (mem.fitMode) fit();
       });
     }
+    bars.update();
     opts.onResize?.();
   });
   ro.observe(el);
@@ -297,7 +306,10 @@ export function createViewport(el, opts) {
       const changed = contentKey !== mem.contentKey;
       mem.contentKey = contentKey;
       if (mem.fitMode || changed) fit();
+      bars.update();
     },
+    /** Re-measures the scrollbars (after the content changed without a refresh). */
+    updateScrollbars: () => bars.update(),
     localPoint,
     isPanTrigger,
     panStart,
@@ -314,6 +326,7 @@ export function createViewport(el, opts) {
     destroy() {
       cancelAnimationFrame(fitFrame);
       ro.disconnect();
+      bars.destroy();
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', panMove);
@@ -322,6 +335,152 @@ export function createViewport(el, opts) {
       el.removeEventListener('click', onClickCapture, true);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+    },
+  };
+}
+
+/** Smallest scrollbar thumb (px). */
+const MIN_THUMB = 28;
+
+/**
+ * Overlay scrollbars of a viewport element: shown on an axis when the
+ * content (plus `padding`) does not fit the free area; thumb drag and
+ * track clicks pan the view, and every zoom/pan moves the thumbs
+ * (`update()`). The scroll range is the content box united with the
+ * visible area, so panning past the content still scrolls back.
+ */
+function createScrollbars(el, { view, content, inset, padding, pan }) {
+  const make = (axis) => {
+    const thumb = h('div', { class: 'vp-thumb' });
+    const track = h('div', { class: `vp-scroll vp-scroll-${axis}`, hidden: true, 'aria-hidden': 'true' }, thumb);
+    return { axis, track, thumb, ratio: 1, shown: false };
+  };
+  const x = make('x');
+  const y = make('y');
+  el.append(x.track, y.track);
+  let frame = 0;
+
+  /** Visible span, scroll range and track length of `axis` (px), or null. */
+  function measure(axis) {
+    const c = content();
+    const { zoom, panX, panY } = view();
+    if (!c || !(c.w > 0) || !(c.h > 0)) return null;
+    const horizontal = axis === 'x';
+    const v0 = horizontal ? inset.left : inset.top;
+    const v1 = horizontal ? el.clientWidth - inset.right : el.clientHeight - inset.bottom;
+    const c0 = (horizontal ? c.x * zoom + panX : c.y * zoom + panY) - padding / 2;
+    const c1 = c0 + (horizontal ? c.w : c.h) * zoom + padding;
+    if (v1 - v0 <= 0) return null;
+    // Everything (with a little air) on screen: no bar.
+    if (c0 >= v0 - 0.5 && c1 <= v1 + 0.5) return null;
+    const r0 = Math.min(c0, v0);
+    const r1 = Math.max(c1, v1);
+    return { v0, v1, r0, r1 };
+  }
+
+  function place(bar) {
+    const m = measure(bar.axis);
+    bar.shown = Boolean(m);
+    bar.track.hidden = !m;
+    if (!m) return;
+    const horizontal = bar.axis === 'x';
+    const other = horizontal ? y : x;
+    // Leave the corner free when both bars show.
+    const end = other.shown || measure(other.axis) ? 12 : 2;
+    const start = horizontal ? inset.left + 2 : inset.top + 2;
+    const length = (horizontal ? el.clientWidth - inset.right : el.clientHeight - inset.bottom) - end - start;
+    if (horizontal) {
+      bar.track.style.left = `${start}px`;
+      bar.track.style.width = `${Math.max(0, length)}px`;
+    } else {
+      bar.track.style.top = `${start}px`;
+      bar.track.style.height = `${Math.max(0, length)}px`;
+    }
+    const range = m.r1 - m.r0;
+    const size = Math.max(MIN_THUMB, (length * (m.v1 - m.v0)) / range);
+    const free = Math.max(1, length - size);
+    const pos = ((m.v0 - m.r0) / Math.max(1, range - (m.v1 - m.v0))) * free;
+    // Screen px of panning per px of thumb movement.
+    bar.ratio = Math.max(1e-6, (range - (m.v1 - m.v0)) / free);
+    bar.thumb.style[horizontal ? 'width' : 'height'] = `${size}px`;
+    bar.thumb.style[horizontal ? 'height' : 'width'] = '';
+    bar.thumb.style.transform = horizontal ? `translateX(${pos}px)` : `translateY(${pos}px)`;
+    bar.length = length;
+    bar.size = size;
+    bar.pos = pos;
+  }
+
+  function update() {
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      place(x);
+      place(y);
+      place(x);
+    });
+  }
+
+  /** Pans by `d` screen px of content along `axis`. */
+  function panBy(axis, d) {
+    const { panX, panY } = view();
+    if (axis === 'x') pan(panX - d, panY);
+    else pan(panX, panY - d);
+  }
+
+  function bind(bar) {
+    let drag = null;
+    bar.track.addEventListener('pointerdown', (e) => {
+      // Keep the view's own gestures (pan, marquee, selection) out of it.
+      e.stopPropagation();
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const horizontal = bar.axis === 'x';
+      const at = horizontal ? e.clientX : e.clientY;
+      if (e.target === bar.thumb) {
+        drag = { start: at, ratio: bar.ratio, moved: 0 };
+        bar.track.classList.add('dragging');
+        try {
+          bar.track.setPointerCapture(e.pointerId);
+        } catch {
+          // Synthetic pointer.
+        }
+        return;
+      }
+      // Track click: one visible span towards the click.
+      const r = bar.thumb.getBoundingClientRect();
+      const before = at < (horizontal ? r.left : r.top);
+      const span = horizontal ? el.clientWidth : el.clientHeight;
+      panBy(bar.axis, (before ? -1 : 1) * span * 0.9);
+    });
+    bar.track.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const at = bar.axis === 'x' ? e.clientX : e.clientY;
+      const d = (at - drag.start) * drag.ratio;
+      panBy(bar.axis, d - drag.moved);
+      drag.moved = d;
+    });
+    const end = (e) => {
+      if (!drag) return;
+      drag = null;
+      bar.track.classList.remove('dragging');
+      if (bar.track.hasPointerCapture?.(e.pointerId)) bar.track.releasePointerCapture(e.pointerId);
+    };
+    bar.track.addEventListener('pointerup', end);
+    bar.track.addEventListener('pointercancel', end);
+    // No click-through (e.g. "all languages" opens a cell on click).
+    bar.track.addEventListener('click', (e) => e.stopPropagation());
+    bar.track.addEventListener('dblclick', (e) => e.stopPropagation());
+    bar.track.addEventListener('contextmenu', (e) => e.stopPropagation());
+  }
+  bind(x);
+  bind(y);
+
+  return {
+    update,
+    destroy() {
+      cancelAnimationFrame(frame);
+      x.track.remove();
+      y.track.remove();
     },
   };
 }

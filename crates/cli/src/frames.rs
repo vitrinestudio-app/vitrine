@@ -8,11 +8,15 @@ use std::sync::Arc;
 
 use anyhow::{Context, bail};
 use clap::{Args, Subcommand};
+use vitrine_core::frame_import::pack::{
+    self, PACKS_DIR, PROJECT_FRAMES_DIR, PackInfo, PackOrigin, PackTarget,
+};
 use vitrine_core::frame_import::{
     APP_DIR_ENV, Action, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, Package, RemoveFilter,
     Rules, import, orientation_name,
 };
 use vitrine_core::model::Orientation;
+use vitrine_render::frame_packs::{ResvgRasterizer, load_packs};
 
 use crate::term::{Style, plural};
 use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global};
@@ -25,7 +29,8 @@ pub struct FramesArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum FramesCommand {
-    /// Import a downloaded frame package (folder, .zip or, on macOS, .dmg).
+    /// Import a downloaded frame package (folder, .zip or, on macOS, .dmg)
+    /// or an own frame pack (folder or .zip with `frame.yaml`).
     Import(ImportArgs),
     /// List the installed frames.
     List(ListArgs),
@@ -43,14 +48,41 @@ pub struct ImportArgs {
     /// Frame source (rules in `crates/core/data/frame-import/<source>.yaml`).
     #[arg(long, default_value = "apple")]
     pub source: String,
+    /// Own frame packs (a folder or .zip with `frame.yaml`, ADR 0024): where
+    /// to put it, `app` (this computer) or `project` (the project's
+    /// `frames/` folder, travels with it).
+    #[arg(long, value_enum, default_value_t = PackTo::App)]
+    pub to: PackTo,
+    /// Own frame packs: the pack id (default: from its name).
+    #[arg(long)]
+    pub id: Option<String>,
     #[arg(long, value_enum, default_value_t = Format::Text)]
     pub format: Format,
+}
+
+/// Where a frame pack goes / comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum PackTo {
+    App,
+    Project,
+}
+
+impl From<PackTo> for PackTarget {
+    fn from(t: PackTo) -> Self {
+        match t {
+            PackTo::App => PackTarget::App,
+            PackTo::Project => PackTarget::Project,
+        }
+    }
 }
 
 #[derive(Debug, Args)]
 pub struct ListArgs {
     #[arg(long, default_value = "apple")]
     pub source: String,
+    /// List own frame packs (app-wide and the project's) instead.
+    #[arg(long)]
+    pub packs: bool,
     #[arg(long, value_enum, default_value_t = Format::Text)]
     pub format: Format,
 }
@@ -74,6 +106,12 @@ pub struct RemoveArgs {
     /// Required to remove everything of the source (no filter given).
     #[arg(long)]
     pub all: bool,
+    /// Remove the own frame pack with this id instead (see `--from`).
+    #[arg(long, value_name = "ID")]
+    pub pack: Option<String>,
+    /// With `--pack`: `app` or `project`.
+    #[arg(long, value_enum, default_value_t = PackTo::App)]
+    pub from: PackTo,
 }
 
 /// The app data folder (as the GUI's): `$VITRINE_APP_DIR/data` or the
@@ -92,11 +130,12 @@ pub fn frames_root() -> anyhow::Result<PathBuf> {
         .context("no app data folder (no home folder?); set VITRINE_APP_DIR")
 }
 
-/// Installed frames for rendering and validation (`None` if none).
-pub fn installed() -> Option<Arc<FrameIndex>> {
-    let root = frames_root().ok()?;
-    let index = FrameIndex::load(&root);
-    (!index.is_empty()).then(|| Arc::new(index))
+/// Installed frames plus frame packs (app-wide and the project's in
+/// `project/frames/`, ADR 0024) for rendering and validation (`None` if
+/// none).
+pub fn installed(project: &Path) -> Option<Arc<FrameIndex>> {
+    let root = frames_root().ok();
+    vitrine_render::frame_packs::frame_index(root.as_deref(), Some(project))
 }
 
 /// Render context of the project in `root` with the installed frames.
@@ -107,16 +146,177 @@ pub fn render_context(
     Option<vitrine_core::layout::FontDirReport>,
 ) {
     let (ctx, fonts) = vitrine_render::scene::RenderContext::new(root);
-    (ctx.with_frames(installed()), fonts)
+    (ctx.with_frames(installed(root)), fonts)
 }
 
 pub fn run(args: &FramesArgs, global: &Global) -> anyhow::Result<u8> {
     let store = FrameStore::new(frames_root()?);
     match &args.command {
+        FramesCommand::Import(a) if pack::is_pack(&a.path) => run_pack_import(a, &store, global),
         FramesCommand::Import(a) => run_import(a, &store, global),
+        FramesCommand::List(a) if a.packs => run_pack_list(a, &store, global),
         FramesCommand::List(a) => run_list(a, &store),
+        FramesCommand::Remove(a) if a.pack.is_some() => run_pack_remove(a, &store, global),
         FramesCommand::Remove(a) => run_remove(a, &store, global),
     }
+}
+
+/// The project folder when it holds a project (for project packs).
+fn project_dir(global: &Global) -> Option<&Path> {
+    let p = global.project.as_path();
+    p.join("project.yaml").is_file().then_some(p)
+}
+
+fn packs_dir(to: PackTo, store: &FrameStore, global: &Global) -> anyhow::Result<PathBuf> {
+    Ok(match to {
+        PackTo::App => store.root().join(PACKS_DIR),
+        PackTo::Project => project_dir(global)
+            .context("--to/--from project needs a project (--project <DIR> with project.yaml)")?
+            .join(PROJECT_FRAMES_DIR),
+    })
+}
+
+fn run_pack_import(a: &ImportArgs, store: &FrameStore, global: &Global) -> anyhow::Result<u8> {
+    let dest = packs_dir(a.to, store, global)?;
+    let r = pack::import_pack(
+        &a.path,
+        &dest,
+        a.to.into(),
+        a.id.as_deref(),
+        !a.dry_run,
+        Some(&ResvgRasterizer),
+    )
+    .map_err(anyhow::Error::msg)?;
+    match a.format {
+        Format::Json => println!("{}", serde_json::to_string_pretty(&r)?),
+        Format::Text => {
+            let st = Style::stdout();
+            print_pack(&r.pack, global);
+            println!(
+                "{} {} pack `{}` ({}, {}){}",
+                st.bold("frames:"),
+                if r.applied {
+                    "imported"
+                } else {
+                    "would import"
+                },
+                r.id,
+                plural(r.pack.frames.len(), "frame"),
+                plural(r.files, "file"),
+                if r.applied {
+                    format!(" → {}", r.pack.dir.display())
+                } else {
+                    " (dry run)".to_owned()
+                }
+            );
+            if r.replaces {
+                println!("{} replaces the pack `{}` there", st.warn("note:"), r.id);
+            }
+            println!("{} use it with `frame: {}`", st.dim("hint:"), r.pack.frame);
+        }
+    }
+    Ok(if r.pack.errors.is_empty() {
+        EXIT_OK
+    } else {
+        EXIT_PROBLEMS
+    })
+}
+
+fn print_pack(p: &PackInfo, global: &Global) {
+    let st = Style::stdout();
+    let origin = match p.origin {
+        PackOrigin::App => "app",
+        PackOrigin::Project => "project",
+    };
+    println!(
+        "{} {}  {}{}",
+        st.bold(&p.frame),
+        p.name,
+        st.dim(&format!(
+            "({origin}{}{})",
+            p.license
+                .as_deref()
+                .map(|l| format!(", licence {l}"))
+                .unwrap_or_default(),
+            if p.shadows_app_pack {
+                ", hides the app pack"
+            } else {
+                ""
+            }
+        )),
+        if p.models.is_empty() {
+            "  any device".to_owned()
+        } else {
+            format!("  {}", p.models.join(", "))
+        }
+    );
+    let mut seen = std::collections::BTreeSet::new();
+    for f in &p.frames {
+        // One line per image (a frame for several models is listed once).
+        if !seen.insert(&f.file) {
+            continue;
+        }
+        println!(
+            "  {:<12} {:<10} {:<20} {}×{}  screen {}×{} at {},{}  {}",
+            f.color,
+            orientation_name(f.orientation),
+            f.apple_model,
+            f.size.w,
+            f.size.h,
+            f.screen.w,
+            f.screen.h,
+            f.screen.x,
+            f.screen.y,
+            st.dim(&f.source_file)
+        );
+    }
+    for e in &p.errors {
+        println!("  {} {e}", st.error("error:"));
+    }
+    if !global.quiet {
+        for w in &p.warnings {
+            println!("  {} {w}", st.warn("warning:"));
+        }
+    }
+}
+
+fn run_pack_list(a: &ListArgs, store: &FrameStore, global: &Global) -> anyhow::Result<u8> {
+    let packs = load_packs(Some(store.root()), project_dir(global));
+    match a.format {
+        Format::Json => println!("{}", serde_json::to_string_pretty(&packs)?),
+        Format::Text => {
+            if packs.is_empty() {
+                println!(
+                    "no frame packs in {} or the project's frames/ folder",
+                    store.root().join(PACKS_DIR).display()
+                );
+            }
+            for p in &packs {
+                print_pack(p, global);
+            }
+        }
+    }
+    Ok(if packs.iter().any(|p| !p.errors.is_empty()) {
+        EXIT_PROBLEMS
+    } else {
+        EXIT_OK
+    })
+}
+
+fn run_pack_remove(a: &RemoveArgs, store: &FrameStore, global: &Global) -> anyhow::Result<u8> {
+    let id = a.pack.as_deref().unwrap_or_default();
+    let dir = packs_dir(a.from, store, global)?;
+    let project = match a.from {
+        PackTo::Project => project_dir(global),
+        PackTo::App => None,
+    };
+    if !pack::remove_pack(&dir, id, project).map_err(anyhow::Error::msg)? {
+        bail!("no frame pack `{id}` in {}", dir.display());
+    }
+    if !global.quiet {
+        println!("removed frame pack `{id}`");
+    }
+    Ok(EXIT_OK)
 }
 
 fn rules(source: &str) -> anyhow::Result<&'static Rules> {

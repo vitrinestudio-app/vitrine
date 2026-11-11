@@ -1284,6 +1284,111 @@ impl<'a> Editor<'a> {
         ))
     }
 
+    /// A copy of the base element `id` (with its children) and the
+    /// variant overrides of it and its children, for [`Editor::paste`].
+    pub fn copy_item(&self, id: &str) -> Result<ClipItem, EditError> {
+        let e = self.base_element(id)?;
+        let mut ids = Vec::new();
+        collect_ids(e, &mut ids);
+        let mut overrides = crate::ops::VariantOverrides::new();
+        for (vid, v) in &self.canvas.variants {
+            for i in &ids {
+                if let Some(p) = v.overrides.get(i) {
+                    overrides
+                        .entry(vid.clone())
+                        .or_default()
+                        .insert(i.clone(), p.clone());
+                }
+            }
+        }
+        Ok(ClipItem {
+            element: e.clone(),
+            overrides,
+        })
+    }
+
+    /// Paste clipboard `items` into this canvas (topmost, new unique ids).
+    /// `page`: home page of the topmost-left item (the others keep their
+    /// distance in pages; clamped to the canvas), default: the copied
+    /// pages. `offset` moves the copies by canvas lu like
+    /// [`Editor::duplicate`]. Overrides are kept for variants this canvas
+    /// has. Returns the ops and the new ids.
+    pub fn paste(
+        &self,
+        items: &[ClipItem],
+        page: Option<u32>,
+        offset: Vec2,
+    ) -> Result<(Vec<Op>, Vec<ElementId>), EditError> {
+        let count = self.canvas.page.count.max(1);
+        let first = items.iter().map(|i| i.element.page).min().unwrap_or(0);
+        let shift = page.map_or(0, |p| i64::from(p) - i64::from(first));
+        let stretch = self.scene()?.frame.layout.stretch_factor();
+        let mut taken = BTreeSet::new();
+        let mut ops = Vec::new();
+        let mut created = Vec::new();
+        for item in items {
+            let mut copy = item.element.clone();
+            shift_pages(&mut copy, shift, count);
+            let mut renames = Vec::new();
+            rename_tree(self.project, &mut copy, &mut taken, &mut renames);
+            let sy = if copy.effective_anchor_y() == crate::model::AnchorY::Stretch {
+                stretch
+            } else {
+                1.0
+            };
+            let d = Vec2::new(offset.x, offset.y / sy);
+            let moved = |el: &Element| -> ElementPatch {
+                match Param::of(el) {
+                    p @ Param::At(_) if Self::is_group(el) => p.patch(offset),
+                    p => p.patch(d),
+                }
+            };
+            let movable = offset != Vec2::ZERO && !matches!(copy.kind, ElementKind::Background(_));
+            if movable {
+                let (m, _) = copy.patched(&moved(&copy)).map_err(EditError::Invalid)?;
+                copy = m;
+            }
+            let mut overrides = crate::ops::VariantOverrides::new();
+            for (vid, map) in &item.overrides {
+                if !self.canvas.variants.contains_key(vid) {
+                    continue;
+                }
+                for (old, new) in &renames {
+                    let Some(p) = map.get(old) else { continue };
+                    let mut p = p.clone();
+                    if movable
+                        && old == &item.element.id
+                        && let Ok((eff, _)) = item.element.patched(&p)
+                    {
+                        let m = moved(&eff);
+                        if p.at.is_some() {
+                            p.at = m.at;
+                        }
+                        if p.r#box.is_some() {
+                            p.r#box = m.r#box;
+                        }
+                    }
+                    if let Some(Some(pg)) = p.page {
+                        p.page = Some(Some(shifted_page(pg, shift, count)));
+                    }
+                    overrides
+                        .entry(vid.clone())
+                        .or_default()
+                        .insert(new.clone(), p);
+                }
+            }
+            created.push(copy.id.clone());
+            ops.push(Op::AddElement {
+                canvas: self.canvas.id.clone(),
+                parent: None,
+                index: None,
+                element: copy,
+                overrides,
+            });
+        }
+        Ok((ops, created))
+    }
+
     /// Remove `id` with its children and their variant overrides.
     pub fn remove(&self, id: &str) -> Result<Vec<Op>, EditError> {
         let e = self.base_element(id)?;
@@ -1330,6 +1435,7 @@ impl<'a> Editor<'a> {
             id: gid.clone(),
             page,
             lock_page: false,
+            locked: false,
             at: Point::ZERO,
             width: None,
             height: None,
@@ -1443,8 +1549,24 @@ impl<'a> Editor<'a> {
     /// colour (the default) when nothing fits.
     pub fn patch(&self, id: &str, patch: &ElementPatch) -> Result<Vec<Op>, EditError> {
         let e = self.effective(id)?;
-        self.check_lang_fields(id, patch)?;
         let mut patch = patch.clone();
+        // The editor lock is not part of the look: always the base, in
+        // every variant and language view.
+        let mut ops = Vec::new();
+        if let Some(locked) = patch.locked.take() {
+            let base = self.base_element(id)?;
+            if base.locked != locked.unwrap_or(false) {
+                let lock = ElementPatch {
+                    locked: Some(locked),
+                    ..ElementPatch::default()
+                };
+                ops.push(self.write_op(self.project, &base.id, lock, &WriteTo::Base));
+            }
+            if patch.is_empty() {
+                return Ok(ops);
+            }
+        }
+        self.check_lang_fields(id, &patch)?;
         if let (Some(frame), None, ElementKind::Device(d)) = (&patch.frame, &patch.color, &e.kind) {
             let default = self
                 .project
@@ -1482,9 +1604,10 @@ impl<'a> Editor<'a> {
             .patched(&values)
             .map_err(|err| EditError::Invalid(format!("element `{id}`: {err}")))?;
         if patched == e && resets.is_empty() {
-            return Ok(Vec::new());
+            return Ok(ops);
         }
-        Ok(self.write(&e.id, patch))
+        ops.extend(self.write(&e.id, patch));
+        Ok(ops)
     }
 
     /// Move element `id` to position `index` of group `parent`'s children
@@ -1639,6 +1762,35 @@ impl<'a> Editor<'a> {
     /// Kind of element `id`.
     pub fn kind(&self, id: &str) -> Option<ElementKindTag> {
         self.canvas.element(id).map(Element::kind_tag)
+    }
+}
+
+/// Copied element tree with its variant overrides (see [`Editor::copy_item`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ClipItem {
+    pub element: Element,
+    pub overrides: crate::ops::VariantOverrides,
+}
+
+fn collect_ids(e: &Element, out: &mut Vec<ElementId>) {
+    out.push(e.id.clone());
+    for c in e.children() {
+        collect_ids(c, out);
+    }
+}
+
+fn shifted_page(page: u32, shift: i64, count: u32) -> u32 {
+    let p = (i64::from(page) + shift).clamp(0, i64::from(count) - 1);
+    u32::try_from(p).unwrap_or(0)
+}
+
+/// Move `e` and its descendants by `shift` home pages (clamped to `count`).
+fn shift_pages(e: &mut Element, shift: i64, count: u32) {
+    e.page = shifted_page(e.page, shift, count);
+    if let Some(children) = e.children_mut() {
+        for c in children {
+            shift_pages(c, shift, count);
+        }
     }
 }
 

@@ -4,13 +4,22 @@
 // SVG overlay, zoom/pan (shared viewport, views/viewport.js) and direct manipulation (select, marquee, move,
 // resize, rotate, nudge) with snapping and live previews.
 //
+// Pointer gestures: plain drag on empty space pans (like the other views;
+// a click there clears the selection), Shift+drag on empty space draws a
+// marquee that adds to the selection, Space/middle-drag pans anywhere,
+// dragging an element moves it. Locked elements (`locked`) are skipped by
+// clicks and marquees (the layers list still selects them). Right-click
+// (or ⇧F10 / the menu key) opens the context menu (context-menu.js).
+//
 // Drag feedback: the overlay ghost follows the pointer immediately; in
 // parallel the affected output images are re-rendered from a scratch copy
 // of the project (`render_preview_edit`, interactive quality, self-paced at
 // ≤ 15 fps). On drop one `edit_*` command commits the gesture; the preview
 // pixmaps stay until the real ones arrive, so nothing flickers.
 
+import { actions, idLocked, isLocked } from '../actions.js';
 import { api, toImageBitmap } from '../api.js';
+import { closeContextMenu, openContextMenu } from '../context-menu.js';
 import { h, s } from '../dom.js';
 import { editor } from '../editor.js';
 import { add, axes, bounds, dot, inQuad, inRect, inflate, intersects, normAngle, pageAt, rotate, sub, union } from '../geometry.js';
@@ -90,6 +99,10 @@ export function mountCanvas(root) {
     world.replaceChildren();
     slots = [];
     empty.hidden = Boolean(o);
+    // Forget the geometry with the slots: an overlay with the same geometry
+    // (e.g. after "Close project" and opening another project) must build
+    // them again.
+    slotSignature = '';
     if (!o) return;
     for (const img of o.images) slots.push(makeSlot('image', img.index, img.rect));
     o.gaps.forEach((g, i) => slots.push(makeSlot('gap', i, g)));
@@ -188,14 +201,18 @@ export function mountCanvas(root) {
     return o.elements.find((e) => e.id === id)?.groups ?? o.groups.find((g) => g.id === id)?.groups ?? [];
   }
 
-  /** Element (or enclosing group) at canvas point `p`; `deep` skips groups. */
-  function hitTest(p, deep = false) {
+  /**
+   * Element (or enclosing group) at canvas point `p`; `deep` skips groups.
+   * Locked elements are transparent unless `withLocked` (context menu).
+   */
+  function hitTest(p, deep = false, withLocked = false) {
     const o = store.get().overlay;
     if (!o) return null;
     const sel = store.get().selection;
     for (let i = o.elements.length - 1; i >= 0; i--) {
       const e = o.elements[i];
       if (e.kind === 'background') continue;
+      if (!withLocked && isLocked(o, e)) continue;
       if (e.rect.w <= 0 && e.rect.h <= 0) continue;
       if (!inQuad(p, e.quad)) continue;
       if (e.clip && !inRect(p, e.clip)) continue;
@@ -218,7 +235,7 @@ export function mountCanvas(root) {
     const o = store.get().overlay;
     const ids = new Set();
     for (const e of o.elements) {
-      if (e.kind === 'background') continue;
+      if (e.kind === 'background' || isLocked(o, e)) continue;
       const b = bounds(e.quad);
       if (!intersects(b, r)) continue;
       ids.add(e.groups?.[0] ?? e.id);
@@ -458,6 +475,7 @@ export function mountCanvas(root) {
   function cancel() {
     if (!drag) return false;
     if (drag.type === 'pan') vp.panEnd();
+    el.classList.remove('marquee');
     if (drag.type === 'nudge') clearTimeout(drag.timer);
     drag = null;
     clearPreviews();
@@ -535,9 +553,10 @@ export function mountCanvas(root) {
     const p = toLu(e);
     const target = e.target;
     const sel = store.get().selection;
-    if (target?.dataset?.rotate && sel.length === 1) {
+    const locked = sel.some((id) => idLocked(store.get().overlay, id));
+    if (target?.dataset?.rotate && sel.length === 1 && !locked) {
       startRotate(sel[0], p);
-    } else if (target?.dataset?.handle && sel.length === 1) {
+    } else if (target?.dataset?.handle && sel.length === 1 && !locked) {
       startResize(sel[0], target.dataset.handle, p);
     } else {
       const hit = hitTest(p, e.metaKey || e.ctrlKey);
@@ -548,10 +567,16 @@ export function mountCanvas(root) {
         }
         const ids = sel.includes(hit) ? sel : [hit];
         if (!sel.includes(hit)) store.set({ selection: ids });
-        startMove(ids, p, sp);
+        // A selection with locked elements (picked in the layers list) stays put.
+        if (!ids.some((id) => idLocked(store.get().overlay, id))) startMove(ids, p, sp);
+      } else if (e.shiftKey) {
+        // Shift+drag on empty space: marquee adding to the selection.
+        startMarquee(p, true);
+        el.classList.add('marquee');
       } else {
-        if (!e.shiftKey) store.set({ selection: [] });
-        startMarquee(p, e.shiftKey);
+        // Plain drag on empty space pans; a click (no drag) clears the selection.
+        drag = { type: 'pan', clear: true };
+        vp.panStart(e, false);
       }
     }
     if (drag) capture(e);
@@ -569,6 +594,9 @@ export function mountCanvas(root) {
     if (!drag) {
       const hit = vp.spaceDown() ? null : hitTest(toLu(e), e.metaKey || e.ctrlKey);
       if (hit !== store.get().hover) store.set({ hover: hit });
+      const onHandle = Boolean(e.target?.dataset?.handle || e.target?.dataset?.rotate);
+      el.classList.toggle('over-empty', !hit && !onHandle);
+      el.classList.toggle('shift', e.shiftKey);
       return;
     }
     if (drag.committing) return;
@@ -597,12 +625,15 @@ export function mountCanvas(root) {
     if (!drag || drag.committing) return;
     if (el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture(e.pointerId);
     if (drag.type === 'pan') {
+      const click = drag.clear && !vp.isPanning();
       drag = null;
       vp.panEnd(e);
+      if (click) store.set({ selection: [] });
       return;
     }
     if (drag.type === 'marquee') {
       drag = null;
+      el.classList.remove('marquee');
       redraw();
       return;
     }
@@ -617,7 +648,103 @@ export function mountCanvas(root) {
   el.addEventListener('pointercancel', () => cancel());
   el.addEventListener('pointerleave', () => {
     if (!drag && store.get().hover) store.set({ hover: null });
+    el.classList.remove('over-empty');
   });
+
+  // Shift turns the empty-space cursor into a crosshair (marquee).
+  const onShift = (e) => {
+    if (e.key === 'Shift') el.classList.toggle('shift', e.type === 'keydown');
+  };
+  window.addEventListener('keydown', onShift);
+  window.addEventListener('keyup', onShift);
+
+  // ----- context menu (context-menu.js) ---------------------------------------------
+
+  el.addEventListener('contextmenu', (e) => {
+    // ⌥/Alt + right-click keeps the web-view menu (main.js, debugging).
+    if (e.altKey) return;
+    e.preventDefault();
+    if (drag) return;
+    const p = toLu(e);
+    openMenu({ x: e.clientX, y: e.clientY, p, hit: hitTest(p, e.metaKey || e.ctrlKey, true) });
+  });
+
+  /**
+   * Opens the context menu: of the element `hit` (selected first) or the
+   * selection, else of the empty canvas at canvas point `p`. Without
+   * arguments (⇧F10 / menu key): the selection at its centre, else the
+   * empty canvas at the view centre.
+   */
+  function openMenu({ x, y, p, hit } = {}) {
+    const o = store.get().overlay;
+    if (!o) return;
+    let sel = store.get().selection;
+    if (hit && !sel.includes(hit)) {
+      sel = [hit];
+      store.set({ selection: sel });
+    }
+    const forSelection = Boolean(hit) || (!p && sel.length > 0);
+    if (x == null) {
+      const r = el.getBoundingClientRect();
+      const quads = forSelection ? itemsOf(sel) : [];
+      const S = screen(view());
+      const b = quads.length ? bounds(quads.flat().map(S)) : null;
+      x = r.left + (b ? b.x + b.w / 2 : el.clientWidth / 2);
+      y = r.top + (b ? b.y + b.h / 2 : el.clientHeight / 2);
+      p = toLu({ clientX: x, clientY: y });
+    }
+    const items = forSelection ? selectionItems(o, sel) : canvasItems(o, p);
+    openContextMenu({ x, y, items, label: t(forSelection ? 'ctx.menu' : 'ctx.menu.canvas') });
+  }
+
+  function selectionItems(o, sel) {
+    const drawn = new Set([...o.elements.map((e) => e.id), ...o.groups.map((g) => g.id)]);
+    const shown = sel.filter((id) => drawn.has(id));
+    const hidden = sel.filter((id) => !drawn.has(id));
+    const allLocked = shown.length > 0 && shown.every((id) => idLocked(o, id));
+    const groups = sel.some((id) => o.groups.some((g) => g.id === id));
+    const clip = store.get().clipboard;
+    return [
+      { label: t('ctx.cut'), key: 'mod+x', action: () => actions.cut() },
+      { label: t('ctx.copy'), key: 'mod+c', action: () => actions.copy() },
+      { label: t('ctx.paste'), key: 'mod+v', disabled: !clip, action: () => actions.paste() },
+      { label: t('ctx.duplicate'), key: 'mod+d', action: () => actions.duplicate() },
+      { label: t('ctx.delete'), key: 'delete', action: () => actions.remove() },
+      '-',
+      { label: t('ctx.front'), key: 'shift+]', action: () => actions.reorder('front') },
+      { label: t('ctx.forward'), key: ']', action: () => actions.reorder('forward') },
+      { label: t('ctx.backward'), key: '[', action: () => actions.reorder('backward') },
+      { label: t('ctx.back'), key: 'shift+[', action: () => actions.reorder('back') },
+      '-',
+      sel.length > 1 ? { label: t('ctx.group'), key: 'mod+g', action: () => actions.group() } : null,
+      groups ? { label: t('ctx.ungroup'), key: 'mod+shift+g', action: () => actions.ungroup() } : null,
+      '-',
+      allLocked
+        ? { label: t('ctx.unlock'), icon: 'unlock', action: () => actions.lock(false) }
+        : { label: t('ctx.lock'), icon: 'lock', action: () => actions.lock(true) },
+      shown.length ? { label: t('ctx.hide'), icon: 'eye-off', action: () => actions.hide(true, shown) } : null,
+      hidden.length ? { label: t('ctx.show'), icon: 'eye', action: () => actions.hide(false, hidden) } : null,
+    ];
+  }
+
+  function canvasItems(o, p) {
+    const page = p ? pageAt(o.pages, p.x) : null;
+    const n = page ? `${page.index + 1} · ${page.id}` : '';
+    const clip = store.get().clipboard;
+    return [
+      {
+        label: page ? t('ctx.paste_here').replace('{page}', n) : t('ctx.paste'),
+        key: 'mod+v',
+        disabled: !clip,
+        action: () => actions.paste(page?.index),
+      },
+      '-',
+      page ? { label: t('ctx.select_page').replace('{page}', n), action: () => actions.selectAllOnPage(page.index) } : null,
+      { label: t('ctx.select_all'), key: 'mod+a', action: () => actions.selectAll() },
+      '-',
+      { label: t('ctx.fit'), key: 'mod+0', action: () => vp.fit() },
+    ];
+  }
 
   el.addEventListener('dblclick', (e) => {
     const hit = hitTest(toLu(e), true);
@@ -659,6 +786,7 @@ export function mountCanvas(root) {
   function nudge(dx, dy) {
     const ids = store.get().selection;
     if (!ids.length || (drag && drag.type !== 'nudge') || drag?.committing) return;
+    if (ids.some((id) => idLocked(store.get().overlay, id))) return;
     if (!drag) {
       const quads = itemsOf(ids);
       if (!quads.length) return;
@@ -735,7 +863,7 @@ export function mountCanvas(root) {
       },
     ),
     store.select((st) => st.overlay, (o) => {
-      if (!o || signature(o) !== slotSignature) {
+      if (!o || signature(o) !== slotSignature || !slots.length) {
         rebuildSlots();
         if (o) vp.refresh(contentKey(o));
         updateResolution();
@@ -793,8 +921,12 @@ export function mountCanvas(root) {
     editText,
     elementAt,
     isBusy: () => Boolean(drag),
+    openMenu: () => openMenu(),
     unmount() {
       cancel();
+      closeContextMenu();
+      window.removeEventListener('keydown', onShift);
+      window.removeEventListener('keyup', onShift);
       textEdit?.close(false);
       for (const u of unsubs) u();
       vp.destroy();

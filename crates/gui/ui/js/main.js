@@ -19,6 +19,8 @@ import { applyTranslations, initI18n } from './i18n.js';
 import { bindAppShortcuts, createMenu, initNativeMenu } from './menu.js';
 import { installDropImport } from './panels/importer.js';
 import { mountShell } from './shell.js';
+import { maybeShowGuide, openGuide } from './help/guide.js';
+import { bindHelpKey, helpButton, openGestureSheet } from './help/sheet.js';
 import { bindShortcuts } from './shortcuts.js';
 import { bindFolderDrop, mountStart, openNewProject, openProjectDialog, setOnOpened } from './start.js';
 import { store } from './store.js';
@@ -68,6 +70,8 @@ const appActions = {
   importScreenshots: () => openScreenshotImport().catch(report),
   appSettings: () => openAppSettings().catch(report),
   closeProject: () => closeProject().catch(report),
+  guide: () => openGuide(),
+  gestures: () => openGestureSheet(),
   hasProject: () => Boolean(store.get().summary),
 };
 
@@ -82,6 +86,7 @@ async function showProject() {
       targets: appActions.targets,
       exportDialog: appActions.exportDialog,
       assistant: createAssistantIndicator({ openSettings: appActions.appSettings }),
+      help: helpButton(),
       // "+ Add…" entries of the top-bar pickers: open the place where that thing is created.
       addCanvas: () => openTargets(null, { mode: 'new-canvas' }).catch(report),
       addTarget: () => openTargets(null, { mode: 'add', canvas: store.get().canvas }).catch(report),
@@ -99,9 +104,16 @@ async function showProject() {
       zoomOut: () => shell.view?.zoomOut?.(),
       fit: () => shell.view?.fit?.(),
       zoomActual: () => shell.view?.zoomActual?.(),
+      // Element clipboard: only where elements are edited (the canvas view).
+      copy: () => store.get().view === 'canvas' && actions.copy(),
+      cut: () => store.get().view === 'canvas' && actions.cut(),
+      paste: () => store.get().view === 'canvas' && actions.paste(),
+      contextMenu: () => shell.canvas?.openMenu?.(),
     });
     installDropImport(() => shell.canvas);
   }
+  // Quick guide once per viewer, on the first project open (app setting `guide_seen`).
+  if (open) maybeShowGuide().catch(report);
 }
 
 async function closeProject() {
@@ -111,13 +123,13 @@ async function closeProject() {
 
 /** The backend has no project any more (closed here or by an assistant). */
 async function projectClosed() {
-  store.set({ summary: null, overlay: null, canvas: null, target: null, variant: undefined, selection: [], hover: null, validation: null });
+  store.set({ summary: null, overlay: null, canvas: null, target: null, variant: undefined, selection: [], hover: null, validation: null, clipboard: 0 });
   await showProject();
 }
 
 /** A project was opened (start screen, menu, or by an assistant over MCP). */
 async function projectOpened() {
-  store.set({ selection: [], hover: null, variant: undefined, canvas: null, target: null, lang: null, validation: null });
+  store.set({ selection: [], hover: null, variant: undefined, canvas: null, target: null, lang: null, validation: null, clipboard: 0 });
   await showProject();
 }
 
@@ -178,6 +190,7 @@ async function start() {
   startScreen = mountStart(document.getElementById('welcome'), {
     version: `${info.version}${isTauri ? '' : ' · dev bridge'}`,
     onSettings: appActions.appSettings,
+    onGuide: appActions.guide,
   });
   setOnOpened(projectOpened);
   // AI assistants over MCP (ADR 0015): their edits show live, projects they open
@@ -192,6 +205,7 @@ async function start() {
     redo: () => appActions.hasProject() && actions.redo(),
   });
   bindAppShortcuts(appActions);
+  bindHelpKey();
   await bindFolderDrop();
   await listen('project-changed', (change) => {
     if (store.get().summary) editor.externalChange(change).catch(report);

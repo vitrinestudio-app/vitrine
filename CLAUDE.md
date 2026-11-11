@@ -134,6 +134,13 @@ user: package (folder/zip/DMG), name rules in
 `data/frame-import/apple.yaml`, screen detection, app-wide store
 `<app data>/frames/` (`VITRINE_APP_DIR` overrides the app folder, GUI and
 CLI), one bezel per vendor model (iPhone 18 Pro and Pro Max side by side);
+Own frame packs (ADR 0024, `core::frame_import::pack`): `frame.yaml` +
+PNG/SVG in a project's `frames/<id>/` or `<app data>/frames/packs/<id>/`,
+compiled (bezel + mask + index, stamp) into `.cache/frames/<id>/` /
+`.compiled/`, added to the `FrameIndex` as source `pack:<id>` with its own
+folder; SVG via `vitrine_render::frame_packs::ResvgRasterizer`; one entry
+point `vitrine_render::frame_packs::frame_index(frames_root, project)`;
+`frame: pack:<id>` resolves like an imported frame.
 `frame: imported:apple` resolves to it (bezel picked per target page size,
 screenshot size, aspect, or pinned with `bezel:`) or falls back to the
 parametric frame (info `imported_frame_missing`).

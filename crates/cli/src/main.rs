@@ -102,7 +102,7 @@ enum Command {
     /// Import files into the project (`screenshots <dir>`: fastlane, Vitrine Studio or flat folders).
     #[command(subcommand)]
     Import(import::ImportCommand),
-    /// Import, list and remove vendor device frames (Apple Product Bezels).
+    /// Import, list and remove device frames (Apple Product Bezels, own frame packs).
     Frames(frames::FramesArgs),
     /// Run the MCP server over stdio (for Claude Code / Claude Desktop).
     Mcp(mcp::McpArgs),

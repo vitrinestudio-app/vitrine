@@ -528,6 +528,70 @@ export async function openTargets(focus, opts = {}) {
       mode = 'new-canvas';
       refresh();
     };
+    // "Banner from this canvas" (6.2): store banners from a page range.
+    const bannerBox = h('div', { class: 'stack' });
+    let bannerPage = 0;
+    const drawBanners = async () => {
+      let opts;
+      try {
+        opts = await api.canvasBannerOptions(id, bannerPage);
+      } catch (e) {
+        err.show(e);
+        return;
+      }
+      const fromPage = input({
+        type: 'number',
+        value: bannerPage + 1,
+        min: 1,
+        max: info.count,
+        step: 1,
+        cls: 'num',
+        title: t('banner.from_page'),
+        onchange: (v) => {
+          const n = Math.round(Number(v));
+          if (Number.isFinite(n)) {
+            bannerPage = Math.min(Math.max(n, 1), info.count) - 1;
+            drawBanners();
+          }
+        },
+      });
+      bannerBox.replaceChildren(
+        h('p', { class: 'muted small' }, t('banner.hint')),
+        h('div', { class: 'inline' }, h('span', { class: 'muted small' }, t('banner.from_page')), fromPage),
+        ...opts.map((o) =>
+          h(
+            'div',
+            { class: 'inline' },
+            h(
+              'span',
+              { class: 'grow' },
+              t(`banner.preset.${o.preset}`),
+              h('span', { class: 'muted small' }, ` · ${o.size[0]}×${o.size[1]} · ${t('banner.pages').replace('{a}', String(o.pages[0] + 1)).replace('{b}', String(o.pages[1] + 1))}`),
+              o.existing.length ? h('span', { class: 'muted small' }, ` · ${t('banner.existing').replace('{ids}', o.existing.join(', '))}`) : null,
+            ),
+            h(
+              'button',
+              {
+                class: 'btn btn-small',
+                type: 'button',
+                onclick: async () => {
+                  const r = await commit(() => api.targetAddBanner({ canvas: id, preset: o.preset, pages: o.pages }));
+                  const created = r?.created?.[0];
+                  if (created) {
+                    selected = created;
+                    mode = 'edit';
+                    await refresh();
+                  }
+                },
+              },
+              icon('plus'),
+              t('banner.add'),
+            ),
+          ),
+        ),
+      );
+    };
+    drawBanners();
     const last = s.canvases.length <= 1;
     pane.replaceChildren(
       h(
@@ -549,6 +613,7 @@ export async function openTargets(focus, opts = {}) {
           row(t('canvases.id'), input({ value: id, cls: 'mono', onchange: (v) => rename(v.trim()) }), t('canvases.rename.hint')),
           row(t('canvas.pages'), h('span', {}, `${info.count} × ${info.aspect}`), t('canvases.pages.hint')),
           row(t('canvases.targets'), h('div', { class: 'stack' }, targetItems, h('div', {}, h('button', { class: 'btn btn-small', type: 'button', onclick: addTarget }, icon('plus'), t('targets.add'))))),
+          row(t('banner.title'), bannerBox),
           row(
             t('canvas.variants'),
             h(

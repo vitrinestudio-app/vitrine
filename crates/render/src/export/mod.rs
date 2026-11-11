@@ -988,7 +988,9 @@ fn scene_hash(
         if let ResolvedKind::Device(d) = &e.props {
             format!("{:?}{:?}", d.device, d.palette).hash(&mut h);
             // A re-imported frame keeps its path: hash its files' mtimes.
-            if let (Some(f), Some(cache)) = (&d.imported, ctx.frame_assets()) {
+            if let Some(f) = &d.imported
+                && let Some(cache) = ctx.frame_assets(&f.source)
+            {
                 cache.mtime(&f.file).hash(&mut h);
                 cache.mtime(&f.mask).hash(&mut h);
             }

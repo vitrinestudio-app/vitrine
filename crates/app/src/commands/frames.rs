@@ -1,5 +1,5 @@
-//! Imported vendor frames (KONZEPT §4.2, ADR 0012): app settings →
-//! "Frame packages". The store lives in the app data folder
+//! Imported vendor frames (KONZEPT §4.2, ADR 0012) and own frame packs
+//! (ADR 0024): app settings → "Frame packages". The store lives in the app data folder
 //! (`<data>/frames/`), never in a project; after every change the open
 //! session renders with the new index.
 
@@ -8,11 +8,15 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use vitrine_core::frame_import::pack::{
+    self, PACKS_DIR, PROJECT_FRAMES_DIR, PackImport, PackInfo, PackTarget,
+};
 use vitrine_core::frame_import::{
     Assignment, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, InstalledColor, InstalledFrame,
     Package, PackageError, RemoveFilter, Rules, import, normalize_name,
 };
 use vitrine_core::model::Orientation;
+use vitrine_render::frame_packs;
 use vitrine_render::raster::{Filter, SourceImage};
 
 use super::{AppState, NoArgs};
@@ -32,16 +36,22 @@ impl AppState {
         self.paths().data_dir.join(FRAMES_DIR)
     }
 
-    /// Installed frames (`None` when nothing is installed).
+    /// Installed frames plus frame packs (app-wide and those of the
+    /// project in `project`, ADR 0024); `None` when there is nothing.
+    pub fn frame_index_for(&self, project: Option<&Path>) -> Option<Arc<FrameIndex>> {
+        frame_packs::frame_index(Some(&self.frames_root()), project)
+    }
+
+    /// [`Self::frame_index_for`] the open project (if any).
     pub fn frame_index(&self) -> Option<Arc<FrameIndex>> {
-        let index = FrameIndex::load(&self.frames_root());
-        (!index.is_empty()).then(|| Arc::new(index))
+        let dir = self.session().ok().map(|s| s.dir().to_owned());
+        self.frame_index_for(dir.as_deref())
     }
 
     /// Hands the current index to the open project (re-render, re-validate).
-    fn refresh_frames(&self) {
+    pub(crate) fn refresh_frames(&self) {
         if let Ok(s) = self.session() {
-            s.set_frames(self.frame_index(), true);
+            s.set_frames(self.frame_index_for(Some(s.dir())), true);
         }
     }
 }
@@ -180,6 +190,9 @@ pub struct FramesList {
     /// The store folder (app data, never a project).
     pub root: PathBuf,
     pub sources: Vec<FrameSourceInfo>,
+    /// Own frame packs (ADR 0024): the open project's (`frames/`) first,
+    /// then the app-wide ones (`<root>/packs/`).
+    pub packs: Vec<PackInfo>,
 }
 
 pub fn frames_list(app: &AppState, _: NoArgs) -> CmdResult<FramesList> {
@@ -216,7 +229,93 @@ pub fn frames_list(app: &AppState, _: NoArgs) -> CmdResult<FramesList> {
             }
         })
         .collect();
-    Ok(FramesList { root, sources })
+    let project = app.session().ok().map(|s| s.dir().to_owned());
+    let packs = frame_packs::load_packs(Some(&root), project.as_deref());
+    Ok(FramesList {
+        root,
+        sources,
+        packs,
+    })
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FramesPackImportArgs {
+    /// Pack folder (with `frame.yaml`) or `.zip`.
+    pub path: PathBuf,
+    /// `app` (this computer, default) or `project` (the open project's
+    /// `frames/` folder, travels with it).
+    #[serde(default = "default_pack_target")]
+    pub target: PackTarget,
+    /// Pack id (default: from the pack's name).
+    #[serde(default)]
+    pub id: Option<String>,
+    /// Only check (compile into a temporary folder).
+    #[serde(default)]
+    pub dry_run: bool,
+}
+
+fn default_pack_target() -> PackTarget {
+    PackTarget::App
+}
+
+/// Folder the packs of `target` live in.
+fn packs_dir(app: &AppState, target: PackTarget) -> CmdResult<PathBuf> {
+    Ok(match target {
+        PackTarget::App => app.frames_root().join(PACKS_DIR),
+        PackTarget::Project => app.session()?.dir().join(PROJECT_FRAMES_DIR),
+    })
+}
+
+/// Checks (`dry_run`) or imports an own frame pack (ADR 0024) and
+/// refreshes the open project.
+pub fn frames_pack_import(app: &AppState, args: FramesPackImportArgs) -> CmdResult<PackImport> {
+    if !pack::is_pack(&args.path) {
+        return Err(CommandError::invalid(format!(
+            "{}: not a frame pack (no `{}`)",
+            args.path.display(),
+            pack::PACK_FILE
+        ))
+        .with_details(serde_json::json!({ "kind": "not_a_pack" })));
+    }
+    let dest = packs_dir(app, args.target)?;
+    let r = pack::import_pack(
+        &args.path,
+        &dest,
+        args.target,
+        args.id.as_deref(),
+        !args.dry_run,
+        Some(&frame_packs::ResvgRasterizer),
+    )
+    .map_err(CommandError::invalid)?;
+    if r.applied {
+        app.refresh_frames();
+    }
+    Ok(r)
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FramesPackRemoveArgs {
+    pub id: String,
+    /// Where the pack lives (`app` or `project`).
+    #[serde(default = "default_pack_target")]
+    pub target: PackTarget,
+}
+
+/// Removes an own frame pack (its folder); `false` if there was none.
+pub fn frames_pack_remove(app: &AppState, args: FramesPackRemoveArgs) -> CmdResult<bool> {
+    let dest = packs_dir(app, args.target)?;
+    let project = match args.target {
+        PackTarget::Project => Some(app.session()?.dir().to_owned()),
+        PackTarget::App => None,
+    };
+    let removed = pack::remove_pack(&dest, &args.id, project.as_deref())
+        .map_err(|e| CommandError::new(ErrorCode::Io, e))?;
+    if removed {
+        app.refresh_frames();
+    }
+    Ok(removed)
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -265,18 +364,30 @@ pub struct FramesThumbnailArgs {
 /// PNG thumbnail of an installed bezel.
 pub fn frames_thumbnail(app: &AppState, args: FramesThumbnailArgs) -> CmdResult<Arc<PreviewImage>> {
     let rel = Path::new(&args.file);
+    let pack_id = args.source.strip_prefix(pack::PACK_PREFIX);
     let ok = !args.file.is_empty()
         && rel.components().all(|c| matches!(c, Component::Normal(_)))
-        && Path::new(&args.source)
-            .components()
-            .all(|c| matches!(c, Component::Normal(_)));
+        && match pack_id {
+            Some(id) => vitrine_core::model::is_valid_id(id),
+            None => Path::new(&args.source)
+                .components()
+                .all(|c| matches!(c, Component::Normal(_))),
+        };
     if !ok {
         return Err(CommandError::invalid(format!(
             "`{}` is not an installed frame file",
             args.file
         )));
     }
-    let abs = app.frames_root().join(&args.source).join(rel);
+    let base = match pack_id {
+        // Compiled pack files (project packs win over app packs).
+        Some(_) => app
+            .frame_index()
+            .map(|ix| ix.source_dir(&args.source))
+            .ok_or_else(|| CommandError::not_found(format!("no frame pack `{}`", args.source)))?,
+        None => app.frames_root().join(&args.source),
+    };
+    let abs = base.join(rel);
     let render_err = |e: String| CommandError::new(ErrorCode::Render, e);
     let img = SourceImage::load(&abs)
         .map_err(|e| CommandError::not_found(format!("{}: {e}", args.file)))?;

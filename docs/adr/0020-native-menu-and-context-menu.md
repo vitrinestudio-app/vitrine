@@ -63,3 +63,12 @@ plus Tauri's default macOS menu (English, no app actions).
   dev bridge).
 - Help links must be in `HELP_URLS` (`vitrine_app::commands::os`); user
   guide links can be added there once the guide is online.
+
+## Amendment (2026-11-11): in-app help
+
+The Help menu now starts with the app's own help: "How Vitrine Studio is
+organised…" (quick guide) and "Keyboard & mouse…" (sheet generated from
+`ui/js/help/gestures.js`), then the store docs links. The in-app ☰ menu
+ends with the same two entries. They open on top of any open dialog and
+without a project. `?` opens the sheet from JS only (no native
+accelerator).
