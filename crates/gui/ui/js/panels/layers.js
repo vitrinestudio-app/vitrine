@@ -1,4 +1,4 @@
-// Layers panel (left sidebar, task 2.6): the current strip's elements as a
+// Layers panel (left sidebar, task 2.6): the current canvas's elements as a
 // tree, topmost first. Groups expand/collapse; click selects (shift/cmd
 // adds), double-click renames, the eye toggles `visible` (an override in a
 // variant view), drag & drop reorders or moves into/out of groups
@@ -6,7 +6,7 @@
 // and, in a variant view, a marker for overridden elements.
 
 import { h, icon } from '../dom.js';
-import { currentStrip, effectiveVariant } from '../store.js';
+import { currentCanvas, effectiveVariant } from '../store.js';
 
 const KIND_ICON = { device: 'device', text: 'text', image: 'image', shape: 'shape', group: 'group', background: 'background' };
 const collapsed = new Set();
@@ -20,11 +20,11 @@ export function mount(el, { store, editor, api, t, viewArgs }) {
   let drag = null;
 
   /** `{ id → { e, children: [ids] } }` and the top-level ids, painting order. */
-  function tree(strip) {
+  function tree(canvas) {
     const nodes = new Map();
     const top = [];
-    for (const e of strip.elements) nodes.set(e.id, { e, children: [] });
-    for (const e of strip.elements) {
+    for (const e of canvas.elements) nodes.set(e.id, { e, children: [] });
+    for (const e of canvas.elements) {
       if (e.parent && nodes.has(e.parent)) nodes.get(e.parent).children.push(e.id);
       else top.push(e.id);
     }
@@ -127,13 +127,13 @@ export function mount(el, { store, editor, api, t, viewArgs }) {
 
   function render() {
     const st = store.get();
-    const strip = currentStrip(st);
-    if (!strip) {
+    const canvas = currentCanvas(st);
+    if (!canvas) {
       list.replaceChildren();
       empty.hidden = false;
       return;
     }
-    const t0 = tree(strip);
+    const t0 = tree(canvas);
     const order = visibleOrder(t0);
     empty.hidden = order.length > 0;
     const drawn = drawnIds(st.overlay);
@@ -192,7 +192,7 @@ export function mount(el, { store, editor, api, t, viewArgs }) {
           h('span', { class: 'layer-icon' }, icon(KIND_ICON[e.kind] ?? 'shape')),
           h('span', { class: 'layer-name' }, h('span', { class: 'layer-id' }, id), e.kind === 'text' || e.kind === 'device' || e.kind === 'image' ? h('span', { class: 'layer-label' }, e.label) : null),
           over.length ? h('span', { class: 'layer-over', title: `${t('inspector.overrides')}: ${over.join(', ')}` }) : null,
-          isGroup ? null : h('span', { class: 'layer-page', title: `${t('inspector.page')} ${e.page + 1} · ${strip.page.ids[e.page] ?? ''}` }, String(e.page + 1)),
+          isGroup ? null : h('span', { class: 'layer-page', title: `${t('inspector.page')} ${e.page + 1} · ${canvas.page.ids[e.page] ?? ''}` }, String(e.page + 1)),
           eye,
         ];
         li.append(...parts.filter(Boolean));
@@ -251,7 +251,7 @@ export function mount(el, { store, editor, api, t, viewArgs }) {
     if (first && !list.contains(document.activeElement)) first.scrollIntoView({ block: 'nearest' });
   }
 
-  const unsub = store.select((s) => [s.summary, s.strip, s.selection, s.overlay, s.variant], render);
+  const unsub = store.select((s) => [s.summary, s.canvas, s.selection, s.overlay, s.variant], render);
   render();
   return { unmount: () => unsub() };
 }

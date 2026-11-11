@@ -1,4 +1,4 @@
-//! The GUI's view (strip, target, language, variant, selection), pushed by
+//! The GUI's view (canvas, target, language, variant, selection), pushed by
 //! the GUI and read by other front ends (see [`crate::view`]).
 
 use super::{AppState, NoArgs};

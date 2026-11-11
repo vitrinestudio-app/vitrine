@@ -332,7 +332,7 @@ fn failures_exit_with_code_2() {
     let dir = new_project(&tmp, &[]);
     let yaml = dir.join("project.yaml");
     let text = std::fs::read_to_string(&yaml).unwrap();
-    std::fs::write(&yaml, text.replace("strips:", "strips: [")).unwrap();
+    std::fs::write(&yaml, text.replace("canvases:", "canvases: [")).unwrap();
     let o = vitrine_in(&dir, &["export"]);
     assert_eq!(code(&o), 2);
     let err = stderr(&o);

@@ -64,7 +64,7 @@ languages: {default: en, available: [en]}
 styles:
   shadows:
     drop: {layers: [{color: "#000000CC", blur: 8}]}
-strips:
+canvases:
 - id: s
   page: {aspect: 1:1, count: 3}
   backgrounds: ["#FFFFFF"]
@@ -73,7 +73,7 @@ strips:
   - {id: png, kind: image, page: 1, at: {x: 500, y: 500}, width: 400, asset: assets/ring.png, shadow: drop, rotation: 30}
   - {id: sq, kind: image, page: 2, at: {x: 500, y: 500}, width: 400, asset: assets/square.png, shadow: drop}
 targets:
-- {id: t, strip: s, size: [1000, 1000]}
+- {id: t, canvas: s, size: [1000, 1000]}
 "##;
 
 #[test]
@@ -122,7 +122,7 @@ styles:
     outlined: {weight: 900, size: 400, color: "#000000", stroke: {color: "@ring", width: 10}}
   spans:
     plain: {stroke: {color: "#000000", width: 0}}
-strips:
+canvases:
 - id: s
   page: {aspect: 1:1, count: 4}
   backgrounds: ["#FFFFFF"]
@@ -132,7 +132,7 @@ strips:
   - {id: c, kind: text, page: 2, at: {x: 500, y: 500}, width: 900, text: h, style: big, align: center, valign: center, glow: {color: "#0000FF", radius: 20}}
   - {id: d, kind: text, page: 3, at: {x: 500, y: 500}, width: 900, text: hs, style: outlined, align: center, valign: center, rotation: 20}
 targets:
-- {id: t, strip: s, size: [1000, 1000]}
+- {id: t, canvas: s, size: [1000, 1000]}
 "##;
 
 fn rgb(r: &Rendered, x: u32, y: u32) -> [u8; 3] {

@@ -16,7 +16,7 @@ use vitrine_core::model::{COMMON_FIELDS, ElementKindTag, ElementPatch, LANG_OVER
 pub const TOPICS: [(&str, &str); 7] = [
     (
         "overview",
-        "concepts: project, strip, pages, lu, elements, targets, workflow",
+        "concepts: project, canvas, pages, lu, elements, targets, workflow",
     ),
     (
         "elements",
@@ -28,7 +28,7 @@ pub const TOPICS: [(&str, &str); 7] = [
     ),
     (
         "project",
-        "project.yaml structure: languages, styles, strips, variants, targets, import",
+        "project.yaml structure: languages, styles, canvases, variants, targets, import",
     ),
     (
         "markup",
@@ -270,7 +270,7 @@ const FIELD_DOCS: &[(&str, &str)] = &[
     // background
     (
         "background.fill",
-        "fill (see Value shapes) – fills the home page (canvas-wide backgrounds: strip `backgrounds`, strip_update)",
+        "fill (see Value shapes) – fills the home page (canvas-wide backgrounds: canvas `backgrounds`, canvas_update)",
     ),
     // group
     (
@@ -295,7 +295,7 @@ fn doc(kind: ElementKindTag, field: &str) -> Option<&'static str> {
 pub fn elements() -> String {
     let mut s = String::from(
         "# Element fields\n\n\
-Elements live in `strips[].elements` (painting order: first = bottom). One YAML map per \
+Elements live in `canvases[].elements` (painting order: first = bottom). One YAML map per \
 element, tagged by `kind`; unknown fields are errors (the error message lists the allowed \
 ones). Units: lu (a page is 1000 lu wide). Colours: `#RRGGBB`, `#RRGGBBAA` or `@name` \
 (styles.colors). In element_update / update_element a field set to `null` resets it to the \
@@ -335,7 +335,7 @@ Set them with element_update {{scope: \"lang\", lang}}; remove with element_rese
 const VALUE_SHAPES: &str = "
 ## Value shapes
 - Point: `{x, y}` in lu.
-- Fill (backgrounds, shapes, strip `backgrounds`):
+- Fill (backgrounds, shapes, canvas `backgrounds`):
   - colour string `\"#0B3324\"` / `\"@primary\"` (= `{kind: color, color}`)
   - `{kind: linear-gradient, angle?: degrees (CSS: 0 = to top, 90 = to right, default 180 = to bottom), stops: [[colour, 0..1], …]}`
   - `{kind: radial-gradient, center?: {x, y} fractions of the area (default centre), radius?: fraction of the larger side (default 0.5), stops: [[colour, pos], …]}`

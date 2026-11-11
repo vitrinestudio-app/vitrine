@@ -1,4 +1,4 @@
-//! What the user is looking at in the GUI (ADR 0013): strip, target,
+//! What the user is looking at in the GUI (ADR 0013): canvas, target,
 //! language, variant and selection. The GUI pushes it into the session
 //! (`view_set`, debounced) whenever its view context or selection changes;
 //! other front ends (MCP: `view_get`, `selection_get`) read it, so an
@@ -12,9 +12,9 @@ use serde::{Deserialize, Deserializer, Serialize};
 #[serde(deny_unknown_fields)]
 #[allow(clippy::option_option)]
 pub struct ViewState {
-    /// Current strip id.
+    /// Current canvas id.
     #[serde(default)]
-    pub strip: Option<String>,
+    pub canvas: Option<String>,
     /// Current target id.
     #[serde(default)]
     pub target: Option<String>,
@@ -23,7 +23,7 @@ pub struct ViewState {
     pub lang: Option<String>,
     /// As in the view context of the edit commands: missing = the
     /// target's own variant, `null` = the base elements, a name = that
-    /// variant of the strip.
+    /// variant of the canvas.
     #[serde(
         default,
         deserialize_with = "double_option",

@@ -9,8 +9,8 @@ use serde::Serialize;
 use crate::catalog::{ColorVariant, Device};
 use crate::geometry::{CanvasLayout, Rect, Vec2, Viewport};
 use crate::model::{
-    Align, Appearance, Chrome, ElementId, FitMode, FrameStyle, ImageFillMode, Lang, Orientation,
-    PixelSize, Rgba, ShapeKind, StringKey, StripId, StrokeJoin, StrokePosition, TargetId,
+    Align, Appearance, CanvasId, Chrome, ElementId, FitMode, FrameStyle, ImageFillMode, Lang,
+    Orientation, PixelSize, Rgba, ShapeKind, StringKey, StrokeJoin, StrokePosition, TargetId,
     TargetKind, TextTransform, VAlign, VariantId,
 };
 
@@ -18,7 +18,7 @@ use crate::model::{
 #[derive(Clone, Debug, Serialize)]
 pub struct ResolvedScene {
     pub target: TargetId,
-    pub strip: StripId,
+    pub canvas: CanvasId,
     /// Requested language.
     pub lang: Lang,
     /// Variant applied (`None` if the target names none or it is unknown).
@@ -60,7 +60,7 @@ pub struct Frame {
     pub gallery: Option<GalleryInfo>,
 }
 
-/// One page of the strip on the canvas.
+/// One page of the canvas on the canvas.
 #[derive(Clone, Debug, Serialize)]
 pub struct PageFrame {
     pub index: u32,
@@ -559,13 +559,13 @@ pub enum DiagnosticCode {
     UnknownGallery,
     /// `gaps: as_store` on a banner without gallery.
     NoGallery,
-    /// An element's home page is outside the strip.
+    /// An element's home page is outside the canvas.
     PageOutOfRange,
     /// A required size is missing; a default is used.
     MissingSize,
     /// Page count is not a multiple of `group`.
     PartialImage,
-    /// A banner region exceeds the strip.
+    /// A banner region exceeds the canvas.
     RegionOutOfRange,
     /// `frame: imported:<source>` but no such frame is installed; the
     /// parametric frame is drawn.

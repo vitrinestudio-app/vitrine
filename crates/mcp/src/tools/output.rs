@@ -317,7 +317,7 @@ fn issues(app: &AppState, target: &str, lang: &str) -> Result<Value, CommandErro
 #[tool_router(router = output_tools, vis = "pub(crate)")]
 impl VitrineMcp {
     #[tool(
-        description = "Render a PNG preview with the export renderer and return it as an image – look at it after every visual change. view: image (one output image as exported; pick `image` index or `page`), canvas (whole strip with page borders and hatched gaps), gallery (all images with store gaps). Also returns size, the number of output images and errors/warnings of this target × language. Example: {\"target\": \"ios-iphone-69\", \"lang\": \"de\", \"page\": 2}.",
+        description = "Render a PNG preview with the export renderer and return it as an image – look at it after every visual change. view: image (one output image as exported; pick `image` index or `page`), canvas (whole canvas with page borders and hatched gaps), gallery (all images with store gaps). Also returns size, the number of output images and errors/warnings of this target × language. Example: {\"target\": \"ios-iphone-69\", \"lang\": \"de\", \"page\": 2}.",
         annotations(read_only_hint = true)
     )]
     async fn render_preview(

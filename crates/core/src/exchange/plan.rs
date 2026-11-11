@@ -403,7 +403,7 @@ pub fn check_layout(plan: &mut ImportPlan, p: &Project, opts: &ValidateOptions<'
         .filter(relevant)
         .collect();
     let mut keys = BTreeMap::new();
-    for s in &after.strips {
+    for s in &after.canvases {
         s.walk_elements(&mut |e| {
             if let ElementKind::Text(t) = &e.kind {
                 keys.insert(e.id.to_string(), t.text.to_string());

@@ -22,7 +22,7 @@ pub enum DocTopic {
     Elements,
     /// JSON shape of every op for `apply_ops` (incl. override ops).
     Ops,
-    /// `project.yaml` structure: languages, styles, strips, variants, targets.
+    /// `project.yaml` structure: languages, styles, canvases, variants, targets.
     Project,
     /// Inline text markup, auto-fit, hyphenation.
     Markup,

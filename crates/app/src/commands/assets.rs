@@ -80,10 +80,10 @@ pub struct AssetsListing {
     pub screenshots: Vec<ScreenshotFile>,
     pub assets: Vec<AssetFile>,
     pub fonts: Vec<AssetFile>,
-    /// Screenshot key → device elements using it (base elements, all strips).
+    /// Screenshot key → device elements using it (base elements, all canvases).
     pub screenshot_keys: BTreeMap<String, Vec<String>>,
-    /// Asset path → elements (image, background) using it; strip-wide
-    /// backgrounds are listed as `<strip>:background`.
+    /// Asset path → elements (image, background) using it; canvas-wide
+    /// backgrounds are listed as `<canvas>:background`.
     pub asset_usage: BTreeMap<String, Vec<String>>,
     /// Screenshot variants named by targets (in target order, unique).
     pub variants: Vec<String>,
@@ -393,7 +393,7 @@ fn usage(p: &Project) -> Usage {
             assets.entry(asset.clone()).or_default().push(who);
         }
     };
-    for s in &p.strips {
+    for s in &p.canvases {
         for b in &s.backgrounds {
             fill(b, format!("{}:background", s.id), &mut assets);
         }

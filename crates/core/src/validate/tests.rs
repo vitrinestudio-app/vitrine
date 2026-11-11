@@ -6,7 +6,7 @@ use super::*;
 use crate::model::{ImageFormat, PixelSize, StringKey};
 use crate::resolve::NoAssets;
 
-/// A two-page 1:2 strip with `elements` and one 1000x2000 target `t`
+/// A two-page 1:2 canvas with `elements` and one 1000x2000 target `t`
 /// (extra target fields in `target`), languages en (default) + de.
 fn project(elements: &str, target: &str) -> Project {
     let yaml = format!(
@@ -16,13 +16,13 @@ name: t
 languages:
   default: en
   available: [en, de]
-strips:
+canvases:
 - id: s
   page: {{aspect: 1000:2000, count: 2}}
   elements: {elements}
 targets:
 - id: t
-  strip: s
+  canvas: s
   size: [1000, 2000]
 {target}"
     );
@@ -171,11 +171,11 @@ fn override_for_unknown_element() {
 }
 
 #[test]
-fn unknown_strip_and_target_filter() {
+fn unknown_canvas_and_target_filter() {
     let mut p = project("[]", "");
-    p.targets[0].strip = crate::model::StripId::new("gone");
+    p.targets[0].canvas = crate::model::CanvasId::new("gone");
     let r = run(&p);
-    assert_eq!(codes(&r), [(Severity::Error, FindingCode::UnknownStrip)]);
+    assert_eq!(codes(&r), [(Severity::Error, FindingCode::UnknownCanvas)]);
     let mut o = ValidateOptions::new(&NoAssets);
     o.targets = Some(vec!["nope".into()]);
     let r = validate(&p, &o);
@@ -518,14 +518,14 @@ fn store_size_and_count() {
     p.targets[0].size = PixelSize::new(1320, 2868);
     assert!(!has(&run(&p), FindingCode::StoreSize));
     // More than 10 images.
-    p.strips[0].page.count = 11;
+    p.canvases[0].page.count = 11;
     let r = run(&p);
     let f = find(&r, FindingCode::StoreCount);
     assert_eq!(f.level, Severity::Error);
     // Google: long side at most 2x the short side; fewer than 2 images.
     let mut p = project("[]", "  store: {google: {image_type: phoneScreenshots}}\n");
     p.targets[0].size = PixelSize::new(1080, 2400);
-    p.strips[0].page.count = 1;
+    p.canvases[0].page.count = 1;
     let r = run(&p);
     assert!(find(&r, FindingCode::StoreSize).message.contains("2x"));
     assert_eq!(find(&r, FindingCode::StoreCount).level, Severity::Warn);

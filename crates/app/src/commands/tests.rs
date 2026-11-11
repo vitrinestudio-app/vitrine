@@ -73,7 +73,7 @@ fn open_summarizes_and_records_recent() {
     let s = open(&f);
     assert_eq!(s["name"], "Fernwood");
     assert_eq!(s["languages"]["default"], "en");
-    let phone = &s["strips"][0];
+    let phone = &s["canvases"][0];
     assert_eq!(phone["id"], "phone");
     assert_eq!(phone["page"]["count"], 6);
     assert_eq!(phone["page"]["ids"][0], "plan");
@@ -425,7 +425,7 @@ fn element_yaml(f: &Fixture, id: &str) -> Value {
         None
     }
     let model = call(&f.app, "project_get", Value::Null);
-    model["project"]["strips"]
+    model["project"]["canvases"]
         .as_array()
         .unwrap()
         .iter()
@@ -438,7 +438,7 @@ fn overlay_describes_the_view() {
     let f = fixture();
     open(&f);
     let o = call(&f.app, "overlay", json!({"target": "ios-iphone-69"}));
-    assert_eq!(o["strip"], "phone");
+    assert_eq!(o["canvas_id"], "phone");
     assert_eq!(o["pages"].as_array().unwrap().len(), 6);
     assert_eq!(o["gaps"].as_array().unwrap().len(), 5);
     let phone = overlay_element(&o, "phone-plan");
@@ -797,7 +797,7 @@ fn element_add_builds_each_kind_with_defaults() {
     let r = add("background", 0);
     let bg = r["created"][0].as_str().unwrap();
     let model = call(&f.app, "project_get", Value::Null);
-    let first = &model["project"]["strips"][0]["elements"][0];
+    let first = &model["project"]["canvases"][0]["elements"][0];
     assert_eq!(first["id"], bg, "backgrounds go to the bottom");
 
     let mut args = view.clone();
@@ -858,10 +858,10 @@ fn view_set_and_get() {
     open(&f);
     assert_eq!(
         call(&f.app, "view_get", Value::Null),
-        json!({"strip": null, "target": null, "lang": null, "selection": []})
+        json!({"canvas": null, "target": null, "lang": null, "selection": []})
     );
     let view = json!({
-        "strip": "phone", "target": "ios-iphone-69", "lang": "de",
+        "canvas": "phone", "target": "ios-iphone-69", "lang": "de",
         "variant": null, "selection": ["band"],
     });
     assert_eq!(call(&f.app, "view_set", view.clone()), view);

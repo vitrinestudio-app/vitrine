@@ -19,7 +19,7 @@ use vitrine_core::edit::{
 use vitrine_core::geometry::Vec2;
 use vitrine_core::io;
 use vitrine_core::layout::{FontLibrary, TextLayouter};
-use vitrine_core::model::{ElementId, ElementKind, Lang, StripId, VariantId};
+use vitrine_core::model::{CanvasId, ElementId, ElementKind, Lang, VariantId};
 use vitrine_core::ops::Op;
 use vitrine_core::resolve::{ResolveOptions, ResolvedElement, resolve};
 
@@ -273,7 +273,7 @@ fn resize_keeps_the_fixed_handle() {
     assert!(close(handle_point(&after, Handle::Nw), fixed));
     // The base width is untouched; the override holds width / content_scale.
     assert_eq!(p.element("hero-phone").unwrap().1.width, Some(820.0));
-    let o = &p.strips[0].variants[&VariantId::new("tablet-landscape")].overrides["hero-phone"];
+    let o = &p.canvases[0].variants[&VariantId::new("tablet-landscape")].overrides["hero-phone"];
     assert!((o.width.unwrap().unwrap() - 500.0 / 0.75).abs() < 1e-6);
 
     // Rotated shape, both dimensions, fixed east edge.
@@ -444,14 +444,18 @@ fn order_duplicate_remove() {
     });
     apply(&mut p, ops);
     assert_eq!(
-        p.strips[0].elements.last().unwrap().id.as_str(),
+        p.canvases[0].elements.last().unwrap().id.as_str(),
         "hero-phone"
     );
     let ops = with_editor(&p, &c, |ed| {
         ed.reorder_z("hero-phone", ZOrder::Backward).unwrap()
     });
     apply(&mut p, ops);
-    let ids: Vec<&str> = p.strips[0].elements.iter().map(|e| e.id.as_str()).collect();
+    let ids: Vec<&str> = p.canvases[0]
+        .elements
+        .iter()
+        .map(|e| e.id.as_str())
+        .collect();
     assert_eq!(&ids[ids.len() - 2..], ["hero-phone", "page4-bg"]);
     assert!(
         with_editor(&p, &c, |ed| ed.reorder_z("band", ZOrder::Back).unwrap())
@@ -470,7 +474,7 @@ fn order_duplicate_remove() {
         point(&p, &c, "hero-phone-2"),
         before + Vec2::new(40.0, 40.0)
     ));
-    let v = &p.strips[0].variants[&VariantId::new("tablet-landscape")];
+    let v = &p.canvases[0].variants[&VariantId::new("tablet-landscape")];
     let o = &v.overrides["hero-phone-2"];
     assert_eq!(
         o.at,
@@ -492,7 +496,7 @@ fn order_duplicate_remove() {
     apply(&mut p, ops);
     assert!(p.element("hero-phone").is_none());
     assert!(
-        !p.strips[0].variants[&VariantId::new("tablet-landscape")]
+        !p.canvases[0].variants[&VariantId::new("tablet-landscape")]
             .overrides
             .contains_key("hero-phone")
     );
@@ -531,7 +535,7 @@ fn patch_writes_base_or_override() {
     };
     let ops = with_editor(&p, &v, |ed| ed.patch("hero-phone", &z).unwrap());
     apply(&mut p, ops);
-    let o = &p.strips[0].variants[&VariantId::new("tablet-landscape")].overrides["hero-phone"];
+    let o = &p.canvases[0].variants[&VariantId::new("tablet-landscape")].overrides["hero-phone"];
     assert_eq!(o.z, Some(Some(3)));
     assert_eq!(o.rotation, Some(Some(-4.0)));
     assert_eq!(p.element("hero-phone").unwrap().1.z, 0);
@@ -548,7 +552,7 @@ fn arrange_moves_between_groups_in_place() {
     let rot = resolved(&p, "android-phone", "badge").rotation;
     let ops = with_editor(&p, &c, |ed| ed.arrange("badge", None, None).unwrap());
     apply(&mut p, ops);
-    let s = &p.strips[0];
+    let s = &p.canvases[0];
     assert_eq!(s.elements.last().unwrap().id.as_str(), "badge");
     assert!(close(point(&p, &c, "badge"), before));
     assert!((resolved(&p, "android-phone", "badge").rotation - rot).abs() < 1e-9);
@@ -586,7 +590,7 @@ fn group_and_ungroup_keep_positions() {
     // Painting order of the members is kept.
     let kids: Vec<&str> = g.children().iter().map(|e| e.id.as_str()).collect();
     assert_eq!(kids, ["hero-phone", "band"]);
-    assert_eq!(p.strips[0].elements[0].id.as_str(), "group");
+    assert_eq!(p.canvases[0].elements[0].id.as_str(), "group");
     for (i, b) in ids.iter().zip(&before) {
         assert!(close(point(&p, &c, i.as_str()), *b));
     }
@@ -643,13 +647,13 @@ fn reset_overrides() {
         ed.reset_override("title-1", None).unwrap()
     });
     apply(&mut p, ops);
-    let v = &p.strips[0].variants[&VariantId::new("tablet-landscape")];
+    let v = &p.canvases[0].variants[&VariantId::new("tablet-landscape")];
     assert!(!v.overrides.contains_key("title-1"));
     // Free function, base context: nothing to reset.
     assert!(
         vitrine_core::edit::reset_override(
             &p,
-            &StripId::new("phone"),
+            &CanvasId::new("phone"),
             &VariantId::new("tablet-landscape"),
             &ElementId::new("band"),
             None
@@ -675,7 +679,7 @@ fn hidden_and_foreign_elements() {
     with_editor(&p, &c, |ed| {
         assert!(matches!(
             ed.move_by("web-browser", Vec2::ZERO, MoveOptions::default()),
-            Err(EditError::WrongStrip { .. })
+            Err(EditError::WrongCanvas { .. })
         ));
         assert!(matches!(
             ed.rotate_to("nope", 1.0),
@@ -1160,7 +1164,7 @@ mod prop {
             None => String::new(),
         };
         let yaml = format!(
-            "format: vitrine/1\nname: t\nlanguages: {{default: en, available: [en]}}\nstrips:\n- id: s\n  page: {{aspect: \"{}:{}\", count: {}}}\n  elements:\n{elements}{variants}targets:\n- id: t\n  strip: s\n  size: [{}, {}]\n  group: {}\n  gallery: {{preset: play-phone, gap: {}}}\n{}",
+            "format: vitrine/1\nname: t\nlanguages: {{default: en, available: [en]}}\ncanvases:\n- id: s\n  page: {{aspect: \"{}:{}\", count: {}}}\n  elements:\n{elements}{variants}targets:\n- id: t\n  canvas: s\n  size: [{}, {}]\n  group: {}\n  gallery: {{preset: play-phone, gap: {}}}\n{}",
             c.aspect.0,
             c.aspect.1,
             c.pages,

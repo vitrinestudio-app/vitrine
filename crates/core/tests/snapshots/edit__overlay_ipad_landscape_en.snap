@@ -7,6 +7,7 @@ canvas:
   w: 6160
   x: 0
   y: 0
+canvas_id: phone
 elements:
   - aspect_locked: false
     handles:
@@ -439,6 +440,5 @@ pages:
       w: 1000
       x: 4160
       y: 0
-strip: phone
 target: ios-ipad-13-landscape
 variant: tablet-landscape

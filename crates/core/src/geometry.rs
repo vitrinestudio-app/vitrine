@@ -17,7 +17,7 @@
 //!   page origin moves when gap or grouping change, so content reaching into
 //!   a neighbouring page keeps lining up with the store gallery.
 //! * y is relative to the page top and designed for the *reference* page
-//!   height (the strip's own aspect); [`CanvasLayout::anchor_y`] adapts it
+//!   height (the canvas's own aspect); [`CanvasLayout::anchor_y`] adapts it
 //!   to the target page height.
 //! * y points down; rotation in degrees, positive = clockwise.
 
@@ -139,12 +139,12 @@ pub fn target_page_height(width_px: u32, height_px: u32, group: u32) -> f64 {
     f64::from(group.max(1)) * PAGE_WIDTH_LU * f64::from(height_px) / f64::from(width_px)
 }
 
-/// How the pages of a strip are arranged on the canvas for one target.
+/// How the pages of a canvas are arranged on the canvas for one target.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CanvasLayout {
-    /// Number of pages of the strip.
+    /// Number of pages of the canvas.
     pub page_count: u32,
-    /// Page height the layout was designed for (strip aspect), lu.
+    /// Page height the layout was designed for (canvas aspect), lu.
     pub reference_page_height: f64,
     /// Page (column) height for the target, lu.
     pub page_height: f64,
@@ -185,7 +185,7 @@ impl CanvasLayout {
     }
 
     /// Canvas x of the left edge of page `page` (also defined for indices
-    /// outside the strip, for elements that reference missing pages).
+    /// outside the canvas, for elements that reference missing pages).
     pub fn page_x(&self, page: i64) -> f64 {
         page as f64 * PAGE_WIDTH_LU + page.div_euclid(self.k()) as f64 * self.gap
     }

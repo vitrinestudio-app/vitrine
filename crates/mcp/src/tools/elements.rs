@@ -46,9 +46,9 @@ pub const PATCH_FIELDS_DOC: &str = patch_fields_doc!();
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ElementListParams {
-    /// Only this strip (default: all).
+    /// Only this canvas (default: all).
     #[serde(default)]
-    pub strip: Option<String>,
+    pub canvas: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -87,12 +87,12 @@ pub struct ElementAddParams {
     /// Home page, 0-based (default 0). The element is centred on it.
     #[serde(default)]
     pub page: u32,
-    /// Strip to add to (default: the strip of `target`, else the first
-    /// strip with a target).
+    /// Canvas to add to (default: the canvas of `target`, else the first
+    /// canvas with a target).
     #[serde(default)]
-    pub strip: Option<String>,
+    pub canvas: Option<String>,
     /// Target used for defaults (device model, page height). Default: the
-    /// first target showing `strip`.
+    /// first target showing `canvas`.
     #[serde(default)]
     pub target: Option<String>,
     /// Element id (default: `device`, `text-2` …).
@@ -133,7 +133,7 @@ pub struct StringValue {
 edit_params! {
     pub struct ElementUpdateParams {
         /// The element (or `ids` to patch several the same way; ids of
-        /// several strips are fine).
+        /// several canvases are fine).
         #[serde(default)]
         pub id: Option<String>,
         #[serde(default)]
@@ -195,7 +195,7 @@ pub enum OverrideScope {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ResetOverrideParams {
-    /// The element (or `ids`; several strips are fine).
+    /// The element (or `ids`; several canvases are fine).
     #[serde(default)]
     pub id: Option<String>,
     #[serde(default)]
@@ -203,7 +203,7 @@ pub struct ResetOverrideParams {
     /// `variant` or `lang`.
     pub scope: OverrideScope,
     /// scope `variant`: the variant (default: the variant of `target`, or
-    /// of the first target showing the element's strip).
+    /// of the first target showing the element's canvas).
     #[serde(default)]
     pub variant: Option<String>,
     /// scope `lang`: the language whose override is reset (required).
@@ -288,7 +288,7 @@ edit_params! {
 edit_params! {
     pub struct ElementRotateParams {
         /// The element (or `ids` to rotate several to the same angle;
-        /// several strips are fine).
+        /// several canvases are fine).
         #[serde(default)]
         pub id: Option<String>,
         #[serde(default)]
@@ -352,7 +352,7 @@ pub struct ApplyOpsParams {
 /// Compact inspector data of an element (`element_get`).
 pub fn compact_info(info: &Value) -> Value {
     let mut out = json!({
-        "id": info["id"], "kind": info["kind"], "strip": info["strip"],
+        "id": info["id"], "kind": info["kind"], "canvas": info["canvas"],
         "effective": info["effective"],
     });
     for k in [
@@ -432,7 +432,7 @@ fn page_origin(
         .find(|p| p["index"].as_u64() == Some(index))
         .ok_or_else(|| {
             CommandError::invalid(format!(
-                "page {index} does not exist (the strip has {} pages, 0-based)",
+                "page {index} does not exist (the canvas has {} pages, 0-based)",
                 pages.len()
             ))
         })?;
@@ -462,25 +462,25 @@ impl VitrineMcp {
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
             let s = compact_summary(app)?;
-            let mut strips: BTreeMap<String, Value> = BTreeMap::new();
-            for st in s["strips"].as_array().into_iter().flatten() {
+            let mut canvases: BTreeMap<String, Value> = BTreeMap::new();
+            for st in s["canvases"].as_array().into_iter().flatten() {
                 let id = st["id"].as_str().unwrap_or_default().to_owned();
-                if p.strip.as_ref().is_none_or(|w| *w == id) {
-                    strips.insert(id, st["elements"].clone());
+                if p.canvas.as_ref().is_none_or(|w| *w == id) {
+                    canvases.insert(id, st["elements"].clone());
                 }
             }
-            if let Some(w) = &p.strip
-                && strips.is_empty()
+            if let Some(w) = &p.canvas
+                && canvases.is_empty()
             {
-                return Err(CommandError::not_found(format!("unknown strip `{w}`")));
+                return Err(CommandError::not_found(format!("unknown canvas `{w}`")));
             }
-            let n: usize = strips
+            let n: usize = canvases
                 .values()
                 .map(|v| v.as_array().map_or(0, Vec::len))
                 .sum();
             Ok(ToolOutput::new(
                 format!("{n} element(s)"),
-                json!({ "strips": strips }),
+                json!({ "canvases": canvases }),
             ))
         })
         .await
@@ -531,11 +531,11 @@ impl VitrineMcp {
         self.run(&ctx, move |app| {
             let project = app.session()?.snapshot();
             let target =
-                crate::params::target_for(&project, p.target.as_deref(), p.strip.as_deref())?;
-            if let Some(s) = &p.strip
-                && project.strip(s).is_none()
+                crate::params::target_for(&project, p.target.as_deref(), p.canvas.as_deref())?;
+            if let Some(s) = &p.canvas
+                && project.canvas(s).is_none()
             {
-                return Err(CommandError::not_found(format!("unknown strip `{s}`")));
+                return Err(CommandError::not_found(format!("unknown canvas `{s}`")));
             }
             let kind = serde_json::to_value(p.kind).unwrap_or_default();
             let mut args = json!({
@@ -562,7 +562,7 @@ impl VitrineMcp {
 
     #[tool(
         description = concat!(
-            "Change element fields (one undo step), optionally with translations. Scope: base (default, everywhere), variant (override for a format), lang (override for one language; text elements). `null` in scope variant/lang removes the field from the override (back to the base value); element_reset_override removes whole overrides. `ids` may span several strips; `updates` puts several differently scoped patches into one undo step, e.g. {\"updates\": [{\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"de\", \"patch\": {\"font_size\": 64}}, {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"fr\", \"patch\": {\"font_size\": 66}}]}. All fields with types and defaults: docs_get {topic: \"elements\"}. Examples: {\"id\": \"title\", \"patch\": {\"style\": \"sub\", \"fit\": {\"shrink_to\": 60, \"max_lines\": 2}}}; {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"de\", \"patch\": {\"box\": {\"top\": 160, \"left\": 40, \"right\": 40}}}; {\"id\": \"phone-1\", \"scope\": \"variant\", \"target\": \"ios-ipad-13\", \"patch\": {\"width\": 560}}.",
+            "Change element fields (one undo step), optionally with translations. Scope: base (default, everywhere), variant (override for a format), lang (override for one language; text elements). `null` in scope variant/lang removes the field from the override (back to the base value); element_reset_override removes whole overrides. `ids` may span several canvases; `updates` puts several differently scoped patches into one undo step, e.g. {\"updates\": [{\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"de\", \"patch\": {\"font_size\": 64}}, {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"fr\", \"patch\": {\"font_size\": 66}}]}. All fields with types and defaults: docs_get {topic: \"elements\"}. Examples: {\"id\": \"title\", \"patch\": {\"style\": \"sub\", \"fit\": {\"shrink_to\": 60, \"max_lines\": 2}}}; {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"de\", \"patch\": {\"box\": {\"top\": 160, \"left\": 40, \"right\": 40}}}; {\"id\": \"phone-1\", \"scope\": \"variant\", \"target\": \"ios-ipad-13\", \"patch\": {\"width\": 560}}.",
             patch_fields_doc!()
         )
     )]
@@ -618,7 +618,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Delete elements (groups with their children) in one undo step; ids may span several strips. Translations stay. Example: {\"ids\": [\"badge\", \"arrow\"]}."
+        description = "Delete elements (groups with their children) in one undo step; ids may span several canvases. Translations stay. Example: {\"ids\": [\"badge\", \"arrow\"]}."
     )]
     async fn element_remove(
         &self,
@@ -701,7 +701,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Rotate elements to an absolute angle in degrees (positive = clockwise) around their pivot (default: centre); several `ids` (also of several strips) in one undo step. Example: {\"id\": \"phone-beds\", \"degrees\": -8}."
+        description = "Rotate elements to an absolute angle in degrees (positive = clockwise) around their pivot (default: centre); several `ids` (also of several canvases) in one undo step. Example: {\"id\": \"phone-beds\", \"degrees\": -8}."
     )]
     async fn element_rotate(
         &self,
@@ -721,7 +721,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Change painting order within the element list: front, back, forward, backward (z stays). Ids may span several strips (one undo step). Example: {\"ids\": [\"title-plan\", \"ipad-title-plan\"], \"order\": \"front\"}."
+        description = "Change painting order within the element list: front, back, forward, backward (z stays). Ids may span several canvases (one undo step). Example: {\"ids\": [\"title-plan\", \"ipad-title-plan\"], \"order\": \"front\"}."
     )]
     async fn element_reorder(
         &self,
@@ -793,7 +793,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Remove variant or language overrides (back to the base value) in one undo step: whole overrides or only `fields`. Ids may span several strips. Examples: {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"en\"}; {\"ids\": [\"title\", \"sub\"], \"scope\": \"lang\", \"lang\": \"de\", \"fields\": [\"box\", \"font_size\"]}; {\"id\": \"phone-1\", \"scope\": \"variant\", \"variant\": \"tablet-landscape\", \"fields\": [\"at\"]}."
+        description = "Remove variant or language overrides (back to the base value) in one undo step: whole overrides or only `fields`. Ids may span several canvases. Examples: {\"id\": \"title\", \"scope\": \"lang\", \"lang\": \"en\"}; {\"ids\": [\"title\", \"sub\"], \"scope\": \"lang\", \"lang\": \"de\", \"fields\": [\"box\", \"font_size\"]}; {\"id\": \"phone-1\", \"scope\": \"variant\", \"variant\": \"tablet-landscape\", \"fields\": [\"at\"]}."
     )]
     async fn element_reset_override(
         &self,
@@ -806,8 +806,8 @@ impl VitrineMcp {
                 Some(t)
             } else {
                 let project = app.session()?.snapshot();
-                let strip = crate::params::strip_of_element(&project, &ids[0]);
-                crate::params::gui_target(&project, strip.as_deref())
+                let canvas = crate::params::canvas_of_element(&project, &ids[0]);
+                crate::params::gui_target(&project, canvas.as_deref())
             };
             let mut args = json!({ "ids": ids, "scope": p.scope });
             for (k, v) in [("variant", p.variant), ("lang", p.lang), ("target", target)] {
@@ -884,7 +884,7 @@ mod tests {
     #[test]
     fn info_is_compacted() {
         let info = json!({
-            "id": "t", "kind": "text", "strip": "s", "parent": null, "children": [],
+            "id": "t", "kind": "text", "canvas": "s", "parent": null, "children": [],
             "variant": null, "base": {"a": 1}, "override": null, "effective": {"a": 1},
             "overridden": [], "lang_override": {"font_size": 3},
             "lang_override_langs": ["de"], "text": {"key": "k"},

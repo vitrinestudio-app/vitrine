@@ -14,7 +14,7 @@
 //! session   the open project: model, history, atomic save, live reload
 //! preview   preview render cache and the binary image payload
 //! settings  app settings (YAML) and recent projects (SQLite)
-//! view      the GUI's view (strip/target/lang/variant/selection)
+//! view      the GUI's view (canvas/target/lang/variant/selection)
 //! watch     debounced file watcher of the project folder
 //! events    EventSink (Tauri `emit` / bridge SSE) and event names
 //! dialogs   Dialogs trait (Tauri dialog plugin / fixed answers)

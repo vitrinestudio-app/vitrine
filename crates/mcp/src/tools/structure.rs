@@ -1,4 +1,4 @@
-//! Strips (canvases), variants, targets and languages.
+//! Canvases, variants, targets and languages.
 
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::CallToolResult;
@@ -14,8 +14,8 @@ use crate::server::{VitrineMcp, cmd};
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct StripAddParams {
-    /// New strip id, e.g. `tablet` (default: `canvas`, made unique).
+pub struct CanvasAddParams {
+    /// New canvas id, e.g. `tablet` (default: `canvas`, made unique).
     #[serde(default)]
     pub id: Option<String>,
     /// Page aspect `w:h`, usually the export size of its main target, e.g.
@@ -38,7 +38,7 @@ pub struct StripAddParams {
     /// texts with placeholder strings in the default language).
     #[serde(default)]
     pub start: Option<String>,
-    /// Also add a target from this catalog preset showing the new strip
+    /// Also add a target from this catalog preset showing the new canvas
     /// (same undo step), e.g. `ios-ipad-13`.
     #[serde(default)]
     pub target_preset: Option<String>,
@@ -46,9 +46,9 @@ pub struct StripAddParams {
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct StripDuplicateParams {
-    /// Strip to copy.
-    pub strip: String,
+pub struct CanvasDuplicateParams {
+    /// Canvas to copy.
+    pub canvas: String,
     /// Id of the copy (default: the original's id made unique, `phone-2`).
     #[serde(default)]
     pub id: Option<String>,
@@ -63,23 +63,23 @@ pub struct StripDuplicateParams {
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct StripRenameParams {
-    pub strip: String,
+pub struct CanvasRenameParams {
+    pub canvas: String,
     /// New id.
     pub to: String,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct StripIdParams {
-    pub strip: String,
+pub struct CanvasIdParams {
+    pub canvas: String,
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct StripUpdateParams {
-    /// Strip id.
-    pub strip: String,
+pub struct CanvasUpdateParams {
+    /// Canvas id.
+    pub canvas: String,
     /// New page aspect `w:h`.
     #[serde(default)]
     pub aspect: Option<String>,
@@ -90,7 +90,7 @@ pub struct StripUpdateParams {
     /// Page ids (`[]` = generated ids).
     #[serde(default)]
     pub ids: Option<Vec<String>>,
-    /// Canvas backgrounds, bottom to top (replaces the list; see `strip_add`).
+    /// Canvas backgrounds, bottom to top (replaces the list; see `canvas_add`).
     #[serde(default)]
     pub backgrounds: Option<Vec<Value>>,
 }
@@ -112,8 +112,8 @@ pub enum VariantAction {
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct StripVariantParams {
-    pub strip: String,
+pub struct CanvasVariantParams {
+    pub canvas: String,
     pub action: VariantAction,
     /// Variant id, e.g. `tablet-landscape`.
     pub id: String,
@@ -127,7 +127,7 @@ pub struct StripVariantParams {
     /// `add`: copy this variant's overrides and content scale.
     #[serde(default)]
     pub from: Option<String>,
-    /// `add`: targets of the strip that show the new variant.
+    /// `add`: targets of the canvas that show the new variant.
     #[serde(default)]
     pub targets: Vec<String>,
 }
@@ -138,8 +138,8 @@ pub struct TargetAddParams {
     /// Preset id from `catalog_targets`, e.g. `ios-iphone-69`, `ios-ipad-13`,
     /// `play-phone`.
     pub preset: String,
-    /// Strip the target shows.
-    pub strip: String,
+    /// Canvas the target shows.
+    pub canvas: String,
     /// Target id (default: the preset id, made unique).
     #[serde(default)]
     pub id: Option<String>,
@@ -198,11 +198,11 @@ fn edited(r: &Value) -> ToolOutput {
 #[tool_router(router = structure_tools, vis = "pub(crate)")]
 impl VitrineMcp {
     #[tool(
-        description = "Add a strip (canvas) with N pages of one aspect, empty or with a starter layout (`start: \"starter\"`: headline + device per page), optionally with a first target from a catalog preset (one undo step). Example: {\"id\": \"tablet\", \"target_preset\": \"ios-ipad-13\", \"start\": \"starter\"} or {\"id\": \"tablet\", \"aspect\": \"2064:2752\", \"count\": 3, \"backgrounds\": [\"#0B3324\"]}. Without `target_preset` add a target showing it (target_add) before adding elements."
+        description = "Add a canvas with N pages of one aspect, empty or with a starter layout (`start: \"starter\"`: headline + device per page), optionally with a first target from a catalog preset (one undo step). Example: {\"id\": \"tablet\", \"target_preset\": \"ios-ipad-13\", \"start\": \"starter\"} or {\"id\": \"tablet\", \"aspect\": \"2064:2752\", \"count\": 3, \"backgrounds\": [\"#0B3324\"]}. Without `target_preset` add a target showing it (target_add) before adding elements."
     )]
-    async fn strip_add(
+    async fn canvas_add(
         &self,
-        Parameters(p): Parameters<StripAddParams>,
+        Parameters(p): Parameters<CanvasAddParams>,
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
@@ -221,79 +221,79 @@ impl VitrineMcp {
             if !p.backgrounds.is_empty() {
                 args["backgrounds"] = json!(p.backgrounds);
             }
-            Ok(edited(&cmd(app, "strip_add", args)?))
+            Ok(edited(&cmd(app, "canvas_add", args)?))
         })
         .await
     }
 
     #[tool(
-        description = "Duplicate a strip (canvas): pages, backgrounds, elements (new unique ids), variants with their overrides; optionally the targets showing it and own copies of the texts' translations (one undo step). Example: {\"strip\": \"phone\", \"id\": \"tablet\", \"copy_targets\": true}."
+        description = "Duplicate a canvas: pages, backgrounds, elements (new unique ids), variants with their overrides; optionally the targets showing it and own copies of the texts' translations (one undo step). Example: {\"canvas\": \"phone\", \"id\": \"tablet\", \"copy_targets\": true}."
     )]
-    async fn strip_duplicate(
+    async fn canvas_duplicate(
         &self,
-        Parameters(p): Parameters<StripDuplicateParams>,
+        Parameters(p): Parameters<CanvasDuplicateParams>,
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
             let mut args = json!({
-                "duplicate_of": p.strip,
+                "duplicate_of": p.canvas,
                 "copy_strings": p.copy_strings,
                 "copy_targets": p.copy_targets,
             });
             if let Some(id) = p.id {
                 args["id"] = json!(id);
             }
-            Ok(edited(&cmd(app, "strip_add", args)?))
+            Ok(edited(&cmd(app, "canvas_add", args)?))
         })
         .await
     }
 
     #[tool(
-        description = "Rename a strip (canvas); targets showing it follow. Example: {\"strip\": \"main\", \"to\": \"phone\"}."
+        description = "Rename a canvas; targets showing it follow. Example: {\"canvas\": \"main\", \"to\": \"phone\"}."
     )]
-    async fn strip_rename(
+    async fn canvas_rename(
         &self,
-        Parameters(p): Parameters<StripRenameParams>,
+        Parameters(p): Parameters<CanvasRenameParams>,
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
             Ok(edited(&cmd(
                 app,
-                "strip_rename",
-                json!({ "strip": p.strip, "to": p.to }),
+                "canvas_rename",
+                json!({ "canvas": p.canvas, "to": p.to }),
             )?))
         })
         .await
     }
 
     #[tool(
-        description = "Remove a strip (canvas) with its elements, variants and the targets showing it (one undo step, refused for the last strip). Tell the user which targets go with it. Example: {\"strip\": \"tablet\"}."
+        description = "Remove a canvas with its elements, variants and the targets showing it (one undo step, refused for the last canvas). Tell the user which targets go with it. Example: {\"canvas\": \"tablet\"}."
     )]
-    async fn strip_remove(
+    async fn canvas_remove(
         &self,
-        Parameters(p): Parameters<StripIdParams>,
+        Parameters(p): Parameters<CanvasIdParams>,
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
             Ok(edited(&cmd(
                 app,
-                "strip_remove",
-                json!({ "strip": p.strip }),
+                "canvas_remove",
+                json!({ "canvas": p.canvas }),
             )?))
         })
         .await
     }
 
     #[tool(
-        description = "Change a strip: page aspect, page count, page ids, canvas backgrounds (one undo step). Example: {\"strip\": \"phone\", \"count\": 5, \"backgrounds\": [{\"kind\": \"linear-gradient\", \"angle\": 160, \"stops\": [[\"#F4F7F0\", 0], [\"#DCEBD5\", 1]]}]}."
+        description = "Change a canvas: page aspect, page count, page ids, canvas backgrounds (one undo step). Example: {\"canvas\": \"phone\", \"count\": 5, \"backgrounds\": [{\"kind\": \"linear-gradient\", \"angle\": 160, \"stops\": [[\"#F4F7F0\", 0], [\"#DCEBD5\", 1]]}]}."
     )]
-    async fn strip_update(
+    async fn canvas_update(
         &self,
-        Parameters(p): Parameters<StripUpdateParams>,
+        Parameters(p): Parameters<CanvasUpdateParams>,
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
-            let mut args = json!({ "strip": p.strip });
+            let mut args = json!({ "canvas": p.canvas });
             if let Some(a) = p.aspect {
                 args["aspect"] = json!(a);
             }
@@ -306,17 +306,17 @@ impl VitrineMcp {
             if let Some(b) = p.backgrounds {
                 args["backgrounds"] = json!(b);
             }
-            Ok(edited(&cmd(app, "strip_patch", args)?))
+            Ok(edited(&cmd(app, "canvas_patch", args)?))
         })
         .await
     }
 
     #[tool(
-        description = "Add (empty, or a copy `from` another variant), remove, rename or scale a variant of a strip. A variant holds per-format overrides (e.g. `tablet-landscape` for iPad targets with group 2); `targets` on add (or target_update {patch: {variant: …}}) make targets show it; edit it with scope `variant`. Removing detaches its targets (they show the base layout again). Example: {\"strip\": \"phone\", \"action\": \"add\", \"id\": \"tablet-landscape\", \"content_scale\": 0.75, \"targets\": [\"ios-ipad-13\"]}."
+        description = "Add (empty, or a copy `from` another variant), remove, rename or scale a variant of a canvas. A variant holds per-format overrides (e.g. `tablet-landscape` for iPad targets with group 2); `targets` on add (or target_update {patch: {variant: …}}) make targets show it; edit it with scope `variant`. Removing detaches its targets (they show the base layout again). Example: {\"canvas\": \"phone\", \"action\": \"add\", \"id\": \"tablet-landscape\", \"content_scale\": 0.75, \"targets\": [\"ios-ipad-13\"]}."
     )]
-    async fn strip_variant(
+    async fn canvas_variant(
         &self,
-        Parameters(p): Parameters<StripVariantParams>,
+        Parameters(p): Parameters<CanvasVariantParams>,
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
@@ -336,15 +336,15 @@ impl VitrineMcp {
             };
             Ok(edited(&cmd(
                 app,
-                "strip_variant",
-                json!({ "strip": p.strip, "change": change }),
+                "canvas_variant",
+                json!({ "canvas": p.canvas, "change": change }),
             )?))
         })
         .await
     }
 
     #[tool(
-        description = "Add an export target from a catalog preset (store size, slot, gallery gaps, device). Example: {\"preset\": \"ios-ipad-13\", \"strip\": \"phone\"}. For iPad landscape from a phone strip set group 2 + a variant afterwards with target_update."
+        description = "Add an export target from a catalog preset (store size, slot, gallery gaps, device). Example: {\"preset\": \"ios-ipad-13\", \"canvas\": \"phone\"}. For iPad landscape from a phone canvas set group 2 + a variant afterwards with target_update."
     )]
     async fn target_add(
         &self,
@@ -352,7 +352,7 @@ impl VitrineMcp {
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
-            let mut args = json!({ "preset": p.preset, "strip": p.strip });
+            let mut args = json!({ "preset": p.preset, "canvas": p.canvas });
             if let Some(id) = p.id {
                 args["id"] = json!(id);
             }

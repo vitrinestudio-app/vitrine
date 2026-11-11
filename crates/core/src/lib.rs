@@ -5,7 +5,7 @@
 //!
 //! Responsibilities (see `docs/KONZEPT.md`, sections 3 and 10):
 //!
-//! - **Model**: projects, strips (canvases), pages, gaps, elements, styles,
+//! - **Model**: projects, canvases, pages, gaps, elements, styles,
 //!   variants, targets. Every element hangs on a *home page* and is positioned
 //!   relative to it; a page is always [`PAGE_WIDTH_LU`] logical units wide.
 //! - **YAML IO**: loading and saving the project folder (`project.yaml`,
@@ -24,7 +24,7 @@
 //! The file format is described in `docs/adr/0002-project-file-format.md`.
 //!
 //! ```text
-//! model/      project, strip, page, element, style, target, variant
+//! model/      project, canvas, page, element, style, target, variant
 //! io          YAML load/save, atomic writes, revision check
 //! ops/        Op, apply, inverse, transactions, undo/redo history
 //! edit/       edit intents (gestures → ops), overlay/hit-test data

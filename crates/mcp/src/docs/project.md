@@ -27,7 +27,7 @@ styles:
   frame: detailed         # default device frame: stylized | detailed | imported:apple
   fonts:                  # per family: fallbacks for missing characters
     Inter: {fallback: [Noto Sans JP]}
-strips:
+canvases:
 - id: phone
   page: {aspect: "1320:2868", count: 5, ids?: [hero, plan, …]}   # ids name export files
   backgrounds: ["#F4F7F0", {kind: linear-gradient, angle: 160, stops: [["#F4F7F0", 0], ["#DCEBD5", 1]]}]
@@ -37,10 +37,10 @@ strips:
       content_scale: 0.92  # scales device content (default 1)
       overrides:           # element id → fields (only values, never null)
         phone-plan: {at: {x: 500, y: 1683}, width: 600}
-      # (variants are added with strip_variant)
+      # (variants are added with canvas_variant)
 targets:
 - id: ios-iphone-69        # docs_get {topic: "targets"}
-  strip: phone
+  canvas: phone
   size: [1320, 2868]
   screenshots: ios-phone
   gallery: appstore-iphone
@@ -67,7 +67,7 @@ fills), `fonts/` (TTF/OTF; family names usable in styles).
 
 Tools per section: languages → language_add / language_remove (default
 language and fallbacks: apply_ops set_languages), styles → styles_update,
-strips → strip_add / strip_duplicate / strip_rename / strip_remove /
-strip_update, elements → element_*, variants →
-strip_variant / element_update {scope: variant}, targets → target_add /
+canvases → canvas_add / canvas_duplicate / canvas_rename / canvas_remove /
+canvas_update, elements → element_*, variants →
+canvas_variant / element_update {scope: variant}, targets → target_add /
 target_update, import → screenshots_import.

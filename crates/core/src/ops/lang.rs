@@ -11,7 +11,7 @@ impl Project {
         patch: Option<ElementPatch>,
     ) -> Result<Op, OpError> {
         let loc = self.locate(&element)?;
-        let s = &self.strips[loc.strip];
+        let s = &self.canvases[loc.canvas];
         let old = s
             .element(element.as_str())
             .ok_or_else(|| OpError::UnknownElement(element.to_string()))?;
@@ -36,7 +36,7 @@ impl Project {
         // override gives a valid element.
         let new = Element::try_from(ElementWire::from(new)).map_err(invalid)?;
         self.check_element_own(s, &new, &self.styles)?;
-        let slot = find_mut(&mut self.strips[loc.strip].elements, element.as_str())
+        let slot = find_mut(&mut self.canvases[loc.canvas].elements, element.as_str())
             .ok_or_else(|| OpError::UnknownElement(element.to_string()))?;
         *slot = new;
         Ok(Op::SetLangOverride {

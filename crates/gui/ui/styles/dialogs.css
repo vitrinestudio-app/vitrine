@@ -563,7 +563,7 @@ select.field {
   text-align: left;
 }
 
-.ex-matrix .ex-strip td {
+.ex-matrix .ex-canvas td {
   text-align: left;
   font-size: var(--fs-small);
   font-weight: 600;
