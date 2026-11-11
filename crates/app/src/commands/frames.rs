@@ -270,6 +270,14 @@ fn packs_dir(app: &AppState, target: PackTarget) -> CmdResult<PathBuf> {
 /// Checks (`dry_run`) or imports an own frame pack (ADR 0023) and
 /// refreshes the open project.
 pub fn frames_pack_import(app: &AppState, args: FramesPackImportArgs) -> CmdResult<PackImport> {
+    if !pack::is_pack(&args.path) {
+        return Err(CommandError::invalid(format!(
+            "{}: not a frame pack (no `{}`)",
+            args.path.display(),
+            pack::PACK_FILE
+        ))
+        .with_details(serde_json::json!({ "kind": "not_a_pack" })));
+    }
     let dest = packs_dir(app, args.target)?;
     let r = pack::import_pack(
         &args.path,

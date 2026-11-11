@@ -457,3 +457,77 @@ fn frames_import_keeps_all_sizes_and_shows_the_licence() {
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert!(stdout(&o).contains("removed 2 frames"), "{}", stdout(&o));
 }
+
+/// Own frame packs (ADR 0023): `frames import` recognises a pack zip,
+/// `--to project` puts it into the project, `frames list --packs`,
+/// render with `frame: pack:<id>`, `frames remove --pack`.
+#[test]
+fn frame_pack_import_into_the_project_and_render() {
+    let tmp = tempfile::tempdir().unwrap();
+    let zip =
+        vitrine_core::frame_import::synthetic::write_pack_zip(&tmp.path().join("clay.zip"), 4)
+            .unwrap();
+    let project = new_project(&tmp, &[]);
+    let app = tmp.path().join("appdir");
+    let run = |args: &[&str]| {
+        let mut all = vec!["--project", project.to_str().unwrap()];
+        all.extend_from_slice(args);
+        Command::new(env!("CARGO_BIN_EXE_vitrine"))
+            .args(all)
+            .env("NO_COLOR", "1")
+            .env("VITRINE_APP_DIR", &app)
+            .output()
+            .expect("run vitrine")
+    };
+    let zip_s = zip.to_str().unwrap();
+    let o = run(&["frames", "import", zip_s, "--to", "project", "--dry-run"]);
+    assert_eq!(code(&o), 0, "{}{}", stdout(&o), stderr(&o));
+    let out = stdout(&o);
+    assert!(
+        out.contains("would import pack `clay-phone` (10 frames"),
+        "{out}"
+    );
+    assert!(
+        out.contains("use it with `frame: pack:clay-phone`"),
+        "{out}"
+    );
+    assert!(!project.join("frames").exists());
+    let o = run(&["frames", "import", zip_s, "--to", "project"]);
+    assert_eq!(code(&o), 0, "{}{}", stdout(&o), stderr(&o));
+    assert!(project.join("frames/clay-phone/frame.yaml").is_file());
+    let o = run(&["frames", "list", "--packs", "--format", "json"]);
+    let packs: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(packs[0]["origin"], "project");
+    assert_eq!(packs[0]["frames"].as_array().unwrap().len(), 10);
+
+    // Every device of the new project with the pack: no missing frame.
+    let yaml = std::fs::read_to_string(project.join("project.yaml")).unwrap();
+    std::fs::write(
+        project.join("project.yaml"),
+        yaml.replacen("styles:\n", "styles:\n  frame: pack:clay-phone\n", 1),
+    )
+    .unwrap();
+    let o = run(&["validate", "--format", "json"]);
+    assert!(
+        !stdout(&o).contains("imported_frame_missing"),
+        "{}",
+        stdout(&o)
+    );
+    let o = run(&[
+        "frames",
+        "remove",
+        "--pack",
+        "clay-phone",
+        "--from",
+        "project",
+    ]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let o = run(&["validate", "--format", "json"]);
+    assert!(
+        stdout(&o).contains("imported_frame_missing"),
+        "{}",
+        stdout(&o)
+    );
+    let o = run(&["frames", "remove", "--pack", "clay-phone"]);
+    assert_eq!(code(&o), 2, "no app pack: {}", stderr(&o));
+}

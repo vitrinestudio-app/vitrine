@@ -424,21 +424,49 @@ export function mount(el, ctx) {
     if (!dev) models.unshift({ value: e.model, label: e.model });
     rows.push(row(t('inspector.model'), selectInput({ key: 'model', options: models, value: e.model, title: t('inspector.model'), onChange: (v) => set({ model: v }) }), { field: 'model', info }));
     const frameDefault = store.get().summary.styles.frame;
-    const frameLabel = (f) => (f?.startsWith('imported:') ? t(`frames.source.${f.slice(9)}`) : t(`inspector.frame.${f}`));
+    // Own frame packs (ADR 0023): the project's first, then app-wide; a
+    // project pack hides an app pack with the same id.
+    const packs = [];
+    for (const p of extra.frames?.packs ?? []) if (!packs.some((x) => x.id === p.id)) packs.push(p);
+    const packOf = (f) => (f?.startsWith('pack:') ? packs.find((p) => p.frame === f) : null);
+    const frameLabel = (f) => {
+      if (f?.startsWith('imported:')) return t(`frames.source.${f.slice(9)}`);
+      if (f?.startsWith('pack:')) return t('frames.pack.label').replace('{name}', packOf(f)?.name ?? f.slice(5));
+      return t(`inspector.frame.${f}`);
+    };
     // Short form for the 288 px panel ("Project (Apple)").
-    const frameShort = (f) => (f?.startsWith('imported:') ? t(`frames.source_short.${f.slice(9)}`) : t(`inspector.frame.${f}`));
-    // Imported frames (ADR 0012): the installed colours of this model, with
-    // the housing colour measured at import.
+    const frameShort = (f) => {
+      if (f?.startsWith('imported:')) return t(`frames.source_short.${f.slice(9)}`);
+      if (f?.startsWith('pack:')) return packOf(f)?.name ?? f.slice(5);
+      return t(`inspector.frame.${f}`);
+    };
+    // Imported frames (ADR 0012) and frame packs: the installed colours of
+    // this model, with the housing colour measured at import.
     const effFrame = e.frame ?? frameDefault;
-    const isImported = effFrame?.startsWith('imported:');
-    const importedSrc = isImported ? extra.frames?.sources?.find((x) => x.source === effFrame.slice(9)) : null;
-    const importedColors = isImported ? (extra.resolved?.element?.props?.imported?.colors ?? importedSrc?.colors?.[e.model] ?? []) : [];
+    const isPack = effFrame?.startsWith('pack:');
+    const isImported = effFrame?.startsWith('imported:') || isPack;
+    const pack = isPack ? packOf(effFrame) : null;
+    const importedSrc = effFrame?.startsWith('imported:') ? extra.frames?.sources?.find((x) => x.source === effFrame.slice(9)) : null;
+    const packColors = () => {
+      const out = [];
+      for (const f of pack?.frames ?? []) {
+        if ((f.model === e.model || f.model === '*') && !out.some((c) => c.id === f.color)) out.push({ id: f.color, label: f.color_label, swatch: f.swatch });
+      }
+      return out;
+    };
+    const importedColors = isImported ? (extra.resolved?.element?.props?.imported?.colors ?? (isPack ? packColors() : importedSrc?.colors?.[e.model]) ?? []) : [];
     let frameHint = null;
-    if (isImported) {
+    if (isPack) {
+      if (!pack) frameHint = t('frames.inspector.pack_missing');
+      else if (!importedColors.length) frameHint = t('frames.inspector.pack_no_model');
+      else if (e.color && !e.color.startsWith('#') && !importedColors.some((c) => c.id === e.color)) frameHint = t('frames.inspector.color_missing');
+    } else if (isImported) {
       if (!importedSrc?.models?.includes(e.model)) frameHint = t('frames.inspector.no_model');
       else if (!importedColors.length) frameHint = t('frames.inspector.missing');
       else if (e.color && !e.color.startsWith('#') && !importedColors.some((c) => c.id === e.color)) frameHint = t('frames.inspector.color_missing');
     }
+    const packOptions = packs.map((p) => ({ value: p.frame, label: t('frames.pack.label').replace('{name}', p.name), title: `${p.frame} (${t(`frames.pack.origin.${p.origin}`)})` }));
+    if (e.frame?.startsWith('pack:') && !packOf(e.frame)) packOptions.push({ value: e.frame, label: t('frames.pack.missing_option').replace('{id}', e.frame.slice(5)) });
     rows.push(
       row(
         t('inspector.frame'),
@@ -449,6 +477,7 @@ export function mount(el, ctx) {
             { value: 'stylized', label: t('inspector.frame.stylized') },
             { value: 'detailed', label: t('inspector.frame.detailed') },
             { value: 'imported:apple', label: t('frames.source.apple') },
+            ...packOptions,
           ],
           value: e.frame ?? '',
           title: e.frame ? t('inspector.frame') : `${t('inspector.project_default')} (${frameLabel(frameDefault)})`,

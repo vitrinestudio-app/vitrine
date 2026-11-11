@@ -227,5 +227,15 @@ export const api = {
   framesImportApply: (path, assignments = []) => invoke('frames_import_apply', { path, assignments }),
   /** `args`: { model?, color?, orientation? } (none = all). */
   framesRemove: (args = {}) => invoke('frames_remove', args),
-  framesThumbnail: (file, maxEdge) => invoke('frames_thumbnail', { file, max_edge: maxEdge }),
+  /** `source`: `apple` (default) or `pack:<id>`. */
+  framesThumbnail: (file, maxEdge, source = 'apple') => invoke('frames_thumbnail', { file, max_edge: maxEdge, source }),
+  // ----- own frame packs (6.4, ADR 0023) -----
+  /** `opts`: { target?: 'app' | 'project', id?, dry_run? }; error details `{kind: 'not_a_pack'}` for other packages. */
+  framesPackImport: (path, opts = {}) => invoke('frames_pack_import', { path, ...opts }),
+  framesPackRemove: (id, target = 'app') => invoke('frames_pack_remove', { id, target }),
+  // ----- banner from this canvas (6.2) -----
+  /** Store banner proposals for `canvas`: [{ preset, label, store, size, pages, existing }]. */
+  canvasBannerOptions: (canvas, page) => invoke('canvas_banner_options', page == null ? { canvas } : { canvas, page }),
+  /** `args`: { canvas, preset, pages?, page?, fit?, variant?, id? } → { created: [id] }. */
+  targetAddBanner: (args) => invoke('target_add_banner', args),
 };
