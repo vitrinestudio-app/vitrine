@@ -33,8 +33,8 @@ Planned commands slot in the same way: `edit_*` (gesture intents from
 adds `element_get` (base / override / effective values plus the text in
 the view language), `element_patch` (fields → base or variant override,
 decided in core; optional translations in the same step), `edit_rename`,
-`edit_arrange` (layer tree), `strip_get`, `strip_patch` (aspect, page
-count, page ids, backgrounds) and `strip_variant` (add / remove / rename
+`edit_arrange` (layer tree), `canvas_get`, `canvas_patch` (aspect, page
+count, page ids, backgrounds) and `canvas_variant` (add / remove / rename
 / content scale). The UI never builds override ops itself.
 
 ### Session
@@ -47,7 +47,7 @@ count, page ids, backgrounds) and `strip_variant` (add / remove / rename
   success. A revision conflict reloads from disk, emits `project-changed`
   (`reason: conflict`) and returns `conflict`; other save errors change
   nothing. The result reports the new revision and what changed (diff of
-  old/new project: strips, elements, strings, targets, flags), plus the
+  old/new project: canvases, elements, strings, targets, flags), plus the
   history state with undo labels kept beside the core history.
 - `notify` + `notify-debouncer-full` (150 ms) watch the folder. Model files
   (`project.yaml`, `i18n/*.yaml`) are reloaded; our own writes are

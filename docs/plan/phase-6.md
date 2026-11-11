@@ -39,17 +39,17 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 Largely there: target preset `play-feature-graphic` (1024×500, banner,
 `slot: google.image_type featureGraphic`, rules `google-feature-graphic`)
 and the Play client knows `featureGraphic`. Close to Apple's header /
-search-results creatives (banners from a strip region).
+search-results creatives (banners from a canvas region).
 - [ ] Check end to end: example fixture target, export, store rules (24-bit
       PNG/JPEG, no alpha), upload plan + Play upload as single image
-- [ ] Template / quick action "banner from this strip" shared with the Apple
+- [ ] Template / quick action "banner from this canvas" shared with the Apple
       creatives (region + fit), GUI wording
 
 ## 6.3 Templates (+ web gallery)
 KONZEPT §9 "Vorlagen": duplicate a canvas, save as template, new project
 from template. User 2026-11-10: templates should be uploadable to the web
 and downloadable from a gallery.
-- [ ] Template format: a project folder subset (strip(s), styles, fonts,
+- [ ] Template format: a project folder subset (canvas(s), styles, fonts,
       placeholder screenshots) + `template.yaml` (name, author, licence,
       preview images, required fonts, tags); packed as `.vitrine-template`
       (zip); no vendor graphics, fonts only with redistributable licences

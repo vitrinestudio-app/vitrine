@@ -28,7 +28,7 @@ packages, the website and the docs. Current state and decisions:
 
 ## Core ideas
 
-1. **Canvas, not individual images.** The strip (canvas) is the top level.
+1. **Canvas, not individual images.** The canvas is the top level.
    Backgrounds run continuously across pages; a device spanning two pages
    exists exactly once. Texts are bound to their page by default (`clip: page`).
 2. **Home page.** Every element hangs on a page (`page`); its position is
@@ -79,7 +79,7 @@ docs/gui/               screenshots of the editor (README)
 
 `core` (no rendering, no network):
 
-- `model` – typed project model (strips, elements, styles, targets,
+- `model` – typed project model (canvases, elements, styles, targets,
   variants); `io` – YAML load/save (`serde-saphyr`, canonical form,
   revision + atomic save, ADR 0002); `ops` – Operations API with inverse
   ops and history (the only way to change the model).
@@ -136,7 +136,7 @@ reload via `watch`; every step emits `project-edited` with its `actor`),
 `actor` (`Actor::User | Assistant {client, name}`: history labels
 prefixed with the MCP client's display name, e.g. "Claude Desktop: ",
 `client_display_name`; set per thread with `Actor::scope` / `dispatch_as`), `view` (`ViewState`:
-strip/target/lang/variant/selection pushed by the GUI via `view_set`,
+canvas/target/lang/variant/selection pushed by the GUI via `view_set`,
 read via `view_get`), `preview` (binary preview payload + cache),
 `settings` (settings.yaml + recent projects in SQLite), `events`,
 `dialogs`, `mcp` (`McpStatus` of the GUI-hosted endpoint, `mcp-status`
