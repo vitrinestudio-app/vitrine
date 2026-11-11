@@ -1,61 +1,157 @@
 ---
 title: Getting started
-description: "Install Vitrine Studio, create a first project and export your first screenshots."
-weight: 10
+description: "Create a project from a template, find your way around the window, add your screenshots and headlines, and export your first set."
+weight: 30
 icon: book
 ---
 
-## Install
+This walkthrough takes about ten minutes. You'll need Vitrine Studio
+([Install](../install/)) and a few screenshots of your app – three portrait
+iPhone screenshots are perfect.
 
-Installers for macOS, Windows and Linux are not published yet (see
-[Download](/download/)). Until then, build from source with
-[rustup](https://rustup.rs) and the
-[Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/):
+## 1. Create a project
 
-```sh
-git clone https://github.com/vitrinestudio-app/vitrine.git && cd vitrine
-cargo run -p vitrine-gui --release        # the desktop app
-cargo install --path crates/cli            # the `vitrine` command line tool
+Start Vitrine Studio. The start screen offers **New project**, **Open
+project…** and your **Recent projects** (you can also drop a project folder
+onto the window).
+
+1. Click **New project**.
+2. **Name:** your app's name, e.g. `Fernwood`.
+3. **Location:** the parent folder – the project becomes a new folder in it.
+4. **Template:** keep **Phone** – three pages with a headline and a phone
+   each, rendered for iPhone 6.9″, Google Play and a blog header. (*Minimal*
+   is a single iPhone page; your own templates appear here too.)
+5. **Languages:** comma-separated, the first one is the default language,
+   e.g. `en, de`.
+6. **Create.**
+
+{{< placeholder "The start screen with the New project dialog: name, location, template cards and languages." >}}
+
+The first time you open a project, a one-screen overview *How Vitrine Studio
+is organised* appears. It's worth a look; it's always in the Help menu.
+
+## 2. A tour of the window
+
+{{< shot src="images/editor-dark.jpg" alt="The Vitrine Studio editor in dark mode: sidebar on the left, canvas in the middle, inspector on the right." caption="The editor (an earlier version – the left tab now says *Canvases*)." >}}
+
+- **Top bar:** the ☰ menu; the pickers **Canvas**, **Target**, **Language**
+  and **Variant** decide what you see and edit; the targets button next to
+  the target picker opens *Canvases & targets*; **Add** puts a new element on
+  the visible page; on the right the assistant indicator, **Export**, the
+  validation badge (**OK** or the number of problems) and undo/redo.
+- **Left sidebar:** the tabs **Canvases**, **Layers**, **Assets** and
+  **Translations**.
+- **Centre:** the view. The switch in the bottom bar picks **Canvas** (the
+  whole row of pages with the hatched gaps), **Pages** (each output image),
+  **Store gallery** (as the store shows it) or **All languages** (every
+  language side by side).
+- **Right:** the **Inspector** – the selected element's settings, or the
+  canvas settings (page format, page count, backgrounds, variants) when
+  nothing is selected.
+- **Bottom bar:** the view switch, the selection, the **?** button (keyboard &
+  mouse help) and the zoom controls (−, %, +, *Fit to window*).
+
+## 3. Add your screenshots
+
+Each phone shows the screenshot with its **key** – in the Phone template
+`welcome`, `features` and `start`. The quickest way: **drag a screenshot file
+onto a phone** on the canvas. It becomes that phone's screenshot for the
+current language.
+
+Other ways:
+
+- In the **Assets** tab, **Import…** imports single files; **Import
+  folder…** (also in the ☰ menu: **Import screenshots…**) brings in a whole
+  folder – including fastlane output. See [Screenshots](../screenshots/).
+- Or copy files into the project folder yourself:
+  `screenshots/en/welcome.png`, `screenshots/en/features.png`, … The app
+  picks them up immediately.
+
+Languages without their own screenshots use the default language's, so you can
+start with English only.
+
+## 4. Write your headlines
+
+**Double-click a headline** on the canvas and type. <kbd>Enter</kbd> applies,
+<kbd>Shift</kbd>+<kbd>Enter</kbd> makes a line break, <kbd>Esc</kbd> cancels.
+Select a word and use the toolbar for **bold**, *italic* or a span style (the
+accent colour).
+
+You are editing the text of the **current language**. Switch the
+**Language** picker to `de` and double-click again to write the German text –
+or open the **Translations** tab to see all languages of every text in one
+table.
+
+Texts shrink automatically to fit their box. If a translation is too long even
+at the minimum size, the validation badge turns red and the text is marked –
+see [Fitting long texts](../languages/#fitting-long-texts).
+
+## 5. Arrange
+
+- Drag elements to move them – they snap to page edges, centres and other
+  elements. Handles resize and rotate.
+- A device can sit across two pages; drag it over the border.
+- Drag on empty space to pan, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + scroll or pinch to
+  zoom, <kbd>⌘</kbd><kbd>0</kbd> to fit.
+- Made a mistake? <kbd>⌘</kbd><kbd>Z</kbd>. Every change is one undo step and
+  saved at once.
+
+The [editor page](../editor/) has everything else; press <kbd>?</kbd> for all
+shortcuts.
+
+## 6. Check all formats
+
+Switch the **Target** picker to **play-phone**: the same layout as a Google
+Play image (1:2 instead of about 1:2.17) with an Android frame. Switch the
+view to **Store gallery** to see the set as the store will show it, or to
+**All languages** to compare the translations.
+
+Click the validation badge for a list of what's missing or doesn't fit –
+*Show on the canvas* jumps to the problem.
+
+## 7. Export
+
+Press <kbd>⌘</kbd><kbd>E</kbd> (or **Export** in the top bar). The dialog
+shows a grid of **targets × languages** – everything is ticked. Click
+**Export**.
+
+{{< placeholder "The export dialog: targets × languages grid, output folder, layout and options." >}}
+
+The images land in the project's `export/` folder:
+
+```text
+export/
+  index.html                  ← overview of every image, opens in any browser
+  ios-iphone-69/en/01_welcome.png
+  ios-iphone-69/en/02_features.png
+  ios-iphone-69/en/03_start.png
+  ios-iphone-69/en/_gallery.png   ← preview of the store gallery
+  ios-iphone-69/de/…
+  play-phone/en/…
+  blog-header/en/banner.jpg
 ```
 
-## Your first project in the app
+**Show in Finder** / **Show in Explorer** opens the folder. Exports are
+incremental: next time only changed images are rendered. Details:
+[Export](../export/).
 
-1. Start Vitrine Studio. The start screen offers **New project**, **Open** and
-   your recent projects.
-2. **New project** → pick a template card (`Phone`: three pages with headline
-   and device for iPhone 6.9″, Google Play and a blog banner; `Minimal`: one
-   page) and your languages.
-3. Drop your app screenshots onto the devices – or import a whole folder
-   (*Import screenshots*, also fastlane output).
-4. Double-click a headline to type it. Every change is saved immediately;
-   there is no "Save".
-5. **Export** (⌘E) writes the images into `export/` – or upload them with
-   *Upload to stores…*.
-
-On the first project the app shows a one-screen guide "How Vitrine Studio is
-organised"; the Help menu has it again, plus *Keyboard & mouse* (or press `?`).
-
-## Your first project on the command line
+## The same on the command line
 
 ```sh
-vitrine new my-app --lang en --lang de     # a phone project from a template
-# put screenshots into my-app/screenshots/en/ios-phone/<key>.png (see project.yaml)
-vitrine validate --project my-app          # what is missing or does not fit
-vitrine export --project my-app            # PNG/JPEG files in my-app/export/<target>/<lang>/
+vitrine new my-app --lang en --lang de         # Phone template, en + de
+cp ~/Desktop/shots/welcome.png my-app/screenshots/en/
+cp ~/Desktop/shots/features.png my-app/screenshots/en/
+cp ~/Desktop/shots/start.png my-app/screenshots/en/
+vitrine validate --project my-app              # what's missing or doesn't fit
+vitrine export --project my-app                # → my-app/export/
 ```
 
-Try it on the example project of the repository:
-`vitrine export --project tests/fixtures/example`.
+Edit the texts in `my-app/i18n/en.yaml` and `de.yaml`, or open the folder in
+the app. See the [CLI reference](../cli/).
 
-## The project folder
+## Next steps
 
-| Path | Content |
-|---|---|
-| `project.yaml` | canvases, styles, targets, variants, store mapping |
-| `i18n/<lang>.yaml` | the texts per language |
-| `screenshots/<lang>/<variant>/<key>.png` | your app screenshots |
-| `assets/`, `fonts/`, `frames/` | images, project fonts, own frame packs |
-| `export/`, `.cache/` | output and caches – keep them out of Git |
-
-External edits – a text editor, `git checkout`, an AI assistant – are picked
-up live while the project is open.
+- Add more formats – iPad, Mac, the Play feature graphic: [Targets & store formats](../targets/)
+- Translate with translators or Claude: [Languages & translation](../languages/)
+- Real Apple device frames: [Devices & frames](../devices-frames/)
+- Upload directly to the stores: [Store upload](../store-upload/)
