@@ -91,7 +91,7 @@ fn compiled_files_are_reused_until_the_pack_changes() {
     fs::write(dir.join(PACK_FILE), cut).unwrap();
     let changed = load(&dir);
     assert_eq!(changed.frames.len(), 6, "{:?}", changed.errors);
-    assert!(changed.errors.is_empty());
+    assert_eq!(changed.errors, Vec::<String>::new());
 }
 
 #[test]

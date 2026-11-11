@@ -92,11 +92,12 @@ pub fn frames_root() -> anyhow::Result<PathBuf> {
         .context("no app data folder (no home folder?); set VITRINE_APP_DIR")
 }
 
-/// Installed frames for rendering and validation (`None` if none).
-pub fn installed() -> Option<Arc<FrameIndex>> {
-    let root = frames_root().ok()?;
-    let index = FrameIndex::load(&root);
-    (!index.is_empty()).then(|| Arc::new(index))
+/// Installed frames plus frame packs (app-wide and the project's in
+/// `project/frames/`, ADR 0023) for rendering and validation (`None` if
+/// none).
+pub fn installed(project: &Path) -> Option<Arc<FrameIndex>> {
+    let root = frames_root().ok();
+    vitrine_render::frame_packs::frame_index(root.as_deref(), Some(project))
 }
 
 /// Render context of the project in `root` with the installed frames.
@@ -107,7 +108,7 @@ pub fn render_context(
     Option<vitrine_core::layout::FontDirReport>,
 ) {
     let (ctx, fonts) = vitrine_render::scene::RenderContext::new(root);
-    (ctx.with_frames(installed()), fonts)
+    (ctx.with_frames(installed(root)), fonts)
 }
 
 pub fn run(args: &FramesArgs, global: &Global) -> anyhow::Result<u8> {

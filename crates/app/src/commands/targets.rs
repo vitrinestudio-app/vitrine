@@ -7,7 +7,8 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 use vitrine_core::catalog;
 use vitrine_core::model::{
-    CanvasId, GalleryRef, Orientation, PixelSize, Region, Target, TargetId, TargetKind,
+    BannerFit, CanvasId, GalleryRef, Gaps, Orientation, PixelSize, Region, Target, TargetId,
+    TargetKind, VariantId,
 };
 use vitrine_core::ops::{Op, TargetPatch};
 
@@ -148,6 +149,225 @@ pub fn target_add_from_preset(app: &AppState, args: TargetAddArgs) -> CmdResult<
             index: None,
         }],
         Some(format!("Add target {id}")),
+    )?;
+    Ok(EditResult {
+        result,
+        created: vec![id],
+    })
+}
+
+/// Store banners offered by "Banner from this canvas" (phase 6.2): the
+/// Google Play feature graphic and the App Store creative assets.
+pub const BANNER_PRESETS: [&str; 4] = [
+    "play-feature-graphic",
+    "ios-header",
+    "ios-search-results",
+    "ios-creative-universal",
+];
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BannerOptionsArgs {
+    pub canvas: String,
+    /// First page of the proposed regions (default 0).
+    #[serde(default)]
+    pub page: Option<u32>,
+}
+
+/// One proposal of [`canvas_banner_options`].
+#[derive(Debug, Clone, Serialize)]
+pub struct BannerOption {
+    pub preset: String,
+    pub label: String,
+    /// `apple` or `google`.
+    pub store: String,
+    pub size: PixelSize,
+    /// Proposed page range: as many pages from `page` as match the banner's
+    /// aspect best.
+    pub pages: [u32; 2],
+    /// Targets of this canvas that already use this store slot.
+    pub existing: Vec<String>,
+}
+
+/// How many pages of `page_aspect` (w/h per page) side by side come
+/// closest to `banner` (w/h), at most `count`.
+fn pages_for(page_aspect: f64, banner: f64, count: u32) -> u32 {
+    if page_aspect <= 0.0 {
+        return 1;
+    }
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a small page count"
+    )]
+    let n = (banner / page_aspect).round().max(1.0) as u32;
+    n.clamp(1, count.max(1))
+}
+
+fn page_aspect(canvas: &vitrine_core::model::Canvas) -> f64 {
+    f64::from(canvas.page.aspect.w) / f64::from(canvas.page.aspect.h.max(1))
+}
+
+fn aspect_of(size: PixelSize) -> f64 {
+    f64::from(size.w) / f64::from(size.h.max(1))
+}
+
+/// Proposals for "Banner from this canvas": the store banner presets with
+/// a page range of `canvas` that fits each one.
+pub fn canvas_banner_options(
+    app: &AppState,
+    args: BannerOptionsArgs,
+) -> CmdResult<Vec<BannerOption>> {
+    let session = app.session()?;
+    session.with_project(|p| {
+        let canvas = p
+            .canvas(&args.canvas)
+            .ok_or_else(|| CommandError::not_found(format!("unknown canvas `{}`", args.canvas)))?;
+        let count = canvas.page.count.max(1);
+        let first = args.page.unwrap_or(0).min(count - 1);
+        Ok(BANNER_PRESETS
+            .iter()
+            .filter_map(|id| catalog::target_preset(id))
+            .filter_map(|preset| {
+                let size = preset.default_size()?;
+                let n = pages_for(page_aspect(canvas), aspect_of(size), count);
+                let start = first.min(count - n);
+                let existing = p
+                    .targets
+                    .iter()
+                    .filter(|t| {
+                        t.canvas.as_str() == args.canvas
+                            && t.store.is_some()
+                            && t.store == preset.slot
+                    })
+                    .map(|t| t.id.to_string())
+                    .collect();
+                Some(BannerOption {
+                    preset: preset.id.clone(),
+                    label: preset.label.clone(),
+                    store: match preset.store {
+                        catalog::Store::Apple => "apple",
+                        catalog::Store::Google => "google",
+                        catalog::Store::None => "none",
+                    }
+                    .to_owned(),
+                    size,
+                    pages: [start, start + n - 1],
+                    existing,
+                })
+            })
+            .collect())
+    })
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BannerFromCanvasArgs {
+    pub canvas: String,
+    /// A banner preset (`play-feature-graphic`, `ios-header`,
+    /// `ios-search-results`, `ios-creative-universal`, or any other banner
+    /// preset of `catalog_targets`).
+    pub preset: String,
+    /// Page range of the region (default: the proposal of
+    /// [`canvas_banner_options`] from `page`).
+    #[serde(default)]
+    pub pages: Option<[u32; 2]>,
+    /// First page for the default range (default 0).
+    #[serde(default)]
+    pub page: Option<u32>,
+    /// A free rectangle (or page range) instead of `pages`.
+    #[serde(default)]
+    pub region: Option<Region>,
+    /// `cover` (default) or `contain`.
+    #[serde(default)]
+    pub fit: Option<BannerFit>,
+    /// Variant (default: that of the store's screenshot target on this
+    /// canvas).
+    #[serde(default)]
+    pub variant: Option<String>,
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub size: Option<PixelSize>,
+}
+
+/// "Banner from this canvas": adds a banner target for a store banner
+/// preset showing a region of `canvas` (seamless, `fit: cover` by
+/// default). Screenshot variant, device map and variant are taken from a
+/// screenshot target of the same store on this canvas (a Play banner shows
+/// Android devices like the Play screenshots). One undo step.
+pub fn target_add_banner(app: &AppState, args: BannerFromCanvasArgs) -> CmdResult<EditResult> {
+    let session = app.session()?;
+    let project = session.snapshot();
+    let canvas = project
+        .canvas(&args.canvas)
+        .ok_or_else(|| CommandError::not_found(format!("unknown canvas `{}`", args.canvas)))?;
+    let preset = catalog::target_preset(&args.preset)
+        .ok_or_else(|| CommandError::not_found(format!("unknown preset `{}`", args.preset)))?;
+    if preset.kind != TargetKind::Banner {
+        return Err(CommandError::invalid(format!(
+            "preset `{}` is not a banner",
+            preset.id
+        )));
+    }
+    let add = TargetAddArgs {
+        preset: args.preset.clone(),
+        canvas: args.canvas.clone(),
+        id: args.id.clone(),
+        size: args.size,
+        orientation: None,
+    };
+    let mut target = preset_target(&project, &add, canvas.page.count, &BTreeSet::new())?;
+    let count = canvas.page.count.max(1);
+    let region = match (args.region, args.pages) {
+        (Some(r), _) => r,
+        (None, Some([a, b])) => {
+            if a > b || b >= count {
+                return Err(CommandError::invalid(format!(
+                    "pages [{a}, {b}] are outside canvas `{}` ({count} pages)",
+                    args.canvas
+                )));
+            }
+            Region::Pages([a, b])
+        }
+        (None, None) => {
+            let n = pages_for(page_aspect(canvas), aspect_of(target.size), count);
+            let start = args.page.unwrap_or(0).min(count - n);
+            Region::Pages([start, start + n - 1])
+        }
+    };
+    target.region = Some(region);
+    target.fit = Some(args.fit.unwrap_or(BannerFit::Cover));
+    target.gaps = Some(Gaps::None);
+    // The store's look: screenshots, device map and variant of a sibling.
+    let same_store = |t: &&Target| {
+        t.canvas.as_str() == args.canvas
+            && t.kind == TargetKind::Pages
+            && t.store.as_ref().is_some_and(|s| match preset.store {
+                catalog::Store::Apple => s.apple.is_some(),
+                catalog::Store::Google => s.google.is_some(),
+                catalog::Store::None => false,
+            })
+    };
+    if let Some(sibling) = project.targets.iter().find(same_store) {
+        if target.screenshots.is_none() {
+            target.screenshots.clone_from(&sibling.screenshots);
+        }
+        target.device_map.clone_from(&sibling.device_map);
+        if args.variant.is_none() {
+            target.variant.clone_from(&sibling.variant);
+        }
+    }
+    if let Some(v) = &args.variant {
+        target.variant = Some(VariantId::parse(v).map_err(CommandError::invalid)?);
+    }
+    let id = target.id.to_string();
+    let result = session.apply_ops(
+        vec![Op::AddTarget {
+            target,
+            index: None,
+        }],
+        Some(format!("Add banner {id}")),
     )?;
     Ok(EditResult {
         result,
@@ -369,5 +589,86 @@ pub(super) mod tests {
         let t = call(&app, "target_get", json!({"id": id}));
         assert_eq!(t["target"]["kind"], "banner");
         assert!(t["target"].get("gallery").is_none());
+    }
+
+    #[test]
+    fn banner_from_canvas_options_and_add() {
+        let (_tmp, app) = opened();
+        let opts = call(&app, "canvas_banner_options", json!({"canvas": "phone"}));
+        let by = |id: &str| {
+            opts.as_array()
+                .unwrap()
+                .iter()
+                .find(|o| o["preset"] == id)
+                .unwrap()
+                .clone()
+        };
+        // Phone pages are 1320:2868 (0.46): 1024x500 (2.05) ≈ 4 pages,
+        // 21:9 ≈ 5, 3:2 ≈ 3, 16:9 ≈ 4.
+        assert_eq!(by("play-feature-graphic")["pages"], json!([0, 3]));
+        assert_eq!(
+            by("play-feature-graphic")["existing"],
+            json!(["play-feature-graphic"])
+        );
+        assert_eq!(by("ios-header")["pages"], json!([0, 4]));
+        assert_eq!(by("ios-search-results")["pages"], json!([0, 2]));
+        assert_eq!(by("ios-creative-universal")["pages"], json!([0, 3]));
+        assert_eq!(by("ios-header")["store"], "apple");
+        // From page 4 of 6: clamped so the range fits.
+        let late = call(
+            &app,
+            "canvas_banner_options",
+            json!({"canvas": "phone", "page": 4}),
+        );
+        assert_eq!(late[0]["pages"], json!([2, 5]));
+
+        // Play: Android look from the Play screenshot target.
+        let r = call(
+            &app,
+            "target_add_banner",
+            json!({"canvas": "phone", "preset": "play-feature-graphic"}),
+        );
+        let id = r["created"][0].as_str().unwrap();
+        assert_eq!(id, "play-feature-graphic-2");
+        let t = &call(&app, "target_get", json!({"id": id}))["target"];
+        assert_eq!(t["kind"], "banner");
+        assert_eq!(t["size"], json!([1024, 500]));
+        assert_eq!(t["region"], json!({"pages": [0, 3]}));
+        assert_eq!(t["fit"], "cover");
+        assert_eq!(t["gaps"], "none");
+        assert_eq!(
+            t["store"],
+            json!({"google": {"image_type": "featureGraphic"}})
+        );
+        assert_eq!(t["screenshots"], "android-phone");
+        assert_eq!(
+            t["device_map"],
+            json!({"iphone-island": "android-punchhole"})
+        );
+        assert_eq!(t["variant"], "android");
+        // Apple header with an explicit range and variant.
+        let r = call(
+            &app,
+            "target_add_banner",
+            json!({"canvas": "phone", "preset": "ios-header", "pages": [1, 5], "variant": "banner"}),
+        );
+        let t = &call(&app, "target_get", json!({"id": r["created"][0]}))["target"];
+        assert_eq!(t["region"], json!({"pages": [1, 5]}));
+        assert_eq!(t["variant"], "banner");
+        assert_eq!(t["screenshots"], "ios-phone");
+        assert_eq!(t["store"]["apple"]["placement"], "header");
+        // One undo step each.
+        call(&app, "undo", Value::Null);
+        assert!(
+            dispatch(&app, "target_get", json!({"id": r["created"][0]})).is_err(),
+            "undone"
+        );
+        // Not a banner / outside the canvas.
+        for bad in [
+            json!({"canvas": "phone", "preset": "play-phone"}),
+            json!({"canvas": "phone", "preset": "ios-header", "pages": [3, 9]}),
+        ] {
+            assert!(dispatch(&app, "target_add_banner", bad).is_err());
+        }
     }
 }
