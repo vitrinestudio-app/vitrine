@@ -26,9 +26,10 @@ png.workspace = true
 moxcms.workspace = true
 zip.workspace = true
 flate2.workspace = true
+# Templates walk canvases as JSON (asset references in any field).
+serde_json.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
 proptest.workspace = true
-serde_json.workspace = true
 tempfile.workspace = true

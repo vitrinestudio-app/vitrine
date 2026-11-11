@@ -34,7 +34,7 @@
 //! validate/   findings per target × language (references, texts, screenshots, store rules)
 //! catalog/    devices, targets, gallery profiles (from data/*.yaml)
 //! colorspace  image colour profiles → sRGB (moxcms, ADR 0021)
-//! templates   built-in project templates (`vitrine new`, GUI)
+//! template/   template packages: save, new project, insert, store, built-ins
 //! ```
 
 pub mod catalog;
@@ -51,7 +51,7 @@ pub mod markup;
 pub mod model;
 pub mod ops;
 pub mod resolve;
-pub mod templates;
+pub mod template;
 pub mod validate;
 
 pub use model::Project;

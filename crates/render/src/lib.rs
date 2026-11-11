@@ -26,6 +26,7 @@ pub mod geometry;
 pub mod paint;
 pub mod raster;
 pub mod scene;
+pub mod template;
 pub mod text;
 
 pub use export::{ExportOptions, ExportReport, export};
