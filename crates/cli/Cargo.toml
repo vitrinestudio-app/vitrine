@@ -19,6 +19,9 @@ vitrine-core.workspace = true
 vitrine-render.workspace = true
 vitrine-mcp = { workspace = true, features = ["proxy"] }
 vitrine-app.workspace = true
+# Template gallery client + keychain (`vitrine gallery`).
+vitrine-publish.workspace = true
+tokio = { workspace = true, features = ["time"] }
 anyhow.workspace = true
 clap.workspace = true
 directories.workspace = true
@@ -30,6 +33,9 @@ tempfile.workspace = true
 # tests/mcp_proxy.rs hosts the GUI's endpoint in-process.
 vitrine-mcp = { workspace = true, features = ["proxy", "http"] }
 base64.workspace = true
+# tests/gallery.rs runs the API server in-process with a fake GitHub.
+vitrine-api-server.workspace = true
+wiremock.workspace = true
 
 [lints]
 workspace = true
