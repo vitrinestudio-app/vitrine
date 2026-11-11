@@ -453,6 +453,14 @@ mod tests {
                 t.name
             );
         }
+        for name in [
+            "template_list",
+            "template_save",
+            "template_insert",
+            "template_import",
+        ] {
+            assert!(tools.iter().any(|t| t.name == name), "{name} missing");
+        }
         let preview = tools.iter().find(|t| t.name == "render_preview").unwrap();
         let max_edge = &preview.input_schema["properties"]["max_edge"];
         assert_eq!(max_edge["default"], 1200, "{max_edge}");

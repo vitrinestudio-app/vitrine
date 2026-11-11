@@ -23,7 +23,7 @@ Units and geometry
 Reference: docs_get {topic} returns markdown for overview, elements (all fields, types, defaults), ops, project, markup, targets, scopes. Call it instead of guessing field names.
 
 Workflow
-1. project_open {dir} or project_create {dir, name, template: phone|minimal, langs: ["en", "de"]}.
+1. project_open {dir} or project_create {dir, name, template: phone|minimal|<installed id>, langs: ["en", "de"]} (template_list lists templates; template_insert adds canvases of a template to the open project, template_save saves canvases as a template).
 2. project_summary → canvases, pages, element ids, targets, languages. Read view_get/selection_get when the user refers to "this" or "the selected element".
 3. Change things: element_add / element_update (patch with YAML field names) / element_move / element_resize / element_rotate, strings_set for texts, styles_update for colours and text styles, canvas_update for pages/backgrounds, target_add for more store sizes, canvas_add / canvas_duplicate for another canvas (e.g. a tablet set), canvas_variant for per-format overrides. apply_ops for complex atomic edits (docs_get {topic: "ops"}).
 4. After every visual change call render_preview and LOOK at the image (default: first target, default language). Check other targets/languages too (view: gallery shows all images of a target with store gaps).
