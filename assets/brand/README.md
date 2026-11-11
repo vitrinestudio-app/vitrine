@@ -2,6 +2,25 @@
 
 Own work (drawn for the project on 2026-11-11), no third-party material.
 
+## Licence: not GPL
+
+The name "Vitrine Studio", the logo and the app icons are **© 2026
+Looking4Cache UG (haftungsbeschränkt), all rights reserved**, and are *not*
+covered by the GPL licence of the source code (ADR 0022). This covers the
+files in this folder, the app icons generated from them
+(`crates/gui/icons/*`) and `crates/gui/ui/img/logo.svg`.
+
+- You may redistribute **unmodified** copies of Vitrine Studio (source or
+  binaries built from the official sources) with the name and logo, and
+  use them to refer to the project (articles, reviews, links).
+- **Forks and modified versions** must not use the name "Vitrine Studio" or
+  the logo as their own name or app icon. Replace the files listed above
+  and change `productName`/`identifier` in `crates/gui/tauri.conf.json`.
+- Other uses (merchandise, a commercial product's branding, …): ask the
+  owner first.
+
+## Files
+
 | File | Use |
 |---|---|
 | `vitrine-studio.svg` | Logo mark, full bleed (website, favicon, docs) |
