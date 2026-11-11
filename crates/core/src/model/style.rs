@@ -333,7 +333,7 @@ flow_style!(ShadowLayer);
 
 /// Device frame style (§4.1): built-in parametric `stylized` / `detailed`,
 /// an imported vendor package (`imported:apple`, ADR 0012) or an own frame
-/// pack (`pack:<id>`, ADR 0023).
+/// pack (`pack:<id>`, ADR 0024).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FrameStyle {
     Stylized,

@@ -458,7 +458,7 @@ fn frames_import_keeps_all_sizes_and_shows_the_licence() {
     assert!(stdout(&o).contains("removed 2 frames"), "{}", stdout(&o));
 }
 
-/// Own frame packs (ADR 0023): `frames import` recognises a pack zip,
+/// Own frame packs (ADR 0024): `frames import` recognises a pack zip,
 /// `--to project` puts it into the project, `frames list --packs`,
 /// render with `frame: pack:<id>`, `frames remove --pack`.
 #[test]

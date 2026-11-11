@@ -334,7 +334,7 @@ pub fn write_zip(path: &Path, specs: &[BezelSpec]) -> Result<PathBuf, String> {
     Ok(path.to_owned())
 }
 
-// ----- own frame pack (ADR 0023) ---------------------------------------------------------
+// ----- own frame pack (ADR 0024) ---------------------------------------------------------
 
 /// `frame.yaml` of the synthetic frame pack ([`write_pack`]); `SX` … `SR`
 /// are replaced with the painted frame's screen.

@@ -288,7 +288,7 @@ fn bezel_is_chosen_per_target_screenshot_or_pin() {
     assert!(has_bezel_info(&scene));
 }
 
-// ----- own frame packs (ADR 0023) ------------------------------------------------------
+// ----- own frame packs (ADR 0024) ------------------------------------------------------
 
 /// The synthetic "Clay phone" pack in the project's `frames/` folder.
 fn pack_setup() -> (

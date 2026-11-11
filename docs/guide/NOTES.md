@@ -62,6 +62,30 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Rules (Apple): short phrase that enhances the visual, localized; no prices, URLs, ©, unverifiable awards, other platforms, Apple awards; suitable for 4+.
 - Safe area: Apple defines it only in its design templates (Figma/Photoshop/Pixelmator/Sketch), no numbers published → presets have none. Set `safe_area: {top, right, bottom, left}` (insets in % of the image) on the target (Targets dialog → Safe area): the canvas shows it as a dashed rectangle per output image and validation warns `text_outside_safe_area`.
 
+### Google Play feature graphic (Phase 6.2, checked 2026-11-11)
+- Required to publish on Google Play: 1024×500, JPEG or 24-bit PNG without alpha (support.google.com/googleplay/android-developer/answer/9866151 and /1078870); no file size limit stated for it. Guidance (Google): focal point centred, key content (logo, name, slogan) away from the edges, no "Best"/"#1"/"Free", no Play badges, **avoid device imagery** – the example uses phones anyway as a showcase; drop the devices in a banner variant if you follow the guidance strictly.
+- Preset `play-feature-graphic` (banner, slot `{google: {image_type: featureGraphic}}`, rules `google-feature-graphic`). Exports are always opaque (PNG RGB 8-bit / JPEG), so the "no alpha" rule holds by construction; validation checks size and format.
+- Upload: one image per Play language in the same edit as the screenshots (`featureGraphic` listing image, replaced via `deleteall`); fastlane layout `metadata/android/<locale>/images/featureGraphic.png`.
+- Example project: target `play-feature-graphic` (phone canvas, `banner` variant, Android frames via the Play target's device map).
+
+### Banner from this canvas (Phase 6.2, 2026-11-11)
+- One action for the store banners: Google Play feature graphic, App Store product page header (21:9), search results (3:2), universal creative (16:9).
+- GUI: Canvases & targets → a canvas → "Banner from this canvas": per banner the proposed page range (as many pages as fit the banner's aspect, "From page" moves it), "already: …" when the canvas has one; Add creates the target (region = page range, `fit: cover`, `gaps: none`) and opens it.
+- It copies screenshot variant, device map and variant of the canvas's screenshot target of the same store (Play banner → Android frames and the `android` variant; Apple → iPhone frames). Change the region (free rectangle) and variant in the target form afterwards.
+- Phone pages (0.46): feature graphic ≈ 4 pages, header ≈ 5, search results ≈ 3, universal ≈ 4.
+- App commands `canvas_banner_options {canvas, page?}`, `target_add_banner {canvas, preset, pages?|page?|region?, fit?, variant?, id?}` (one undo step); MCP `banner_add` (without `preset`: proposals only). No CLI command (the CLI does not edit projects).
+
+### Own frame packs (Phase 6.4, ADR 0024, 2026-11-11)
+- Any PNG or SVG frame + `frame.yaml`; format reference `docs/guide/frame-packs.md`. Use with `frame: pack:<id>` (device or project default), colours = the pack's colour ids, several sizes via `bezel:`.
+- Places: project `frames/<id>/` (travels with the project / Git) or app-wide `<app data>/frames/packs/<id>/`; a project pack hides an app pack with the same id. Compiled caches: `<project>/.cache/frames/<id>/`, `<app pack>/.compiled/` (rebuilt when the pack changes).
+- Screen: detected (transparent area around the centre, like Apple bezels), or `screen: {x,y,w,h}` + `radius`, or a `mask` image; painted screens need `cut_screen: true`.
+- A pack without `models` fits any device (new devices / sizes); the element's height follows the frame.
+- Import: app settings → Frame packages → pick/drop the folder or .zip (recognised by `frame.yaml`) → check → "Import into: this computer / this project"; packs listed with thumbnails, remove. CLI: `vitrine frames import <dir|zip> [--to app|project] [--id] [--dry-run]`, `frames list --packs`, `frames remove --pack <id> [--from app|project]`. MCP `frames_list` returns `packs`.
+- Inspector frame picker and project settings → Frame style list the packs ("Pack: <name>"); missing pack → built-in frame + info `imported_frame_missing`.
+- Not yet: no automatic recompile while the project is open when files in `frames/` change (re-open or re-import), no automatic rotation of portrait frames for landscape devices.
+- Test pack: `cargo run -p vitrine-core --example synthetic_frame_pack -- [--full-size] <dir|file.zip>`.
+- Vendor kits and their terms: `docs/research/2026-11-11-vendor-frames.md` (Apple: mock-ups of Apple-platform apps only, no redistribution; Google Device Art Generator output must not be used in Play listings; Samsung press images allowed in Galaxy Store screenshots; Meta Quest art with attribution; Facebook/Meta "Devices" kit: prototyping only). Keep vendor packs app-wide, never in shared projects.
+
 ### Watch and Wear OS: screenshot only
 - Target option `screenshot_only: true` (Targets dialog → "Screenshot only"; default for all watch presets and `play-wear`): every page exports the screenshot of its largest device alone, filling the image (square corners, no frame, background, text, shadow or rotation). Use the target's screenshot variant (`watch`, `wear`) so the watch captures are picked by key.
 - A page without a device stays empty (warning `screenshot_only_empty`).

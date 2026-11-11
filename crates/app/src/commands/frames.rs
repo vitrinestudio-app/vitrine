@@ -1,5 +1,5 @@
 //! Imported vendor frames (KONZEPT §4.2, ADR 0012) and own frame packs
-//! (ADR 0023): app settings → "Frame packages". The store lives in the app data folder
+//! (ADR 0024): app settings → "Frame packages". The store lives in the app data folder
 //! (`<data>/frames/`), never in a project; after every change the open
 //! session renders with the new index.
 
@@ -37,7 +37,7 @@ impl AppState {
     }
 
     /// Installed frames plus frame packs (app-wide and those of the
-    /// project in `project`, ADR 0023); `None` when there is nothing.
+    /// project in `project`, ADR 0024); `None` when there is nothing.
     pub fn frame_index_for(&self, project: Option<&Path>) -> Option<Arc<FrameIndex>> {
         frame_packs::frame_index(Some(&self.frames_root()), project)
     }
@@ -190,7 +190,7 @@ pub struct FramesList {
     /// The store folder (app data, never a project).
     pub root: PathBuf,
     pub sources: Vec<FrameSourceInfo>,
-    /// Own frame packs (ADR 0023): the open project's (`frames/`) first,
+    /// Own frame packs (ADR 0024): the open project's (`frames/`) first,
     /// then the app-wide ones (`<root>/packs/`).
     pub packs: Vec<PackInfo>,
 }
@@ -267,7 +267,7 @@ fn packs_dir(app: &AppState, target: PackTarget) -> CmdResult<PathBuf> {
     })
 }
 
-/// Checks (`dry_run`) or imports an own frame pack (ADR 0023) and
+/// Checks (`dry_run`) or imports an own frame pack (ADR 0024) and
 /// refreshes the open project.
 pub fn frames_pack_import(app: &AppState, args: FramesPackImportArgs) -> CmdResult<PackImport> {
     if !pack::is_pack(&args.path) {

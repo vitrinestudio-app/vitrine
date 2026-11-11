@@ -1,6 +1,6 @@
 //! Import of vendor device frames (KONZEPT §4.2, ADR 0012): Apple Design
 //! Resources "Product Bezels" downloaded by the user; own frame packs
-//! (`frame.yaml` + PNG/SVG, ADR 0023) in [`pack`].
+//! (`frame.yaml` + PNG/SVG, ADR 0024) in [`pack`].
 //!
 //! ```text
 //! Package::open(folder | .zip | .dmg)       package (PNG entries)

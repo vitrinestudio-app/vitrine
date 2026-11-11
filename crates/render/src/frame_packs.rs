@@ -1,4 +1,4 @@
-//! Frame packs (ADR 0023) with SVG support: the resvg rasterizer for
+//! Frame packs (ADR 0024) with SVG support: the resvg rasterizer for
 //! `core::frame_import::pack` and the combined frame index (imported vendor
 //! frames + app-wide packs + the project's packs) every front end uses.
 

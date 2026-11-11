@@ -178,11 +178,11 @@ pub struct UserMapping {
 }
 
 /// `model` of a frame-pack frame that any device model may use (a pack
-/// without `models:`, ADR 0023).
+/// without `models:`, ADR 0024).
 pub const ANY_MODEL: &str = "*";
 
 /// All installed frames below a frames root, read-only (what resolve and
-/// render use), plus frame packs (ADR 0023) whose compiled files live in
+/// render use), plus frame packs (ADR 0024) whose compiled files live in
 /// their own folders ([`Self::add_source`]).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FrameIndex {

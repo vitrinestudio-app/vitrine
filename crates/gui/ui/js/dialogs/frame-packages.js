@@ -3,7 +3,7 @@
 // dropped), review the plan (matched files, unmatched files with manual
 // assignment, sanity warnings), apply, and list/remove installed frames.
 // Frames live in the app data folder, never in a project.
-// Own frame packs (6.4, ADR 0023): a folder or .zip with `frame.yaml` is
+// Own frame packs (6.4, ADR 0024): a folder or .zip with `frame.yaml` is
 // recognised on pick/drop, checked (compiled), and imported for this
 // computer or into the open project (`frames/<id>/`, travels with it).
 

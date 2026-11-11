@@ -204,7 +204,7 @@ fn dmg_licence_error_has_details() {
     assert!(v["message"].as_str().unwrap().contains("licence agreement"));
 }
 
-/// Own frame packs (ADR 0023): import app-wide and into the project, list,
+/// Own frame packs (ADR 0024): import app-wide and into the project, list,
 /// use with `frame: pack:<id>`, thumbnail, remove.
 #[test]
 fn frame_packs_import_use_and_remove() {

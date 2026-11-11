@@ -220,7 +220,7 @@ pub struct RenderContext {
     fonts: FontLibrary,
     layouters: Mutex<Vec<TextLayouter>>,
     /// Installed vendor frames and frame packs with their decoded/scaled
-    /// bezels and masks (one cache per source folder; ADR 0012, 0023).
+    /// bezels and masks (one cache per source folder; ADR 0012, 0024).
     frames: Option<(Arc<FrameIndex>, HashMap<String, AssetCache>)>,
 }
 

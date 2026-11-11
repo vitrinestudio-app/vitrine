@@ -48,7 +48,7 @@ pub struct ImportArgs {
     /// Frame source (rules in `crates/core/data/frame-import/<source>.yaml`).
     #[arg(long, default_value = "apple")]
     pub source: String,
-    /// Own frame packs (a folder or .zip with `frame.yaml`, ADR 0023): where
+    /// Own frame packs (a folder or .zip with `frame.yaml`, ADR 0024): where
     /// to put it, `app` (this computer) or `project` (the project's
     /// `frames/` folder, travels with it).
     #[arg(long, value_enum, default_value_t = PackTo::App)]
@@ -131,7 +131,7 @@ pub fn frames_root() -> anyhow::Result<PathBuf> {
 }
 
 /// Installed frames plus frame packs (app-wide and the project's in
-/// `project/frames/`, ADR 0023) for rendering and validation (`None` if
+/// `project/frames/`, ADR 0024) for rendering and validation (`None` if
 /// none).
 pub fn installed(project: &Path) -> Option<Arc<FrameIndex>> {
     let root = frames_root().ok();

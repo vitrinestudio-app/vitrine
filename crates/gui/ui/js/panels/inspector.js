@@ -424,7 +424,7 @@ export function mount(el, ctx) {
     if (!dev) models.unshift({ value: e.model, label: e.model });
     rows.push(row(t('inspector.model'), selectInput({ key: 'model', options: models, value: e.model, title: t('inspector.model'), onChange: (v) => set({ model: v }) }), { field: 'model', info }));
     const frameDefault = store.get().summary.styles.frame;
-    // Own frame packs (ADR 0023): the project's first, then app-wide; a
+    // Own frame packs (ADR 0024): the project's first, then app-wide; a
     // project pack hides an app pack with the same id.
     const packs = [];
     for (const p of extra.frames?.packs ?? []) if (!packs.some((x) => x.id === p.id)) packs.push(p);

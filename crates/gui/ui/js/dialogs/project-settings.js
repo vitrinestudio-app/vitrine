@@ -129,7 +129,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
   /** Default frame: built-in styles or Apple's imported bezels; switching
    *  remaps device colours in Rust (`styles_patch`). */
   function frameRow(value) {
-    // Own frame packs (ADR 0023), project packs first (they hide app packs).
+    // Own frame packs (ADR 0024), project packs first (they hide app packs).
     const packs = [];
     for (const p of frames?.packs ?? []) if (!packs.some((x) => x.id === p.id)) packs.push(p);
     const label = (f) => (f.startsWith('imported:') ? t(`frames.source.${f.slice(9)}`) : t(`settings.frame.${f}`));

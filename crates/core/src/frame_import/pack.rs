@@ -1,6 +1,6 @@
 #![allow(clippy::many_single_char_names, reason = "pixel geometry")]
 
-//! Own frame packs (KONZEPT §4.2 item 3, ADR 0023): any PNG or SVG device
+//! Own frame packs (KONZEPT §4.2 item 3, ADR 0024): any PNG or SVG device
 //! frame plus a small `frame.yaml`, in a project's `frames/<id>/` (travels
 //! with the project) or app-wide in `<app data>/frames/packs/<id>/`.
 //!

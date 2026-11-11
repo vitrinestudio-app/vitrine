@@ -229,7 +229,7 @@ export const api = {
   framesRemove: (args = {}) => invoke('frames_remove', args),
   /** `source`: `apple` (default) or `pack:<id>`. */
   framesThumbnail: (file, maxEdge, source = 'apple') => invoke('frames_thumbnail', { file, max_edge: maxEdge, source }),
-  // ----- own frame packs (6.4, ADR 0023) -----
+  // ----- own frame packs (6.4, ADR 0024) -----
   /** `opts`: { target?: 'app' | 'project', id?, dry_run? }; error details `{kind: 'not_a_pack'}` for other packages. */
   framesPackImport: (path, opts = {}) => invoke('frames_pack_import', { path, ...opts }),
   framesPackRemove: (id, target = 'app') => invoke('frames_pack_remove', { id, target }),
