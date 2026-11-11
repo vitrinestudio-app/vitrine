@@ -4,10 +4,10 @@
 # a missing screenshot is drawn as a placeholder.
 format: vitrine/1
 revision: 0
-name: __NAME__
+name: Minimal
 languages:
-  default: __DEFAULT_LANG__
-  available: __LANGS__
+  default: en
+  available: [en, de]
 canvases:
 - id: main
   page: {aspect: 1320:2868, count: 1, ids: [home]}

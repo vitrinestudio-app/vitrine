@@ -1,0 +1,5 @@
+# Docker build context of crates/gallery-server/Dockerfile
+target/
+.claude/
+tests/fixtures/example/golden/
+docs/

@@ -7,10 +7,10 @@
 # missing screenshots are drawn as placeholders.
 format: vitrine/1
 revision: 0
-name: __NAME__
+name: Phone
 languages:
-  default: __DEFAULT_LANG__
-  available: __LANGS__
+  default: en
+  available: [en, de]
 styles:
   colors:
     accent: "#FF7A45"

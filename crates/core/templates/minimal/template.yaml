@@ -1,0 +1,16 @@
+# Built-in template (docs/adr/0023-templates.md): placeholder screenshots are
+# generated when the template is loaded; no previews are stored.
+format: vitrine-template/1
+id: minimal
+name: Minimal
+description: One page with a headline and a device; iPhone 6.9″
+author: Vitrine Studio
+tags: [phone, minimal]
+version: 1.0.0
+license: CC0-1.0
+project_format: vitrine/1
+canvases:
+- id: main
+  aspect: 1320:2868
+  pages: 1
+  targets: [ios-iphone-69]

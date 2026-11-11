@@ -111,19 +111,20 @@ impl From<vitrine_core::io::IoError> for CommandError {
     }
 }
 
-impl From<vitrine_core::templates::TemplateError> for CommandError {
-    fn from(e: vitrine_core::templates::TemplateError) -> Self {
-        use vitrine_core::templates::TemplateError;
+impl From<vitrine_core::template::TemplateError> for CommandError {
+    fn from(e: vitrine_core::template::TemplateError) -> Self {
+        use vitrine_core::template::TemplateError;
         let code = match &e {
-            TemplateError::InvalidLang { .. } | TemplateError::DuplicateLang(_) => {
-                ErrorCode::InvalidArgs
-            }
-            TemplateError::NotADir(_) | TemplateError::NotEmpty(_) | TemplateError::Io { .. } => {
-                ErrorCode::Io
-            }
-            TemplateError::Template(_) | TemplateError::Load(_) => ErrorCode::Internal,
+            TemplateError::Invalid(_) | TemplateError::FontLicense { .. } => ErrorCode::InvalidArgs,
+            TemplateError::NotFound(_) => ErrorCode::NotFound,
+            TemplateError::Conflict(_) | TemplateError::Io { .. } => ErrorCode::Io,
+            TemplateError::Project(_) => ErrorCode::Load,
         };
-        Self::new(code, e.to_string())
+        let mut err = Self::new(code, e.to_string());
+        if let TemplateError::FontLicense { file, .. } = &e {
+            err = err.with_details(serde_json::json!({ "kind": "font_license", "file": file }));
+        }
+        err
     }
 }
 

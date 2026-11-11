@@ -1,11 +1,13 @@
-//! `vitrine new`: a project folder (KONZEPT §3.1) from a built-in template.
+//! `vitrine new`: a project folder (KONZEPT §3.1) from a template (built
+//! in, installed in the app-wide store, or a `.vitrine-template` file).
 
 use std::path::PathBuf;
 
 use anyhow::Context;
-use clap::{Args, ValueEnum};
+use clap::Args;
 use vitrine_core::model::Lang;
-use vitrine_core::templates::{self, create_project, default_name, parse_langs};
+use vitrine_core::template::builtin;
+use vitrine_core::template::instantiate::{create_project, default_name, parse_langs};
 
 use crate::{EXIT_OK, Global};
 
@@ -16,41 +18,25 @@ pub struct NewArgs {
     /// Project name (default: the folder name).
     #[arg(long)]
     pub name: Option<String>,
-    /// Template to start from.
-    #[arg(long, value_enum, default_value_t = Template::Phone)]
-    pub template: Template,
+    /// Template: built in (`phone`, `minimal`), the id of an installed
+    /// template (`vitrine template list`) or a `.vitrine-template` file.
+    #[arg(long, default_value = builtin::DEFAULT, value_name = "NAME|FILE")]
+    pub template: String,
     /// Project language; repeat for more. The first is the default language
     /// (fallback for texts and screenshots). Default: `en`.
     #[arg(long = "lang", value_name = "LANG")]
     pub langs: Vec<String>,
 }
 
-/// Command line names of the built-in templates (`vitrine_core::templates`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum Template {
-    /// Three phone pages with gradient, headlines and devices; targets
-    /// iPhone 6.9″ (App Store), Google Play phone and a blog banner.
-    Phone,
-    /// One page with a headline and a device; target iPhone 6.9″.
-    Minimal,
-}
-
-impl From<Template> for templates::Template {
-    fn from(t: Template) -> Self {
-        match t {
-            Template::Phone => Self::Phone,
-            Template::Minimal => Self::Minimal,
-        }
-    }
-}
-
 pub fn run(args: &NewArgs, global: &Global) -> anyhow::Result<u8> {
     let dir = &args.dir;
     let langs = parse_langs(&args.langs)?;
     let name = args.name.clone().unwrap_or_else(|| default_name(dir));
-    let template: templates::Template = args.template.into();
-    let project = create_project(dir, &name, template, &langs)
+    let store = crate::template::store()?;
+    let pkg = store.find(&args.template)?;
+    let created = create_project(&pkg, dir, &name, &langs)
         .with_context(|| format!("cannot create project `{}`", dir.display()))?;
+    let project = created.project;
 
     if !global.quiet {
         let style = crate::term::Style::stdout();
@@ -60,14 +46,18 @@ pub fn run(args: &NewArgs, global: &Global) -> anyhow::Result<u8> {
             style.ok("Created"),
             project.name,
             dir.display(),
-            template.name(),
+            pkg.manifest.name,
             lang_list.join(", ")
         );
-        let shots: Vec<String> = project
-            .targets
-            .iter()
-            .filter_map(|t| t.screenshots.clone())
-            .collect();
+        for (lang, from) in &created.copied_texts {
+            println!("  texts for {lang} copied from {from} – translate them in i18n/{lang}.yaml");
+        }
+        let mut shots: Vec<String> = Vec::new();
+        for s in project.targets.iter().filter_map(|t| t.screenshots.clone()) {
+            if !shots.contains(&s) {
+                shots.push(s);
+            }
+        }
         println!(
             "Put screenshots into {}/screenshots/{}/<{}>/ (or directly into screenshots/{}/), then:",
             dir.display(),

@@ -1,0 +1,16 @@
+# Built-in template (docs/adr/0023-templates.md): placeholder screenshots are
+# generated when the template is loaded; no previews are stored.
+format: vitrine-template/1
+id: phone
+name: Phone
+description: Three phone pages with gradient, headlines and devices; iPhone 6.9″, Google Play phone, blog banner
+author: Vitrine Studio
+tags: [phone, gradient]
+version: 1.0.0
+license: CC0-1.0
+project_format: vitrine/1
+canvases:
+- id: phone
+  aspect: 1320:2868
+  pages: 3
+  targets: [ios-iphone-69, play-phone, blog-header]

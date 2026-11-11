@@ -130,7 +130,8 @@ impl VitrineMcp {
             + Self::output_tools()
             + Self::history_tools()
             + Self::docs_tools()
-            + Self::upload_tools();
+            + Self::upload_tools()
+            + Self::template_tools();
         Self {
             app,
             progress,
@@ -451,6 +452,14 @@ mod tests {
                 "{} is not snake_case",
                 t.name
             );
+        }
+        for name in [
+            "template_list",
+            "template_save",
+            "template_insert",
+            "template_import",
+        ] {
+            assert!(tools.iter().any(|t| t.name == name), "{name} missing");
         }
         let preview = tools.iter().find(|t| t.name == "render_preview").unwrap();
         let max_edge = &preview.input_schema["properties"]["max_edge"];

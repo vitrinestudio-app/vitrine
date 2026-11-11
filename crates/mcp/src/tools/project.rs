@@ -24,18 +24,6 @@ pub struct ProjectOpenParams {
     pub dir: PathBuf,
 }
 
-/// Built-in project template.
-#[derive(Debug, Clone, Copy, Default, Deserialize, serde::Serialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum TemplateName {
-    /// Three phone pages (gradient, headlines, devices); targets iPhone
-    /// 6.9", Google Play phone and a blog banner (default).
-    #[default]
-    Phone,
-    /// One page with a headline and a device; target iPhone 6.9".
-    Minimal,
-}
-
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ProjectCreateParams {
@@ -44,9 +32,12 @@ pub struct ProjectCreateParams {
     /// Project/app name (default: the folder name).
     #[serde(default)]
     pub name: Option<String>,
-    /// Template (default `phone`).
+    /// Template: built in (`phone` – three phone pages, iPhone 6.9" +
+    /// Google Play + blog banner; `minimal` – one page), the id of an
+    /// installed template (see `template_list`) or a `.vitrine-template`
+    /// file path. Default `phone`.
     #[serde(default)]
-    pub template: TemplateName,
+    pub template: Option<String>,
     /// Languages as BCP 47 tags, the first is the default language, e.g.
     /// `["en", "de", "fr"]` (default: the app setting, usually `en`).
     #[serde(default)]
@@ -189,7 +180,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Create a new project from a template in an empty or new folder, open it and return its summary. Refuses non-empty folders. Example: {\"dir\": \"/Users/me/Screens/MyApp\", \"name\": \"MyApp\", \"template\": \"phone\", \"langs\": [\"en\", \"de\"]}."
+        description = "Create a new project from a template (built in or installed, see template_list) in an empty or new folder, open it and return its summary. Refuses non-empty folders. Example: {\"dir\": \"/Users/me/Screens/MyApp\", \"name\": \"MyApp\", \"template\": \"phone\", \"langs\": [\"en\", \"de\"]}."
     )]
     async fn project_create(
         &self,
@@ -197,7 +188,8 @@ impl VitrineMcp {
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run_unsynced(&ctx, move |app| {
-            let mut args = json!({ "dir": p.dir, "template": p.template_name() });
+            let mut args =
+                json!({ "dir": p.dir, "template": p.template.as_deref().unwrap_or("phone") });
             if let Some(n) = p.name {
                 args["name"] = json!(n);
             }
@@ -283,14 +275,5 @@ impl VitrineMcp {
             ))
         })
         .await
-    }
-}
-
-impl ProjectCreateParams {
-    fn template_name(&self) -> &'static str {
-        match self.template {
-            TemplateName::Phone => "phone",
-            TemplateName::Minimal => "minimal",
-        }
     }
 }

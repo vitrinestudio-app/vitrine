@@ -1,0 +1,28 @@
+# Example for the owner's Docker server (docs/gallery/DEPLOY.md). Copy next to
+# a checkout, fill in the secrets in .env (never commit them), then:
+#   docker compose -f docker-compose.example.yml up -d --build
+# The reverse proxy terminates TLS for api.vitrinestudio.app and forwards to
+# 127.0.0.1:8080.
+services:
+  gallery:
+    build:
+      context: ../..
+      dockerfile: crates/gallery-server/Dockerfile
+    image: vitrine-gallery:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - gallery-data:/data
+    environment:
+      GALLERY_PUBLIC_URL: https://api.vitrinestudio.app
+      GALLERY_TRUST_PROXY: "1"
+      GALLERY_MAX_UPLOAD_MB: "50"
+      GALLERY_RATE_LIMIT_PER_HOUR: "20"
+      GALLERY_AUTO_APPROVE: "0"
+      # Secrets from .env: GALLERY_ADMIN_TOKEN=…, GALLERY_UPLOAD_TOKENS=token:login,…
+      GALLERY_ADMIN_TOKEN: ${GALLERY_ADMIN_TOKEN}
+      GALLERY_UPLOAD_TOKENS: ${GALLERY_UPLOAD_TOKENS:-}
+
+volumes:
+  gallery-data:
