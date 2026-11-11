@@ -1,0 +1,190 @@
+/* Vitrine Studio website – tokens, fonts, base typography.
+   Brand colours from the logo gradient: violet → magenta → coral. */
+
+@font-face { font-family: "Inter"; font-weight: 400; font-style: normal; font-display: swap; src: url("/fonts/Inter-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 600; font-style: normal; font-display: swap; src: url("/fonts/Inter-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "Inter Display"; font-weight: 700; font-style: normal; font-display: swap; src: url("/fonts/InterDisplay-Bold.woff2") format("woff2"); }
+@font-face { font-family: "Inter Display"; font-weight: 900; font-style: normal; font-display: swap; src: url("/fonts/InterDisplay-Black.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 100 800; font-style: normal; font-display: swap; src: url("/fonts/JetBrainsMono.woff2") format("woff2"); }
+
+:root {
+  --violet: #6a5bff;
+  --magenta: #c04bf2;
+  --coral: #ff7a59;
+  --sun: #ffe08a;
+  --grad: linear-gradient(115deg, var(--violet) 0%, var(--magenta) 50%, var(--coral) 100%);
+  --grad-soft: linear-gradient(115deg, rgba(106, 91, 255, .14), rgba(192, 75, 242, .12) 50%, rgba(255, 122, 89, .12));
+
+  --bg: #fbfaff;
+  --bg-sunken: #f3f1fb;
+  --surface: #ffffff;
+  --surface-2: #f7f5fe;
+  --ink: #15121f;
+  --ink-soft: #4b475d;
+  --ink-faint: #6e6a82;
+  --line: #e5e1f2;
+  --line-strong: #d3cde8;
+  --accent: #5845f0;        /* links on light: 5.9:1 on white */
+  --accent-strong: #3f2bd6;
+  --focus: #6a5bff;
+  --code-bg: #f1eefb;
+
+  --shadow-sm: 0 1px 2px rgba(38, 20, 92, .06), 0 3px 10px rgba(38, 20, 92, .05);
+  --shadow-md: 0 2px 4px rgba(38, 20, 92, .05), 0 14px 34px -10px rgba(38, 20, 92, .18);
+  --shadow-lg: 0 6px 14px -6px rgba(38, 20, 92, .18), 0 34px 80px -24px rgba(64, 32, 150, .38);
+  --shadow-glow: 0 18px 50px -12px rgba(192, 75, 242, .45);
+
+  --radius-sm: 10px;
+  --radius: 18px;
+  --radius-lg: 28px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
+
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Inter Display", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --maxw: 1200px;
+  --gutter: clamp(16px, 4vw, 32px);
+  --header-h: 68px;
+
+  color-scheme: light;
+}
+
+/* Dark: system setting unless the visitor picked light; or the explicit choice. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0b16;
+    --bg-sunken: #12101e;
+    --surface: #181528;
+    --surface-2: #1e1a31;
+    --ink: #f3f1fb;
+    --ink-soft: #b7b2cc;
+    --ink-faint: #8f8aa8;
+    --line: #2a2640;
+    --line-strong: #3a3556;
+    --accent: #a99cff;
+    --accent-strong: #c8bfff;
+    --code-bg: #221e36;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4), 0 3px 10px rgba(0, 0, 0, .25);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, .3), 0 16px 40px -10px rgba(0, 0, 0, .6);
+    --shadow-lg: 0 6px 14px -6px rgba(0, 0, 0, .5), 0 40px 90px -24px rgba(0, 0, 0, .75);
+    --shadow-glow: 0 18px 60px -12px rgba(160, 80, 255, .45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d0b16;
+  --bg-sunken: #12101e;
+  --surface: #181528;
+  --surface-2: #1e1a31;
+  --ink: #f3f1fb;
+  --ink-soft: #b7b2cc;
+  --ink-faint: #8f8aa8;
+  --line: #2a2640;
+  --line-strong: #3a3556;
+  --accent: #a99cff;
+  --accent-strong: #c8bfff;
+  --code-bg: #221e36;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4), 0 3px 10px rgba(0, 0, 0, .25);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, .3), 0 16px 40px -10px rgba(0, 0, 0, .6);
+  --shadow-lg: 0 6px 14px -6px rgba(0, 0, 0, .5), 0 40px 90px -24px rgba(0, 0, 0, .75);
+  --shadow-glow: 0 18px 60px -12px rgba(160, 80, 255, .45);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header-h) + 20px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--ink);
+  background: var(--bg);
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+}
+
+img, svg, picture { display: block; max-width: 100%; }
+img { height: auto; }
+
+h1, h2, h3, h4 {
+  margin: 0 0 .5em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+h1 { font-size: clamp(2.6rem, 6.2vw, 4.9rem); font-weight: 900; letter-spacing: -.035em; line-height: 1.02; }
+h2 { font-size: clamp(2rem, 4vw, 3.1rem); font-weight: 900; letter-spacing: -.03em; }
+h3 { font-size: 1.2rem; letter-spacing: -.01em; line-height: 1.25; }
+
+p { margin: 0 0 1em; text-wrap: pretty; }
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: .2em; }
+a:hover { color: var(--accent-strong); }
+
+code, kbd, pre { font-family: var(--font-mono); font-size: .88em; }
+:not(pre) > code {
+  padding: .12em .4em;
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--ink);
+  font-size: .84em;
+  white-space: nowrap;
+}
+
+::selection { background: rgba(192, 75, 242, .25); }
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px; top: -60px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 600;
+  transition: top .2s var(--ease);
+}
+.skip-link:focus { top: 12px; color: var(--bg); }
+
+.grad-text {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}

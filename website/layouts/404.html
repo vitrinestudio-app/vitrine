@@ -1,0 +1,13 @@
+{{ define "main" }}
+<section class="section notfound">
+  <div class="wrap wrap--narrow">
+    <p class="notfound__code grad-text" aria-hidden="true">404</p>
+    <h1>{{ T "notFoundTitle" }}</h1>
+    <p>{{ T "notFoundText" }}</p>
+    <p class="notfound__actions">
+      <a class="btn btn--grad" href="{{ site.Home.RelPermalink }}">{{ T "backHome" }}</a>
+      {{- with site.GetPage "/docs" }}<a class="btn btn--ghost" href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>{{ end }}
+    </p>
+  </div>
+</section>
+{{ end }}

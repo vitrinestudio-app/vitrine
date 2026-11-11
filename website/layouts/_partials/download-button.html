@@ -1,0 +1,6 @@
+{{- /* Main download call to action. Until installers exist (phase 6.5) it
+       leads to the download page, which says "coming soon". */ -}}
+<a class="btn btn--grad btn--lg" href="{{ relLangURL "download/" }}">
+  {{ partial "icon.html" "download" }}
+  <span>{{ if site.Params.downloads_available }}{{ T "downloadNow" }}{{ else }}{{ T "downloadSoon" }}{{ end }}</span>
+</a>

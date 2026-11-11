@@ -1,0 +1,25 @@
+{{- $section := site.GetPage "/docs" -}}
+{{- $current := . -}}
+<nav class="docs-nav" aria-label="{{ T "docsNav" }}">
+  <details class="docs-nav__box" open data-docs-nav>
+    <summary>{{ T "docsMenu" }}</summary>
+    <ul>
+      <li><a href="{{ $section.RelPermalink }}"{{ if eq $current.RelPermalink $section.RelPermalink }} aria-current="page"{{ end }}>{{ $section.LinkTitle }}</a></li>
+      {{- range $section.Pages.ByWeight }}
+      <li>
+        <a href="{{ .RelPermalink }}"{{ if eq $current.RelPermalink .RelPermalink }} aria-current="page"{{ end }}>
+          {{ partial "icon.html" (.Params.icon | default "book") }}<span>{{ .LinkTitle }}</span>
+        </a>
+        {{- if and (eq $current.RelPermalink .RelPermalink) (gt (len .Fragments.Headings) 0) }}
+        {{- $h := .Fragments.Headings }}
+        <ul class="docs-nav__toc" aria-label="{{ T "onThisPage" }}">
+          {{- range $h }}{{ range .Headings }}
+          <li><a href="#{{ .ID }}">{{ .Title | plainify }}</a></li>
+          {{- end }}{{ end }}
+        </ul>
+        {{- end }}
+      </li>
+      {{- end }}
+    </ul>
+  </details>
+</nav>

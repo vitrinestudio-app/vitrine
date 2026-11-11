@@ -1,0 +1,302 @@
+{{ define "bodyclass" }}page page--home{{ end }}
+{{ define "main" }}
+{{- $p := .Params -}}
+
+{{/* ================= Hero ================= */}}
+<section class="hero">
+  <div class="hero__glow" aria-hidden="true"></div>
+  <div class="wrap hero__inner">
+    <div class="hero__copy">
+      <p class="eyebrow hero__eyebrow anim-in" style="--d:0">{{ $p.hero.eyebrow }}</p>
+      <h1 class="hero__title">
+        {{- range $i, $line := $p.hero.title }}
+        <span class="hero__line anim-in{{ if eq (add $i 1) (len $p.hero.title) }} grad-text{{ end }}" style="--d:{{ add $i 1 }}">{{ $line }}</span>
+        {{- end }}
+      </h1>
+      <p class="hero__lead anim-in" style="--d:4">{{ $p.hero.lead }}</p>
+      <div class="hero__actions anim-in" style="--d:5">
+        {{ partial "download-button.html" . }}
+        <a class="btn btn--ghost" href="{{ site.Params.github }}">{{ partial "icon.html" "github" }}<span>{{ $p.hero.ctaGithub }}</span></a>
+      </div>
+      <p class="hero__note anim-in" style="--d:6">{{ $p.hero.note }}</p>
+    </div>
+  </div>
+  <div class="wrap hero__stage anim-in" style="--d:3">
+    <div class="hero__stage-inner" data-tilt>
+      {{ partial "hero-canvas.html" . }}
+    </div>
+  </div>
+  <ul class="wrap hero__facts" aria-label="{{ T "keyFacts" }}">
+    {{- range $i, $f := $p.hero.facts }}
+    <li class="anim-in" style="--d:{{ add $i 6 }}">{{ partial "icon.html" "check" }}<span>{{ $f }}</span></li>
+    {{- end }}
+  </ul>
+</section>
+
+{{/* ================= The idea: three steps ================= */}}
+<section class="section section--idea" id="how">
+  <div class="wrap">
+    {{ partial "section-head.html" $p.idea }}
+    <ol class="steps">
+      {{- range $i, $s := $p.idea.steps }}
+      <li class="step card reveal" style="--i:{{ $i }}">
+        <span class="step__num" aria-hidden="true">{{ add $i 1 }}</span>
+        <h3>{{ $s.title }}</h3>
+        <p>{{ $s.text | markdownify }}</p>
+      </li>
+      {{- end }}
+    </ol>
+  </div>
+</section>
+
+{{/* ================= One layout → every language × device ================= */}}
+<section class="section section--matrix">
+  <div class="wrap matrix">
+    <div class="matrix__copy">
+      {{ partial "section-head.html" (merge $p.matrix (dict "align" "left")) }}
+      <ul class="ticks reveal">
+        {{- range $p.matrix.points }}<li>{{ partial "icon.html" "check" }}<span>{{ . | markdownify }}</span></li>{{ end }}
+      </ul>
+    </div>
+    <div class="matrix__visual reveal" aria-label="{{ $p.matrix.alt }}" role="img">
+      <div class="matrix__grid" style="--cols:{{ len $p.matrix.devices }}">
+        <span class="matrix__corner" aria-hidden="true"></span>
+        {{- range $p.matrix.devices }}<span class="matrix__colhead">{{ .name }}</span>{{ end }}
+        {{- range $r, $lang := $p.matrix.langs }}
+          <span class="matrix__rowhead">{{ $lang.code }}</span>
+          {{- range $c, $d := $p.matrix.devices }}
+          <span class="tile tile--{{ $d.shape }}" style="--n:{{ add (mul $r (len $p.matrix.devices)) $c }}">
+            <span class="tile__page">
+              <span class="tile__title">{{ $lang.headline }}</span>
+              <span class="tile__device"></span>
+            </span>
+            {{- if eq $d.shape "landscape" }}
+            <span class="tile__page">
+              <span class="tile__title">{{ $lang.headline2 }}</span>
+              <span class="tile__device"></span>
+            </span>
+            {{- end }}
+          </span>
+          {{- end }}
+        {{- end }}
+      </div>
+      <p class="matrix__count"><strong data-count="{{ mul (len $p.matrix.langs) (len $p.matrix.devices) }}">{{ mul (len $p.matrix.langs) (len $p.matrix.devices) }}</strong> {{ $p.matrix.countLabel }}</p>
+    </div>
+  </div>
+</section>
+
+{{/* ================= The editor ================= */}}
+<section class="section section--editor" id="editor">
+  <div class="wrap">
+    {{ partial "section-head.html" $p.editor }}
+    <div class="editor-shot">
+      <figure class="window window--main reveal reveal--tilt">
+        <div class="window__bar" aria-hidden="true"><i></i><i></i><i></i><span>Vitrine Studio — Fernwood</span></div>
+        {{ partial "picture.html" (dict "src" "images/editor-dark.jpg" "alt" $p.editor.alt "sizes" "(min-width: 1200px) 1040px, 92vw") }}
+      </figure>
+      <figure class="window window--float reveal" style="--i:2">
+        {{ partial "picture.html" (dict "src" "images/inspector-text.jpg" "alt" $p.editor.alt2 "sizes" "300px" "widths" (slice 359)) }}
+      </figure>
+    </div>
+    <ul class="editor-points">
+      {{- range $i, $pt := $p.editor.points }}
+      <li class="reveal" style="--i:{{ $i }}"><strong>{{ $pt.title }}</strong> {{ $pt.text }}</li>
+      {{- end }}
+    </ul>
+  </div>
+</section>
+
+{{/* ================= Features ================= */}}
+<section class="section section--features section--sunken" id="features">
+  <div class="wrap">
+    {{ partial "section-head.html" $p.features }}
+    <div class="feature-grid">
+      {{- range $i, $f := $p.features.items }}
+      <article class="feature card card--hover reveal" style="--i:{{ mod $i 3 }}">
+        <span class="feature__icon">{{ partial "icon.html" $f.icon }}</span>
+        <h3>{{ $f.title }}</h3>
+        <p>{{ $f.text | markdownify }}</p>
+        {{- with $f.badge }}<span class="badge">{{ . }}</span>{{ end }}
+      </article>
+      {{- end }}
+    </div>
+  </div>
+</section>
+
+{{/* ================= Showcase: what comes out ================= */}}
+<section class="section section--showcase" id="showcase">
+  <div class="wrap">
+    {{ partial "section-head.html" $p.showcase }}
+    <div class="showcase" data-tabs>
+      <div class="showcase__tabs" role="tablist" aria-label="{{ $p.showcase.tablistLabel }}">
+        {{- range $i, $t := $p.showcase.tabs }}
+        <button class="chip" role="tab" id="sc-tab-{{ $i }}" aria-controls="sc-panel-{{ $i }}" aria-selected="{{ if eq $i 0 }}true{{ else }}false{{ end }}"{{ if ne $i 0 }} tabindex="-1"{{ end }}>{{ $t.label }}</button>
+        {{- end }}
+      </div>
+      <div class="showcase__stage reveal">
+        {{- range $i, $t := $p.showcase.tabs }}
+        <figure class="showcase__panel store-frame" role="tabpanel" id="sc-panel-{{ $i }}" aria-labelledby="sc-tab-{{ $i }}"{{ if ne $i 0 }} hidden{{ end }}>
+          {{ partial "picture.html" (dict "src" (printf "images/%s" $t.image) "alt" $t.alt "sizes" "(min-width: 1200px) 1100px, 94vw") }}
+          <figcaption>{{ $t.caption }}</figcaption>
+        </figure>
+        {{- end }}
+      </div>
+      <p class="showcase__note">{{ $p.showcase.note | markdownify }}</p>
+    </div>
+  </div>
+</section>
+
+{{/* ================= AI / MCP ================= */}}
+<section class="section section--ai" id="ai">
+  <div class="wrap ai">
+    <div class="ai__copy">
+      {{ partial "section-head.html" (merge $p.ai (dict "align" "left")) }}
+      <ul class="ticks ticks--light reveal">
+        {{- range $p.ai.points }}<li>{{ partial "icon.html" "check" }}<span>{{ . | markdownify }}</span></li>{{ end }}
+      </ul>
+      <p class="ai__more reveal"><a class="link-arrow" href="{{ relLangURL "docs/ai-mcp/" }}">{{ $p.ai.more }} {{ partial "icon.html" "arrow" }}</a></p>
+    </div>
+    <div class="chat reveal reveal--rise" aria-label="{{ $p.ai.chat.label }}" role="img">
+      <div class="chat__head"><span class="chat__dot"></span>{{ $p.ai.chat.client }} <span class="chat__mcp">MCP · vitrine-studio</span></div>
+      <div class="chat__msg chat__msg--user"><p>{{ $p.ai.chat.user }}</p></div>
+      <div class="chat__tools">
+        {{- range $i, $t := $p.ai.chat.tools }}
+        <span class="chat__tool" style="--i:{{ $i }}">{{ partial "icon.html" "sparkle" }}<code>{{ $t.name }}</code><span>{{ $t.note }}</span></span>
+        {{- end }}
+      </div>
+      <div class="chat__msg chat__msg--bot"><p>{{ $p.ai.chat.reply }}</p></div>
+      <div class="chat__toast">{{ partial "icon.html" "undo" }}<span>{{ $p.ai.chat.toast }}</span></div>
+    </div>
+  </div>
+</section>
+
+{{/* ================= fastlane ================= */}}
+<section class="section section--fastlane" id="fastlane">
+  <div class="wrap split">
+    <div class="terminal reveal reveal--tilt-left" role="img" aria-label="{{ $p.fastlane.terminalLabel }}">
+      <div class="terminal__bar" aria-hidden="true"><i></i><i></i><i></i><span>~/MyApp</span></div>
+      <pre class="terminal__body"><code>{{- range $p.fastlane.terminal -}}
+{{- if .comment }}<span class="t-c"># {{ .comment }}</span>
+{{ else if .cmd }}<span class="t-p">$</span> {{ .cmd }}
+{{ else if .out }}<span class="t-o">{{ .out }}</span>
+{{ end }}{{- end -}}</code></pre>
+    </div>
+    <div class="split__copy">
+      {{ partial "section-head.html" (merge $p.fastlane (dict "align" "left")) }}
+      <ul class="ticks reveal">
+        {{- range $p.fastlane.points }}<li>{{ partial "icon.html" "check" }}<span>{{ . | markdownify }}</span></li>{{ end }}
+      </ul>
+      <p class="reveal"><a class="link-arrow" href="{{ relLangURL "docs/fastlane/" }}">{{ $p.fastlane.more }} {{ partial "icon.html" "arrow" }}</a></p>
+    </div>
+  </div>
+</section>
+
+{{/* ================= Store upload ================= */}}
+<section class="section section--upload section--sunken" id="upload">
+  <div class="wrap">
+    {{ partial "section-head.html" $p.upload }}
+    <div class="upload">
+      <ol class="upload__steps">
+        {{- range $i, $s := $p.upload.steps }}
+        <li class="reveal" style="--i:{{ $i }}"><span class="upload__num">{{ add $i 1 }}</span><div><h3>{{ $s.title }}</h3><p>{{ $s.text }}</p></div></li>
+        {{- end }}
+      </ol>
+      <div class="plan card reveal reveal--rise" role="img" aria-label="{{ $p.upload.planLabel }}">
+        <div class="plan__head">
+          <strong>{{ $p.upload.planTitle }}</strong>
+          <span class="plan__tabs"><span class="is-on">App Store</span><span>Google Play</span></span>
+        </div>
+        <table>
+          <thead><tr>{{ range $p.upload.columns }}<th>{{ . }}</th>{{ end }}</tr></thead>
+          <tbody>
+            {{- range $p.upload.rows }}
+            <tr><td><code>{{ .target }}</code></td><td>{{ .lang }}</td><td>{{ .locale }}</td><td><span class="pill pill--{{ .kind }}">{{ .action }}</span></td><td>{{ .images }}</td></tr>
+            {{- end }}
+          </tbody>
+        </table>
+        <div class="plan__foot">
+          <span>{{ $p.upload.planFoot }}</span>
+          <span class="btn btn--small btn--grad" aria-hidden="true">{{ $p.upload.confirm }}</span>
+        </div>
+      </div>
+    </div>
+    <p class="section-note">{{ $p.upload.note | markdownify }}</p>
+  </div>
+</section>
+
+{{/* ================= Templates ================= */}}
+<section class="section section--templates" id="templates">
+  <div class="wrap">
+    {{ partial "section-head.html" $p.templates }}
+    <div class="templates">
+      {{- range $i, $t := $p.templates.cards }}
+      <article class="tpl card card--hover reveal" style="--i:{{ $i }}">
+        <div class="tpl__preview tpl__preview--{{ $t.style }}" aria-hidden="true">
+          {{- range seq 3 }}<span class="tpl__page"><i class="tpl__h"></i><i class="tpl__h tpl__h--short"></i><i class="tpl__dev"></i></span>{{ end }}
+        </div>
+        <div class="tpl__body">
+          <h3>{{ $t.name }}</h3>
+          <p>{{ $t.text }}</p>
+          <span class="tpl__meta">{{ $t.meta }}</span>
+        </div>
+      </article>
+      {{- end }}
+    </div>
+    <ul class="ticks ticks--row reveal">
+      {{- range $p.templates.points }}<li>{{ partial "icon.html" "check" }}<span>{{ . | markdownify }}</span></li>{{ end }}
+    </ul>
+  </div>
+</section>
+
+{{/* ================= Open source ================= */}}
+<section class="section section--oss" id="open-source">
+  <div class="wrap split split--oss">
+    <div class="split__copy">
+      {{ partial "section-head.html" (merge $p.oss (dict "align" "left")) }}
+      <div class="oss-points">
+        {{- range $i, $o := $p.oss.points }}
+        <div class="oss-point reveal" style="--i:{{ $i }}">
+          <span class="feature__icon">{{ partial "icon.html" $o.icon }}</span>
+          <div><h3>{{ $o.title }}</h3><p>{{ $o.text | markdownify }}</p></div>
+        </div>
+        {{- end }}
+      </div>
+    </div>
+    <figure class="codecard reveal reveal--tilt">
+      <div class="codecard__bar" aria-hidden="true"><i></i><i></i><i></i><span>Fernwood/project.yaml</span></div>
+      {{ highlight $p.oss.yaml "yaml" "" }}
+      <figcaption>{{ $p.oss.yamlCaption }}</figcaption>
+    </figure>
+  </div>
+</section>
+
+{{/* ================= FAQ ================= */}}
+<section class="section section--faq section--sunken" id="faq">
+  <div class="wrap wrap--narrow">
+    {{ partial "section-head.html" $p.faq }}
+    <div class="faq">
+      {{- range $p.faq.items }}
+      <details class="faq__item reveal">
+        <summary>{{ .q }}</summary>
+        <div class="faq__a">{{ .a | markdownify }}</div>
+      </details>
+      {{- end }}
+    </div>
+  </div>
+</section>
+
+{{/* ================= Final call to action ================= */}}
+<section class="section section--cta">
+  <div class="wrap">
+    <div class="cta reveal reveal--rise">
+      <img class="cta__mark" src="{{ (resources.Get "brand/vitrine-studio.svg" | fingerprint).RelPermalink }}" alt="" width="88" height="88">
+      <h2>{{ $p.cta.title }}</h2>
+      <p>{{ $p.cta.lead }}</p>
+      <div class="cta__actions">
+        {{ partial "download-button.html" . }}
+        <a class="btn btn--ghost btn--on-dark" href="{{ relLangURL "docs/" }}">{{ partial "icon.html" "book" }}<span>{{ $p.cta.docs }}</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+{{ end }}

@@ -1,0 +1,55 @@
+{{- $title := cond .IsHome (printf "%s – %s" site.Title (T "siteTagline")) (printf "%s · %s" .Title site.Title) -}}
+{{- $description := .Description | default site.Params.description -}}
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ $title }}</title>
+  <meta name="description" content="{{ $description }}">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#fbfaff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d0b16" media="(prefers-color-scheme: dark)">
+  {{- with .Params.noindex }}<meta name="robots" content="noindex">{{ end }}
+  <link rel="canonical" href="{{ .Permalink }}">
+  {{- range .AllTranslations }}
+  <link rel="alternate" hreflang="{{ .Language.LanguageCode }}" href="{{ .Permalink }}">
+  {{- end }}
+
+  {{- /* Theme before first paint: the visitor's explicit choice (localStorage,
+         no cookie), else the system setting via CSS. */}}
+  <script>
+    document.documentElement.classList.replace('no-js', 'js');
+    try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+
+  <link rel="preload" href="/fonts/InterDisplay-Black.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  {{- $css := slice
+      (resources.Get "css/base.css")
+      (resources.Get "css/layout.css")
+      (resources.Get "css/components.css")
+      (resources.Get "css/home.css")
+      (resources.Get "css/docs.css")
+    | resources.Concat "css/site.css" }}
+  {{- if hugo.IsProduction }}{{ $css = $css | minify | fingerprint }}{{ end }}
+  <link rel="stylesheet" href="{{ $css.RelPermalink }}"{{ with $css.Data.Integrity }} integrity="{{ . }}"{{ end }}>
+
+  {{- $icon := resources.Get "brand/vitrine-studio.svg" | fingerprint }}
+  <link rel="icon" href="{{ $icon.RelPermalink }}" type="image/svg+xml">
+  {{- $png := resources.Get "brand/vitrine-studio.png" }}
+  {{- $touch := $png.Resize "180x180 png" }}
+  {{- $fav := $png.Resize "48x48 png" }}
+  <link rel="icon" href="{{ $fav.RelPermalink }}" sizes="48x48" type="image/png">
+  <link rel="apple-touch-icon" href="{{ $touch.RelPermalink }}">
+
+  {{- /* Open Graph: the store gallery of the example project */}}
+  {{- $og := resources.Get "images/iphone-gallery-en.jpg" }}
+  {{- $og = $og.Fill "1200x630 Center jpg q80" }}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ site.Title }}">
+  <meta property="og:title" content="{{ $title }}">
+  <meta property="og:description" content="{{ $description }}">
+  <meta property="og:url" content="{{ .Permalink }}">
+  <meta property="og:image" content="{{ $og.Permalink }}">
+  <meta property="og:locale" content="{{ replace site.Language.LanguageCode "-" "_" }}">
+  <meta name="twitter:card" content="summary_large_image">
+</head>

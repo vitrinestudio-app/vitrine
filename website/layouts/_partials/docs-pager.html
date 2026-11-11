@@ -1,0 +1,17 @@
+{{- $pages := (site.GetPage "/docs").Pages.ByWeight -}}
+{{- $prev := $pages.Prev . -}}
+{{- $next := $pages.Next . -}}
+{{- /* Pages.ByWeight.Next returns the *previous* entry in list order, so swap. */ -}}
+<nav class="docs-pager" aria-label="{{ T "previous" }} / {{ T "next" }}">
+  {{- with $next }}
+  <a class="docs-pager__link docs-pager__link--prev card card--hover" href="{{ .RelPermalink }}" rel="prev">
+    <span>← {{ T "previous" }}</span><strong>{{ .LinkTitle }}</strong>
+  </a>
+  {{- else }}<span></span>{{ end }}
+  {{- with $prev }}
+  <a class="docs-pager__link docs-pager__link--next card card--hover" href="{{ .RelPermalink }}" rel="next">
+    <span>{{ T "next" }} →</span><strong>{{ .LinkTitle }}</strong>
+  </a>
+  {{- end }}
+</nav>
+<p class="docs__edit"><a href="{{ site.Params.github }}/tree/main/website/content/{{ .Language.Lang }}/{{ .File.Path }}">{{ T "editOnGithub" }}</a></p>

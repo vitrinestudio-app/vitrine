@@ -1,0 +1,5 @@
+<header class="section-head{{ if eq .align "left" }} section-head--left{{ end }} reveal">
+  {{- with .eyebrow }}<p class="eyebrow">{{ . }}</p>{{ end }}
+  <h2>{{ .title | markdownify }}</h2>
+  {{- with .lead }}<p class="section-head__lead">{{ . | markdownify }}</p>{{ end }}
+</header>
