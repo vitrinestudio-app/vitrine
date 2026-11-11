@@ -36,6 +36,7 @@ mod stores;
 mod strings;
 mod system;
 mod targets;
+mod templates;
 mod texts;
 mod upload;
 mod view;
@@ -66,6 +67,7 @@ pub use stores::*;
 pub use strings::*;
 pub use system::*;
 pub use targets::*;
+pub use templates::*;
 pub use texts::*;
 pub use upload::*;
 pub use view::*;
@@ -414,10 +416,12 @@ command_table! {
         project_store_get, project_store_patch, store_config_get,
         upload_readiness, upload_plan, upload_execute, upload_status, upload_cancel, upload_log, upload_confirm,
         upload_refdata,
+        template_list, template_save, template_import, template_export, template_remove,
+        template_insert_plan, template_insert,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,
-        render_preview_string, asset_thumbnail, frames_thumbnail,
+        render_preview_string, asset_thumbnail, frames_thumbnail, template_preview,
     ],
 }
 
@@ -459,3 +463,6 @@ mod tests_frames;
 
 #[cfg(test)]
 mod tests_stores;
+
+#[cfg(test)]
+mod tests_templates;

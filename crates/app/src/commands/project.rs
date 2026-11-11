@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use vitrine_core::Project;
 use vitrine_core::model::{Element, ElementKind, FrameStyle, Strings};
 use vitrine_core::ops::Op;
-use vitrine_core::templates::{Template, create_project, default_name, parse_langs};
+use vitrine_core::template::builtin;
+use vitrine_core::template::instantiate::{create_project, default_name, parse_langs};
 
 use super::{AppState, NoArgs, absolute};
 use crate::error::{CmdResult, CommandError};
@@ -21,9 +22,10 @@ pub struct ProjectNewArgs {
     /// Default: the folder name.
     #[serde(default)]
     pub name: Option<String>,
-    /// Default: `phone`.
+    /// Template: built-in name (`phone`, `minimal`), id of an installed
+    /// template or path of a `.vitrine-template` file. Default: `phone`.
     #[serde(default)]
-    pub template: Option<Template>,
+    pub template: Option<String>,
     /// Languages, the first is the default. Default: the app setting
     /// `default_project_language`.
     #[serde(default)]
@@ -272,12 +274,9 @@ pub fn project_new(app: &AppState, args: ProjectNewArgs) -> CmdResult<ProjectSum
     };
     let langs = parse_langs(&langs)?;
     let name = args.name.unwrap_or_else(|| default_name(&dir));
-    let mut project = create_project(
-        &dir,
-        &name,
-        args.template.unwrap_or(Template::Phone),
-        &langs,
-    )?;
+    let template = args.template.as_deref().unwrap_or(builtin::DEFAULT);
+    let pkg = app.templates().find(template)?;
+    let mut project = create_project(&pkg, &dir, &name, &langs)?.project;
     // App default frame style for new projects (through the ops API).
     if let Ok(style) = FrameStyle::parse(&settings.default_frame_style)
         && project.styles.frame.is_none()
