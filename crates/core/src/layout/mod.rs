@@ -19,6 +19,7 @@
 //! assert!(layout.lines.len() <= 2);
 //! ```
 
+pub mod bundled;
 mod engine;
 pub mod fonts;
 pub mod hyphen;

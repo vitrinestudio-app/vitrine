@@ -261,11 +261,18 @@ struct Hyphen {
 
 /// Lays out texts with the fonts of a [`FontLibrary`] (system fonts are
 /// never used). Keep one per thread and reuse it: it caches shaping data.
+///
+/// Bundled faces are registered lazily: a bundled family enters the font
+/// collection the first time a text's family chain names it.
 pub struct TextLayouter {
     fonts: FontLibrary,
     font_cx: FontContext,
     layout_cx: LayoutContext<Paint>,
     ids: HashMap<(u64, u32), FontId>,
+    /// Blob ids registered with the collection.
+    registered: BTreeSet<u64>,
+    /// Lower-cased families whose bundled faces are registered.
+    loaded_families: BTreeSet<String>,
 }
 
 impl std::fmt::Debug for TextLayouter {
@@ -278,27 +285,78 @@ impl std::fmt::Debug for TextLayouter {
 
 impl TextLayouter {
     pub fn new(fonts: FontLibrary) -> Self {
-        let mut collection = Collection::new(CollectionOptions {
+        let collection = Collection::new(CollectionOptions {
             shared: false,
             system_fonts: false,
         });
-        let mut ids = HashMap::new();
-        let mut registered = BTreeSet::new();
-        for (i, face) in fonts.faces().iter().enumerate() {
-            ids.insert((face.blob.id(), face.index), FontId(i as u32));
-            if registered.insert(face.blob.id()) {
-                collection.register_fonts(face.blob.clone(), None);
-            }
-        }
-        Self {
+        let mut l = Self {
             fonts,
             font_cx: FontContext {
                 collection,
                 source_cache: SourceCache::default(),
             },
             layout_cx: LayoutContext::new(),
-            ids,
+            ids: HashMap::new(),
+            registered: BTreeSet::new(),
+            loaded_families: BTreeSet::new(),
+        };
+        // Project, memory and system fonts now; bundled ones on first use.
+        let eager: Vec<usize> = (0..l.fonts.faces().len())
+            .filter(|&i| !l.fonts.faces()[i].is_bundled())
+            .collect();
+        for i in eager {
+            l.register_face(i);
         }
+        l
+    }
+
+    fn register_face(&mut self, i: usize) {
+        let face = &self.fonts.faces()[i];
+        let blob = face.blob();
+        self.ids.insert((blob.id(), face.index), FontId(i as u32));
+        if self.registered.insert(blob.id()) {
+            self.font_cx.collection.register_fonts(blob, None);
+        }
+    }
+
+    /// Registers the bundled faces of the families a prepared text names
+    /// (base and span chains) that are not registered yet.
+    fn load_families(&mut self, p: &Prepared) {
+        let families = p
+            .base
+            .family
+            .iter()
+            .chain(p.ranges.iter().flat_map(|(_, r)| r.family.iter()));
+        for family in families {
+            let key = family.to_lowercase();
+            if self.loaded_families.contains(&key) {
+                continue;
+            }
+            let lazy: Vec<usize> = (0..self.fonts.faces().len())
+                .filter(|&i| {
+                    let f = &self.fonts.faces()[i];
+                    f.is_bundled() && f.family.eq_ignore_ascii_case(family)
+                })
+                .collect();
+            for i in lazy {
+                self.register_face(i);
+            }
+            self.loaded_families.insert(key);
+        }
+    }
+
+    /// Bundled families registered so far (lower case; lazy loading).
+    pub fn loaded_bundled_families(&self) -> Vec<String> {
+        self.loaded_families
+            .iter()
+            .filter(|f| {
+                self.fonts
+                    .faces()
+                    .iter()
+                    .any(|x| x.is_bundled() && x.family.eq_ignore_ascii_case(f))
+            })
+            .cloned()
+            .collect()
     }
 
     pub fn fonts(&self) -> &FontLibrary {
@@ -310,6 +368,7 @@ impl TextLayouter {
     pub fn layout(&mut self, input: &TextInput<'_>) -> TextLayout {
         let mut diagnostics = Vec::new();
         let p = prepare(input, &self.fonts, &mut diagnostics);
+        self.load_families(&p);
         let width = if input.width.is_finite() {
             input.width.max(0.0)
         } else {

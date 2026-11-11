@@ -1,6 +1,11 @@
 //! The font library: bundled OFL fonts plus fonts from a project's `fonts/`
 //! folder. System fonts are never used, so layouts are identical on every
 //! machine (golden tests, `docs/adr/0003-text-markup-and-layout.md`).
+//!
+//! Bundled faces come from an embedded manifest ([`super::bundled`]) and
+//! are loaded lazily: the library knows their family, weights and style
+//! without reading the file; the layouter registers a file only when a
+//! text uses its family.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -10,28 +15,10 @@ use std::sync::Arc;
 use parley::fontique::{Blob, Collection, CollectionOptions, FontStyle};
 use serde::{Deserialize, Serialize};
 
+use super::bundled;
+
 /// Family used when a requested family is missing (always bundled).
 pub const DEFAULT_FAMILY: &str = "Inter";
-
-/// Bundled fonts (`assets/fonts/`, Inter 4.1, OFL), embedded in the binary.
-const BUNDLED: &[(&str, &[u8])] = &[
-    (
-        "Inter-Regular.ttf",
-        include_bytes!("../../../../assets/fonts/Inter-Regular.ttf"),
-    ),
-    (
-        "Inter-SemiBold.ttf",
-        include_bytes!("../../../../assets/fonts/Inter-SemiBold.ttf"),
-    ),
-    (
-        "InterDisplay-Bold.ttf",
-        include_bytes!("../../../../assets/fonts/InterDisplay-Bold.ttf"),
-    ),
-    (
-        "InterDisplay-Black.ttf",
-        include_bytes!("../../../../assets/fonts/InterDisplay-Black.ttf"),
-    ),
-];
 
 /// Index of a face in a [`FontLibrary`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -41,7 +28,7 @@ pub struct FontId(pub u32);
 /// Where a face comes from.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FontSource {
-    /// Embedded bundled font (file name in `assets/fonts/`).
+    /// Embedded bundled font (path below `assets/fonts/`).
     Bundled(&'static str),
     /// Loaded from a file (project `fonts/` folder).
     File(PathBuf),
@@ -56,18 +43,47 @@ pub enum FontSource {
 #[derive(Clone)]
 pub struct FontFace {
     pub family: String,
+    /// Weight of the default instance.
     pub weight: u16,
+    /// Weight range: the `wght` axis of a variable font, else
+    /// `(weight, weight)`.
+    pub weights: (u16, u16),
     pub italic: bool,
     /// Face index inside the font file.
     pub index: u32,
     pub source: FontSource,
-    pub(crate) blob: Blob<u8>,
+    data: FaceData,
+}
+
+/// The bytes behind a face: a loaded file, or a bundled file (embedded,
+/// its blob created on first use, see [`super::bundled::blob`]).
+#[derive(Clone)]
+enum FaceData {
+    Blob(Blob<u8>),
+    Bundled(usize),
 }
 
 impl FontFace {
     /// Raw font file data (all faces of the file).
     pub fn data(&self) -> &[u8] {
-        self.blob.data()
+        match &self.data {
+            FaceData::Blob(b) => b.data(),
+            FaceData::Bundled(i) => bundled::FILES[*i].data(),
+        }
+    }
+
+    /// The font file as a fontique blob (bundled files: the process-wide
+    /// blob, created on first call).
+    pub(crate) fn blob(&self) -> Blob<u8> {
+        match &self.data {
+            FaceData::Blob(b) => b.clone(),
+            FaceData::Bundled(i) => bundled::blob(*i),
+        }
+    }
+
+    /// Is this a bundled face (registered lazily by the layouter)?
+    pub fn is_bundled(&self) -> bool {
+        matches!(self.data, FaceData::Bundled(_))
     }
 }
 
@@ -76,11 +92,12 @@ impl fmt::Debug for FontFace {
         f.debug_struct("FontFace")
             .field("family", &self.family)
             .field("weight", &self.weight)
+            .field("weights", &self.weights)
             .field("italic", &self.italic)
             .field("index", &self.index)
             .field("source", &self.source)
-            .field("bytes", &self.blob.data().len())
-            .finish()
+            .field("bytes", &self.data().len())
+            .finish_non_exhaustive()
     }
 }
 
@@ -136,13 +153,25 @@ impl FontLibrary {
         }
     }
 
-    /// The bundled fonts: Inter (400, 600) and Inter Display (700, 900).
+    /// The bundled fonts ([`bundled::FILES`]): Inter (400, 600), Inter
+    /// Display (700, 900) and the families added 2026-11-11 (variable
+    /// files, see [`bundled::FAMILIES`]). Built from the embedded manifest:
+    /// no font file is read here.
     pub fn bundled() -> Self {
         let mut lib = Self::empty();
-        for (name, data) in BUNDLED {
-            lib.add_blob(&Blob::new(Arc::new(*data)), &FontSource::Bundled(name))
-                .expect("bundled fonts are valid");
-        }
+        lib.faces = bundled::FILES
+            .iter()
+            .enumerate()
+            .map(|(i, f)| FontFace {
+                family: f.family.to_owned(),
+                weight: f.weight,
+                weights: f.weights,
+                italic: f.italic,
+                index: 0,
+                source: FontSource::Bundled(f.file),
+                data: FaceData::Bundled(i),
+            })
+            .collect();
         lib
     }
 
@@ -169,13 +198,22 @@ impl FontLibrary {
                 .to_owned();
             for info in infos {
                 let id = FontId(u32::try_from(self.faces.len()).unwrap_or(u32::MAX));
+                let weight = weight_value(info.weight().value());
+                let weights = info
+                    .axes()
+                    .iter()
+                    .find(|a| a.tag.to_be_bytes() == *b"wght")
+                    .map_or((weight, weight), |a| {
+                        (weight_value(a.min), weight_value(a.max))
+                    });
                 self.faces.push(FontFace {
                     family: family.clone(),
-                    weight: info.weight().value().round().clamp(1.0, 1000.0) as u16,
+                    weight,
+                    weights,
                     italic: !matches!(info.style(), FontStyle::Normal),
                     index: info.index(),
                     source: source.clone(),
-                    blob: blob.clone(),
+                    data: FaceData::Blob(blob.clone()),
                 });
                 added.push(id);
             }
@@ -397,7 +435,10 @@ impl FontLibrary {
     /// Best face of `family` for `weight`/`italic`, following CSS font
     /// matching: italic first, then weight (desired 400–500: up to 500,
     /// then lighter, then heavier; below 400: lighter first; above 500:
-    /// heavier first).
+    /// heavier first). A variable face matches every weight of its range
+    /// exactly; outside it counts with its nearest end (CSS Fonts 4
+    /// §5.2). Layout itself matches through fontique the same way and
+    /// sets the `wght` axis to the requested weight.
     pub fn match_face(&self, family: &str, weight: u16, italic: bool) -> Option<FontId> {
         let d = i32::from(weight);
         let rank = |fw: i32| -> (u8, i32) {
@@ -421,9 +462,17 @@ impl FontLibrary {
             .iter()
             .enumerate()
             .filter(|(_, f)| f.family.eq_ignore_ascii_case(family))
-            .min_by_key(|(_, f)| (f.italic != italic, rank(i32::from(f.weight))))
+            .min_by_key(|(_, f)| {
+                let (lo, hi) = (i32::from(f.weights.0), i32::from(f.weights.1));
+                (f.italic != italic, rank(d.clamp(lo, hi.max(lo))))
+            })
             .map(|(i, _)| FontId(i as u32))
     }
+}
+
+/// A fontique weight as a CSS weight (1–1000).
+fn weight_value(w: f32) -> u16 {
+    w.round().clamp(1.0, 1000.0) as u16
 }
 
 /// A system font face: data, face index, file.
@@ -469,13 +518,113 @@ mod tests {
     #[test]
     fn bundled_faces_have_metadata() {
         let lib = FontLibrary::bundled();
-        assert_eq!(lib.families(), ["Inter", "Inter Display"]);
-        let weights: Vec<_> = lib.faces().iter().map(|f| (f.weight, f.italic)).collect();
+        assert_eq!(
+            lib.families(),
+            [
+                "Bebas Neue",
+                "Caveat",
+                "Dancing Script",
+                "Inter",
+                "Inter Display",
+                "JetBrains Mono",
+                "Lora",
+                "Montserrat",
+                "Nunito",
+                "Oswald",
+                "Playfair Display"
+            ]
+        );
+        // Inter keeps the first face ids.
+        let weights: Vec<_> = lib.faces()[..4]
+            .iter()
+            .map(|f| (f.family.as_str(), f.weight, f.italic))
+            .collect();
         assert_eq!(
             weights,
-            [(400, false), (600, false), (700, false), (900, false)]
+            [
+                ("Inter", 400, false),
+                ("Inter", 600, false),
+                ("Inter Display", 700, false),
+                ("Inter Display", 900, false)
+            ]
         );
         assert!(lib.has_family("inter display"));
+        assert!(lib.has_family("playfair display"));
+        assert!(lib.faces().iter().all(FontFace::is_bundled));
+        let m = lib.match_face("Montserrat", 400, true).unwrap();
+        assert_eq!(lib.face(m).unwrap().weights, (100, 900));
+        assert!(lib.face(m).unwrap().italic);
+    }
+
+    /// A family mixing static and variable faces: static 300, variable
+    /// 500–700, static 900, plus a variable italic 400–800.
+    fn mixed_family() -> FontLibrary {
+        let face = |weight: u16, weights: (u16, u16), italic: bool| FontFace {
+            family: "Mix".to_owned(),
+            weight,
+            weights,
+            italic,
+            index: 0,
+            source: FontSource::Memory,
+            data: FaceData::Bundled(0),
+        };
+        let mut lib = FontLibrary::empty();
+        lib.faces = vec![
+            face(300, (300, 300), false),
+            face(500, (500, 700), false),
+            face(900, (900, 900), false),
+            face(400, (400, 800), true),
+        ];
+        lib
+    }
+
+    #[test]
+    fn weight_range_matching() {
+        let lib = mixed_family();
+        let m = |wt: u16, italic: bool| lib.match_face("Mix", wt, italic).unwrap().0;
+        // Inside the variable range: exact.
+        assert_eq!(m(500, false), 1);
+        assert_eq!(m(600, false), 1);
+        assert_eq!(m(700, false), 1);
+        // 400–500: up to 500 first (the range starts at 500), then lighter.
+        assert_eq!(m(400, false), 1);
+        assert_eq!(m(450, false), 1);
+        // Above 500: heavier first (900), even though 700 is closer.
+        assert_eq!(m(800, false), 2);
+        assert_eq!(m(1000, false), 2);
+        // Below 400: lighter first, then the nearest heavier.
+        assert_eq!(m(350, false), 0);
+        assert_eq!(m(300, false), 0);
+        assert_eq!(m(200, false), 0);
+        // Italic wins over weight; the italic range covers 400–800.
+        assert_eq!(m(300, true), 3);
+        assert_eq!(m(900, true), 3);
+        // A static face only: unchanged CSS rules.
+        let lib = FontLibrary::bundled();
+        let w = |fam: &str, wt: u16, it: bool| {
+            let f = lib.face(lib.match_face(fam, wt, it).unwrap()).unwrap();
+            (f.weights, f.italic)
+        };
+        assert_eq!(w("Montserrat", 300, false), ((100, 900), false));
+        assert_eq!(w("Montserrat", 900, true), ((100, 900), true));
+        // No italic file: the upright face (layout slants it).
+        assert_eq!(w("Oswald", 500, true), ((200, 700), false));
+        assert_eq!(w("Bebas Neue", 900, false), ((400, 400), false));
+    }
+
+    #[test]
+    fn variable_project_font_reports_its_range() {
+        let mut lib = FontLibrary::empty();
+        let f = &bundled::FILES[8];
+        assert_eq!(f.file, "lora/Lora[wght].ttf");
+        lib.add_font(f.data().to_vec(), &FontSource::Memory)
+            .unwrap();
+        assert_eq!(lib.faces()[0].weights, (400, 700));
+        assert!(!lib.faces()[0].is_bundled());
+        let mut lib = FontLibrary::empty();
+        lib.add_font(bundled::FILES[0].data().to_vec(), &FontSource::Memory)
+            .unwrap();
+        assert_eq!(lib.faces()[0].weights, (400, 400));
     }
 
     #[test]
