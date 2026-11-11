@@ -18,8 +18,21 @@ research: `docs/research/2026-11-11-windows-signing.md`.
 
 ## One-time setup (owner)
 
-Secrets and variables: GitHub → repository → Settings → Secrets and
-variables → Actions. Never commit keys; never paste them into issues or logs.
+Secrets and variables go into the **environment `release`**, not into
+repository or organization secrets (the `build` job declares
+`environment: release`):
+
+1. GitHub → repository → Settings → Environments → New environment
+   `release`.
+2. Deployment branches and tags: "Selected branches and tags" → add the
+   branch `main` and the tag pattern `v*`. Other branches, forks and pull
+   requests then never get the signing keys.
+3. Optional: "Required reviewers" (yourself) – every release/test build
+   waits for your click before the secrets are used.
+4. Add all secrets and variables below under this environment
+   ("Environment secrets" / "Environment variables").
+
+Never commit keys; never paste them into issues or logs.
 
 ### 1. macOS: Developer ID certificate
 

@@ -105,6 +105,10 @@ jobs:
   build:
     name: Build ${{ matrix.platform }}
     needs: prepare
+    # Signing secrets live in the GitHub environment `release` (deployment
+    # rules: branch `main` + tags `v*`), so other branches, forks and pull
+    # requests never see them. See docs/dev/releasing.md.
+    environment: release
     strategy:
       fail-fast: false
       matrix:
