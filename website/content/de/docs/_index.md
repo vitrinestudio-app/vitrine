@@ -1,9 +1,25 @@
 ---
-title: "Dokumentation"
-linkTitle: "Überblick"
-description: "So funktioniert Vitrine Studio – vom ersten Projekt bis zum Store-Upload."
+title: Dokumentation
+linkTitle: Überblick
+description: "Das Handbuch zu Vitrine Studio – vom ersten Projekt bis zum Store-Upload."
 ---
 
-Vitrine Studio macht aus **einem Layout** alle Screenshots, die deine Store-Einträge brauchen. Ein *Projekt* ist ein Ordner mit einer oder mehreren *Leinwänden*; ein *Ausgabeziel* legt fest, welche Leinwand in welcher Größe gerendert wird – in jeder Sprache des Projekts.
+Vitrine Studio macht aus **einem Layout** alle Screenshots, die deine
+Store-Einträge brauchen: jede Gerätegröße, jede Sprache, App Store und Google
+Play. Dieses Handbuch zeigt dir Schritt für Schritt, wie das geht.
 
-**Deutsche Übersetzung folgt.** Die Seiten unten enthalten bisher je eine kurze deutsche Zusammenfassung und verlinken auf die vollständige englische Fassung.
+{{< callout status >}}
+Vitrine Studio ist noch **vor dem ersten Release**. Die ersten signierten
+Installer sind in Vorbereitung, der Upload in die Stores funktioniert, wird
+aber noch mit echten Store-Konten getestet, und die Vorlagen-Galerie lässt
+sich noch nicht in der App durchsuchen. Jede Seite sagt dir, wo etwas noch
+nicht fertig ist.
+{{< /callout >}}
+
+**Neu hier?** Lies [So funktioniert Vitrine Studio](concepts/) (fünf Minuten)
+und folge dann den [ersten Schritten](getting-started/), um dein erstes Set
+zu gestalten und zu exportieren.
+
+**Du kommst von fastlane frameit?** Dann geh direkt zu
+[Umstieg von fastlane](fastlane/). **Du nutzt Claude?** Sieh dir
+[KI-Assistenten (MCP)](ai-mcp/) an.

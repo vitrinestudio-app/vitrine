@@ -251,6 +251,8 @@
   white-space: nowrap;
 }
 
+.prose h2 code, .prose h3 code { font-size: .82em; padding: 0 .2em; background: none; color: var(--magenta); }
+
 .cli-help { margin: -0.4em 0 1.4em; }
 .cli-help summary { cursor: pointer; color: var(--ink-faint); font-size: .9rem; }
 .cli-help pre { margin-top: 10px; }

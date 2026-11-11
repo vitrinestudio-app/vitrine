@@ -65,7 +65,7 @@ leaks into the next screenshot.
 
 ## One unit: lu
 
-A page is always **1000 lu** (layout units) wide; its height follows the page
+A page is always **1000 lu** (logical units) wide; its height follows the page
 aspect (an iPhone page is about 2173 lu high). All positions, sizes, font
 sizes and margins are in lu. That's why one layout works for every export size:
 the pixel size only comes from the target.
