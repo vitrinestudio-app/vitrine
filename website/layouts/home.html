@@ -12,19 +12,26 @@
         {{- range $i, $line := $p.hero.title }}
         <span class="hero__line anim-in{{ if eq (add $i 1) (len $p.hero.title) }} grad-text{{ end }}" style="--d:{{ add $i 1 }}">{{ $line }}</span>
         {{- end }}
+        <span class="hero__free anim-in" style="--d:4"><span class="hero__free-big">{{ $p.hero.free.big }}</span> <span class="hero__free-rest">{{ $p.hero.free.rest }}</span></span>
       </h1>
-      <p class="hero__lead anim-in" style="--d:4">{{ $p.hero.lead }}</p>
-      <div class="hero__actions anim-in" style="--d:5">
+      <p class="hero__freenote anim-in" style="--d:4">{{ $p.hero.free.note }}</p>
+      <p class="hero__lead anim-in" style="--d:5">{{ $p.hero.lead }}</p>
+      <div class="hero__actions anim-in" style="--d:6">
         {{ partial "download-button.html" . }}
         <a class="btn btn--ghost" href="{{ site.Params.github }}">{{ partial "icon.html" "github" }}<span>{{ $p.hero.ctaGithub }}</span></a>
       </div>
-      <p class="hero__note anim-in" style="--d:6">{{ $p.hero.note }}</p>
+      <p class="hero__note anim-in" style="--d:7">{{ $p.hero.note }}</p>
     </div>
   </div>
   <div class="wrap hero__stage anim-in" style="--d:3">
     <div class="hero__stage-inner" data-tilt>
       {{ partial "hero-canvas.html" . }}
     </div>
+    <ol class="hero__notes" aria-label="{{ $p.hero.notesLabel }}">
+      {{- range $i, $n := $p.hero.notes }}
+      <li style="--n:{{ $i }}">{{ $n }}</li>
+      {{- end }}
+    </ol>
   </div>
   <ul class="wrap hero__facts" aria-label="{{ T "keyFacts" }}">
     {{- range $i, $f := $p.hero.facts }}
@@ -276,7 +283,7 @@
     {{ partial "section-head.html" $p.faq }}
     <div class="faq">
       {{- range $p.faq.items }}
-      <details class="faq__item reveal">
+      <details class="faq__item reveal"{{ if .open }} open{{ end }}>
         <summary>{{ .q }}</summary>
         <div class="faq__a">{{ .a | markdownify }}</div>
       </details>
@@ -290,6 +297,7 @@
   <div class="wrap">
     <div class="cta reveal reveal--rise">
       <img class="cta__mark" src="{{ (resources.Get "brand/vitrine-studio.svg" | fingerprint).RelPermalink }}" alt="" width="88" height="88">
+      <p class="cta__badge">{{ $p.cta.badge }}</p>
       <h2>{{ $p.cta.title }}</h2>
       <p>{{ $p.cta.lead }}</p>
       <div class="cta__actions">

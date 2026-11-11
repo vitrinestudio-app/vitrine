@@ -1,0 +1,54 @@
+{{- /*
+  Everything that lives on the hero canvas: the background (sky, sun,
+  rolling hills) and the devices. Rendered twice by hero-canvas.html –
+  once clipped to the pages, once as a faint ghost inside the gaps.
+  Context: the hero params. Symbols (#hc-phone-*, #hc-laptop, #hc-tab-*)
+  are defined in hero-canvas.html.
+*/ -}}
+<rect x="0" y="56" width="1200" height="420" fill="url(#hc-sky)"/>
+<rect x="0" y="56" width="1200" height="420" fill="url(#hc-shade)"/>
+<circle class="hc-sun" cx="412" cy="236" r="58" fill="#ffe08a" opacity="0.75"/>
+<circle cx="412" cy="236" r="84" fill="#ffe08a" opacity="0.18"/>
+<g class="hc-hill hc-hill--far"><path d="M-400 480 L-400 300 Q-280 252 -160 300 Q-80 332 0 300 Q120 252 240 300 Q320 332 400 300 Q520 252 640 300 Q720 332 800 300 Q920 252 1040 300 Q1120 332 1200 300 Q1320 252 1440 300 Q1520 332 1600 300 Q1720 252 1840 300 Q1920 332 2000 300 L2000 480 Z" fill="#ffffff" opacity="0.2"/></g>
+<g class="hc-hill hc-hill--mid"><path d="M-250 480 L-250 352 Q-130 312 -10 352 Q70 378.7 150 352 Q270 312 390 352 Q470 378.7 550 352 Q670 312 790 352 Q870 378.7 950 352 Q1070 312 1190 352 Q1270 378.7 1350 352 Q1470 312 1590 352 Q1670 378.7 1750 352 Q1870 312 1990 352 Q2070 378.7 2150 352 L2150 480 Z" fill="#3b2a99" opacity="0.38"/></g>
+<g class="hc-hill hc-hill--near"><path d="M-340 480 L-340 408 Q-220 376 -100 408 Q-20 429.3 60 408 Q180 376 300 408 Q380 429.3 460 408 Q580 376 700 408 Q780 429.3 860 408 Q980 376 1100 408 Q1180 429.3 1260 408 Q1380 376 1500 408 Q1580 429.3 1660 408 Q1780 376 1900 408 Q1980 429.3 2060 408 L2060 480 Z" fill="#22175e" opacity="0.55"/></g>
+
+{{- /* Page headlines (one per page, left-aligned like a store set). */}}
+<g class="hc-heads">
+  {{- range $i, $lines := .pages }}
+  {{- $x := add 59 (mul $i 188) }}
+  <text class="hc-head" style="--i:{{ $i }}" x="{{ $x }}" y="122">
+    {{- range $j, $l := $lines }}<tspan x="{{ $x }}" dy="{{ if $j }}25{{ else }}0{{ end }}">{{ $l }}</tspan>{{ end -}}
+  </text>
+  {{- end }}
+</g>
+
+{{- /* Pages 1–2: three phones, tilted, one crossing the page edge. */}}
+<g class="hc-dev hc-dev--b"><g transform="translate(168 186) rotate(9 55 115)">
+  <rect x="6" y="10" width="110" height="229" rx="20" fill="#1a103f" opacity="0.28"/>
+  <use href="#hc-phone-b" width="110" height="229"/>
+</g></g>
+<g class="hc-dev hc-dev--a"><g transform="translate(52 206) rotate(-8 62 129)">
+  <rect x="7" y="12" width="124" height="258" rx="22" fill="#1a103f" opacity="0.3"/>
+  <use href="#hc-phone-a" width="124" height="258"/>
+</g></g>
+<g class="hc-dev hc-dev--c"><g transform="translate(272 222) rotate(7 59 123)">
+  <rect x="7" y="12" width="118" height="246" rx="21" fill="#1a103f" opacity="0.3"/>
+  <use href="#hc-phone-c" width="118" height="246"/>
+</g></g>
+
+{{- /* Pages 3–4: one laptop shared by both pages. */}}
+<g class="hc-dev hc-dev--laptop"><g transform="translate(430 236)">
+  <ellipse cx="170" cy="214" rx="176" ry="9" fill="#140c38" opacity="0.35"/>
+  <use href="#hc-laptop" width="340" height="215"/>
+</g></g>
+
+{{- /* Pages 5–6: a portrait tablet, a landscape tablet in front of it. */}}
+<g class="hc-dev hc-dev--tp"><g transform="translate(818 184) rotate(-5 80 110)">
+  <rect x="8" y="12" width="160" height="220" rx="16" fill="#1a103f" opacity="0.28"/>
+  <use href="#hc-tab-p" width="160" height="220"/>
+</g></g>
+<g class="hc-dev hc-dev--tl"><g transform="translate(904 286) rotate(4 120 84)">
+  <rect x="8" y="12" width="240" height="168" rx="16" fill="#1a103f" opacity="0.32"/>
+  <use href="#hc-tab-l" width="240" height="168"/>
+</g></g>

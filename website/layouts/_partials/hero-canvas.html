@@ -1,119 +1,199 @@
 {{- /*
-  The core idea as an animation: one continuous canvas of store pages.
-  The background (gradient, band, wave) and a tilted phone run across the
-  page gaps; inside the gaps they show only as a faint ghost, because
-  content in a gap is not exported. The flow drifts slowly to the left.
-  Purely decorative (aria-hidden); the headline says the same in words.
+  The core idea as an animation: one continuous canvas of six store pages.
+  One background (sky, sun, rolling hills) runs through all pages; devices
+  are mixed – three phones on pages 1–2, one laptop shared by pages 3–4,
+  a portrait and a landscape tablet on pages 5–6. Inside the gaps the
+  canvas shows only as a faint ghost, because content in a gap is not
+  exported. Numbered callouts explain the ideas one after another (CSS
+  delays, no JS needed); on small screens their texts move into the list
+  below the canvas (home.html). Purely decorative (aria-hidden).
+  Context: the page; texts come from .Params.hero (pages, notes).
 */ -}}
 {{- $p := .Params.hero -}}
-<svg class="hero-canvas" viewBox="0 0 1180 560" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+<svg class="hero-canvas" viewBox="0 0 1200 560" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
   <defs>
-    <linearGradient id="hc-flow" x1="0" y1="0" x2="1" y2="0">
+    <linearGradient id="hc-sky" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#6a5bff"/>
-      <stop offset="0.33" stop-color="#c04bf2"/>
-      <stop offset="0.66" stop-color="#ff7a59"/>
-      <stop offset="1" stop-color="#6a5bff"/>
+      <stop offset="0.4" stop-color="#c04bf2"/>
+      <stop offset="0.75" stop-color="#ff7a59"/>
+      <stop offset="1" stop-color="#ffa55c"/>
+    </linearGradient>
+    <linearGradient id="hc-shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#1a0f45" stop-opacity="0.3"/>
     </linearGradient>
     <linearGradient id="hc-screen" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#f1eefc"/>
+      <stop offset="1" stop-color="#f3f0fc"/>
+    </linearGradient>
+    <linearGradient id="hc-card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6a5bff"/>
+      <stop offset="1" stop-color="#c04bf2"/>
+    </linearGradient>
+    <linearGradient id="hc-metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e4e1ee"/>
+      <stop offset="1" stop-color="#a9a4bd"/>
     </linearGradient>
     <pattern id="hc-hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
       <rect width="10" height="10" fill="none"/>
       <path d="M0 0v10" class="hc-hatch-line"/>
     </pattern>
-    <clipPath id="hc-canvas"><rect x="28" y="48" width="1120" height="458" rx="30"/></clipPath>
+    <clipPath id="hc-canvas"><rect x="33" y="68" width="1134" height="394" rx="26"/></clipPath>
     <clipPath id="hc-pages">
-      <rect x="40" y="60" width="200" height="434" rx="22"/>
-      <rect x="264" y="60" width="200" height="434" rx="22"/>
-      <rect x="488" y="60" width="200" height="434" rx="22"/>
-      <rect x="712" y="60" width="200" height="434" rx="22"/>
-      <rect x="936" y="60" width="200" height="434" rx="22"/>
+      {{- range seq 0 5 }}
+      <rect x="{{ add 45 (mul . 188) }}" y="80" width="170" height="370" rx="16"/>
+      {{- end }}
     </clipPath>
 
-    {{- /* The flowing background: two tiles side by side for a seamless loop. */}}
-    <g id="hc-bg">
-      <rect x="0" y="40" width="1180" height="480" fill="url(#hc-flow)"/>
-      <path d="M0 380 C 160 300, 330 470, 590 380 S 1000 300, 1180 380 L1180 520 L0 520 Z" fill="#fff" opacity="0.22"/>
-      <path d="M0 250 C 200 180, 380 330, 590 250 S 980 180, 1180 250" fill="none" stroke="#fff" stroke-opacity="0.45" stroke-width="5"/>
-      <path d="M0 410 C 300 330, 880 480, 1180 410" fill="none" stroke="#ffe08a" stroke-opacity="0.75" stroke-width="3"/>
-    </g>
-
-    {{- /* A phone, drawn at the origin (160 × 330). */}}
-    <g id="hc-phone">
-      <rect x="0" y="0" width="160" height="330" rx="28" fill="#15131f"/>
-      <rect x="6" y="6" width="148" height="318" rx="23" fill="url(#hc-screen)"/>
-      <rect x="58" y="13" width="44" height="12" rx="6" fill="#15131f"/>
-      <rect x="18" y="40" width="70" height="9" rx="4.5" fill="#2a2640" opacity="0.85"/>
-      <rect x="18" y="56" width="44" height="6" rx="3" fill="#8f8aa8" opacity="0.7"/>
-      <rect x="18" y="74" width="124" height="62" rx="12" fill="#6a5bff" opacity="0.9"/>
-      <rect x="28" y="88" width="56" height="7" rx="3.5" fill="#fff" opacity="0.9"/>
-      <rect x="28" y="102" width="36" height="5" rx="2.5" fill="#fff" opacity="0.7"/>
-      <circle cx="120" cy="105" r="14" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="64 88" opacity="0.9"/>
-      <rect x="18" y="148" width="58" height="56" rx="10" fill="#ece8fb"/>
-      <rect x="84" y="148" width="58" height="56" rx="10" fill="#ece8fb"/>
-      <circle cx="35" cy="166" r="7" fill="#ff7a59"/><circle cx="55" cy="166" r="7" fill="#c04bf2"/>
-      <circle cx="101" cy="166" r="7" fill="#6a5bff"/><circle cx="121" cy="166" r="7" fill="#ff7a59"/>
-      <rect x="18" y="214" width="124" height="22" rx="8" fill="#ece8fb"/>
-      <rect x="18" y="242" width="124" height="22" rx="8" fill="#ece8fb"/>
-      <rect x="18" y="270" width="96" height="22" rx="8" fill="#ece8fb"/>
-      <rect x="56" y="310" width="48" height="4" rx="2" fill="#15131f" opacity="0.5"/>
-    </g>
+    {{- /* Phone A: a garden planner with beds. */}}
+    <symbol id="hc-phone-a" viewBox="0 0 120 250">
+      <rect width="120" height="250" rx="20" fill="#15131f"/>
+      <rect x="4" y="4" width="112" height="242" rx="16" fill="url(#hc-screen)"/>
+      <rect x="45" y="10" width="30" height="9" rx="4.5" fill="#15131f"/>
+      <rect x="14" y="30" width="46" height="8" rx="4" fill="#2a2640"/>
+      <rect x="76" y="28" width="30" height="12" rx="6" fill="#3fa45b"/>
+      <rect x="14" y="46" width="30" height="5" rx="2.5" fill="#8f8aa8" opacity="0.7"/>
+      <rect x="12" y="60" width="44" height="58" rx="8" fill="#e4f4e2"/>
+      <rect x="64" y="60" width="44" height="58" rx="8" fill="#e4f4e2"/>
+      <rect x="12" y="124" width="96" height="48" rx="8" fill="#e4f4e2"/>
+      <circle cx="26" cy="76" r="6" fill="#3fa45b"/><circle cx="42" cy="90" r="6" fill="#7cc576"/><circle cx="26" cy="104" r="6" fill="#3fa45b"/>
+      <circle cx="78" cy="78" r="7" fill="#ff7a59"/><circle cx="94" cy="100" r="7" fill="#c04bf2"/>
+      <circle cx="30" cy="148" r="8" fill="#7cc576"/><circle cx="54" cy="140" r="5" fill="#3fa45b"/><circle cx="72" cy="152" r="7" fill="#3fa45b"/><circle cx="92" cy="142" r="5" fill="#ff7a59"/>
+      <rect x="12" y="180" width="96" height="18" rx="6" fill="#ece8fb"/>
+      <rect x="12" y="204" width="70" height="18" rx="6" fill="#ece8fb"/>
+      <rect x="40" y="236" width="40" height="3" rx="1.5" fill="#15131f" opacity="0.5"/>
+    </symbol>
+    {{- /* Phone B: a header card and a list. */}}
+    <symbol id="hc-phone-b" viewBox="0 0 120 250">
+      <rect width="120" height="250" rx="20" fill="#15131f"/>
+      <rect x="4" y="4" width="112" height="242" rx="16" fill="url(#hc-screen)"/>
+      <rect x="45" y="10" width="30" height="9" rx="4.5" fill="#15131f"/>
+      <rect x="12" y="28" width="96" height="54" rx="10" fill="url(#hc-card)"/>
+      <rect x="20" y="40" width="48" height="7" rx="3.5" fill="#fff" opacity="0.92"/>
+      <rect x="20" y="53" width="30" height="5" rx="2.5" fill="#fff" opacity="0.7"/>
+      <circle cx="90" cy="56" r="11" fill="none" stroke="#fff" stroke-width="3.5" stroke-dasharray="50 70" opacity="0.9"/>
+      {{- range $i, $c := slice "#3fa45b" "#ff7a59" "#6a5bff" "#7cc576" "#c04bf2" }}
+      <circle cx="22" cy="{{ add 100 (mul $i 26) }}" r="7" fill="{{ $c }}"/>
+      <rect x="35" y="{{ add 95 (mul $i 26) }}" width="{{ sub 64 (mul $i 6) }}" height="6" rx="3" fill="#2a2640" opacity="0.75"/>
+      <rect x="35" y="{{ add 104 (mul $i 26) }}" width="34" height="4" rx="2" fill="#8f8aa8" opacity="0.6"/>
+      {{- end }}
+      <rect x="40" y="236" width="40" height="3" rx="1.5" fill="#15131f" opacity="0.5"/>
+    </symbol>
+    {{- /* Phone C: a harvest chart. */}}
+    <symbol id="hc-phone-c" viewBox="0 0 120 250">
+      <rect width="120" height="250" rx="20" fill="#15131f"/>
+      <rect x="4" y="4" width="112" height="242" rx="16" fill="url(#hc-screen)"/>
+      <rect x="45" y="10" width="30" height="9" rx="4.5" fill="#15131f"/>
+      <rect x="14" y="30" width="56" height="8" rx="4" fill="#2a2640"/>
+      <rect x="14" y="44" width="36" height="5" rx="2.5" fill="#8f8aa8" opacity="0.7"/>
+      <rect x="12" y="58" width="96" height="88" rx="10" fill="#f1eefc"/>
+      {{- range $i, $h := slice 30 46 38 62 54 70 }}
+      <rect x="{{ add 20 (mul $i 14) }}" y="{{ sub 136 $h }}" width="9" height="{{ $h }}" rx="3" fill="{{ if eq $i 5 }}#ff7a59{{ else }}#6a5bff{{ end }}" opacity="{{ if eq $i 5 }}1{{ else }}0.75{{ end }}"/>
+      {{- end }}
+      <rect x="12" y="156" width="46" height="40" rx="8" fill="#e4f4e2"/>
+      <rect x="62" y="156" width="46" height="40" rx="8" fill="#ffe9e2"/>
+      <rect x="20" y="166" width="22" height="7" rx="3.5" fill="#3fa45b"/>
+      <rect x="70" y="166" width="22" height="7" rx="3.5" fill="#ff7a59"/>
+      <rect x="20" y="180" width="30" height="4" rx="2" fill="#8f8aa8" opacity="0.6"/>
+      <rect x="70" y="180" width="30" height="4" rx="2" fill="#8f8aa8" opacity="0.6"/>
+      <rect x="12" y="204" width="96" height="20" rx="10" fill="url(#hc-card)"/>
+      <rect x="40" y="236" width="40" height="3" rx="1.5" fill="#15131f" opacity="0.5"/>
+    </symbol>
+    {{- /* Laptop: a desktop planner with sidebar, beds and a plant list. */}}
+    <symbol id="hc-laptop" viewBox="0 0 340 215">
+      <rect x="20" y="0" width="300" height="197" rx="12" fill="#1d1b29"/>
+      <rect x="28" y="8" width="284" height="180" rx="4" fill="#fbfaff"/>
+      <rect x="28" y="8" width="284" height="15" rx="4" fill="#ece9f6"/>
+      <circle cx="38" cy="15.5" r="2.6" fill="#ff7a59"/><circle cx="46" cy="15.5" r="2.6" fill="#ffc44d"/><circle cx="54" cy="15.5" r="2.6" fill="#3fa45b"/>
+      <rect x="28" y="23" width="58" height="165" fill="#f3f1fb"/>
+      {{- range $i := seq 0 7 }}
+      <rect x="36" y="{{ add 34 (mul $i 15) }}" width="{{ sub 40 (mod (mul $i 7) 18) }}" height="5" rx="2.5" fill="{{ if eq $i 2 }}#6a5bff{{ else }}#8f8aa8{{ end }}" opacity="{{ if eq $i 2 }}1{{ else }}0.55{{ end }}"/>
+      {{- end }}
+      <rect x="96" y="32" width="70" height="7" rx="3.5" fill="#2a2640"/>
+      <rect x="96" y="46" width="44" height="4" rx="2" fill="#8f8aa8" opacity="0.6"/>
+      {{- range $r := seq 0 1 }}{{ range $c := seq 0 2 }}
+      <rect x="{{ add 96 (mul $c 52) }}" y="{{ add 58 (mul $r 62) }}" width="46" height="54" rx="6" fill="#e4f4e2"/>
+      <circle cx="{{ add 110 (mul $c 52) }}" cy="{{ add 74 (mul $r 62) }}" r="5" fill="#3fa45b"/>
+      <circle cx="{{ add 128 (mul $c 52) }}" cy="{{ add 92 (mul $r 62) }}" r="6" fill="{{ if eq (mod (add $r $c) 2) 0 }}#7cc576{{ else }}#ff7a59{{ end }}"/>
+      {{- end }}{{ end }}
+      <rect x="252" y="32" width="52" height="148" rx="6" fill="#f1eefc"/>
+      {{- range $i, $c := slice "#3fa45b" "#c04bf2" "#ff7a59" "#7cc576" "#6a5bff" "#3fa45b" }}
+      <circle cx="263" cy="{{ add 46 (mul $i 21) }}" r="5" fill="{{ $c }}"/>
+      <rect x="272" y="{{ add 43 (mul $i 21) }}" width="26" height="5" rx="2.5" fill="#2a2640" opacity="0.65"/>
+      {{- end }}
+      <circle cx="170" cy="4" r="1.6" fill="#3a3650"/>
+      <path d="M0 197 H340 L331 210 Q328 214 321 214 H19 Q12 214 9 210 Z" fill="url(#hc-metal)"/>
+      <rect x="146" y="197" width="48" height="5" rx="2.5" fill="#8d88a3"/>
+    </symbol>
+    {{- /* Tablet, portrait: a hero card and tiles. */}}
+    <symbol id="hc-tab-p" viewBox="0 0 160 220">
+      <rect width="160" height="220" rx="14" fill="#15131f"/>
+      <rect x="7" y="7" width="146" height="206" rx="8" fill="url(#hc-screen)"/>
+      <rect x="17" y="20" width="60" height="8" rx="4" fill="#2a2640"/>
+      <rect x="117" y="18" width="26" height="12" rx="6" fill="#3fa45b"/>
+      <rect x="15" y="38" width="130" height="62" rx="10" fill="url(#hc-card)"/>
+      <path d="M15 86 Q50 66 80 82 T145 74 V100 H15 Z" fill="#fff" opacity="0.22"/>
+      <rect x="25" y="50" width="54" height="7" rx="3.5" fill="#fff" opacity="0.92"/>
+      <rect x="25" y="62" width="34" height="5" rx="2.5" fill="#fff" opacity="0.7"/>
+      {{- range $i := seq 0 3 }}
+      <rect x="{{ add 15 (mul (mod $i 2) 68) }}" y="{{ add 108 (mul (div $i 2) 50) }}" width="62" height="44" rx="8" fill="{{ if eq $i 1 }}#ffe9e2{{ else }}#e4f4e2{{ end }}"/>
+      <circle cx="{{ add 29 (mul (mod $i 2) 68) }}" cy="{{ add 122 (mul (div $i 2) 50) }}" r="6" fill="{{ if eq $i 1 }}#ff7a59{{ else }}#3fa45b{{ end }}"/>
+      <rect x="{{ add 23 (mul (mod $i 2) 68) }}" y="{{ add 136 (mul (div $i 2) 50) }}" width="36" height="4" rx="2" fill="#8f8aa8" opacity="0.6"/>
+      {{- end }}
+    </symbol>
+    {{- /* Tablet, landscape: a sowing calendar. */}}
+    <symbol id="hc-tab-l" viewBox="0 0 240 168">
+      <rect width="240" height="168" rx="14" fill="#15131f"/>
+      <rect x="7" y="7" width="226" height="154" rx="8" fill="url(#hc-screen)"/>
+      <rect x="7" y="7" width="50" height="154" rx="8" fill="#f3f1fb"/>
+      {{- range $i := seq 0 5 }}
+      <rect x="15" y="{{ add 20 (mul $i 16) }}" width="{{ sub 32 (mod (mul $i 5) 12) }}" height="5" rx="2.5" fill="{{ if eq $i 1 }}#6a5bff{{ else }}#8f8aa8{{ end }}" opacity="{{ if eq $i 1 }}1{{ else }}0.55{{ end }}"/>
+      {{- end }}
+      <rect x="67" y="18" width="70" height="8" rx="4" fill="#2a2640"/>
+      {{- range $r, $row := slice (slice 0 3 "#3fa45b") (slice 2 4 "#ff7a59") (slice 1 5 "#7cc576") (slice 4 3 "#c04bf2") (slice 3 4 "#6a5bff") }}
+      <rect x="67" y="{{ add 38 (mul $r 22) }}" width="156" height="16" rx="5" fill="#f1eefc"/>
+      <rect x="{{ add 69 (mul (index $row 0) 22) }}" y="{{ add 40 (mul $r 22) }}" width="{{ mul (index $row 1) 22 }}" height="12" rx="4" fill="{{ index $row 2 }}" opacity="0.85"/>
+      {{- end }}
+    </symbol>
   </defs>
 
-  {{- /* The canvas outline (what the editor shows) and the hatched gaps. */}}
-  <rect class="hc-outline" x="28" y="48" width="1120" height="458" rx="30"/>
+  {{- /* The canvas outline (what the editor shows) */}}
+  <rect class="hc-outline" x="33" y="68" width="1134" height="394" rx="26"/>
+
+  {{- /* Ghost of everything (visible in the gaps, hatched on top) … */}}
+  <g class="hc-ghost" clip-path="url(#hc-canvas)">{{ partial "hero-canvas-scene.html" $p }}</g>
   <g class="hc-gaps">
-    <rect x="240" y="60" width="24" height="434" fill="url(#hc-hatch)"/>
-    <rect x="464" y="60" width="24" height="434" fill="url(#hc-hatch)"/>
-    <rect x="688" y="60" width="24" height="434" fill="url(#hc-hatch)"/>
-    <rect x="912" y="60" width="24" height="434" fill="url(#hc-hatch)"/>
+    {{- range seq 0 4 }}
+    <rect x="{{ add 215 (mul . 188) }}" y="80" width="18" height="370" fill="url(#hc-hatch)"/>
+    {{- end }}
   </g>
 
-  {{- /* Ghost of everything (visible in the gaps) ... */}}
-  <g class="hc-ghost" clip-path="url(#hc-canvas)">
-    <g class="hc-flow"><use href="#hc-bg"/><use href="#hc-bg" x="1180"/></g>
-  </g>
+  {{- /* … and the real thing, clipped to the pages. */}}
+  <g class="hc-real" clip-path="url(#hc-pages)">{{ partial "hero-canvas-scene.html" $p }}</g>
+  <rect class="hc-gapflash" x="783" y="80" width="10" height="370" rx="5"/>
 
-  {{- /* ... and the real thing, clipped to the pages. */}}
-  <g clip-path="url(#hc-pages)">
-    <g class="hc-flow"><use href="#hc-bg"/><use href="#hc-bg" x="1180"/></g>
-    <g class="hc-texts" fill="#fff">
-      <rect class="hc-t" x="70" y="92" width="140" height="15" rx="7.5"/>
-      <rect class="hc-t" x="92" y="114" width="96" height="15" rx="7.5" fill="#ffe08a"/>
-      <rect class="hc-t hc-t--sub" x="80" y="140" width="120" height="7" rx="3.5" opacity="0.75"/>
-      <rect class="hc-t" x="290" y="92" width="148" height="15" rx="7.5"/>
-      <rect class="hc-t" x="318" y="114" width="92" height="15" rx="7.5"/>
-      <rect class="hc-t hc-t--sub" x="304" y="140" width="120" height="7" rx="3.5" opacity="0.75"/>
-      <rect class="hc-t" x="520" y="92" width="136" height="15" rx="7.5"/>
-      <rect class="hc-t" x="548" y="114" width="80" height="15" rx="7.5" fill="#ffe08a"/>
-      <rect class="hc-t" x="740" y="92" width="144" height="15" rx="7.5"/>
-      <rect class="hc-t" x="770" y="114" width="84" height="15" rx="7.5" fill="#ffe08a"/>
-      <rect class="hc-t" x="964" y="92" width="144" height="15" rx="7.5"/>
-      <rect class="hc-t" x="996" y="114" width="80" height="15" rx="7.5"/>
-      <rect class="hc-t hc-t--sub" x="976" y="140" width="120" height="7" rx="3.5" opacity="0.75"/>
-    </g>
-    <use class="hc-dev hc-dev--1" href="#hc-phone" x="60" y="196"/>
-    <use class="hc-dev hc-dev--2" href="#hc-phone" x="284" y="196"/>
-    <use class="hc-dev hc-dev--5" href="#hc-phone" x="956" y="196"/>
-    <g class="hc-span"><use href="#hc-phone" transform="translate(616 176) rotate(-12 80 165) scale(1.12)"/></g>
-  </g>
-
-  {{- /* The spanning phone's ghost inside the gap between pages 3 and 4. */}}
-  <g class="hc-ghost hc-ghost--device" clip-path="url(#hc-canvas)">
-    <use href="#hc-phone" transform="translate(616 176) rotate(-12 80 165) scale(1.12)"/>
-  </g>
-
-  {{- /* Page labels, like in the editor. */}}
+  {{- /* Page numbers, like in the editor. */}}
   <g class="hc-labels">
-    <text x="40" y="530">1 plan</text>
-    <text x="264" y="530">2 beds</text>
-    <text x="488" y="530">3 partners</text>
-    <text x="712" y="530">4 keep apart</text>
-    <text x="936" y="530">5 harvest</text>
+    {{- range seq 0 5 }}<text x="{{ add 130 (mul . 188) }}" y="482">{{ add . 1 }}</text>{{ end }}
   </g>
-  <g class="hc-gapnote">
-    <path d="M700 40 V 22 H 760"/>
-    <text x="766" y="26">{{ $p.gapNote }}</text>
+
+  {{- /* Callouts: dot at the target, leader line, text (desktop) or a
+         numbered badge (small screens, texts in the list below). */}}
+  {{- $notes := slice
+      (dict "x" 412 "y" 422 "ty" 524 "down" true)
+      (dict "x" 224 "y" 196 "ty" 34)
+      (dict "x" 600 "y" 236 "ty" 34)
+      (dict "x" 976 "y" 214 "ty" 34)
+      (dict "x" 788 "y" 330 "ty" 524 "down" true) }}
+  {{- range $i, $n := $notes }}
+  {{- $text := index $p.notes $i }}
+  <g class="hc-note" style="--n:{{ $i }}">
+    <path class="hc-note__line" d="M{{ $n.x }} {{ $n.y }} V {{ if $n.down }}{{ sub $n.ty 18 }}{{ else }}{{ add $n.ty 10 }}{{ end }}"/>
+    <circle class="hc-note__ring" cx="{{ $n.x }}" cy="{{ $n.y }}" r="11"/>
+    <circle class="hc-note__dot" cx="{{ $n.x }}" cy="{{ $n.y }}" r="5"/>
+    <text class="hc-note__text" x="{{ $n.x }}" y="{{ $n.ty }}">{{ $text }}</text>
+    <g class="hc-note__badge"><circle cx="{{ $n.x }}" cy="{{ $n.y }}" r="24"/><text x="{{ $n.x }}" y="{{ add $n.y 10 }}">{{ add $i 1 }}</text></g>
   </g>
+  {{- end }}
 </svg>

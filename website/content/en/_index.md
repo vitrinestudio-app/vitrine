@@ -3,19 +3,36 @@ title: Vitrine Studio
 description: "Open-source desktop app for App Store and Google Play screenshots: design once on a continuous canvas, render for every language, device and store, upload directly – with an MCP server for AI assistants."
 
 hero:
-  eyebrow: "Open source · free · macOS, Windows, Linux"
+  eyebrow: "Open source · macOS, Windows, Linux"
   title:
     - "Store screenshots,"
     - "designed once."
     - "Rendered everywhere."
+  free:
+    big: "100 % free"
+    rest: "– yes, really."
+    note: "No subscription, no account, no watermark, no paid tier. Free and open source."
   lead: "Vitrine Studio is a desktop app for App Store and Google Play screenshots. Design one continuous canvas – backgrounds and devices run across the pages like in the store gallery – and render it for every language, device size and store. Then upload it, or let your AI assistant do the busywork."
   ctaGithub: "View on GitHub"
   note: "Pre-alpha: installers are not published yet. The source is on GitHub."
-  gapNote: "gaps like in the store"
+  pages:
+    - ["Plan your", "garden"]
+    - ["Bed by", "bed"]
+    - ["At your", "desk"]
+    - ["or out in", "the beds"]
+    - ["From", "seed"]
+    - ["to", "harvest"]
+  notesLabel: "What the animation shows"
+  notes:
+    - "One background through every page"
+    - "Tilt and overlap devices freely"
+    - "One device across two pages"
+    - "Mix phones, laptops and tablets"
+    - "Gaps like in the store – content in a gap is left out"
   facts:
+    - "Open source, GPL-3.0-or-later"
     - "No account, no cloud"
     - "Plain YAML project folders"
-    - "GPL-3.0-or-later"
     - "Made with Rust + Tauri"
 
 idea:
@@ -259,8 +276,9 @@ faq:
   eyebrow: "FAQ"
   title: "Questions & answers"
   items:
-    - q: "Is Vitrine Studio really free?"
-      a: "Yes. The app is free software under the GPL-3.0-or-later. There is no subscription, no account and no paid tier."
+    - q: "Is Vitrine Studio really 100 % free?"
+      open: true
+      a: "Yes – 100 % free, really. Vitrine Studio is free, open-source software under the GPL-3.0-or-later. There is no subscription, no paid tier, no account and no watermark on your screenshots, and no limit on languages, devices or exports. Using it for commercial apps is fine."
     - q: "When can I download it?"
       a: "Vitrine Studio is in pre-alpha. Signed installers for macOS, Windows and Linux are being prepared; until then you can [build it from source](https://github.com/vitrinestudio-app/vitrine) with Rust."
     - q: "Do I need an account or an internet connection?"
@@ -277,7 +295,8 @@ faq:
       a: "No. A project is a folder of readable YAML files, your screenshots and images. Exports are ordinary PNG/JPEG files."
 
 cta:
+  badge: "100 % free – yes, really"
   title: "Ship better store pages in every language"
-  lead: "Design once, render everywhere – free and open source."
+  lead: "Free and open source. No subscription, no account, no watermark – design once, render everywhere."
   docs: "Read the docs"
 ---
