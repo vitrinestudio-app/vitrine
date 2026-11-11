@@ -28,6 +28,9 @@
     "targets": "all",
     "category": "Graphics and Design",
     "shortDescription": "App Store and Play Store screenshots from one layout",
+    "publisher": "Looking4Cache UG (haftungsbeschränkt)",
+    "copyright": "Copyright © 2026 Looking4Cache UG (haftungsbeschränkt). Licensed under GPL-3.0-or-later.",
+    "license": "GPL-3.0-or-later",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -8,6 +8,7 @@
 //! Tauri dependency.
 //!
 //! ```text
+//! about     copyright and licence notice (CLI help, About panel)
 //! actor     who made a change (user / AI assistant) for labels and events
 //! commands  AppState + one function per command, `dispatch(name, json)`
 //! session   the open project: model, history, atomic save, live reload
@@ -25,6 +26,7 @@
 //!
 //! All model changes go through the core Operations API.
 
+pub mod about;
 pub mod actor;
 pub mod claude_desktop;
 pub mod commands;

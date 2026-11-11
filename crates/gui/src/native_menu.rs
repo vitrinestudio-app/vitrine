@@ -166,6 +166,7 @@ pub fn install(app: &tauri::AppHandle, spec: &MenuSpec) -> tauri::Result<()> {
     use tauri::menu::{
         AboutMetadata, IsMenuItem, Menu, MenuItem, MenuItemKind, PredefinedMenuItem, Submenu,
     };
+    use vitrine_app::about;
 
     let bar = Menu::new(app)?;
     let mut window_menu = None;
@@ -205,6 +206,10 @@ pub fn install(app: &tauri::AppHandle, spec: &MenuSpec) -> tauri::Result<()> {
                                 Some(AboutMetadata {
                                     name: Some(info.name.clone()),
                                     version: Some(info.version.to_string()),
+                                    authors: Some(vec![about::COPYRIGHT_HOLDER.to_owned()]),
+                                    copyright: Some(about::COPYRIGHT.to_owned()),
+                                    license: Some(about::LICENSE.to_owned()),
+                                    website: Some(about::WEBSITE.to_owned()),
                                     ..AboutMetadata::default()
                                 }),
                             )?
