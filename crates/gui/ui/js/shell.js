@@ -24,7 +24,7 @@ const ADD = '__add__';
 
 /**
  * `app`: app-level actions from main.js: `{ menu (button element), targets(), exportDialog(),
- * assistant (MCP indicator element), addCanvas(), addTarget(), addLanguage(), addVariant() }`
+ * assistant (MCP indicator element), help ("?" button element), addCanvas(), addTarget(), addLanguage(), addVariant() }`
  * (the last four back the "+ Add…" entries of the top-bar pickers).
  */
 export function mountShell(app = {}) {
@@ -190,7 +190,7 @@ export function mountShell(app = {}) {
     fitBtn,
   );
   const status = h('span', { class: 'status-text' });
-  bottombar.append(segmented, h('span', { class: 'spacer' }), status, zoom);
+  bottombar.append(segmented, h('span', { class: 'spacer' }), status, app.help ?? '', zoom);
 
   let current = null;
   function renderView() {

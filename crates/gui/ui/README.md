@@ -4,7 +4,9 @@ Vanilla ES modules, no framework, no npm, no build step. The same files
 run in the Tauri window and, via the dev bridge, in a normal browser
 (`cargo run -p vitrine-gui --features devbridge --bin vitrine-devbridge --
 --project tests/fixtures/example --copy`). Debug query parameters:
-`?theme=dark|light` (force a theme), `?lang=en|de` (UI language).
+`?theme=dark|light` (force a theme), `?lang=en|de` (UI language),
+`?guide=first` (show the quick guide on project open like a first start;
+the dev bridge never shows it by itself).
 Right-click shows no web-view menu except in text fields and on selected
 text (`main.js`); ⌥/Alt + right-click shows it anywhere ("Inspect
 Element" in debug builds).
@@ -26,12 +28,13 @@ js/api.js             typed wrappers for every command the UI uses
 js/store.js           tiny state store + view-context helpers
 js/editor.js          controller: load, setContext, apply edits, invalidate
 js/actions.js         selection actions (delete, duplicate, group, z-order…)
-js/shortcuts.js       keyboard map → named handlers
+js/shortcuts.js       keyboard map → named handlers (+ DOM copy/cut/paste events)
+js/context-menu.js    right-click / ⇧F10 menu (`openContextMenu({x, y, items})`)
 js/geometry.js        2D helpers for canvas lu geometry
 js/dom.js             h()/s() element helpers, inline SVG icons, picker()
 js/shell.js           top bar, sidebar tabs, inspector, view switch, zoom
 js/views/viewport.js  shared zoom/pan viewport of all centre views (fit mode,
-                      wheel/pinch, pan, per-view memory) + pixmap slots with
+                      wheel/pinch, pan, overlay scrollbars, per-view memory) + pixmap slots with
                       loading placeholder (`makeSlot`/`paintSlot`, `densityFor`)
 js/views/canvas.js    canvas: pixmaps, hit test, gestures, previews (zoom via viewport.js)
 js/views/overlay.js   SVG overlay drawing (pure function of a model)
@@ -45,6 +48,12 @@ js/panels/canvas-settings.js  canvas settings (inspector with no selection)
 js/menu.js            app menu (top-bar button), its macOS menu-bar mirror
                       (`menu_set`, see below), ⌘N/⌘O/⌘E/⌘, shortcuts
 js/add-menu.js        top-bar "Add" menu → `element_add` on the visible page
+js/help/gestures.js   THE list of shortcuts, mouse gestures and modifiers
+                      (grouped; `FEATURES` flags for pending gesture changes)
+js/help/sheet.js      "Keyboard & mouse" sheet generated from it (platform
+                      modifier names), `?` key, bottom-bar "?" button
+js/help/guide.js      quick guide "How Vitrine Studio is organised" (Help menu,
+                      start screen, once on first project open: setting `guide_seen`)
 js/start.js           start screen (#welcome), new-project dialog, folder drop
 js/assistant.js       AI assistants over MCP (ADR 0015): status, top-bar indicator +
                       activity popover, toasts (client display name), canvas glow
@@ -63,6 +72,7 @@ styles/{dialogs,targets,start,settings}.css   styles of the above
 styles/{textedit,translations,assets}.css      text editor, translations, assets
 styles/assistant.css  indicator, activity popover, toasts, glow, settings section
 styles/upload.css     upload dialog, plan table, MCP upload confirmation
+styles/help.css       keyboard & mouse sheet, quick guide, "?" button
 ```
 
 Dialogs use `openModal({ title, body, footer, size })` from
@@ -119,6 +129,11 @@ builds the ops (e.g. `target_patch`, `styles_patch`) and then
   `editor.js`) before fetching the overlay, so dialogs need not fix it.
 - **Strings**: every visible string via `t('key')`; add keys to both
   `i18n/en.json` and `i18n/de.json`.
+- **Gestures**: a new or changed shortcut, mouse gesture or modifier
+  (shortcuts.js, views, panels, menu) updates its entry in
+  `js/help/gestures.js` (+ i18n `help.g.*`) in the same change, so the
+  "Keyboard & mouse" sheet stays complete. Only list what exists; pending
+  changes go behind a `FEATURES` flag.
 - **Icons**: add path data to `ICONS` in `js/dom.js` (16×16, stroked).
 
 ## Panels
@@ -159,10 +174,29 @@ language; language-overridden fields (`lang_overridden` from
 `element_get`) are marked teal with their own reset
 (`api.resetOverride(view, id, field, true)`).
 
+## Canvas gestures and context menu
+
+Plain drag on empty canvas space pans (`vp.panStart(e, false)`: becomes a
+pan after 3 px, a plain click clears the selection), Shift+drag draws the
+marquee, Space/middle-drag pans anywhere. Cursor classes on
+`.canvas-view`: `over-empty` (grab), `shift` (crosshair on empty space),
+`marquee`, `panning` (grabbing). Locked elements (`locked`, overlay
+`locked` on elements and groups; `isLocked`/`idLocked` in `actions.js`)
+are skipped by hit tests and the marquee, except for the context menu.
+The canvas context menu builds its items from `actions` (copy/cut/paste
+use the Rust element clipboard `edit_copy`/`edit_cut`/`edit_paste`,
+`store.clipboard` holds its count; lock/hide go through `element_patch`);
+items show shortcuts via `keyLabel`. Scrollbars come with every
+`createViewport` (`.vp-scroll`, colours `--scroll-*` in `base.css`); a
+view whose content changes without `refresh()` calls
+`updateScrollbars()`.
+
 ## Native menu bar (macOS)
 
 ADR 0020. `menu.js` mirrors the in-app menu (`ITEMS`) into the macOS menu
-bar: `initNativeMenu(handlers)` sends a spec (labels via `t()`, shortcuts
+bar (the in-app menu also ends with the Help entries `HELP_ITEMS`: quick
+guide, keyboard & mouse; the native Help menu lists them above the store
+docs links): `initNativeMenu(handlers)` sends a spec (labels via `t()`, shortcuts
 in `mod+shift+z` notation, enabled state) with the GUI-only command
 `menu_set` (`crates/gui/src/native_menu.rs`); clicks come back as
 `menu-action` events and run the same `handlers`. Re-sent on project

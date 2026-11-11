@@ -18,17 +18,18 @@ use std::sync::Arc;
 use serde::{Deserialize, Deserializer, Serialize};
 use vitrine_core::Project;
 use vitrine_core::edit::{
-    EditContext, EditError, EditScope, Editor, Handle, MoveOptions, Overlay, ResizeSpec, ZOrder,
+    ClipItem, EditContext, EditError, EditScope, Editor, Handle, MoveOptions, Overlay, ResizeSpec,
+    ZOrder,
 };
 use vitrine_core::geometry::Vec2;
-use vitrine_core::model::{ElementId, VariantId};
+use vitrine_core::model::{CanvasId, ElementId, VariantId};
 use vitrine_core::ops::Op;
 use vitrine_core::resolve::FsAssets;
 
 use super::project::check_target;
 use super::{AppState, NoArgs, lang_or_default};
 use crate::error::{CmdResult, CommandError, ErrorCode};
-use crate::session::{ApplyResult, HistoryState, Session};
+use crate::session::{ApplyResult, Clipboard, HistoryState, Session};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -727,6 +728,128 @@ pub fn edit_remove(app: &AppState, args: EditIdsArgs) -> CmdResult<EditResult> {
         let ids = top_level(p, &args.ids)?;
         plan_each(s, p, c, &ids, |e, id| Ok((e.remove(id)?, None)))
     })
+}
+
+view_args! {
+    pub struct EditPasteArgs {
+        /// Home page (0-based) of the first copied element; the others
+        /// keep their distance in pages. Default: the copied pages.
+        #[serde(default)]
+        pub page: Option<u32>,
+    }
+}
+
+/// What the element clipboard holds (`edit_copy`, `edit_clipboard`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ClipboardInfo {
+    /// Copied top-level elements (0 = empty).
+    pub count: usize,
+    /// Canvas they were copied from.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub canvas: Option<String>,
+}
+
+fn clipboard_info(session: &Session) -> ClipboardInfo {
+    let clip = session.clipboard();
+    ClipboardInfo {
+        count: clip.as_ref().map_or(0, |c| c.items.len()),
+        canvas: clip.as_ref().map(|c| c.canvas.to_string()),
+    }
+}
+
+/// Copies of the top-level elements of `ids` (all on the view's canvas).
+fn copy_items(
+    session: &Session,
+    project: &Project,
+    ctx: &EditContext,
+    ids: &[String],
+) -> CmdResult<(CanvasId, Vec<ClipItem>)> {
+    let ids = top_level(project, ids)?;
+    with_editor(session, project, ctx, |e| {
+        let items = ids
+            .iter()
+            .map(|id| e.copy_item(id))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok::<_, EditError>((e.canvas().id.clone(), items))
+    })
+}
+
+fn store_clipboard(session: &Session, canvas: CanvasId, items: Vec<ClipItem>) {
+    *session.clipboard() = Some(Clipboard {
+        canvas,
+        items,
+        pastes: 0,
+    });
+}
+
+/// Copies the elements (with children and variant overrides) to the
+/// element clipboard of the open project. Changes nothing.
+pub fn edit_copy(app: &AppState, args: EditIdsArgs) -> CmdResult<ClipboardInfo> {
+    let session = app.session()?;
+    let project = session.snapshot();
+    let ctx = args.view().edit_context(&session, &project)?;
+    let (canvas, items) = copy_items(&session, &project, &ctx, &args.ids)?;
+    store_clipboard(&session, canvas, items);
+    Ok(clipboard_info(&session))
+}
+
+/// Copies the elements to the clipboard and deletes them (one undo step).
+pub fn edit_cut(app: &AppState, args: EditIdsArgs) -> CmdResult<EditResult> {
+    let label = format!("Cut {}", subject(&args.ids));
+    edit(app, &args.view(), label, |s, p, c| {
+        let (canvas, items) = copy_items(s, p, c, &args.ids)?;
+        let ids: Vec<String> = items.iter().map(|i| i.element.id.to_string()).collect();
+        let plan = plan_each(s, p, c, &ids, |e, id| Ok((e.remove(id)?, None)))?;
+        store_clipboard(s, canvas, items);
+        Ok(plan)
+    })
+}
+
+/// Pastes the clipboard into the view's canvas (topmost, new ids; one
+/// undo step). Pasting where the originals still are moves the copies by
+/// 40 lu per paste, like duplicate.
+pub fn edit_paste(app: &AppState, args: EditPasteArgs) -> CmdResult<EditResult> {
+    let session = app.session()?;
+    let Some(clip) = session.clipboard().clone() else {
+        return Err(CommandError::invalid("the clipboard is empty"));
+    };
+    let label = match clip.items.as_slice() {
+        [one] => format!("Paste {}", one.element.id),
+        items => format!("Paste {} elements", items.len()),
+    };
+    let mut overlapped = false;
+    let result = edit(app, &args.view(), label, |s, p, c| {
+        with_editor(s, p, c, |e| {
+            let first = clip.items.iter().map(|i| i.element.page).min().unwrap_or(0);
+            overlapped = e.canvas().id == clip.canvas
+                && args.page.is_none_or(|pg| pg == first)
+                && clip
+                    .items
+                    .iter()
+                    .any(|i| e.canvas().element(i.element.id.as_str()).is_some());
+            let step = 40.0 * f64::from(clip.pastes + 1);
+            let offset = if overlapped {
+                Vec2::new(step, step)
+            } else {
+                Vec2::ZERO
+            };
+            let (ops, created) = e.paste(&clip.items, args.page, offset)?;
+            Ok::<_, EditError>(Plan {
+                ops,
+                created: created.iter().map(ToString::to_string).collect(),
+            })
+        })
+    })?;
+    if overlapped && let Some(c) = session.clipboard().as_mut() {
+        c.pastes += 1;
+    }
+    Ok(result)
+}
+
+/// What the element clipboard holds.
+pub fn edit_clipboard(app: &AppState, _: NoArgs) -> CmdResult<ClipboardInfo> {
+    let session = app.session()?;
+    Ok(clipboard_info(&session))
 }
 
 pub fn edit_group(app: &AppState, args: EditGroupArgs) -> CmdResult<EditResult> {
