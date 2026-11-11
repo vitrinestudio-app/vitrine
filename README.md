@@ -283,8 +283,11 @@ PARTICULAR PURPOSE.
   UG (haftungsbeschränkt), all rights reserved. Unmodified copies of Vitrine
   Studio may carry them; forks must use their own name and logo
   ([`assets/brand/README.md`](assets/brand/README.md)).
-- **Bundled third-party data** keeps its own licence: the Inter fonts under
-  the SIL Open Font License 1.1 ([`assets/fonts/OFL.txt`](assets/fonts/OFL.txt)),
+- **Bundled third-party data** keeps its own licence: the bundled fonts
+  (Inter, Montserrat, Playfair Display, Lora, Nunito, Oswald, Bebas Neue,
+  Caveat, Dancing Script, JetBrains Mono) under the SIL Open Font License
+  1.1 (one `OFL.txt` per family in [`assets/fonts/`](assets/fonts/), sources
+  and checksums in [`assets/fonts/SOURCES.md`](assets/fonts/SOURCES.md)),
   the hyphenation patterns under MIT/BSD/permissive notices
   ([`assets/hyphenation/LICENSES.md`](assets/hyphenation/LICENSES.md)).
   Rust dependencies are under permissive licences (MIT, Apache-2.0, BSD,

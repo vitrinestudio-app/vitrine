@@ -63,9 +63,15 @@ type.** Decided with the user on 2026-11-11.
   `selectors`, `option-ext`, `dtoa-short`) are file-level copyleft; we use
   them unmodified from crates.io, which satisfies their source obligation.
   `r-efi` offers LGPL-2.1 only as one option. No GPL-incompatible crate.
-- **Inter fonts (SIL OFL 1.1)**: the OFL explicitly permits bundling and
-  embedding the fonts with any software; the fonts stay under the OFL
-  (separate work, aggregate), `OFL.txt` must ship. Compatible.
+- **Bundled fonts (SIL OFL 1.1)**: Inter, and since 2026-11-11 Montserrat,
+  Playfair Display, Lora, Nunito, Oswald, Bebas Neue, Caveat, Dancing
+  Script, JetBrains Mono (from github.com/google/fonts, pinned commit,
+  checksums in `assets/fonts/SOURCES.md`). The OFL explicitly permits
+  bundling and embedding the fonts with any software; the fonts stay under
+  the OFL (separate work, aggregate), each family's `OFL.txt` (own
+  copyright line) must ship. Fonts are never modified (no subsetting), so
+  the Reserved Font Names of Dancing Script, Lora and Playfair Display do
+  not restrict us. Compatible.
 - **Hyphenation patterns**: the bundled sets are MIT, BSD-3-Clause or
   permissive notices – compatible; their notices must ship
   (`assets/hyphenation/LICENSES.md`). **Swedish (LPPL 1.2 only)** stays
