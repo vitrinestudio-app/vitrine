@@ -115,6 +115,11 @@ pub struct Settings {
     /// GUI to confirm in). Off by default (ADR 0018).
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub mcp_allow_headless_upload: bool,
+    /// The GUI's quick guide ("How Vitrine Studio is organised") was shown
+    /// once on opening a project; it is not shown automatically again
+    /// (per viewer, not per project). Still reachable from the Help menu.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub guide_seen: bool,
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)] // serde's skip_serializing_if signature
@@ -135,6 +140,7 @@ impl Default for Settings {
             mcp_autostart_gui: true,
             store_accounts: Vec::new(),
             mcp_allow_headless_upload: false,
+            guide_seen: false,
         }
     }
 }
@@ -353,12 +359,14 @@ mod tests {
             mcp_autostart_gui: true,
             store_accounts: Vec::new(),
             mcp_allow_headless_upload: false,
+            guide_seen: true,
         };
         store.save(&s).unwrap();
         assert_eq!(store.load().unwrap(), s);
         let yaml = std::fs::read_to_string(paths.settings_file()).unwrap();
         assert!(yaml.contains("ui_language: de"), "{yaml}");
         assert!(yaml.contains("mcp_enabled: false"), "{yaml}");
+        assert!(yaml.contains("guide_seen: true"), "{yaml}");
         assert!(
             !yaml.contains("mcp_autostart_gui"),
             "defaults stay out: {yaml}"
