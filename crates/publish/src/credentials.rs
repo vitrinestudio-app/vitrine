@@ -325,13 +325,38 @@ impl SecretStore {
     }
 
     fn entry(&self, account: &str, kind: StoreKind) -> Result<Entry, CredentialError> {
+        self.named_entry(&Self::user(account, kind))
+    }
+
+    fn named_entry(&self, user: &str) -> Result<Entry, CredentialError> {
         self.store
-            .build(
-                &self.service,
-                &Self::user(account, kind),
-                None::<&HashMap<&str, &str>>,
-            )
+            .build(&self.service, user, None::<&HashMap<&str, &str>>)
             .map_err(|e| keychain_error(&e))
+    }
+
+    /// Stores a secret under a free-form user name (e.g. the gallery
+    /// session `gallery/<api host>`, [`crate::gallery::keychain_user`]).
+    pub fn set_named(&self, user: &str, secret: &Secret) -> Result<(), CredentialError> {
+        self.named_entry(user)?
+            .set_password(secret.expose())
+            .map_err(|e| keychain_error(&e))
+    }
+
+    /// The secret stored under `user`.
+    pub fn get_named(&self, user: &str) -> Result<Secret, CredentialError> {
+        match self.named_entry(user)?.get_password() {
+            Ok(s) => Ok(Secret(s)),
+            Err(keyring_core::Error::NoEntry) => Err(CredentialError::Missing(user.to_owned())),
+            Err(e) => Err(keychain_error(&e)),
+        }
+    }
+
+    /// Removes the secret under `user`; a missing entry is fine.
+    pub fn delete_named(&self, user: &str) -> Result<(), CredentialError> {
+        match self.named_entry(user)?.delete_credential() {
+            Ok(()) | Err(keyring_core::Error::NoEntry) => Ok(()),
+            Err(e) => Err(keychain_error(&e)),
+        }
     }
 
     pub fn set(
@@ -367,6 +392,21 @@ impl SecretStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn named_secrets() {
+        let s = SecretStore::mock();
+        let user = "gallery/api.example.test";
+        assert!(matches!(
+            s.get_named(user),
+            Err(CredentialError::Missing(_))
+        ));
+        s.set_named(user, &Secret::new("vss_abc".into())).unwrap();
+        assert_eq!(s.get_named(user).unwrap().expose(), "vss_abc");
+        s.delete_named(user).unwrap();
+        s.delete_named(user).unwrap();
+        assert!(s.get_named(user).is_err());
+    }
 
     #[test]
     fn apple_key_formats() {

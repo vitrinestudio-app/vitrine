@@ -25,6 +25,7 @@ mod canvases;
 mod exchange;
 mod export;
 mod frames;
+mod gallery;
 mod inspect;
 mod mcp;
 pub(crate) mod os;
@@ -56,6 +57,7 @@ pub use edit::*;
 pub use exchange::*;
 pub use export::*;
 pub use frames::*;
+pub use gallery::*;
 pub use inspect::*;
 pub use mcp::*;
 pub use os::*;
@@ -103,6 +105,8 @@ pub struct AppState {
     mcp_control: OnceLock<Arc<dyn McpControl>>,
     /// Claude Desktop config file override (dev bridge, tests).
     claude_config: Option<PathBuf>,
+    /// Template gallery API base override (tests, dev bridge; ADR 0025).
+    gallery_url: Option<String>,
     /// Keychain for store secrets (created on first use, ADR 0016).
     secrets: OnceLock<Arc<SecretStore>>,
     /// Store clients' connection test (none until Phase 5.3/5.4 wire it).
@@ -138,6 +142,7 @@ impl AppState {
             mcp_token: Mutex::new(None),
             mcp_control: OnceLock::new(),
             claude_config: None,
+            gallery_url: None,
             secrets: OnceLock::new(),
             connection_tester: OnceLock::new(),
             upload: crate::upload::UploadState::default(),
@@ -218,6 +223,14 @@ impl AppState {
     #[must_use]
     pub fn with_claude_desktop_config(mut self, path: PathBuf) -> Self {
         self.claude_config = Some(path);
+        self
+    }
+
+    /// Uses `url` as the template gallery API instead of
+    /// `api.vitrinestudio.app` / `VITRINE_API_URL` (tests, dev bridge).
+    #[must_use]
+    pub fn with_gallery_url(mut self, url: impl Into<String>) -> Self {
+        self.gallery_url = Some(url.into());
         self
     }
 
@@ -421,10 +434,12 @@ command_table! {
         upload_refdata,
         template_list, template_save, template_import, template_export, template_remove,
         template_insert_plan, template_insert,
+        gallery_list, gallery_download,
     ],
     image: [
         render_image, render_canvas, render_gallery, render_preview_edit,
         render_preview_string, asset_thumbnail, frames_thumbnail, template_preview,
+        gallery_preview,
     ],
 }
 
@@ -469,3 +484,6 @@ mod tests_stores;
 
 #[cfg(test)]
 mod tests_templates;
+
+#[cfg(test)]
+mod tests_gallery;

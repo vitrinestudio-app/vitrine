@@ -38,6 +38,12 @@ pub enum ErrorCode {
     NotConfirmed,
     /// Not allowed for this caller (e.g. headless MCP uploads).
     Forbidden,
+    /// A server (template gallery) could not be reached: offline, DNS,
+    /// refused, timeout, proxy error. Front ends show it quietly
+    /// ("Gallery not reachable").
+    Unreachable,
+    /// A server answered with an error (`details.code` = its error code).
+    Remote,
     Internal,
 }
 
@@ -125,6 +131,19 @@ impl From<vitrine_core::template::TemplateError> for CommandError {
             err = err.with_details(serde_json::json!({ "kind": "font_license", "file": file }));
         }
         err
+    }
+}
+
+impl From<vitrine_publish::gallery::GalleryError> for CommandError {
+    fn from(e: vitrine_publish::gallery::GalleryError) -> Self {
+        use vitrine_publish::gallery::GalleryError as G;
+        match &e {
+            G::Unreachable(_) => Self::new(ErrorCode::Unreachable, e.to_string()),
+            G::Api { status: 404, .. } => Self::not_found(e.to_string()),
+            G::Api { status, code, .. } => Self::new(ErrorCode::Remote, e.to_string())
+                .with_details(serde_json::json!({ "status": status, "code": code })),
+            G::Invalid(_) => Self::new(ErrorCode::Remote, e.to_string()),
+        }
     }
 }
 

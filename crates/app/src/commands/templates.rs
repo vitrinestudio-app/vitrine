@@ -281,7 +281,7 @@ pub fn template_preview(app: &AppState, args: TemplatePreviewArgs) -> CmdResult<
     }))
 }
 
-fn image_size(png: &[u8]) -> CmdResult<(u32, u32)> {
+pub(super) fn image_size(png: &[u8]) -> CmdResult<(u32, u32)> {
     let d = png::Decoder::new(std::io::Cursor::new(png));
     let r = d
         .read_info()

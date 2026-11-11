@@ -13,6 +13,8 @@
 //! - Shared plumbing ([`ClientOptions`]): retries with backoff + jitter for
 //!   429/5xx, cancellation, redacted logging hooks, [`Progress`] events.
 //!
+//! - **Template gallery** ([`gallery`]): list, previews, download, upload
+//!   and the GitHub device-flow login of `api.vitrinestudio.app`.
 //! - **Secrets** ([`credentials`], Phase 5.1, ADR 0016): key file
 //!   validation and the system keychain wrapper.
 //!
@@ -36,6 +38,8 @@ pub use progress::{Progress, ProgressFn, UploadStep, ignore_progress};
 pub use tokio_util::sync::CancellationToken;
 
 pub mod credentials;
+/// Template gallery API client (`api.vitrinestudio.app`, ADR 0025).
+pub mod gallery;
 
 /// The stores Vitrine Studio can publish to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
