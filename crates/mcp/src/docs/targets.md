@@ -52,6 +52,15 @@ orientation?}`.
 `kind: banner` renders one image of a region of the canvas (blog header, Open
 Graph, feature graphic) instead of one image per page.
 
+Quickest way to a store banner: `banner_add {canvas, preset}` ("banner from
+this canvas") with `play-feature-graphic` (Google Play, 1024×500, required
+to publish), `ios-header`, `ios-search-results` or `ios-creative-universal`.
+It picks as many pages as fit the banner's aspect (`page` = first page,
+`pages: [a, b]` to choose), `fit: cover`, no gaps, and copies screenshots,
+device map and variant of the store's screenshot target on that canvas (a
+Play banner shows the Android frames). `banner_add {canvas}` without preset
+only lists the proposals.
+
 App Store creative assets (iOS 27+, optional, one per localization) are
 banner presets: `ios-header` (21:9, 3840×1646), `ios-search-results` (3:2,
 1920×1280 … 3840×2560, default region pages 0–2) and

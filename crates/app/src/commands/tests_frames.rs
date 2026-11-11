@@ -203,3 +203,112 @@ fn dmg_licence_error_has_details() {
     );
     assert!(v["message"].as_str().unwrap().contains("licence agreement"));
 }
+
+/// Own frame packs (ADR 0024): import app-wide and into the project, list,
+/// use with `frame: pack:<id>`, thumbnail, remove.
+#[test]
+fn frame_packs_import_use_and_remove() {
+    let (tmp, dir) = example_copy();
+    let zip = synthetic::write_pack_zip(&tmp.path().join("clay.zip"), 4).unwrap();
+    let app_dir = tmp.path().join("app");
+    let app = AppState::new(
+        AppPaths::in_dir(&app_dir),
+        Arc::new(RecordingSink::default()),
+        Arc::new(NoDialogs),
+    )
+    .without_watcher();
+    let app = &app;
+    call(app, "project_open", json!({"dir": dir}));
+    let pack_missing = |app: &AppState| {
+        call(
+            app,
+            "element_patch",
+            json!({"target": "ios-iphone-69", "id": "phone-beds",
+                   "patch": {"frame": "pack:clay-phone", "color": "ink"}}),
+        );
+        let v = call(
+            app,
+            "validate",
+            json!({"targets": ["ios-iphone-69"], "langs": ["en"]}),
+        );
+        v.to_string().contains("imported_frame_missing")
+    };
+    // Not installed: parametric fallback with an info.
+    assert!(pack_missing(app));
+
+    let dry = call(
+        app,
+        "frames_pack_import",
+        json!({"path": zip, "dry_run": true}),
+    );
+    assert_eq!(dry["applied"], false);
+    assert_eq!(dry["id"], "clay-phone");
+    assert_eq!(
+        dry["pack"]["frames"].as_array().unwrap().len(),
+        10,
+        "{dry:#}"
+    );
+    assert!(!app_dir.join("data").join("frames").join("packs").exists());
+    let done = call(app, "frames_pack_import", json!({"path": zip}));
+    assert_eq!(done["applied"], true);
+    assert!(!pack_missing(app), "installed app-wide");
+
+    let list = call(app, "frames_list", Value::Null);
+    let packs = list["packs"].as_array().unwrap();
+    assert_eq!(packs.len(), 1);
+    assert_eq!(packs[0]["origin"], "app");
+    assert_eq!(packs[0]["frame"], "pack:clay-phone");
+    let file = packs[0]["frames"][0]["file"].as_str().unwrap().to_owned();
+    assert!(matches!(
+        dispatch(
+            app,
+            "frames_thumbnail",
+            json!({"source": "pack:clay-phone", "file": file})
+        ),
+        Ok(Reply::Image(_))
+    ));
+    let bad_source = format!("pack:{}", "..");
+    assert!(
+        dispatch(
+            app,
+            "frames_thumbnail",
+            json!({"source": bad_source, "file": file})
+        )
+        .is_err()
+    );
+
+    // Into the project too (travels with it); it hides the app pack.
+    call(
+        app,
+        "frames_pack_import",
+        json!({"path": zip, "target": "project"}),
+    );
+    assert!(
+        dir.join("frames")
+            .join("clay-phone")
+            .join("frame.yaml")
+            .is_file()
+    );
+    let list = call(app, "frames_list", Value::Null);
+    assert_eq!(list["packs"][0]["origin"], "project");
+    assert_eq!(list["packs"][0]["shadows_app_pack"], true);
+
+    // Remove both: the fallback is back.
+    assert_eq!(
+        call(
+            app,
+            "frames_pack_remove",
+            json!({"id": "clay-phone", "target": "project"})
+        ),
+        true
+    );
+    assert_eq!(
+        call(app, "frames_pack_remove", json!({"id": "clay-phone"})),
+        true
+    );
+    assert!(pack_missing(app));
+    assert_eq!(
+        call(app, "frames_pack_remove", json!({"id": "clay-phone"})),
+        false
+    );
+}

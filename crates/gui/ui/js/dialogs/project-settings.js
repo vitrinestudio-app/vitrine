@@ -129,9 +129,12 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
   /** Default frame: built-in styles or Apple's imported bezels; switching
    *  remaps device colours in Rust (`styles_patch`). */
   function frameRow(value) {
+    // Own frame packs (ADR 0024), project packs first (they hide app packs).
+    const packs = [];
+    for (const p of frames?.packs ?? []) if (!packs.some((x) => x.id === p.id)) packs.push(p);
     const label = (f) => (f.startsWith('imported:') ? t(`frames.source.${f.slice(9)}`) : t(`settings.frame.${f}`));
-    const options = FRAMES.map((f) => ({ value: f, label: label(f) }));
-    if (value && !FRAMES.includes(value)) options.push({ value, label: value });
+    const options = [...FRAMES.map((f) => ({ value: f, label: label(f) })), ...packs.map((p) => ({ value: p.frame, label: t('frames.pack.label').replace('{name}', p.name) }))];
+    if (value && !options.some((o) => o.value === value)) options.push({ value, label: value });
     const src = value?.startsWith('imported:') ? value.slice(9) : null;
     const installed = src && frames?.sources?.find((x) => x.source === src)?.frames?.length;
     const hint = src && !installed ? h('span', {}, t('project.frame.hint'), h('br'), h('span', { class: 'hint-warn' }, t('project.frame.no_frames'))) : t('project.frame.hint');

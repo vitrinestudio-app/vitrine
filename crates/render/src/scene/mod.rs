@@ -16,6 +16,7 @@ pub mod assets;
 mod draw;
 mod overlay;
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -218,9 +219,9 @@ pub struct RenderContext {
     assets: AssetCache,
     fonts: FontLibrary,
     layouters: Mutex<Vec<TextLayouter>>,
-    /// Installed vendor frames and their decoded/scaled bezels and masks
-    /// (cache rooted at the frames root; ADR 0012).
-    frames: Option<(Arc<FrameIndex>, AssetCache)>,
+    /// Installed vendor frames and frame packs with their decoded/scaled
+    /// bezels and masks (one cache per source folder; ADR 0012, 0024).
+    frames: Option<(Arc<FrameIndex>, HashMap<String, AssetCache>)>,
 }
 
 impl std::fmt::Debug for RenderContext {
@@ -256,8 +257,12 @@ impl RenderContext {
     #[must_use]
     pub fn with_frames(mut self, index: Option<Arc<FrameIndex>>) -> Self {
         self.frames = index.map(|ix| {
-            let cache = AssetCache::new(ix.root());
-            (ix, cache)
+            let caches = ix
+                .source_dirs()
+                .into_iter()
+                .map(|(source, dir)| (source, AssetCache::new(dir)))
+                .collect();
+            (ix, caches)
         });
         self
     }
@@ -267,9 +272,10 @@ impl RenderContext {
         self.frames.as_ref().map(|(ix, _)| ix.as_ref())
     }
 
-    /// Decoded/scaled bezels and masks (paths relative to the frames root).
-    pub fn frame_assets(&self) -> Option<&AssetCache> {
-        self.frames.as_ref().map(|(_, c)| c)
+    /// Decoded/scaled bezels and masks of frame `source` (paths relative
+    /// to its folder, [`FrameIndex::source_dir`]).
+    pub fn frame_assets(&self, source: &str) -> Option<&AssetCache> {
+        self.frames.as_ref().and_then(|(_, c)| c.get(source))
     }
 
     pub fn root(&self) -> &Path {

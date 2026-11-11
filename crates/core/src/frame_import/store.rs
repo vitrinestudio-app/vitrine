@@ -107,6 +107,12 @@ impl InstalledFrame {
             .map_or_else(|| vendor_model(&name, &self.color_label), |m| m.apple_model);
     }
 
+    /// Can a device of catalog `model` use this frame (its model, or any
+    /// model for a pack frame without `models:`)?
+    pub fn fits_model(&self, model: &str) -> bool {
+        self.model == model || self.model == ANY_MODEL
+    }
+
     /// Screen area in px².
     pub fn screen_area(&self) -> u64 {
         u64::from(self.screen.w) * u64::from(self.screen.h)
@@ -171,12 +177,19 @@ pub struct UserMapping {
     pub files: BTreeMap<String, Option<Assignment>>,
 }
 
+/// `model` of a frame-pack frame that any device model may use (a pack
+/// without `models:`, ADR 0024).
+pub const ANY_MODEL: &str = "*";
+
 /// All installed frames below a frames root, read-only (what resolve and
-/// render use).
+/// render use), plus frame packs (ADR 0024) whose compiled files live in
+/// their own folders ([`Self::add_source`]).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FrameIndex {
     root: PathBuf,
     sources: BTreeMap<String, FrameSourceIndex>,
+    /// Folders of sources outside `root/<source>` (frame packs).
+    dirs: BTreeMap<String, PathBuf>,
 }
 
 impl FrameIndex {
@@ -199,6 +212,7 @@ impl FrameIndex {
         FrameIndex {
             root: root.to_owned(),
             sources,
+            dirs: BTreeMap::new(),
         }
     }
 
@@ -207,11 +221,35 @@ impl FrameIndex {
         FrameIndex {
             root: root.to_owned(),
             sources,
+            dirs: BTreeMap::new(),
         }
     }
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    /// Adds (or replaces) a source whose files live in `dir` (a compiled
+    /// frame pack, key `pack:<id>`).
+    pub fn add_source(&mut self, key: &str, dir: &Path, index: FrameSourceIndex) {
+        self.sources.insert(key.to_owned(), index);
+        self.dirs.insert(key.to_owned(), dir.to_owned());
+    }
+
+    /// Folder the `file` / `mask` paths of `source` are relative to.
+    pub fn source_dir(&self, source: &str) -> PathBuf {
+        self.dirs
+            .get(source)
+            .cloned()
+            .unwrap_or_else(|| self.root.join(source))
+    }
+
+    /// Every source with its folder (also empty ones).
+    pub fn source_dirs(&self) -> Vec<(String, PathBuf)> {
+        self.sources
+            .keys()
+            .map(|k| (k.clone(), self.source_dir(k)))
+            .collect()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -245,7 +283,7 @@ impl FrameIndex {
         let all: Vec<_> = self
             .frames(source)
             .iter()
-            .filter(|f| f.model == model && f.orientation == orientation)
+            .filter(|f| f.fits_model(model) && f.orientation == orientation)
             .collect();
         let has = |c: &str| all.iter().any(|f| f.color == c);
         let color = color
@@ -285,7 +323,7 @@ impl FrameIndex {
     /// bezels preferred), sorted by id.
     pub fn installed_colors(&self, source: &str, model: &str) -> Vec<InstalledColor> {
         let mut out: Vec<InstalledColor> = Vec::new();
-        for f in self.frames(source).iter().filter(|f| f.model == model) {
+        for f in self.frames(source).iter().filter(|f| f.fits_model(model)) {
             match out.iter_mut().find(|c| c.id == f.color) {
                 Some(c) => {
                     if c.swatch.is_none() || f.orientation == Orientation::Portrait {
@@ -301,12 +339,6 @@ impl FrameIndex {
         }
         out.sort_by(|a, b| a.id.cmp(&b.id));
         out
-    }
-
-    /// Path of a frame file relative to the frames root
-    /// (`apple/iphone-island/black/portrait/iphone-18-pro.png`).
-    pub fn rel_path(source: &str, file: &str) -> String {
-        format!("{source}/{file}")
     }
 }
 

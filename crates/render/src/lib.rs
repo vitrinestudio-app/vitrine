@@ -21,6 +21,7 @@
 
 pub mod blur;
 pub mod export;
+pub mod frame_packs;
 pub mod frames;
 pub mod geometry;
 pub mod paint;

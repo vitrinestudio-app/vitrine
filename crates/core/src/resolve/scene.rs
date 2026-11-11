@@ -184,12 +184,12 @@ pub struct ResolvedDevice {
 /// An installed vendor frame (bezel PNG + screen mask) chosen by resolve.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct ImportedFrame {
-    /// Frame source (`apple`).
+    /// Frame source (`apple`, or `pack:<id>` for a frame pack).
     pub source: String,
-    /// Bezel PNG relative to the frames root
-    /// ([`crate::frame_import::FrameIndex::root`]).
+    /// Bezel PNG relative to the source folder
+    /// ([`crate::frame_import::FrameIndex::source_dir`]).
     pub file: String,
-    /// Screen mask PNG relative to the frames root.
+    /// Screen mask PNG relative to the source folder.
     pub mask: String,
     /// Bezel pixel size; the element's aspect follows it.
     pub size: PixelSize,

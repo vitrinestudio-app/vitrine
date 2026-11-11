@@ -27,9 +27,9 @@ pub fn remap_color(
     let color = color.filter(|c| !c.starts_with('#'))?;
     let device = catalog::device(model)?;
     // Choices of the new source: (id, housing rgb).
-    let choices: Vec<(String, Option<[u8; 3]>)> = match to {
-        FrameStyle::Imported(source) => {
-            let installed = frames.map(|ix| ix.installed_colors(source, model))?;
+    let choices: Vec<(String, Option<[u8; 3]>)> = match to.external_source() {
+        Some(source) => {
+            let installed = frames.map(|ix| ix.installed_colors(&source, model))?;
             if installed.is_empty() {
                 return None;
             }
@@ -41,7 +41,7 @@ pub fn remap_color(
                 })
                 .collect()
         }
-        FrameStyle::Stylized | FrameStyle::Detailed => device
+        None => device
             .colors
             .iter()
             .map(|c| (c.clone(), palette_rgb(c)))
@@ -144,7 +144,7 @@ pub fn set_default_frame_ops(
     let mut styles = project.styles.clone();
     styles.frame = frame;
     let set = Op::SetStyles { styles };
-    if matches!(new_default, FrameStyle::Imported(_)) {
+    if new_default.is_external() {
         std::iter::once(set).chain(colors).collect()
     } else {
         colors.into_iter().chain(std::iter::once(set)).collect()

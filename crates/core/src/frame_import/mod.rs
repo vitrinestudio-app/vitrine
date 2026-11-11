@@ -1,5 +1,6 @@
 //! Import of vendor device frames (KONZEPT §4.2, ADR 0012): Apple Design
-//! Resources "Product Bezels" downloaded by the user.
+//! Resources "Product Bezels" downloaded by the user; own frame packs
+//! (`frame.yaml` + PNG/SVG, ADR 0024) in [`pack`].
 //!
 //! ```text
 //! Package::open(folder | .zip | .dmg)       package (PNG entries)
@@ -18,6 +19,7 @@
 
 mod analyze;
 mod colors;
+pub mod pack;
 mod package;
 mod rules;
 mod store;
@@ -36,7 +38,7 @@ pub use package::{
 };
 pub use rules::{FileMatch, Pattern, Rule, Rules, normalize_name, slug, vendor_model};
 pub use store::{
-    Assignment, FrameIndex, FrameSourceIndex, FrameStore, INDEX_FILE, InstalledColor,
+    ANY_MODEL, Assignment, FrameIndex, FrameSourceIndex, FrameStore, INDEX_FILE, InstalledColor,
     InstalledFrame, RemoveFilter, USER_MAPPING_FILE, UserMapping, today,
 };
 

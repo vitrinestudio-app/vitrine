@@ -309,7 +309,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Vendor device frames installed app-wide (Apple Product Bezels imported by the user in the GUI): models, colours, orientations. Read-only; device elements use them with frame `imported:apple`.",
+        description = "Device frames from image files: vendor frames installed app-wide (Apple Product Bezels imported by the user, `sources`; devices use `frame: imported:apple`) and own frame packs (`packs`: the project's `frames/<id>/` and app-wide ones; devices use `frame: pack:<id>`, colours are the pack's colour ids). Models, colours, orientations. Read-only.",
         annotations(read_only_hint = true)
     )]
     async fn frames_list(
@@ -325,7 +325,11 @@ impl VitrineMcp {
                 .flatten()
                 .map(|s| s["frames"].as_array().map_or(0, Vec::len))
                 .sum();
-            Ok(ToolOutput::new(format!("{n} installed frame(s)"), v))
+            let packs = v["packs"].as_array().map_or(0, Vec::len);
+            Ok(ToolOutput::new(
+                format!("{n} installed vendor frame(s), {packs} frame pack(s)"),
+                v,
+            ))
         })
         .await
     }
