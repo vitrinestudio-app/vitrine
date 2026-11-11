@@ -1,0 +1,39 @@
+# cargo-about configuration (https://embarkstudios.github.io/cargo-about/):
+# third-party notices of the Rust crates shipped in the installers.
+# Generated at release time by scripts/release/third-party-notices.sh into
+# THIRD-PARTY-NOTICES.html (bundled with the app, attached to the release).
+# Same allow-list as deny.toml (ADR 0022), in order of preference: when a
+# crate offers a choice ("MIT OR Apache-2.0"), the first accepted licence
+# is the one whose text is reproduced.
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "MIT-0",
+    "BSL-1.0",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
+    "GPL-3.0-or-later",
+]
+# Platforms we ship (platform-specific crates are included).
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+]
+# Dev- and build-only crates are not distributed.
+ignore-dev-dependencies = true
+ignore-build-dependencies = true
+# Our own crates (publish = false) are covered by LICENSE.
+private = { ignore = true }
+# Crates whose licence files need cargo-about's built-in help.
+workarounds = ["ring", "rustls", "chrono"]
