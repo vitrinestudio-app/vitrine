@@ -57,7 +57,7 @@ export function mountShell(app = {}) {
   const redo = h('button', { class: 'icon-btn', type: 'button', onclick: () => actions.redo() }, icon('redo'));
   topbar.append(
     app.menu ?? '',
-    h('span', { class: 'logo' }, icon('logo')),
+    h('img', { class: 'logo', src: 'img/logo.svg', alt: '' }),
     name,
     h('span', { class: 'sep' }),
     strip.el,

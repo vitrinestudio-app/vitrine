@@ -24,18 +24,6 @@
 .start-logo {
   width: 56px;
   height: 56px;
-  border-radius: 14px;
-  background: linear-gradient(140deg, #34c759, #0a84ff);
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.start-logo svg.icon {
-  width: 34px;
-  height: 34px;
-  stroke-width: 1.6;
 }
 
 .start-actions {

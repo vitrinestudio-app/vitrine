@@ -44,19 +44,7 @@
 .topbar .logo {
   width: 22px;
   height: 22px;
-  border-radius: 6px;
-  background: linear-gradient(140deg, #34c759, #0a84ff);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
   margin-right: 4px;
-}
-
-.topbar .logo svg.icon {
-  width: 14px;
-  height: 14px;
-  stroke-width: 1.8;
 }
 
 .sidebar {

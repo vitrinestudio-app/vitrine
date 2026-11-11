@@ -48,7 +48,6 @@ export function esc(text) {
 
 // Path data of the icons (16×16 view box).
 const ICONS = {
-  logo: 'M3 12.5 6.5 4l3 6 1.5-3 2 5.5',
   undo: 'M6 4 3 7l3 3M3 7h6.5a3.5 3.5 0 0 1 0 7H8',
   redo: 'M10 4l3 3-3 3M13 7H6.5a3.5 3.5 0 0 0 0 7H8',
   chevron: 'M4.5 6.5 8 10l3.5-3.5',

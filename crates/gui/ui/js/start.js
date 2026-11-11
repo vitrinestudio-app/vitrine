@@ -207,7 +207,7 @@ export function mountStart(root, { version, onSettings }) {
       h(
         'div',
         { class: 'start-brand' },
-        h('span', { class: 'start-logo' }, icon('logo')),
+        h('img', { class: 'start-logo', src: 'img/logo.svg', alt: '' }),
         h('h1', {}, t('app.title')),
         h('p', { class: 'muted' }, t('app.tagline')),
         h(
