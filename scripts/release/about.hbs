@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitrine Studio – third-party notices</title>
+<style>
+  body { font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; color: #222; background: #fff; }
+  h1 { font-size: 1.5rem; } h2 { font-size: 1.15rem; margin-top: 2rem; }
+  pre { white-space: pre-wrap; background: #f5f5f5; padding: .75rem; font-size: 12px; }
+  ul.crates { columns: 3 14rem; padding-left: 1rem; font-size: 12px; }
+  @media (prefers-color-scheme: dark) { body { color: #ddd; background: #161616; } pre { background: #222; } a { color: #8ab4f8; } }
+</style>
+</head>
+<body>
+<h1>Vitrine Studio – third-party notices</h1>
+<p>Vitrine Studio is free software, licensed under the GNU General Public
+License v3 or later (GPL-3.0-or-later). The corresponding source code of
+this build is the Git tag of this release at
+<a href="https://github.com/vitrinestudio-app/vitrine">github.com/vitrinestudio-app/vitrine</a>.</p>
+<p>Vitrine Studio includes the following third-party components. The bundled
+fonts (SIL Open Font License 1.1) and hyphenation patterns have their own
+licence files next to this file: <code>fonts/</code> and
+<code>hyphenation/LICENSES.md</code>.</p>
+
+<h2>Rust crates – overview</h2>
+<ul>
+{{#each overview}}
+  <li><a href="#{{id}}">{{name}}</a> ({{count}})</li>
+{{/each}}
+</ul>
+
+<h2>Rust crates – licence texts</h2>
+{{#each licenses}}
+<section>
+  <h3 id="{{id}}">{{name}}</h3>
+  <p>Used by:</p>
+  <ul class="crates">
+  {{#each used_by}}
+    <li><a href="{{#if crate.repository}}{{crate.repository}}{{else}}https://crates.io/crates/{{crate.name}}{{/if}}">{{crate.name}} {{crate.version}}</a></li>
+  {{/each}}
+  </ul>
+  <pre>{{text}}</pre>
+</section>
+{{/each}}
+</body>
+</html>

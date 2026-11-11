@@ -58,6 +58,9 @@ js/start.js           start screen (#welcome), new-project dialog, folder drop
 js/assistant.js       AI assistants over MCP (ADR 0015): status, top-bar indicator +
                       activity popover, toasts (client display name), canvas glow
                       trigger, projects opened by an assistant
+js/updates.js         updates (ADR 0026: daily check, "Check for updates…", install
+                      dialog; GUI-only `update_*` commands) + app settings rows for
+                      updates and "Install command line tool"
 js/dialogs/modal.js   <dialog> helper (openModal, choiceDialog, confirmDialog,
                       promptDialog) + form controls (row, input, select…)
 js/dialogs/*.js       targets.js = canvases & targets editor (canvas pane: new /

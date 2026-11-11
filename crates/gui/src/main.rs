@@ -23,6 +23,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod native_menu;
+mod updater;
 
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -249,6 +250,8 @@ json_commands! {
     mcp_set_enabled: commands::McpSetEnabledArgs,
     claude_desktop_plan: commands::NoArgs,
     claude_desktop_install: commands::ClaudeDesktopInstallArgs,
+    cli_install_status: commands::NoArgs,
+    cli_install: commands::CliInstallArgs,
     store_accounts_list: commands::NoArgs,
     store_account_import: commands::StoreAccountImportArgs,
     store_account_remove: commands::StoreAccountIdArgs,
@@ -317,6 +320,50 @@ fn menu_set(
     }
 }
 
+/// GUI-only (ADR 0026): what this build can do with updates, the
+/// setting and the last check (`updater::status`).
+#[tauri::command]
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "Tauri command arguments are passed by value"
+)]
+fn update_status(
+    app: AppHandle,
+    state: tauri::State<'_, Shared>,
+) -> Result<updater::StatusReply, CommandError> {
+    updater::status(&app, state.inner())
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct UpdateCheckArgs {
+    /// Automatic check at start (only when due and switched on).
+    #[serde(default)]
+    auto: bool,
+}
+
+/// GUI-only: asks GitHub Releases for a newer version (never installs).
+#[tauri::command]
+async fn update_check(
+    app: AppHandle,
+    state: tauri::State<'_, Shared>,
+    updater: tauri::State<'_, updater::UpdaterState>,
+    args: UpdateCheckArgs,
+) -> Result<updater::CheckReply, CommandError> {
+    updater::check(&app, state.inner(), updater.inner(), args.auto).await
+}
+
+/// GUI-only: installs the update found by `update_check` and restarts;
+/// the UI calls it only after the user confirmed.
+#[tauri::command]
+async fn update_install(
+    app: AppHandle,
+    state: tauri::State<'_, Shared>,
+    updater: tauri::State<'_, updater::UpdaterState>,
+) -> Result<(), CommandError> {
+    updater::install(&app, state.inner(), updater.inner()).await
+}
+
 /// `vitrine-gui [PROJECT_DIR]`: the project to open right away.
 fn project_arg() -> Option<PathBuf> {
     std::env::args_os()
@@ -347,10 +394,21 @@ fn main() {
     let startup = state.clone();
     let mcp_host: Arc<OnceLock<Arc<McpHost>>> = Arc::default();
     let mcp_setup = mcp_host.clone();
+    // Updates: the endpoint is stopped before the app exits for the
+    // installer or the restart (the `Exit` event may not come then).
+    let updates = updater::UpdaterState::default();
+    let mcp_exit = mcp_host.clone();
+    updates.set_before_exit(Arc::new(move || {
+        if let Some(host) = mcp_exit.get() {
+            host.stop();
+        }
+    }));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(state)
+        .manage(updates)
         // Native menu items (macOS) run the UI's own actions.
         .on_menu_event(|app, event| {
             let _ = app.emit(native_menu::MENU_EVENT, event.id().0.clone());
@@ -478,6 +536,8 @@ fn main() {
             mcp_set_enabled,
             claude_desktop_plan,
             claude_desktop_install,
+            cli_install_status,
+            cli_install,
             store_accounts_list,
             store_account_import,
             store_account_remove,
@@ -508,6 +568,9 @@ fn main() {
             gallery_download,
             gallery_preview,
             menu_set,
+            update_status,
+            update_check,
+            update_install,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Vitrine Studio")

@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.0.0"
+version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 repository = "https://github.com/vitrinestudio-app/vitrine"
@@ -103,6 +103,9 @@ tauri = { version = "2.12.5", features = [] }
 tauri-build = { version = "2.7.4", features = [] }
 # File dialogs, used from Rust only (the web view keeps `core:default`).
 tauri-plugin-dialog = "2.8.4"
+# In-app updates from GitHub Releases (`latest.json`, signed; ADR 0026). Called
+# from Rust only; the web view gets no updater permission.
+tauri-plugin-updater = "2.14.1"
 
 # GUI session: file watching, platform folders, dev HTTP bridge
 notify = "8.2.0"

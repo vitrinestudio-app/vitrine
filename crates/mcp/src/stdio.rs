@@ -87,6 +87,10 @@ pub fn gui_command(project: Option<&Path>) -> Option<std::process::Command> {
         return Some(with_project(std::process::Command::new(p)));
     }
     let exe = std::env::current_exe().ok()?;
+    // Through the `vitrine` symlink of "Install command line tool"
+    // (/usr/local/bin/vitrine → …/Contents/MacOS/vitrine): the real binary.
+    #[cfg(unix)]
+    let exe = std::fs::canonicalize(&exe).unwrap_or(exe);
     #[cfg(target_os = "macos")]
     {
         // …/Vitrine Studio.app/Contents/MacOS/vitrine

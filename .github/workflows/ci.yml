@@ -24,14 +24,18 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    # Uncached Windows runs are the slowest; a hung step (once: apt on
+    # Linux for over an hour) must not block the queue.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
 
       - name: Install Tauri system dependencies (Linux)
         if: runner.os == 'Linux'
+        timeout-minutes: 15
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends \
             build-essential pkg-config file \
             libwebkit2gtk-4.1-dev \
             libjavascriptcoregtk-4.1-dev \
@@ -57,3 +61,29 @@ jobs:
 
       - name: Test
         run: cargo test --all
+
+  licenses:
+    # Every dependency must have a GPL-3.0-compatible licence (deny.toml,
+    # ADR 0022). Release builds generate the notices with cargo-about.
+    name: licences (cargo deny)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CARGO_DENY_VERSION: "0.20.2"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install
+
+      - name: Install cargo-deny
+        run: |
+          url="https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl -sSfL --retry 3 -o cargo-deny.tgz "$url"
+          echo "9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f  cargo-deny.tgz" | sha256sum -c -
+          tar xzf cargo-deny.tgz --strip-components=1 -C "$HOME/.cargo/bin" "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
+          rm cargo-deny.tgz
+          cargo deny --version
+
+      - name: Licence check
+        run: cargo deny --locked check licenses

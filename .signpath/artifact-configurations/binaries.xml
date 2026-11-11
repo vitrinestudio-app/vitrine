@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "binaries" (ADR 0026, docs/dev/releasing.md).
+  Paste into SignPath (project → Artifact configurations) with the slug set
+  in the repository variable SIGNPATH_ARTIFACT_CONFIG_BINARIES.
+
+  Input: the workflow artifact `windows-unsigned-binaries` (a ZIP made by
+  actions/upload-artifact) with the app exe and the CLI. Both are signed
+  before the NSIS installer is built from them.
+
+  Draft, written from the SignPath docs (2026-11-11) without access to a
+  SignPath account: check it in SignPath's editor. SignPath Foundation wants
+  product name/version enforced; the app exe carries "Vitrine Studio" and the
+  version (Tauri sets the Windows version resource). The CLI has no version
+  resource yet (see docs/dev/releasing.md, "SignPath"), so its restriction is
+  left out for now.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="vitrine-gui.exe" product-name="Vitrine Studio">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="vitrine.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

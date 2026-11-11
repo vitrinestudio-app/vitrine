@@ -15,7 +15,8 @@ The binding concept is **`docs/KONZEPT.md`** (German). Read it before changing
 the model, renderer or architecture. The user communicates in German; code,
 comments, commit messages and repo docs are in English.
 
-Status: pre-alpha. Phases 0–4 (spike, core + CLI, GUI editor, languages &
+Status: pre-alpha (version 0.1.0 = `[workspace.package] version`, the
+single source; releases: `docs/dev/releasing.md`). Phases 0–4 (spike, core + CLI, GUI editor, languages &
 import, MCP) are done. Phase 5 (store upload, `docs/plan/phase-5.md`) is
 built – App Store Connect screenshot sets + App Asset Library (iPhone Duo,
 header/search creatives), Google Play, plan → confirm → execute – and the
@@ -79,6 +80,12 @@ docs/plan/              task lists per phase
 website/                www.vitrinestudio.app: Hugo site (no theme), en + de,
                         landing page + docs; `hugo server` / `hugo --minify`
                         in website/, see website/README.md
+scripts/release/        release helpers (licence files via cargo-about, CLI sidecar,
+                        collect artifacts, latest.json/checksums/notes; ADR 0026)
+deny.toml, about.toml   licence allow-list (cargo deny, CI) / third-party notices
+.signpath/              SignPath artifact configuration drafts (Windows signing)
+.github/workflows/      ci.yml (fmt/clippy/test per OS + licences), release.yml
+                        (tag v* → draft release; docs/dev/releasing.md)
 docs/example/           preview images of the example project (README)
 docs/gui/               screenshots of the editor (README)
 ```
@@ -167,7 +174,12 @@ assets, targets, project_settings, render, export, catalog, os, system;
 a new command goes into the `command_table!` in
 `crates/app/src/commands/mod.rs` *and* the `json_commands!`/
 `image_commands!` + `generate_handler!` lists in `crates/gui/src/main.rs`,
-which only wraps them as Tauri commands), `session` (open project,
+which only wraps them as Tauri commands; GUI-only commands without an app
+counterpart: `menu_set`, `update_status|check|install` in
+`crates/gui/src/updater.rs`), `cli_install` ("Install command line tool":
+macOS symlink /usr/local/bin, Windows user PATH, `VITRINE_CLI_LINK_DIR` /
+`with_cli_link_dir` redirect it; commands `cli_install_status|cli_install`,
+CLI `vitrine install-cli`; ADR 0026), `session` (open project,
 apply/undo/redo with atomic save per transaction, revision conflicts, live
 reload via `watch`; every step emits `project-edited` with its `actor`),
 `actor` (`Actor::User | Assistant {client, name}`: history labels
@@ -315,6 +327,7 @@ CARGO_TARGET_DIR=target/cross cargo clippy --target x86_64-pc-windows-gnu --work
 # Linux (one-time: brew install messense/macos-cross-toolchains/x86_64-unknown-linux-gnu,
 # rustup target add x86_64-unknown-linux-gnu); excludes the GUI (needs GTK); verified 2026-11-10
 CARGO_TARGET_DIR=target/cross cargo clippy --target x86_64-unknown-linux-gnu --workspace --exclude vitrine-gui --all-targets --all-features -- -D warnings
+cargo deny check licenses                    # licence allow-list (deny.toml), also a CI job
 cargo run -p vitrine-cli -- --help          # CLI (binary `vitrine`)
 cargo run -p vitrine-gui                    # start the GUI (start screen)
 cargo run -p vitrine-gui -- <project-dir>   # … opening a project
@@ -339,6 +352,10 @@ cargo test -p vitrine-cli --test mcp_proxy    # in-process GUI endpoint + `vitri
 # dev bridge hosting MCP too (discovery file in <app-dir>/data/mcp.json); drive it with
 # `vitrine mcp --app-dir <app-dir>` while the browser shows the edits live
 cargo run -p vitrine-gui --features devbridge --bin vitrine-devbridge -- --project tests/fixtures/example --copy --mcp --app-dir /tmp/ab
+
+# release bundle locally (unsigned; CI: .github/workflows/release.yml, docs/dev/releasing.md)
+scripts/release/third-party-notices.sh crates/gui/bundle/licenses && scripts/release/build-cli-sidecar.sh aarch64-apple-darwin
+(cd crates/gui && cargo tauri build --target aarch64-apple-darwin --bundles app --config tauri.bundle.conf.json)
 
 # regenerate the example screenshots (deterministic fake app UI)
 cargo run -p vitrine-render --release --example screens -- tests/fixtures/example/screenshots
@@ -368,7 +385,8 @@ print to stdout there), `upload plan [--store apple|google] [--target]
 [--events]`, `upload refdata [--account] [--app] [--format json]`
 (`upload` takes `--app-dir`; ADR 0018, 0019), `gallery login|logout|list
 [--query] [--tag] [--format json]|upload <file> [--token-env VAR]|download
-<id> [-o FILE]` (`--api URL`; ADR 0025). Exit codes: 0 ok, 1 project
+<id> [-o FILE]` (`--api URL`; ADR 0025), `install-cli [--remove] [--status]
+[--yes]` (`vitrine` on PATH; ADR 0026). Exit codes: 0 ok, 1 project
 problems, 2 could not run.
 
 Golden tests (`crates/render/tests/golden.rs`) render every output image

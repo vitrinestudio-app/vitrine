@@ -136,33 +136,54 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
 - [x] CLI `frames import <pack> [--to] [--id]`, `frames list --packs`,
       `frames remove --pack`; MCP `frames_list` returns packs
 
-## 6.5 Installer & signing (planned for 2026-11-11)
-- [ ] Bundles via Tauri bundler: macOS `.app` + `.dmg` (universal or per
-      arch), Windows `.msi`/NSIS, Linux AppImage/`.deb`(/rpm)
-- [ ] Ship the CLI with the GUI (Phase 4 TODO: CLI path for bundled builds –
-      `vitrine` inside the bundle, PATH install option / symlink, Claude
-      Desktop config pointing at it)
-- [ ] macOS: Developer ID signing + notarization (`notarytool`), hardened
-      runtime, entitlements (network client, user-selected files, keychain);
-      credentials only in CI secrets / the user's keychain – the user does
-      the Apple account steps
-- [ ] Windows: code signing (certificate type / Azure Trusted Signing –
-      open question), SmartScreen
-- [ ] Linux: AppImage signing optional; desktop file, icons
-- [ ] Release workflow (GitHub Actions on tag): build, sign, notarize,
-      checksums, GitHub release; updater (Tauri updater with signed
-      manifests) – decide
-- [ ] App icon set, version scheme
+## 6.5 Installer & signing – prepared 2026-11-11 (ADR 0026, `docs/dev/releasing.md`)
+- [x] Bundles via Tauri bundler: macOS universal `.app` + `.dmg` (min.
+      macOS 11), Windows NSIS setup (per user; no MSI), Linux AppImage +
+      deb + rpm (Ubuntu 22.04); stable asset names without version
+- [x] Ship the CLI with the GUI: Tauri sidecar (`externalBin`, release-only
+      config `tauri.bundle.conf.json`, `scripts/release/build-cli-sidecar.sh`);
+      `claude_desktop::cli_path()` finds it next to the GUI binary (AppImage:
+      `vitrine` on PATH); "Install command line tool" (app settings,
+      `vitrine install-cli`): macOS symlink `/usr/local/bin/vitrine` (admin
+      prompt when needed), Windows user PATH (+ NSIS installer prompt),
+      deb/rpm `/usr/bin`; standalone CLI archives in the release
+- [x] macOS: Developer ID signing + notarization via Tauri (hardened
+      runtime, entitlements file – empty on purpose, app not sandboxed,
+      see ADR 0026; App Store Connect API key; stapling), sidecar signed
+      too; unsigned builds still succeed – [ ] owner: certificate + key as
+      secrets, first signed `workflow_dispatch` run
+- [~] Windows: SignPath Foundation researched
+      (`docs/research/2026-11-11-windows-signing.md`), SignPath path in the
+      workflow (two requests, re-signed updater artifact), switched on by
+      the `SIGNPATH_*` variables; until then unsigned + labelled –
+      [ ] owner: first public release, code signing policy page, apply
+- [x] Linux: desktop file + icons from the Tauri bundler; packages unsigned
+      (checksums); AppImage self-updates, deb/rpm only notify
+- [x] Release workflow `.github/workflows/release.yml` (tag `v*` → draft
+      release with checksums, notices, `latest.json`; `workflow_dispatch` →
+      artifacts only, optional signing); pinned tools (Tauri CLI 2.12.4,
+      cargo-about 0.9.3, cargo-deny 0.20.2, SHA-256 checked)
+- [x] Updater: `tauri-plugin-updater` 2.14.1 from Rust, GitHub Releases
+      `latest.json`, `requireSignedVersion`; "Check for updates…" (menus +
+      app settings), daily automatic check (setting, default on), user
+      confirms install + restart; off while the public key is the
+      placeholder – [ ] owner: `cargo tauri signer generate`, public key in
+      `tauri.conf.json`, private key + password as secrets
+- [x] Version scheme: workspace version is the single source (0.1.0);
+      release job checks tag = `v<version>`; release steps in
+      `docs/dev/releasing.md`. App icon set exists (`crates/gui/icons/`).
 - [x] Licence decision: GPL-3.0-or-later + CLA (2026-11-11, ADR 0022;
       `LICENSE`, `CLA.md` 1.0 (reviewed by the owner 2026-11-11), `CONTRIBUTING.md`, manifests, Tauri bundle
       `publisher`/`copyright`/`license`, CLI help + About panel notice)
-- [ ] Third-party licence notices shipped with every installer (required:
-      MIT/BSD/Apache notices of the crates, `assets/fonts/OFL.txt`,
-      `assets/hyphenation/LICENSES.md`): generate a `THIRD-PARTY-NOTICES`
-      file with `cargo about` at release build time, bundle it as a Tauri
-      resource and link it from the About dialog / `vitrine --help`; add
-      `cargo deny check licenses` (+ `deny.toml` allow-list from ADR 0022)
-      to CI; the release must offer the corresponding source (GitHub tag)
+- [x] Third-party licence notices with every installer: `about.toml` +
+      `scripts/release/third-party-notices.sh` (cargo-about →
+      `THIRD-PARTY-NOTICES.html`, `LICENSE.txt`, fonts' `OFL.txt`,
+      hyphenation `LICENSES.md`) bundled under `licenses/`, in every CLI
+      archive and attached to the release; `deny.toml` + CI job `licenses`
+      (`cargo deny check licenses`); release notes name the tag as the
+      corresponding source. [ ] Later: link the notices from the About
+      panel / `vitrine --help`.
+- [x] CI hardening: job timeouts, apt retries + step timeout (ci.yml)
 - [x] Owner: review of `CLA.md` (2026-11-11)
 - [ ] Owner: set up the CLA bot (CONTRIBUTING.md)
 

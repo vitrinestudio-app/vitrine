@@ -29,6 +29,7 @@
 pub mod about;
 pub mod actor;
 pub mod claude_desktop;
+pub mod cli_install;
 pub mod commands;
 pub mod dialogs;
 pub mod error;

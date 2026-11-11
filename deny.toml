@@ -1,0 +1,52 @@
+# cargo-deny configuration (https://embarkstudios.github.io/cargo-deny/).
+#
+# Only the licence check runs in CI (`cargo deny check licenses`, job
+# `licenses` in .github/workflows/ci.yml). The allow-list is the set of
+# GPL-3.0-compatible licences from ADR 0022; every other licence fails the
+# check, so a new dependency with an unknown or incompatible licence is
+# caught in the pull request. Extend the list only after checking GPL-3.0
+# compatibility (and note it in ADR 0022).
+
+[graph]
+# Licences of all platforms we ship (the GUI pulls platform-specific crates).
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+]
+all-features = true
+
+[licenses]
+# Dev-dependencies are never distributed.
+include-dev = false
+confidence-threshold = 0.9
+allow = [
+    # Our own crates.
+    "GPL-3.0-or-later",
+    # Permissive licences (ADR 0022).
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "BSL-1.0",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "Unlicense",
+    # File-level copyleft, used unmodified from crates.io (ADR 0022).
+    "MPL-2.0",
+    # Data licence of `webpki-root-certs` (permissive).
+    "CDLA-Permissive-2.0",
+]
+# Licences in the list that no crate currently uses are fine (OR choices
+# change with dependency updates).
+unused-allowed-license = "allow"
+
+[licenses.private]
+# Our own crates are `publish = false`; they are GPL-3.0-or-later anyway.
+ignore = false

@@ -22,6 +22,7 @@ mod catalog;
 mod edit;
 mod add;
 mod canvases;
+mod cli_tool;
 mod exchange;
 mod export;
 mod frames;
@@ -53,6 +54,7 @@ pub use add::*;
 pub use assets::*;
 pub use canvases::*;
 pub use catalog::*;
+pub use cli_tool::*;
 pub use edit::*;
 pub use exchange::*;
 pub use export::*;
@@ -105,6 +107,8 @@ pub struct AppState {
     mcp_control: OnceLock<Arc<dyn McpControl>>,
     /// Claude Desktop config file override (dev bridge, tests).
     claude_config: Option<PathBuf>,
+    /// Folder of the `vitrine` symlink override (dev bridge, tests; ADR 0026).
+    cli_link_dir: Option<PathBuf>,
     /// Template gallery API base override (tests, dev bridge; ADR 0025).
     gallery_url: Option<String>,
     /// Keychain for store secrets (created on first use, ADR 0016).
@@ -142,6 +146,7 @@ impl AppState {
             mcp_token: Mutex::new(None),
             mcp_control: OnceLock::new(),
             claude_config: None,
+            cli_link_dir: None,
             gallery_url: None,
             secrets: OnceLock::new(),
             connection_tester: OnceLock::new(),
@@ -224,6 +229,19 @@ impl AppState {
     pub fn with_claude_desktop_config(mut self, path: PathBuf) -> Self {
         self.claude_config = Some(path);
         self
+    }
+
+    /// Puts the `vitrine` symlink of "Install command line tool" into
+    /// `dir` instead of `/usr/local/bin` / `~/.local/bin` (dev bridge, tests).
+    #[must_use]
+    pub fn with_cli_link_dir(mut self, dir: PathBuf) -> Self {
+        self.cli_link_dir = Some(dir);
+        self
+    }
+
+    /// The symlink folder override ([`Self::with_cli_link_dir`]).
+    pub fn cli_link_dir(&self) -> Option<&std::path::Path> {
+        self.cli_link_dir.as_deref()
     }
 
     /// Uses `url` as the template gallery API instead of
@@ -427,6 +445,7 @@ command_table! {
         frames_pack_import, frames_pack_remove,
         view_get, view_set,
         mcp_status, mcp_set_enabled, claude_desktop_plan, claude_desktop_install,
+        cli_install_status, cli_install,
         store_accounts_list, store_account_import, store_account_remove, store_account_test,
         store_apps_list, store_package_check, open_url,
         project_store_get, project_store_patch, store_config_get,

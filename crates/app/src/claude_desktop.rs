@@ -48,21 +48,48 @@ pub fn default_config_path() -> Option<PathBuf> {
 }
 
 /// The `vitrine` CLI binary: [`CLI_ENV`], else `vitrine` next to the
-/// running executable (dev builds: `target/<profile>/vitrine` next to
-/// `vitrine-gui`).
-///
-/// TODO(Phase 6): bundled builds ship the CLI inside the app bundle
-/// (macOS `Vitrine Studio.app/Contents/MacOS/vitrine`, Windows/Linux next to
-/// the GUI binary); check the path once bundling exists.
+/// running executable. The installers ship the CLI as a Tauri sidecar
+/// next to the GUI binary (ADR 0026): macOS `Vitrine Studio.app/Contents/
+/// MacOS/vitrine`, Windows `<install dir>\vitrine.exe`, Linux deb/rpm
+/// `/usr/bin/vitrine`; dev builds `target/<profile>/vitrine`. An `AppImage`
+/// runs from a temporary mount, so there a `vitrine` on `PATH` (the
+/// standalone CLI) is preferred.
 pub fn cli_path() -> PathBuf {
     if let Some(p) = std::env::var_os(CLI_ENV).filter(|v| !v.is_empty()) {
         return PathBuf::from(p);
     }
     let name = format!("vitrine{}", std::env::consts::EXE_SUFFIX);
+    if std::env::var_os("APPIMAGE").is_some()
+        && let Some(found) = find_on_path(&name)
+    {
+        return found;
+    }
     std::env::current_exe()
         .ok()
+        .map(resolve_symlinks)
         .and_then(|exe| exe.parent().map(|d| d.join(&name)))
         .unwrap_or_else(|| PathBuf::from(name))
+}
+
+/// The real path behind symlinks (Unix only: Windows' canonical form is a
+/// `\\?\` path that does not belong in configs or `PATH`).
+fn resolve_symlinks(exe: PathBuf) -> PathBuf {
+    #[cfg(unix)]
+    {
+        std::fs::canonicalize(&exe).unwrap_or(exe)
+    }
+    #[cfg(not(unix))]
+    {
+        exe
+    }
+}
+
+/// The first `name` file in a `PATH` folder.
+fn find_on_path(name: &str) -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path)
+        .map(|d| d.join(name))
+        .find(|p| p.is_file())
 }
 
 /// The server entry for `cli`.

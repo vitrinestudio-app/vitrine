@@ -94,6 +94,8 @@ const ICONS = {
   export: 'M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 11v2.5h11V11',
   upload: 'M8 10V2M4.5 5.5 8 2l3.5 3.5M2.5 11v2.5h11V11',
   targets: 'M2 3.5h5v9H2zM9 5.5h5v5H9zM11.5 2v2M11.5 12v2',
+  update: 'M13 8a5 5 0 1 1-1.5-3.6M13 2.5V5h-2.5M8 5.5V8l1.8 1.2',
+  terminal: 'M1.5 3h13v10h-13zM4 6l2 2-2 2M7.5 10.5h4',
 };
 
 /** An inline SVG icon by name. */
