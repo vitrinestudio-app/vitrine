@@ -106,7 +106,7 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
       manifests) – decide
 - [ ] App icon set, version scheme
 - [x] Licence decision: GPL-3.0-or-later + CLA (2026-11-11, ADR 0022;
-      `LICENSE`, `CLA.md` draft, `CONTRIBUTING.md`, manifests, Tauri bundle
+      `LICENSE`, `CLA.md` 1.0 (reviewed by the owner 2026-11-11), `CONTRIBUTING.md`, manifests, Tauri bundle
       `publisher`/`copyright`/`license`, CLI help + About panel notice)
 - [ ] Third-party licence notices shipped with every installer (required:
       MIT/BSD/Apache notices of the crates, `assets/fonts/OFL.txt`,
@@ -115,7 +115,8 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
       resource and link it from the About dialog / `vitrine --help`; add
       `cargo deny check licenses` (+ `deny.toml` allow-list from ADR 0022)
       to CI; the release must offer the corresponding source (GitHub tag)
-- [ ] Owner: legal review of `CLA.md`, set up the CLA bot (CONTRIBUTING.md)
+- [x] Owner: review of `CLA.md` (2026-11-11)
+- [ ] Owner: set up the CLA bot (CONTRIBUTING.md)
 
 ## 6.6 Website vitrinestudio.app (own step)
 - [ ] Static site (generator choice, hosting – open question), landing

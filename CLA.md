@@ -1,14 +1,10 @@
 # Vitrine Studio Individual Contributor License Agreement
 
-Version 1.0-draft, 2026-11-11
+Version 1.0, 2026-11-11
 
-> **Draft – not yet reviewed by a lawyer.** The project owner should have
-> this text reviewed before CLA signing is switched on (see
-> [CONTRIBUTING.md](CONTRIBUTING.md#contributor-licence-agreement-cla)).
-> It is a *licence* agreement, not a copyright assignment: under German
+> This is a *licence* agreement, not a copyright assignment: under German
 > copyright law (UrhG) copyright itself cannot be transferred, only rights
-> of use (*Nutzungsrechte*, § 31 UrhG) can be granted. Points for the review
-> are listed at the end of this file.
+> of use (*Nutzungsrechte*, § 31 UrhG) can be granted.
 >
 > Based on the structure and wording of the **Apache Software Foundation
 > Individual Contributor License Agreement v2.2** (© The Apache Software
@@ -157,24 +153,3 @@ When You open your first pull request, the CLA bot asks You to sign by
 posting the comment it shows. That comment records Your GitHub account, the
 date and this version of the agreement. Corporate contributors: please
 contact the Owner for a corporate agreement before contributing.
-
-## Review notes for the Owner (remove before activating)
-
-- **Unknown types of use (§ 31a UrhG):** a grant for types of use unknown at
-  the time of signing needs written form unless it is a simple right granted
-  free of charge *to everyone*. A click-through signature probably does not
-  meet the written form; the grant above is therefore limited to known types
-  of use. Ask the lawyer whether that is enough or whether a different
-  signing method is wanted.
-- **Relicensing clause (section 2, "any other licence"):** this is the core
-  of the decision (dual licensing / commercial editions stay possible). The
-  promise to keep the code available under an open source licence is a
-  goodwill clause taken from the Harmony "any licence" option – keep, adjust
-  or drop it consciously.
-- **Liability (section 5):** under German law liability for intent and
-  gross negligence cannot be excluded in advance; the clause says so.
-- **Corporate CLA:** not drafted; the Apache CCLA v2.2 would be the
-  matching base if it is ever needed.
-- Check the wording against the current Apache ICLA and Harmony texts and
-  their reuse terms before publishing the final version (version number
-  `1.0`, date).

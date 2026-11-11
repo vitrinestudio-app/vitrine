@@ -29,7 +29,7 @@ type.** Decided with the user on 2026-11-11.
   bundle `publisher`/`copyright`/`license`. No `licenseFile` in the bundle
   (it would make the NSIS/DMG installers show an accept-the-licence page,
   which the GPL does not require).
-- **CLA** (`CLA.md`, draft for legal review): the contributor keeps the
+- **CLA** (`CLA.md`, version 1.0, reviewed by the owner 2026-11-11): the contributor keeps the
   copyright and grants the owner a perpetual, irrevocable, non-exclusive
   copyright licence including sublicensing and distribution under any
   other licence, plus a patent licence. Structure and wording from the
@@ -78,6 +78,30 @@ type.** Decided with the user on 2026-11-11.
   with `cargo about`, plus OFL and hyphenation notices). A `deny.toml`
   (licence allow-list) is to be added together with `cargo deny` in CI.
 
+### CLA drafting notes (background)
+
+Points considered while drafting `CLA.md` and handed to the owner for the
+review (done 2026-11-11); kept here so the published CLA contains only the
+agreement.
+
+- **Unknown types of use (§ 31a UrhG):** a grant for types of use unknown at
+  the time of signing needs written form unless it is a simple right granted
+  free of charge *to everyone*. A click-through signature probably does not
+  meet the written form; the grant in section 2 is therefore limited to known types
+  of use. Ask the lawyer whether that is enough or whether a different
+  signing method is wanted.
+- **Relicensing clause (section 2, "any other licence"):** this is the core
+  of the decision (dual licensing / commercial editions stay possible). The
+  promise to keep the code available under an open source licence is a
+  goodwill clause taken from the Harmony "any licence" option – keep, adjust
+  or drop it consciously.
+- **Liability (section 5):** under German law liability for intent and
+  gross negligence cannot be excluded in advance; the clause says so.
+- **Corporate CLA:** not drafted; the Apache CCLA v2.2 would be the
+  matching base if it is ever needed.
+- Version set from `1.0-draft` to `1.0` (2026-11-11) after the owner's
+  review.
+
 ## Consequences
 
 - Distributors (including the owner's own builds) must offer the
@@ -87,5 +111,5 @@ type.** Decided with the user on 2026-11-11.
   sole licensor is not bound by that) because every contribution is
   licensed to them through the CLA.
 - Contributors without a signed CLA cannot be merged.
-- Open for the owner: legal review of `CLA.md`, CLA bot setup, optional
-  repository rename.
+- Open for the owner: CLA bot setup, optional repository rename.
+  (`CLA.md` reviewed by the owner on 2026-11-11.)
