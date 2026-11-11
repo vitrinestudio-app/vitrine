@@ -6,7 +6,7 @@
 ## Context
 
 KONZEPT §5.2 asks for importing screenshots with mapping rules: the
-Arrangia folder convention (`screenshots/<lang>/[<variant>/]<key>.png`),
+Vitrine Studio folder convention (`screenshots/<lang>/[<variant>/]<key>.png`),
 fastlane snapshot output (`<locale>/<Device Name>-<screen>.png`) with a
 configurable device name → variant mapping, and drag & drop with
 detection by file name and pixel size. Phase 2 already imports single
@@ -25,7 +25,7 @@ where, and a mapping that can be stored in the project.
   each file is written to a temp file next to its destination and
   renamed (`io::write_atomic`); files whose destination already has the
   same bytes are skipped. Nothing is ever deleted (no prune).
-- `ImportRules { format: auto|arrangia|fastlane|flat, mapping,
+- `ImportRules { format: auto|vitrine|fastlane|flat, mapping,
   include_framed, overrides }`. `overrides` are per-file corrections
   (`lang`, `variant` with `""` = language folder, `key`, `skip`) keyed by
   the path relative to the source folder; the GUI's row edits are just
@@ -46,7 +46,7 @@ where, and a mapping that can be stored in the project.
 ### Detection rules
 
 - **Format**: auto picks fastlane when `screenshots.html` exists or most
-  files look like `<locale>/<Device Name>-<screen>`, Arrangia when files
+  files look like `<locale>/<Device Name>-<screen>`, Vitrine Studio when files
   sit in language folders with slug names, else flat. A leading
   `screenshots/` folder is ignored (a project can be a source).
 - **Language**: locale map → exact project language → case-insensitive
@@ -91,7 +91,7 @@ and `keys` apply to every format.
 
 ### Front ends
 
-- CLI: `arrangia import screenshots <dir> [--format …] [--lang-map
+- CLI: `vitrine import screenshots <dir> [--format …] [--lang-map
   L=LANG] [--device-map "NAME=VARIANT"] [--key-map S=KEY]
   [--include-framed] [--dry-run] [--save-mapping] [--format-output
   text|json]`. Exit 1 when files are unresolved, duplicate or failed to

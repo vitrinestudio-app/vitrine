@@ -1,6 +1,6 @@
-# Arrangia
+# Vitrine Studio
 
-Arrangia is an open-source desktop app for creating App Store and Play Store
+Vitrine Studio is an open-source desktop app for creating App Store and Play Store
 screenshots: device frames, texts, translations and panorama sets, designed once
 and rendered for every language, device class and store – with store upload and
 an MCP interface so AI assistants such as Claude can design and translate
@@ -12,7 +12,7 @@ all pages, and gaps between pages match the store gallery so transitions line
 up. The same layout adapts to other aspect ratios and to landscape sets built
 from grouped portrait pages.
 
-Website: <https://arrangia.app>
+Website: <https://www.vitrinestudio.app>
 
 ## Status
 
@@ -22,7 +22,7 @@ text overrides, font fallbacks, opt-in automatic hyphenation, screenshot
 import (fastlane and folder layouts), translation exchange via CSV and
 XLIFF, and imported Apple Product Bezels (still to be verified with the
 real package). Projects can be created, designed, translated, validated
-and exported in the desktop app, or headless with the `arrangia` command
+and exported in the desktop app, or headless with the `vitrine` command
 line tool; AI assistants (e.g. Claude Desktop, Claude Code) can work on
 projects through MCP – the desktop app hosts the server, so you watch the
 assistant's edits live and can undo them; store
@@ -51,7 +51,7 @@ export; every change is saved immediately as plain YAML.
 for a fictional garden planner, exported from one YAML file into iPhone,
 Google Play, iPad landscape, Mac App Store, web slides and banner targets
 in English, German, French and Canadian French (which inherits all but
-two texts from French). Store gallery previews as Arrangia renders them:
+two texts from French). Store gallery previews as Vitrine Studio renders them:
 
 ![iPhone 6.9" set: one continuous canvas, a phone crossing pages 3 and 4](docs/example/iphone-gallery-en.jpg)
 
@@ -96,9 +96,9 @@ Requirements:
 ```sh
 cargo build                          # build everything
 cargo test --all                     # run tests
-cargo run -p arrangia-cli -- --help  # command line interface (binary: arrangia)
-cargo run -p arrangia-gui            # desktop app (start screen)
-cargo run -p arrangia-gui -- tests/fixtures/example   # … opening a project
+cargo run -p vitrine-cli -- --help  # command line interface (binary: vitrine)
+cargo run -p vitrine-gui            # desktop app (start screen)
+cargo run -p vitrine-gui -- tests/fixtures/example   # … opening a project
 ```
 
 ## Command line
@@ -106,37 +106,37 @@ cargo run -p arrangia-gui -- tests/fixtures/example   # … opening a project
 Quick start:
 
 ```sh
-cargo install --path crates/cli                # or: cargo run -p arrangia-cli --release -- …
-arrangia new my-app --lang en --lang de        # a phone project from a template
+cargo install --path crates/cli                # or: cargo run -p vitrine-cli --release -- …
+vitrine new my-app --lang en --lang de        # a phone project from a template
 # put screenshots into my-app/screenshots/en/ios-phone/<key>.png (see project.yaml)
-arrangia validate --project my-app             # what is missing or does not fit
-arrangia export --project my-app               # PNG/JPEG files in my-app/export/<target>/<lang>/
+vitrine validate --project my-app             # what is missing or does not fit
+vitrine export --project my-app               # PNG/JPEG files in my-app/export/<target>/<lang>/
 ```
 
-Try it on the example: `arrangia export --project tests/fixtures/example`.
+Try it on the example: `vitrine export --project tests/fixtures/example`.
 
-The `arrangia` binary works on a project folder (`--project <DIR>`, default:
+The `vitrine` binary works on a project folder (`--project <DIR>`, default:
 the current folder):
 
 ```sh
-arrangia new my-app --lang en --lang de      # project from a template (--template phone|minimal)
-arrangia validate --project my-app           # findings by target/language; --format json, --preview, --strict
-arrangia render --project my-app --canvas    # preview PNG: --page N | --image N | --canvas | --gallery
-arrangia render --project my-app --target play-phone --page 2 --width 400 -o page.png
-arrangia export --project my-app             # all targets × languages into my-app/export/
-arrangia export --target ios-iphone-69 --lang de --force   # --force ignores the incremental cache
+vitrine new my-app --lang en --lang de      # project from a template (--template phone|minimal)
+vitrine validate --project my-app           # findings by target/language; --format json, --preview, --strict
+vitrine render --project my-app --canvas    # preview PNG: --page N | --image N | --canvas | --gallery
+vitrine render --project my-app --target play-phone --page 2 --width 400 -o page.png
+vitrine export --project my-app             # all targets × languages into my-app/export/
+vitrine export --target ios-iphone-69 --lang de --force   # --force ignores the incremental cache
 
 # translations for translators (CSV or XLIFF 1.2/2.0; markup becomes protected inline tags)
-arrangia strings export --format xliff20 --lang fr -o translations/   # --format csv --context --missing-only
-arrangia strings import translations/fr.xlf --dry-run                 # report: changed/new/unknown keys, overflows
+vitrine strings export --format xliff20 --lang fr -o translations/   # --format csv --context --missing-only
+vitrine strings import translations/fr.xlf --dry-run                 # report: changed/new/unknown keys, overflows
 
-# screenshots from fastlane snapshot, an Arrangia folder tree or a flat folder
-arrangia import screenshots fastlane/screenshots --dry-run            # --device-map "iPhone 17 Pro Max=ios-phone" --save-mapping
+# screenshots from fastlane snapshot, a Vitrine Studio folder tree or a flat folder
+vitrine import screenshots fastlane/screenshots --dry-run            # --device-map "iPhone 17 Pro Max=ios-phone" --save-mapping
 
 # Apple Product Bezels (downloaded by you; stored app-wide, never in the project)
-arrangia frames import /Volumes/Bezel-iPhone-18 --dry-run             # folder, zip or DMG
-arrangia frames list
-arrangia frames remove --model iphone-island                          # --color, --orientation; --all removes everything
+vitrine frames import /Volumes/Bezel-iPhone-18 --dry-run             # folder, zip or DMG
+vitrine frames list
+vitrine frames remove --model iphone-island                          # --color, --orientation; --all removes everything
 ```
 
 Exit codes: `0` success (warnings fail only with `validate --strict`), `1`
@@ -148,7 +148,7 @@ command could not run (usage error, project not loadable, IO error).
 
 ## AI assistants (MCP)
 
-Arrangia speaks [MCP](https://modelcontextprotocol.io), so any MCP-capable
+Vitrine Studio speaks [MCP](https://modelcontextprotocol.io), so any MCP-capable
 assistant can create a project, add devices and texts, translate, look at
 rendered previews (`render_preview` returns a PNG), check the layout,
 validate and export. The desktop app hosts the server: the assistant works
@@ -158,14 +158,14 @@ step labelled with the client's name, and you discuss it in your assistant.
 Nothing goes over the network (ADR 0014, ADR 0015). The settings live under
 App settings → *AI assistants (MCP)*.
 
-**Any MCP client**: add a stdio server named `arrangia` that runs the
-`arrangia` command with the argument `mcp` (the exact path is shown under
+**Any MCP client**: add a stdio server named `vitrine-studio` that runs the
+`vitrine` command with the argument `mcp` (the exact path is shown under
 *Other MCP clients*), e.g.
 
 ```json
 {
   "mcpServers": {
-    "arrangia": { "command": "/path/to/arrangia", "args": ["mcp"] }
+    "vitrine-studio": { "command": "/path/to/vitrine", "args": ["mcp"] }
   }
 }
 ```
@@ -177,26 +177,26 @@ a fixed port, the token always changes).
 
 **Claude Desktop** (no terminal needed):
 
-1. Start Arrangia.
+1. Start Vitrine Studio.
 2. App settings → *AI assistants (MCP)* → **Add to Claude Desktop…** (shows
    the entry and the file, asks before writing, keeps a backup).
 3. Restart Claude Desktop and ask it to work on your screenshots.
 
-Claude Desktop then starts `arrangia mcp`, which connects to the running
+Claude Desktop then starts `vitrine mcp`, which connects to the running
 app (and starts it when it is closed; setting *Start on demand*).
 
 **Claude Code**: copy the command from the same settings section, e.g.
 
 ```sh
-claude mcp add arrangia -- /path/to/arrangia mcp      # recommended: always reaches the app
+claude mcp add vitrine-studio -- /path/to/vitrine mcp      # recommended: always reaches the app
 # or, for this run of the app only (port and token change per start):
-claude mcp add --transport http arrangia http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <token>"
+claude mcp add --transport http vitrine-studio http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <token>"
 ```
 
-Without the app (CI, scripts): `arrangia mcp --headless --project
+Without the app (CI, scripts): `vitrine mcp --headless --project
 /path/to/my-app` works on the folder directly.
 
-Example prompts: "Create an Arrangia project in ~/Screens/Fernwood for a
+Example prompts: "Create a Vitrine Studio project in ~/Screens/Fernwood for a
 garden planner app in English and German with three iPhone pages, then
 show me the preview", "Translate all missing texts into French and check
 that nothing overflows", "Make the title on page 2 smaller and move the
@@ -207,13 +207,13 @@ phone down by 100 lu". Tools, resources and the op reference:
 
 | Path | Crate | Purpose |
 |---|---|---|
-| `crates/core` | `arrangia-core` | Project model, YAML IO, operations API, resolution, layout, validation, catalogs |
-| `crates/render` | `arrangia-render` | Rasterization, parametric device frames, text rendering, export |
-| `crates/publish` | `arrangia-publish` | App Store Connect and Google Play upload, keychain |
-| `crates/app` | `arrangia-app` | Shared application layer: session, commands, preview cache, settings (GUI and MCP) |
-| `crates/mcp` | `arrangia-mcp` | MCP server (rmcp): tools and resources over the application layer |
-| `crates/cli` | `arrangia-cli` | Command line interface, binary `arrangia` |
-| `crates/gui` | `arrangia-gui` | Tauri 2 desktop app, frontend in plain HTML/CSS/JS |
+| `crates/core` | `vitrine-core` | Project model, YAML IO, operations API, resolution, layout, validation, catalogs |
+| `crates/render` | `vitrine-render` | Rasterization, parametric device frames, text rendering, export |
+| `crates/publish` | `vitrine-publish` | App Store Connect and Google Play upload, keychain |
+| `crates/app` | `vitrine-app` | Shared application layer: session, commands, preview cache, settings (GUI and MCP) |
+| `crates/mcp` | `vitrine-mcp` | MCP server (rmcp): tools and resources over the application layer |
+| `crates/cli` | `vitrine-cli` | Command line interface, binary `vitrine` |
+| `crates/gui` | `vitrine-gui` | Tauri 2 desktop app, frontend in plain HTML/CSS/JS |
 | `docs/` | | Concept and architecture decision records (`docs/adr/`) |
 
 ## Open questions

@@ -28,7 +28,7 @@ plus Tauri's default macOS menu (English, no app actions).
   localized labels, shortcuts in the UI notation `mod+shift+z`, enabled
   state) from the same item list as the in-app menu and sends it with the
   GUI-only Tauri command `menu_set` (`crates/gui/src/native_menu.rs`; no
-  `arrangia-app` counterpart, the dev bridge has no menu). Rust validates
+  `vitrine-app` counterpart, the dev bridge has no menu). Rust validates
   the spec on every OS, builds the menu on macOS and answers `{native}`.
   It is re-sent when a project is opened or closed (enabled state); a UI
   language switch reloads the page and so rebuilds it. Until the first
@@ -61,5 +61,5 @@ plus Tauri's default macOS menu (English, no app actions).
   entry in `menu.js`; app actions stay in the shared `handlers`.
 - The native menu can only be checked in the real macOS app (not in the
   dev bridge).
-- Help links must be in `HELP_URLS` (`arrangia_app::commands::os`); user
+- Help links must be in `HELP_URLS` (`vitrine_app::commands::os`); user
   guide links can be added there once the guide is online.

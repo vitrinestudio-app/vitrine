@@ -7,7 +7,7 @@
 ## Context
 
 Phase 5 (KONZEPT §7) uploads rendered screenshots to App Store Connect and
-Google Play. Tasks 5.3/5.4 are the two REST clients in `arrangia-publish`.
+Google Play. Tasks 5.3/5.4 are the two REST clients in `vitrine-publish`.
 The concept asks to verify every endpoint, enum and limit against the
 current official docs before implementing. This ADR records what was
 verified (all sources fetched **2026-11-10**) and how the clients are built.
@@ -158,7 +158,7 @@ status, errors:[{reason, message}]}}`.
 
 ## Decision – client design
 
-- `arrangia_publish::apple::Client` / `google::Client`, async (tokio),
+- `vitrine_publish::apple::Client` / `google::Client`, async (tokio),
   plain `reqwest` (rustls, features `query`, `form`, `json`) and
   `jsonwebtoken` with the `aws_lc_rs` backend (the same crypto library
   rustls already uses). Configs hold key material only in memory
@@ -213,7 +213,7 @@ status, errors:[{reason, message}]}}`.
 ## Amendment 2026-11-10 – connection test
 
 Two read-only calls were added for "Test connection" (ADR 0016,
-`arrangia_app::store_test`): `apple::Client::apps_overview`
+`vitrine_app::store_test`): `apple::Client::apps_overview`
 (`GET /v1/apps?fields[apps]=bundleId,name&limit=1` → `meta.paging.total`
 + first app) and `google::Client::authenticate` (token fetch only). The
 Google package name is now checked when an edit URL is built instead of in
@@ -227,6 +227,6 @@ set-based flow for everything it supports, the library only for iPhone
 Duo and the creative assets; `asset_library` opts in per project. Making
 the library the default is still open (after a verified real run).
 Its verified endpoints, enums and the client calls
-(`arrangia_publish::apple::library`) are in **ADR 0019**. The part upload
+(`vitrine_publish::apple::library`) are in **ADR 0019**. The part upload
 is shared (`Client::transfer_parts`); asset-library commits send
 `{uploaded: true}` only (no MD5).

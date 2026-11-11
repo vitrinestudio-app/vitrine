@@ -7,7 +7,7 @@
 
 KONZEPT §5.1 asks for exchanging translations with translators as CSV and
 XLIFF. Translations are flat `key → text` maps per language
-(`i18n/<lang>.yaml`) with Arrangia's inline markup (§3.5, ADR 0003:
+(`i18n/<lang>.yaml`) with Vitrine Studio's inline markup (§3.5, ADR 0003:
 `**bold**`, `_italic_`, `[span]…[/]`, `\n`, `\-`). Translators work in
 Excel/Numbers (CSV) or CAT tools (XLIFF); both must round-trip without
 damaging the markup, and an import must show its effect on the layout
@@ -59,7 +59,7 @@ translations: 2.0 `state="initial"` without `<target>`, 1.2
 `<target state="needs-translation"/>`; existing ones `translated`. Import
 skips units without target and untranslated units whose target is a copy
 of the source. Context goes into notes (`category="context"`/`"length"`,
-1.2 `<note from="arrangia">`), not into `maxwidth`/`slr:sizeRestriction`:
+1.2 `<note from="vitrine">`), not into `maxwidth`/`slr:sizeRestriction`:
 the limit is an estimate (proportional fonts, auto-fit), and CAT tools
 would enforce it as a hard limit.
 
@@ -67,7 +67,7 @@ would enforce it as a hard limit.
 and spans become paired codes, breaks and soft hyphens placeholders, so
 CAT tools protect and move them as tags:
 
-| Arrangia     | XLIFF 2.0                                                    | XLIFF 1.2                    |
+| Vitrine Studio     | XLIFF 2.0                                                    | XLIFF 1.2                    |
 |--------------|--------------------------------------------------------------|------------------------------|
 | `**…**`      | `<pc type="fmt" subType="xlf:b" dataRefStart dataRefEnd>`    | `<g ctype="bold">`           |
 | `_…_`        | `<pc type="fmt" subType="xlf:i" …>`                          | `<g ctype="italic">`         |
@@ -79,7 +79,7 @@ CAT tools protect and move them as tags:
 exact marker from `dataRef*`; `subType`/`ctype` are the fallback, and
 `<sc>/<ec>`, `<bx>/<ex>`, `<mrk>`, `<cp>` are understood. Ids are stable
 per kind and occurrence, so source and target tags pair up. Text between
-tags is Arrangia source text with minimal escaping (`\*` only where a
+tags is Vitrine Studio source text with minimal escaping (`\*` only where a
 literal would read as markup), so import concatenates text and markers;
 markup is parsed into a tree (overlapping pairs are split). The round trip
 is lossless except for one corner: overlapping bold/italic where the
@@ -92,9 +92,9 @@ usage that differs from the default language.
 
 ### Front ends
 
-CLI `arrangia strings export --format csv|xliff12|xliff20 [--lang]…
+CLI `vitrine strings export --format csv|xliff12|xliff20 [--lang]…
 [--out path|dir] [--missing-only] [--context] [--delimiter] [--bom]
-[--plain-markup] [--json]` and `arrangia strings import <file>…
+[--plain-markup] [--json]` and `vitrine strings import <file>…
 [--dry-run] [--create-keys] [--empty keep|remove] [--no-layout-check]
 [--json]` (exit 1 when a file could not be read or the import causes new
 layout errors). GUI: `strings_export`, `strings_import_plan`,

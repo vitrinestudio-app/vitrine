@@ -9,7 +9,7 @@
 §3.6 text and span styles, §5.1 auto-fit per language and §6.1 the
 pipeline split: `core::layout` shapes, wraps and auto-fits; `render` only
 rasterises. ADR 0001 chose parley for layout and skrifa outlines drawn with
-tiny-skia. The Phase 0 spike kept this code in `arrangia-render`, so layout
+tiny-skia. The Phase 0 spike kept this code in `vitrine-render`, so layout
 reports and validation would have needed the rasteriser. Hyphenation was
 decided with the user: soft hyphens now, a warning for emergency breaks,
 automatic pattern hyphenation later (Phase 3, opt-in).
@@ -18,10 +18,10 @@ automatic pattern hyphenation later (Phase 3, opt-in).
 
 ### Crate split
 
-- `arrangia_core::markup` – the parser.
-- `arrangia_core::layout` – `FontLibrary`, `TextLayouter`, `TextLayout`,
+- `vitrine_core::markup` – the parser.
+- `vitrine_core::layout` – `FontLibrary`, `TextLayouter`, `TextLayout`,
   `LayoutReport`. Depends on parley + skrifa, no pixels.
-- `arrangia_render::text` – `TextLayout` glyph runs → skrifa outlines →
+- `vitrine_render::text` – `TextLayout` glyph runs → skrifa outlines →
   `tiny_skia::Path`s, drawn with the caller's transform (rotation,
   lu → px). cosmic-text is removed from the workspace.
 
@@ -166,7 +166,7 @@ handles, alignment, auto-fit).
   (opacity/clip) by the visual extent, so glows are not cut off by the
   layer bounds.
 
-Render (`arrangia_render::text::draw_text_with_effects`), per pass over
+Render (`vitrine_render::text::draw_text_with_effects`), per pass over
 all effect sets so a span's glow never covers a neighbour's glyphs:
 
 1. **shadow** layers: silhouette = glyphs (+ outside outline width, +

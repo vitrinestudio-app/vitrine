@@ -20,7 +20,7 @@ parametric frames), and exports are sRGB PNG/JPEG.
 **Convert every decoded raster image to sRGB once, at decode, with the
 pure-Rust CMS `moxcms`.**
 
-- `arrangia_core::colorspace` (no rendering, works on decoded buffers):
+- `vitrine_core::colorspace` (no rendering, works on decoded buffers):
   - `sniff(reader)` reads only the header: PNG chunks up to the first
     `IDAT` (`cICP`, `iCCP` zlib-decompressed, `sRGB`), JPEG markers up to
     `SOS` (APP2 `ICC_PROFILE` segments joined in sequence order, SOF
@@ -35,7 +35,7 @@ pure-Rust CMS `moxcms`.**
     alpha is kept, colour is converted before premultiplication. 16-bit
     images are converted at 16 bit and then rounded to 8; gray images
     with a gray profile go GrayAlpha → RGBA.
-- One decode path: `arrangia_render::raster::SourceImage::decode` is used
+- One decode path: `vitrine_render::raster::SourceImage::decode` is used
   by the asset cache (screenshots, image assets, imported bezels → GUI
   preview, export, upload, MCP render) and by the thumbnail commands.
   `core::frame_import::decode_png` converts too, so measured bezel
@@ -90,7 +90,7 @@ after 1.0 as a per-target option (`color_space: display-p3`) if users ask.
 
 ## Measurements
 
-`cargo run -p arrangia-render --release --example color_bench` (MacBook,
+`cargo run -p vitrine-render --release --example color_bench` (MacBook,
 Apple silicon, 2026-11-10, other builds running – best of 15, interleaved),
 1320×2868 RGBA PNG:
 

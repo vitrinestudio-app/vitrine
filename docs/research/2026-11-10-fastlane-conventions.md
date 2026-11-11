@@ -13,7 +13,7 @@ screenshot import (`--format fastlane`) and the export layout
 
 Why: many apps capture screenshots with fastlane snapshot (iOS) or
 screengrab (Android), frame them with frameit and upload them with deliver
-or supply. Arrangia can replace frameit. It imports the captures and
+or supply. Vitrine Studio can replace frameit. It imports the captures and
 exports folders that deliver/supply upload unchanged.
 
 ## deliver (iOS upload)
@@ -37,7 +37,7 @@ Source: `deliver/lib/deliver/loader.rb`.
 - **frameit output in the folder:** as soon as a locale folder contains any
   `*_framed.{png,jpg,jpeg}`, deliver keeps only the files whose path
   contains `framed` or `watch` and skips all others.
-  - The Arrangia export warns when it finds such leftovers in a deliver
+  - The Vitrine Studio export warns when it finds such leftovers in a deliver
     folder it writes to.
 - **Extensions** (`app_screenshot_validator.rb`): `png`/`PNG`,
   `jpg`/`JPG`/`jpeg`/`JPEG`.
@@ -140,9 +140,9 @@ Sources: `frameit/lib/frameit/runner.rb`, `editor.rb`, `strings_parser.rb`.
   API's `listing.language`).
 - **Limit:** supply enforces no count; Play allows 8 per type.
 
-## Consequences for Arrangia
+## Consequences for Vitrine Studio
 
-**Import** (`arrangia import screenshots <dir> --format fastlane|auto`):
+**Import** (`vitrine import screenshots <dir> --format fastlane|auto`):
 - A whole `fastlane/` folder can be picked: `screenshots/` is read as
   snapshot output, `metadata/android/` as screengrab output.
 - The screengrab folder gives the variant: phone → `android-phone`,
@@ -156,7 +156,7 @@ Sources: `frameit/lib/frameit/runner.rb`, `editor.rb`, `strings_parser.rb`.
   `Framefile.json` names, `*_framed`, `screenshots.html`, `iMessage/` and
   `appleTV/`, deliver metadata, Play store graphics.
 
-**Export** (`arrangia export --layout fastlane`): see `core::fastlane` and
+**Export** (`vitrine export --layout fastlane`): see `core::fastlane` and
 the notes in `docs/guide/NOTES.md`.
 - deliver: `screenshots/<asc-locale>/<nn>_<target>.<ext>`.
 - supply: `metadata/android/<play-locale>/images/<type>/<nn>_<play-locale>.<ext>`

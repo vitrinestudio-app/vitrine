@@ -8,7 +8,7 @@
 Phase 1 task 1.4 turns a project, a target and a language into a concrete
 scene that `core::layout` and the renderer can use without knowing YAML
 concepts (KONZEPT §6.1). The Phase 0 spike proved the page → canvas
-formulas (ADR 0001) inside `arrangia-render`; ADR 0002 left several
+formulas (ADR 0001) inside `vitrine-render`; ADR 0002 left several
 resolve-time questions open (group transforms, `content_scale`, defaults).
 This ADR records how `core::geometry` and `core::resolve` answer them.
 

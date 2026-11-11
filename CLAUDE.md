@@ -4,7 +4,7 @@ Guidance for Claude (and other agents) working in this repository.
 
 ## Project
 
-Arrangia is an open-source (freeware) desktop app, written in Rust, for creating
+Vitrine Studio is an open-source (freeware) desktop app, written in Rust, for creating
 App Store and Play Store screenshots with device frames, texts, translations,
 panorama sets, store upload and an MCP interface. A layout is designed once and
 rendered automatically for every language, device class and store. Projects are
@@ -49,16 +49,16 @@ the roadmap in KONZEPT.md §12.
 Cargo.toml              workspace: shared package metadata, dependencies, lints
 rust-toolchain.toml     pinned toolchain (1.99.1)
 crates/
-  core/     arrangia-core     model, YAML IO, Operations API, resolve, layout,
+  core/     vitrine-core     model, YAML IO, Operations API, resolve, layout,
                               validation, catalogs (data in crates/core/data/*.yaml)
-  render/   arrangia-render   rasterization, parametric frames, text, export encoding
-  publish/  arrangia-publish  App Store Connect, Google Play, keychain
-  app/      arrangia-app      shared application layer (no Tauri): session, commands,
+  render/   vitrine-render   rasterization, parametric frames, text, export encoding
+  publish/  vitrine-publish  App Store Connect, Google Play, keychain
+  app/      vitrine-app      shared application layer (no Tauri): session, commands,
                               preview cache, settings, watcher, events, view state
-  mcp/      arrangia-mcp      MCP server (rmcp 3.9, exact pin) over arrangia-app (ADR 0014);
+  mcp/      vitrine-mcp      MCP server (rmcp 3.9, exact pin) over vitrine-app (ADR 0014);
                               GUI host + stdio proxy (ADR 0015)
-  cli/      arrangia-cli      binary `arrangia` (clap)
-  gui/      arrangia-gui      Tauri 2 app + dev bridge over `app`; frontend in gui/ui/
+  cli/      vitrine-cli      binary `vitrine` (clap)
+  gui/      vitrine-gui      Tauri 2 app + dev bridge over `app`; frontend in gui/ui/
                               (vanilla ES modules, see gui/ui/README.md)
 assets/fonts/           bundled OFL fonts (Inter 4.1, embedded by core::layout)
 assets/hyphenation/     hyph-utf8 hyphenation patterns (permissive licences only,
@@ -107,14 +107,14 @@ incremental manifest (stale-file cleanup), `index.html` overview, fastlane
 layout (paths/conflicts in `core::fastlane`, conventions in
 `data/fastlane.yaml`); plus `paint`/`blur`/`raster` helpers.
 
-`cli` – `arrangia new|render|export|validate|strings|import|frames` on
-top of `core` + `render` (templates in `core::templates`), plus `arrangia
-mcp` (stdio server from `arrangia-mcp`).
+`cli` – `vitrine new|render|export|validate|strings|import|frames` on
+top of `core` + `render` (templates in `core::templates`), plus `vitrine
+mcp` (stdio server from `vitrine-mcp`).
 
 `core::frame_import` (ADR 0012) – Apple Product Bezels imported by the
 user: package (folder/zip/DMG), name rules in
 `data/frame-import/apple.yaml`, screen detection, app-wide store
-`<app data>/frames/` (`ARRANGIA_APP_DIR` overrides the app folder, GUI and
+`<app data>/frames/` (`VITRINE_APP_DIR` overrides the app folder, GUI and
 CLI), one bezel per vendor model (iPhone 18 Pro and Pro Max side by side);
 `frame: imported:apple` resolves to it (bezel picked per target page size,
 screenshot size, aspect, or pinned with `bezel:`) or falls back to the
@@ -139,7 +139,7 @@ read via `view_get`), `preview` (binary preview payload + cache),
 `settings` (settings.yaml + recent projects in SQLite), `events`,
 `dialogs`, `mcp` (`McpStatus` of the GUI-hosted endpoint, `mcp-status`
 event, `McpControl` hook), `claude_desktop` ("Add to Claude Desktop":
-order-keeping JSON merge with backup; `ARRANGIA_CLAUDE_DESKTOP_CONFIG`
+order-keeping JSON merge with backup; `VITRINE_CLAUDE_DESKTOP_CONFIG`
 redirects it – never write the real config in tests), `stores` (app-wide
 store accounts in `settings.yaml`, `ConnectionTester` seam; commands
 `store_account_*`, `store_apps_list` (Apple app picker, session cache),
@@ -147,10 +147,10 @@ store accounts in `settings.yaml`, `ConnectionTester` seam; commands
 (allow-listed help links), `project_store_get/patch`, `store_config_get`; ADR
 0016), `store_test` (`StoreClientTester`: read-only connection test with
 the store clients, installed by GUI + dev bridge only; dev bridge
-endpoint overrides `ARRANGIA_ASC_BASE_URL`/`ARRANGIA_PLAY_TOKEN_URL`,
+endpoint overrides `VITRINE_ASC_BASE_URL`/`VITRINE_PLAY_TOKEN_URL`,
 loopback only). `publish::credentials` validates key files and wraps the keychain
-(`keyring`, service `app.arrangia`, user `<id>/<kind>`;
-`ARRANGIA_KEYRING=mock` = in-memory, `ARRANGIA_KEYRING_SERVICE` renames;
+(`keyring`, service `app.vitrinestudio`, user `<id>/<kind>`;
+`VITRINE_KEYRING=mock` = in-memory, `VITRINE_KEYRING_SERVICE` renames;
 unit tests use `SecretStore::mock()`, never touch the real keychain).
 `publish::{apple, google}` (ADR 0017) – App Store Connect (ES256 JWT,
 screenshot sets: reserve/upload parts/commit MD5/poll/reorder; App Asset
@@ -177,22 +177,22 @@ click via `upload-confirm-requested` → `upload_confirm`, headless only with
 setting `mcp_allow_headless_upload`). `readiness` (setup checklist with `fix` place, also in every plan).
 Commands `upload_readiness|plan|execute|status|
 cancel|log|confirm|refdata` (`refdata` = read-only App Store asset types); `UploadConfig` on `AppState::upload()` (endpoints via
-`ARRANGIA_ASC_BASE_URL`… loopback only in CLI/dev bridge; tests set it). `mcp` (ADR 0014,
-0015) – `ArrangiaMcp` over an `Arc<AppState>` (headless: own state; GUI:
+`VITRINE_ASC_BASE_URL`… loopback only in CLI/dev bridge; tests set it). `mcp` (ADR 0014,
+0015) – `VitrineMcp` over an `Arc<AppState>` (headless: own state; GUI:
 the live one, `Host::Gui`: omitted target/lang default to the GUI's view,
 sessions/tool calls go into the MCP status). `host` (feature `http`):
 `McpHost` serves it on 127.0.0.1 (hyper, own tokio runtime, bearer
 token, Host/Origin checks, discovery file `<app data>/mcp.json`);
-`discovery`; `proxy` (feature `proxy`, CLI): `arrangia mcp` forwards
-stdio JSON-RPC to the GUI (GUI autostart, `ARRANGIA_GUI` overrides the
+`discovery`; `proxy` (feature `proxy`, CLI): `vitrine mcp` forwards
+stdio JSON-RPC to the GUI (GUI autostart, `VITRINE_GUI` overrides the
 binary), else headless. Tools
 live in `tools/<area>.rs`, one `#[tool_router(router = <area>_tools)]` impl
-block each (combined in `ArrangiaMcp::new`); arguments are
+block each (combined in `VitrineMcp::new`); arguments are
 `schemars::JsonSchema` structs (doc comments = schema descriptions,
-`deny_unknown_fields`). Every tool body runs in `ArrangiaMcp::run`
+`deny_unknown_fields`). Every tool body runs in `VitrineMcp::run`
 (`spawn_blocking`, `Actor::Assistant {client, name}` from `clientInfo`,
 `sync_with_disk`) and calls
-`arrangia_app::commands` by name (`server::cmd` / `image_cmd`), never the
+`vitrine_app::commands` by name (`server::cmd` / `image_cmd`), never the
 model; results via `output::ToolOutput` (structuredContent + text, PNG
 image blocks), errors via `output::error_result`. A new tool: add it to
 the matching `tools/*.rs` block and to the tool list in
@@ -200,7 +200,7 @@ the matching `tools/*.rs` block and to the tool list in
 `crates/mcp/src/instructions.md`, the op reference `crates/mcp/src/ops.md`.
 `gui` – Tauri binary (`main.rs`: wrappers, Tauri `EventSink`/
 `Dialogs`) and `bridge` (dev HTTP bridge, feature `devbridge`); its library
-re-exports the `app` modules (`arrangia_gui::commands` …). UI transport
+re-exports the `app` modules (`vitrine_gui::commands` …). UI transport
 shim: `ui/js/transport.js` (`invoke`/`listen` over Tauri or the bridge).
 Edit gestures go through `overlay` + `edit_*` commands (view context
 `{target, lang, variant}`, one undo step each) and `render_preview_edit`
@@ -270,34 +270,34 @@ cargo fmt --all
 CARGO_TARGET_DIR=target/cross cargo clippy --target x86_64-pc-windows-gnu --workspace --all-targets --all-features -- -D warnings
 # Linux (one-time: brew install messense/macos-cross-toolchains/x86_64-unknown-linux-gnu,
 # rustup target add x86_64-unknown-linux-gnu); excludes the GUI (needs GTK); verified 2026-11-10
-CARGO_TARGET_DIR=target/cross cargo clippy --target x86_64-unknown-linux-gnu --workspace --exclude arrangia-gui --all-targets --all-features -- -D warnings
-cargo run -p arrangia-cli -- --help          # CLI (binary `arrangia`)
-cargo run -p arrangia-gui                    # start the GUI (start screen)
-cargo run -p arrangia-gui -- <project-dir>   # … opening a project
+CARGO_TARGET_DIR=target/cross cargo clippy --target x86_64-unknown-linux-gnu --workspace --exclude vitrine-gui --all-targets --all-features -- -D warnings
+cargo run -p vitrine-cli -- --help          # CLI (binary `vitrine`)
+cargo run -p vitrine-gui                    # start the GUI (start screen)
+cargo run -p vitrine-gui -- <project-dir>   # … opening a project
 # dev HTTP bridge: the UI + all GUI commands in a normal browser (prints the URL;
 # --port N, --copy = work on a temp copy, --app-dir, --pick-folder/--pick-file
 # answer the folder/file dialogs; without --project it shows the start screen; ADR 0008)
-cargo run -p arrangia-gui --features devbridge --bin arrangia-devbridge -- --project tests/fixtures/example --copy
-cargo run --release -p arrangia-gui --features devbridge --bin arrangia-devbridge -- --port 7801 --pick-folder /tmp/x
-cargo run -p arrangia-gui --release --example preview_transport   # preview payload measurements
-ARRANGIA_UPDATE_GOLDEN=1 cargo test -p arrangia-render --test golden   # rewrite golden references (review the diff!)
+cargo run -p vitrine-gui --features devbridge --bin vitrine-devbridge -- --project tests/fixtures/example --copy
+cargo run --release -p vitrine-gui --features devbridge --bin vitrine-devbridge -- --port 7801 --pick-folder /tmp/x
+cargo run -p vitrine-gui --release --example preview_transport   # preview payload measurements
+VITRINE_UPDATE_GOLDEN=1 cargo test -p vitrine-render --test golden   # rewrite golden references (review the diff!)
 
 # CLI on the example project (release build: a full export takes ~2 s)
-cargo run -p arrangia-cli --release -- --project tests/fixtures/example validate
-cargo run -p arrangia-cli --release -- --project tests/fixtures/example export
-cargo run -p arrangia-cli --release -- --project tests/fixtures/example render --target ios-iphone-69 --gallery --max-edge 800 -o /path/to/gallery.png
+cargo run -p vitrine-cli --release -- --project tests/fixtures/example validate
+cargo run -p vitrine-cli --release -- --project tests/fixtures/example export
+cargo run -p vitrine-cli --release -- --project tests/fixtures/example render --target ios-iphone-69 --gallery --max-edge 800 -o /path/to/gallery.png
 
-# MCP: the GUI hosts it (ADR 0015); `arrangia mcp` proxies stdio to the running GUI
+# MCP: the GUI hosts it (ADR 0015); `vitrine mcp` proxies stdio to the running GUI
 # (or starts it), `--headless` works on the folder directly
-cargo run -p arrangia-cli -- mcp --headless --project tests/fixtures/example --app-dir /tmp/arrangia-mcp
-cargo test -p arrangia-cli --test mcp          # drives the binary over stdio (JSON-RPC)
-cargo test -p arrangia-cli --test mcp_proxy    # in-process GUI endpoint + `arrangia mcp` proxy
+cargo run -p vitrine-cli -- mcp --headless --project tests/fixtures/example --app-dir /tmp/vitrine-mcp
+cargo test -p vitrine-cli --test mcp          # drives the binary over stdio (JSON-RPC)
+cargo test -p vitrine-cli --test mcp_proxy    # in-process GUI endpoint + `vitrine mcp` proxy
 # dev bridge hosting MCP too (discovery file in <app-dir>/data/mcp.json); drive it with
-# `arrangia mcp --app-dir <app-dir>` while the browser shows the edits live
-cargo run -p arrangia-gui --features devbridge --bin arrangia-devbridge -- --project tests/fixtures/example --copy --mcp --app-dir /tmp/ab
+# `vitrine mcp --app-dir <app-dir>` while the browser shows the edits live
+cargo run -p vitrine-gui --features devbridge --bin vitrine-devbridge -- --project tests/fixtures/example --copy --mcp --app-dir /tmp/ab
 
 # regenerate the example screenshots (deterministic fake app UI)
-cargo run -p arrangia-render --release --example screens -- tests/fixtures/example/screenshots
+cargo run -p vitrine-render --release --example screens -- tests/fixtures/example/screenshots
 ```
 
 CLI usage (`--project <DIR>`, default the current folder): `new <dir>
@@ -308,10 +308,10 @@ CLI usage (`--project <DIR>`, default the current folder): `new <dir>
 standard|fastlane] [--no-gallery] [--no-html] [--force] [--format json]`, `strings export [--format csv|xliff12|xliff20]
 [--lang] [-o] [--missing-only] [--context]`, `strings import <file>…
 [--dry-run] [--create-keys] [--empty keep|remove]`, `import screenshots
-<dir> [--format auto|arrangia|fastlane|flat] [--device-map|--lang-map|--key-map
+<dir> [--format auto|vitrine|fastlane|flat] [--device-map|--lang-map|--key-map
 A=B] [--dry-run] [--save-mapping]`, `frames import <path> [--dry-run]`, `frames
 list`, `frames remove [--model] [--color] [--orientation] [--bezel] [--all]`
-(synthetic test package: `cargo run -p arrangia-core --example
+(synthetic test package: `cargo run -p vitrine-core --example
 synthetic_bezels -- [--full-size] <dir|file.zip>`), `mcp [--app-dir DIR]
 [--headless]` (MCP over stdio: proxy to the running GUI, GUI autostart,
 else headless opening `--project` when it holds a `project.yaml`; never
@@ -330,7 +330,7 @@ compare them with `tests/fixtures/example/golden/`: a pixel differs above
 8/255 in any channel, an image fails above 0.5 % differing pixels
 (constants at the top of the file). On failure they write `*.actual.png` /
 `*.diff.png` next to the reference (ignored by Git). With
-`ARRANGIA_UPDATE_GOLDEN=1` they rewrite references that are missing or
+`VITRINE_UPDATE_GOLDEN=1` they rewrite references that are missing or
 outside the tolerance and delete stale ones. They run in the normal debug
 `cargo test` (dependencies are built with `opt-level = 2`, our crates are
 not; ~7 s on 10 cores). Changing the fixture or the renderer visibly means

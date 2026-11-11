@@ -64,14 +64,14 @@ immutable; each placement type lists `acceptsAssetCategories`);
 App Store versions: 10 screenshots, 3 previews, 1 header per group (read
 `groupLimits`, not hard-coded). Roles: Account Holder, Admin, App Manager.
 
-**Not documented** (to be read from the real ref data, `arrangia upload
+**Not documented** (to be read from the real ref data, `vitrine upload
 refdata`): the group ids of header/search results assets and whether the
 Duo's outer and inner display are separate groups. Placement group ids are
 runtime strings ("don't hard-code").
 
 ## Decision
 
-**Client** (`arrangia_publish::apple::library`): typed calls for every row
+**Client** (`vitrine_publish::apple::library`): typed calls for every row
 above (`asset_library`, `ref_data` – all `data[]` entries merged, Apple's
 camelCase kept for the dump – `library_images`, `library_image`,
 `upload_library_image_committed` (reserve → shared part transfer → commit
@@ -136,7 +136,7 @@ set flow is the one verified in a real upload; the library is not yet):
 2. Current placements per route (type + group).
 3. An asset per image: one the localization already shows or the library
    already holds with the same **content marker** is reused; else reserve
-   → parts → commit. Library images have no checksum, so Arrangia sets
+   → parts → commit. Library images have no checksum, so Vitrine Studio sets
    `referenceName = "<file stem> [<sha256[..12]>]"` and matches marker +
    file size (one library listing per run; uploads are added, so identical
    images in other locales are uploaded once).
@@ -148,7 +148,7 @@ set flow is the one verified in a real upload; the library is not yet):
    assets still processing; if Apple refuses that, a note and the next run
    places it), ordering request (screenshots; not for creative assets, max
    one per group), verify with `sort=placementGroupPosition`.
-6. Images of deleted placements that carry Arrangia's marker are deleted
+6. Images of deleted placements that carry Vitrine Studio's marker are deleted
    **after** their placements; `ASSET_HAS_PLACEMENTS` (still used by another
    localization) is fine; hand-made assets are never deleted.
 
@@ -158,9 +158,9 @@ Executor, log, resume, rate limits, watchdog are unchanged (ADR 0018); the
 log's per-file store id is the asset id.
 
 **Read-only check** – `upload_refdata {account?, app?}` (GUI "Show App
-Store asset types" in the upload dialog, CLI `arrangia upload refdata
+Store asset types" in the upload dialog, CLI `vitrine upload refdata
 [--account ID] [--app ID|BUNDLE] [--format json]`): the full ref data,
-the app's library id (or why not), and every Arrangia slot resolved to
+the app's library id (or why not), and every Vitrine Studio slot resolved to
 its candidate groups with image sizes. Only GETs.
 
 ## Consequences
@@ -170,7 +170,7 @@ its candidate groups with image sizes. Only GETs.
   the default after a verified real run (`upload_flow: asset_library`
   tries it per project).
 - The mapping file and the size-based group choice are assumptions until
-  the user runs `arrangia upload refdata` with the real key (display
+  the user runs `vitrine upload refdata` with the real key (display
   classes of the 6.5"/5.5" classes, header/search group ids, Duo groups).
 - Previews (videos), custom product pages, PPO and in-app events are not
   covered (the client is ready for more surfaces).

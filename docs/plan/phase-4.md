@@ -8,8 +8,8 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 ## Architecture (decided)
 - **Shared application layer.** The transport-agnostic session/command layer
   currently in `crates/gui` (session, preview cache, commands, settings,
-  watcher, events) moves into a new crate `arrangia-app` (`crates/app`, no
-  Tauri dependency). `arrangia-gui` (Tauri + dev bridge) and `arrangia-mcp`
+  watcher, events) moves into a new crate `vitrine-app` (`crates/app`, no
+  Tauri dependency). `vitrine-gui` (Tauri + dev bridge) and `vitrine-mcp`
   both use it, so GUI and MCP share one behaviour: same ops, edit intents,
   validation, revision checks, atomic saves.
 - **GUI hosts the MCP server (user requirement 2026-11-10).** No terminal
@@ -20,7 +20,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
     token, Origin/Host checks (DNS-rebinding protection). Can be switched
     off in app settings. Usable directly by Claude Code
     (`claude mcp add --transport http …`).
-  - `arrangia mcp` (stdio) is a thin proxy that Claude Desktop starts by itself
+  - `vitrine mcp` (stdio) is a thin proxy that Claude Desktop starts by itself
     from its config: it discovers the running GUI (discovery file in the app
     data dir with port + token) and forwards everything to it. Without a
     running GUI it can start the GUI (setting) or work headless on
@@ -41,7 +41,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   (`upload_plan`/`upload_execute` with confirm token). Asset import only from
   paths the user names; nothing deletes outside the project folder.
 
-## 4.1 Extract `arrangia-app`
+## 4.1 Extract `vitrine-app`
 - [x] Move session/commands/preview/settings/watch/events/dialog traits from
       `crates/gui` into `crates/app`; gui keeps Tauri wrappers, bridge, UI
       (ADR 0013)
@@ -55,8 +55,8 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] `crates/mcp` with rmcp: tool router usable over Streamable HTTP (hosted
       by the GUI, against its live session) and stdio (proxy to the GUI, or
       headless with its own session); server info/instructions (short guide to
-      Arrangia concepts for the model: canvas, home page, lu, gaps, anchors,
-      variants, targets, markup), `arrangia mcp` CLI subcommand (ADR 0014;
+      Vitrine Studio concepts for the model: canvas, home page, lu, gaps, anchors,
+      variants, targets, markup), `vitrine mcp` CLI subcommand (ADR 0014;
       headless now, `discover_gui` + feature `http` (`http::service`) are the
       seams for 4.3b)
 - [x] Project handling: `project_open`, `project_create` (templates),
@@ -85,10 +85,10 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## 4.3b GUI hosting + Claude Desktop integration (ADR 0015)
 - [x] In-app HTTP MCP endpoint bound to the GUI session; token, origin checks,
-      on/off setting; discovery file (`arrangia_mcp::host`, also in the dev
+      on/off setting; discovery file (`vitrine_mcp::host`, also in the dev
       bridge with `--mcp`)
-- [x] `arrangia mcp` stdio proxy: discover GUI → forward; optional GUI auto-start;
-      headless fallback (`arrangia_mcp::proxy`, reconnects after a GUI restart)
+- [x] `vitrine mcp` stdio proxy: discover GUI → forward; optional GUI auto-start;
+      headless fallback (`vitrine_mcp::proxy`, reconnects after a GUI restart)
 - [x] App settings "Claude / MCP": status, add to Claude Desktop (confirm +
       backup), Claude Code command (stdio + HTTP), fixed port, autostart
 - [x] Live aids: "Claude:" history labels, canvas highlight of changed
@@ -99,7 +99,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   `clientInfo.name` to confirm in 4.5 (assumed `claude-ai`)
 
 ## 4.4 Tests
-- [x] Integration test: start `arrangia mcp` as a subprocess, speak MCP over
+- [x] Integration test: start `vitrine mcp` as a subprocess, speak MCP over
       stdio (initialize, list tools, call tools), create a project, add device
       + text, set strings in two languages, render a preview (valid PNG),
       validate, export – all in a temp dir

@@ -8,18 +8,18 @@
 The user's requirement (2026-11-10): "I start the application, the MCP is
 available, Claude connects and works. No terminal, no manually started
 server. I see changes live and comment in Claude Desktop." ADR 0014 built
-the MCP server on `arrangia-app` with two seams for this:
-`arrangia_mcp::http::service` and `stdio::discover_gui`. Claude Desktop
+the MCP server on `vitrine-app` with two seams for this:
+`vitrine_mcp::http::service` and `stdio::discover_gui`. Claude Desktop
 only starts stdio servers from its config file; Claude Code can also talk
 Streamable HTTP directly.
 
 ## Decision
 
-### In-app endpoint (`arrangia_mcp::host`, feature `http`)
+### In-app endpoint (`vitrine_mcp::host`, feature `http`)
 
 `McpHost::install(app, relay, options)` runs in the GUI (Tauri `setup`)
 and in the dev bridge (`--mcp`). It serves rmcp's Streamable HTTP tower
-service for `ArrangiaMcp::new(app, relay, Host::Gui)` – the GUI's live
+service for `VitrineMcp::new(app, relay, Host::Gui)` – the GUI's live
 `AppState`, so every MCP session shares the session the user sees – with
 hyper 1 (`http1`, `hyper-util` `TokioIo`) on its own two-thread tokio
 runtime (independent of Tauri's runtime; the dev bridge has none). The
@@ -46,7 +46,7 @@ progress → MCP progress notifications).
   starts/stops the endpoint live (stop ends all sessions, frees the port,
   removes the file, clears the token).
 
-### Status and live aids (`arrangia-app` stays MCP-free)
+### Status and live aids (`vitrine-app` stays MCP-free)
 
 `AppState` holds an `McpStatus` (`hosted, enabled, running, url, port,
 error, discovery_file, clients[], last_activity`); `update_mcp_status`
@@ -56,7 +56,7 @@ into it only when `Host::Gui`:
 
 - `initialize` (hand-written `ServerHandler::initialize`) opens a session
   for `clientInfo.name`; every session gets its own server clone
-  (`ArrangiaMcp::for_session`) holding a guard whose `Drop` (session
+  (`VitrineMcp::for_session`) holding a guard whose `Drop` (session
   closed by `DELETE` or expired) closes it again;
 - every tool call records client, tool and time. A client counts as
   connected while it has a session or was active in the last 5 minutes
@@ -80,13 +80,13 @@ user looks at (when it shows the strip in question), omitted `lang` to the
 GUI's language (edit context, `render_preview`, `layout_report`,
 `element_add`). Headless keeps the first target / default language.
 
-### `arrangia mcp`: stdio proxy (`arrangia_mcp::proxy`, feature `proxy`)
+### `vitrine mcp`: stdio proxy (`vitrine_mcp::proxy`, feature `proxy`)
 
 Without `--headless`: discovery file + health check → proxy. None found
-and setting `mcp_autostart_gui` (default on) → start the GUI (`ARRANGIA_GUI`
+and setting `mcp_autostart_gui` (default on) → start the GUI (`VITRINE_GUI`
 override; macOS app bundle around the CLI → `open -a <bundle> --args
-<project>`; else `arrangia-gui` next to the CLI binary), in its own process
-group with null stdio and `ARRANGIA_APP_DIR` = `--app-dir`, wait up to 20 s
+<project>`; else `vitrine-gui` next to the CLI binary), in its own process
+group with null stdio and `VITRINE_APP_DIR` = `--app-dir`, wait up to 20 s
 for its endpoint, then proxy. Otherwise headless as before, with a line on
 stderr.
 
@@ -106,12 +106,12 @@ restarted) → read the discovery file again, replay `initialize` +
 JSON-RPC errors (`-32603`), so clients never hang. stdin EOF: wait for
 in-flight requests (≤ 60 s), `DELETE` the session. Server-initiated
 messages outside requests (the optional `GET` stream) are not forwarded;
-Arrangia sends none.
+Vitrine Studio sends none.
 
-### Claude Desktop / Claude Code (`arrangia_app::claude_desktop`)
+### Claude Desktop / Claude Code (`vitrine_app::claude_desktop`)
 
-"Add to Claude Desktop" writes `mcpServers.arrangia = {command: "<abs
-path of arrangia>", args: ["mcp"]}` into
+"Add to Claude Desktop" writes `mcpServers.vitrine-studio = {command: "<abs
+path of vitrine>", args: ["mcp"]}` into
 `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS),
 `%APPDATA%\Claude\claude_desktop_config.json` (Windows),
 `~/.config/Claude/claude_desktop_config.json` (Linux). `claude_desktop_plan`
@@ -122,22 +122,22 @@ invalid file, is a no-op when the entry is identical, and otherwise copies
 the file to `claude_desktop_config.json.bak-<UTC YYYYMMDD-HHMMSS>` and
 writes atomically. Key order is preserved (an order-keeping JSON value;
 the workspace's `serde_json` sorts keys) with 2-space indentation. Tests
-and the dev bridge point it elsewhere (`ARRANGIA_CLAUDE_DESKTOP_CONFIG`,
+and the dev bridge point it elsewhere (`VITRINE_CLAUDE_DESKTOP_CONFIG`,
 `AppState::with_claude_desktop_config`; the dev bridge always uses
 `<app-dir>/claude_desktop_config.json`).
 
-The CLI path is `ARRANGIA_CLI` or `arrangia` next to the running
-executable (dev: `target/<profile>/arrangia` next to `arrangia-gui`).
+The CLI path is `VITRINE_CLI` or `vitrine` next to the running
+executable (dev: `target/<profile>/vitrine` next to `vitrine-gui`).
 TODO (Phase 6): verify for bundled builds (CLI inside the app bundle).
-Claude Code gets two copyable commands: `claude mcp add arrangia --
+Claude Code gets two copyable commands: `claude mcp add vitrine-studio --
 <cli> mcp` (recommended; always works) and `claude mcp add --transport
-http arrangia http://127.0.0.1:<port>/mcp --header "Authorization: Bearer
+http vitrine http://127.0.0.1:<port>/mcp --header "Authorization: Bearer
 <token>"` (valid until the next start; the port can be fixed in the
 settings, the token cannot).
 
 ## Consequences
 
-- The normal path needs no terminal: start Arrangia, "Add to Claude
+- The normal path needs no terminal: start Vitrine Studio, "Add to Claude
   Desktop", restart Claude Desktop. Claude's edits appear live, labelled,
   undoable.
 - The token protects against other local users' and web pages' requests;
@@ -145,9 +145,9 @@ settings, the token cannot).
   the project files).
 - New dependencies: hyper/hyper-util/http-body-util/bytes/tower-service/
   tokio-util/getrandom (feature `http`, all already in the lock file via
-  rmcp/reqwest), reqwest in `arrangia-mcp` (feature `proxy`).
+  rmcp/reqwest), reqwest in `vitrine-mcp` (feature `proxy`).
 - Tests: `crates/cli/tests/mcp_proxy.rs` hosts the endpoint in-process
-  and drives the real `arrangia mcp` binary (proxy, GUI restart,
+  and drives the real `vitrine mcp` binary (proxy, GUI restart,
   autostart with a fake GUI script, headless fallback, token/host/origin
   checks, on/off); unit tests for the config merge, discovery file and
   status.
@@ -167,7 +167,7 @@ client is described neutrally, the Claude-specific setup keeps its names.
   (`{"kind":"assistant","client":"claude-ai","name":"Claude Desktop"}`;
   `"kind":"claude"` is still accepted when deserializing – actors are
   never persisted, the history lives in memory only). `name` is the
-  display name from `clientInfo` (`arrangia_app::client_display_name`:
+  display name from `clientInfo` (`vitrine_app::client_display_name`:
   `claude-ai` → Claude Desktop, `claude-code` → Claude Code, else
   `title`, else the prettified `name`, else "Assistant"). History labels,
   toasts and the activity list use it (`Claude Desktop: Move title`);

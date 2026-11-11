@@ -1,6 +1,6 @@
 # Adding built-in devices (parametric frames)
 
-How to add a new device model to Arrangia's built-in frames, and the prompt to
+How to add a new device model to Vitrine Studio's built-in frames, and the prompt to
 hand to Claude Code for it.
 
 ## How built-in frames work
@@ -56,7 +56,7 @@ hand to Claude Code for it.
 ## Verification
 - `cargo test --all` (catalog checks, frame geometry invariants for every model ×
   orientation, smoke tests drawing every model in both styles).
-- Contact sheets: `cargo run -p arrangia-render --release --example frames`
+- Contact sheets: `cargo run -p vitrine-render --release --example frames`
   → `docs/spike/frames_catalog_{stylized,detailed}.png`; close-ups:
   `… --example frames -- --closeup <dir>`. Look at them (downscaled) and check:
   screen corners concentric with the body, cutouts placed right in portrait and
@@ -70,7 +70,7 @@ hand to Claude Code for it.
 Copy, fill in the angle brackets, paste into Claude Code in this repository:
 
 ```
-Add a new built-in parametric device model to Arrangia.
+Add a new built-in parametric device model to Vitrine Studio.
 
 Device: <short description, e.g. "foldable phone with two screens, book-style, portrait natural">
 Proposed id / label: <e.g. phone-fold / "Foldable phone">
@@ -94,11 +94,11 @@ Requirements:
 - Keep Catalog::check() green (display aspect vs. screenshot sizes within 2 %).
 - Tests: geometry invariants and both-style smoke tests must cover the new model
   (they iterate the catalog – make sure any new class is included).
-- Regenerate the contact sheets (cargo run -p arrangia-render --release --example frames),
+- Regenerate the contact sheets (cargo run -p vitrine-render --release --example frames),
   look at the result and a close-up critically, iterate until it looks good.
 - Add user-facing notes to docs/guide/NOTES.md; update this document if the
   schema/drawing structure changed.
 - Quality gate before each commit: cargo fmt --all; cargo clippy --all-targets
-  --all-features -- -D warnings; cargo test --all; cargo build -p arrangia-gui.
+  --all-features -- -D warnings; cargo test --all; cargo build -p vitrine-gui.
 - Show me the contact-sheet crop of the new device before finishing.
 ```

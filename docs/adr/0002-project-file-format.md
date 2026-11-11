@@ -7,7 +7,7 @@
 
 KONZEPT §3 defines the project as a folder of human-editable YAML files that
 must be diffable, Git-friendly and readable by people and Claude. Phase 1
-(task 1.1/1.2) builds the typed model in `arrangia-core` (`model`, `io`,
+(task 1.1/1.2) builds the typed model in `vitrine-core` (`model`, `io`,
 `ops`). This ADR records the conventions of the file format and how the
 model maps to it. The sample in `crates/core/tests/data/sample/` is the
 reference; its `project.yaml` is canonical (load → save reproduces it byte
@@ -54,7 +54,7 @@ for byte, tested).
 
 ### Units, coordinates, references
 
-- `format: arrangia/1` first; unknown formats are rejected.
+- `format: vitrine/1` first; unknown formats are rejected.
 - **Ids are strings**: ASCII letters, digits, `-`, `_`, `.`, starting with a
   letter or digit. Element ids are unique across the whole project (ops
   address elements by id alone); strip, target ids are unique in the

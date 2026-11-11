@@ -8,7 +8,7 @@
 
 KONZEPT §4.2: Apple's product bezels may be used in marketing material but
 must not be redistributed by an open-source project. The user downloads
-them; Arrangia imports them app-wide, recognises device/colour/orientation
+them; Vitrine Studio imports them app-wide, recognises device/colour/orientation
 from file names via data (`crates/core/data/frame-import/apple.yaml`),
 detects the screen automatically, and projects only reference
 `frame: imported:apple`. On a machine without the package the parametric
@@ -36,7 +36,7 @@ rules miss.
 
 - The DMG has a **software licence agreement** (SLA): `hdiutil attach`
   without an answer on stdin fails with `hdiutil: attach canceled`.
-  Arrangia never accepts it for the user (no piped `Y`).
+  Vitrine Studio never accepts it for the user (no piped `Y`).
 - Contents: PNGs `iPhone 18 Pro Max - <Colour> - <Portrait|Landscape>.png`
   and `iPhone 18 Pro - <Colour> - <Portrait|Landscape>.png`, colours
   Black, Burgundy, Glacier, Silver; Photoshop files; `License.rtf`
@@ -123,7 +123,7 @@ are read as they are (`apple_model` derived from `source_file`) and moved
 to the new layout by `FrameStore::migrate`, which runs before every
 install / remove; missing files drop out of the index.
 `<app data>` is the GUI's data folder (`directories`), or
-`$ARRANGIA_APP_DIR/data` for GUI and CLI. Never inside a project;
+`$VITRINE_APP_DIR/data` for GUI and CLI. Never inside a project;
 `.gitignore` also blocks `**/frames/apple/`, `*.dmg`, `Bezel-*/`.
 
 ### Model, resolve, validation
@@ -199,7 +199,7 @@ frame files' mtimes.
 
 ### Front ends
 
-CLI `arrangia frames import <path> [--dry-run] [--format json]`, `frames
+CLI `vitrine frames import <path> [--dry-run] [--format json]`, `frames
 list`, `frames remove [--model] [--color] [--orientation] [--bezel]
 [--all]`;
 `render`/`export`/`validate` load the installed index. GUI: app settings →
@@ -223,7 +223,7 @@ user mapping, screen detection (±1 px), store layout and migration, bezel
 selection (target, screenshot, aspect, largest, pin, variant override),
 SLA error mapping, licence notice, resolve fallback, validation info,
 rendering (screenshot only inside the mask, island and frame on top) and
-the GUI and CLI commands. `cargo run -p arrangia-core --example
+the GUI and CLI commands. `cargo run -p vitrine-core --example
 synthetic_bezels -- [--full-size] <dir|file.zip>` writes it for manual
 tests (`--full-size`: real screen sizes 1320×2868 / 1206×2622).
 
