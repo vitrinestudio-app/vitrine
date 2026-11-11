@@ -55,6 +55,7 @@ pub struct OverlayImage {
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct OverlayElement {
     pub id: ElementId,
     pub kind: ElementKindTag,
@@ -88,6 +89,9 @@ pub struct OverlayElement {
     /// The home page is locked (`lock_page`): drags keep it.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub lock_page: bool,
+    /// Locked in the editor (`locked`): the canvas does not select or drag it.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub locked: bool,
     /// Clip rect (text: its home page/column).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub clip: Option<Rect>,
@@ -144,6 +148,9 @@ pub struct OverlayGroup {
     pub move_point: Vec2,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub overridden: Vec<&'static str>,
+    /// Locked in the editor (`locked`).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub locked: bool,
 }
 
 fn rect_quad(r: Rect) -> [Vec2; 4] {
@@ -254,6 +261,7 @@ impl Editor<'_> {
                 overridden: self.overridden_fields(r.id.as_str()),
                 lang_overridden: self.lang_overridden_fields(r.id.as_str()).1,
                 lock_page: self.effective(r.id.as_str()).is_ok_and(|e| e.lock_page),
+                locked: self.effective(r.id.as_str()).is_ok_and(|e| e.locked),
                 clip: r.clip,
                 in_gap: frame.gaps.iter().any(|g| g.contains(visual_center)),
                 text,
@@ -288,6 +296,7 @@ impl Editor<'_> {
                         .group_bounds(scene, g.as_str())
                         .map_or(bounds.center(), |b| b.center()),
                     overridden: self.overridden_fields(g.as_str()),
+                    locked: self.effective(g.as_str()).is_ok_and(|e| e.locked),
                 });
             }
         }

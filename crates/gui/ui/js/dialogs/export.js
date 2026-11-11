@@ -4,6 +4,12 @@
 // events, cancel, summary with written/skipped counts and issues, "Show in
 // Finder/Explorer". Cells with the same language set are exported in one
 // `export` call (targets × langs is a cross product in the backend).
+//
+// "Export again" runs the same selection once more. An export where every
+// file is already up to date takes only milliseconds, so the progress view
+// stays up for a moment and the summary says when it ran and that nothing
+// had to be written (with "Re-render everything" for a forced run) –
+// otherwise the button looked like it did nothing (the dialog flickered).
 
 import { api, listen } from '../api.js';
 import { h, icon } from '../dom.js';
@@ -11,6 +17,9 @@ import { t } from '../i18n.js';
 import { store } from '../store.js';
 import { checkbox, errorLine, input, openModal, row, segmented } from './modal.js';
 import { openUpload } from './upload.js';
+
+/** Shortest time the progress view stays up (ms), so a re-run is visible. */
+const MIN_PROGRESS_MS = 450;
 
 const revealLabel = () => (/Mac/.test(navigator.platform) ? t('export.reveal.mac') : /Win/.test(navigator.platform) ? t('export.reveal.win') : t('export.reveal'));
 
@@ -48,6 +57,8 @@ export function openExport() {
   const progress = h('div', { class: 'ex-progress', hidden: true });
   const summary = h('div', { class: 'ex-summary', hidden: true });
   const startBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => start() }, t('export.start'));
+  /** Number of finished runs in this dialog (shown in the summary). */
+  let runs = 0;
   const cancelBtn = h('button', { class: 'btn', type: 'button', hidden: true, onclick: () => cancel() }, t('export.cancel'));
   const closeBtn = h('button', { class: 'btn', type: 'button', onclick: () => m.close() }, t('project.dialog.close'));
   const config = h(
@@ -206,9 +217,11 @@ export function openExport() {
     return [...byLangs.values()];
   }
 
-  async function start() {
+  /** `forceOnce`: re-render everything for this run only (summary button). */
+  async function start(forceOnce = false) {
     const list = jobs();
     if (!list.length) return;
+    const started = performance.now();
     running = true;
     cancelled = false;
     err.show(null);
@@ -234,13 +247,16 @@ export function openExport() {
       });
       for (job = 0; job < list.length && !cancelled; job++) {
         step.textContent = t('export.preparing');
-        reports.push(await api.export({ ...list[job], force, gallery, layout, html, ...(outDir ? { out_dir: outDir } : {}) }));
+        reports.push(await api.export({ ...list[job], force: force || forceOnce, gallery, layout, html, ...(outDir ? { out_dir: outDir } : {}) }));
         if (reports.at(-1).cancelled) cancelled = true;
       }
     } catch (e) {
       err.show(e);
     } finally {
       unlisten?.();
+      const left = MIN_PROGRESS_MS - (performance.now() - started);
+      if (left > 0) await new Promise((r) => setTimeout(r, left));
+      runs += 1;
       running = false;
       cancelBtn.hidden = true;
       closeBtn.disabled = false;
@@ -268,7 +284,21 @@ export function openExport() {
         { class: `ex-result ${errors.length ? 'bad' : cancelled ? 'warn' : 'good'}` },
         icon(errors.length ? 'error' : cancelled ? 'warning' : 'check'),
         h('strong', {}, cancelled ? t('export.cancelled') : errors.length ? t('export.failed') : t('export.done')),
+        h(
+          'span',
+          { class: 'muted small ex-when' },
+          `${new Date().toLocaleTimeString()}${runs > 1 ? ` · ${t('export.run').replace('{n}', runs)}` : ''}`,
+        ),
       ),
+      !errors.length && !cancelled && files.length && !written
+        ? h(
+            'p',
+            { class: 'small ex-uptodate' },
+            t('export.uptodate'),
+            ' ',
+            h('button', { class: 'btn btn-small', type: 'button', onclick: () => start(true) }, t('export.force')),
+          )
+        : null,
       h(
         'dl',
         { class: 'props ex-props' },

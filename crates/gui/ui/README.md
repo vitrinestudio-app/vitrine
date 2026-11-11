@@ -28,12 +28,13 @@ js/api.js             typed wrappers for every command the UI uses
 js/store.js           tiny state store + view-context helpers
 js/editor.js          controller: load, setContext, apply edits, invalidate
 js/actions.js         selection actions (delete, duplicate, group, z-order…)
-js/shortcuts.js       keyboard map → named handlers
+js/shortcuts.js       keyboard map → named handlers (+ DOM copy/cut/paste events)
+js/context-menu.js    right-click / ⇧F10 menu (`openContextMenu({x, y, items})`)
 js/geometry.js        2D helpers for canvas lu geometry
 js/dom.js             h()/s() element helpers, inline SVG icons, picker()
 js/shell.js           top bar, sidebar tabs, inspector, view switch, zoom
 js/views/viewport.js  shared zoom/pan viewport of all centre views (fit mode,
-                      wheel/pinch, pan, per-view memory) + pixmap slots with
+                      wheel/pinch, pan, overlay scrollbars, per-view memory) + pixmap slots with
                       loading placeholder (`makeSlot`/`paintSlot`, `densityFor`)
 js/views/canvas.js    canvas: pixmaps, hit test, gestures, previews (zoom via viewport.js)
 js/views/overlay.js   SVG overlay drawing (pure function of a model)
@@ -172,6 +173,23 @@ with `elementPatch`; core keeps the page on drags). `store.langScope`
 language; language-overridden fields (`lang_overridden` from
 `element_get`) are marked teal with their own reset
 (`api.resetOverride(view, id, field, true)`).
+
+## Canvas gestures and context menu
+
+Plain drag on empty canvas space pans (`vp.panStart(e, false)`: becomes a
+pan after 3 px, a plain click clears the selection), Shift+drag draws the
+marquee, Space/middle-drag pans anywhere. Cursor classes on
+`.canvas-view`: `over-empty` (grab), `shift` (crosshair on empty space),
+`marquee`, `panning` (grabbing). Locked elements (`locked`, overlay
+`locked` on elements and groups; `isLocked`/`idLocked` in `actions.js`)
+are skipped by hit tests and the marquee, except for the context menu.
+The canvas context menu builds its items from `actions` (copy/cut/paste
+use the Rust element clipboard `edit_copy`/`edit_cut`/`edit_paste`,
+`store.clipboard` holds its count; lock/hide go through `element_patch`);
+items show shortcuts via `keyLabel`. Scrollbars come with every
+`createViewport` (`.vp-scroll`, colours `--scroll-*` in `base.css`); a
+view whose content changes without `refresh()` calls
+`updateScrollbars()`.
 
 ## Native menu bar (macOS)
 

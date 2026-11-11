@@ -23,11 +23,11 @@
  */
 export const FEATURES = {
   /** Plain drag on an empty canvas area pans; Shift+drag draws the selection frame. */
-  canvasDragPans: false,
+  canvasDragPans: true,
   /** The canvas view has scrollbars. */
-  canvasScrollbars: false,
+  canvasScrollbars: true,
   /** Right-click on a canvas element opens its context menu. */
-  elementContextMenu: false,
+  elementContextMenu: true,
 };
 
 /**
@@ -44,7 +44,7 @@ export const GESTURES = [
       { keys: ['mod+wheel', 'pinch'], text: 'help.g.zoom_wheel' },
       { keys: ['drag'], text: 'help.g.pan_canvas_drag', when: 'canvasDragPans' },
       { keys: ['space+drag', 'middle-drag'], text: 'help.g.pan' },
-      { keys: ['drag'], text: 'help.g.pan_views' },
+      { keys: ['drag'], text: 'help.g.pan_views', unless: 'canvasDragPans' },
       { keys: ['scrollbar'], text: 'help.g.scrollbars', when: 'canvasScrollbars' },
       { keys: ['mod+=', 'mod+-'], text: 'help.g.zoom_keys' },
       { keys: ['mod+0'], text: 'help.g.zoom_fit' },
@@ -87,6 +87,8 @@ export const GESTURES = [
       { keys: ['mod+z'], text: 'help.g.undo' },
       { keys: ['mod+shift+z', 'mod+y'], text: 'help.g.redo' },
       { keys: ['right-click'], text: 'help.g.context_menu', when: 'elementContextMenu' },
+      { keys: ['shift+f10'], text: 'help.g.context_menu_key', when: 'elementContextMenu' },
+      { keys: ['mod+c', 'mod+x', 'mod+v'], text: 'help.g.clipboard' },
       { keys: ['drop'], text: 'help.g.drop_device' },
       { keys: ['drop'], text: 'help.g.drop_import' },
     ],
