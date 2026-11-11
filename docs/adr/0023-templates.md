@@ -1,0 +1,171 @@
+# 0023 – Templates: package format, merge rules, gallery backend
+
+- Status: accepted (gallery backend: skeleton, see "Gallery")
+- Date: 2026-11-11
+
+## Context
+
+KONZEPT §9 "Vorlagen" (duplicate a canvas, save as template, new project
+from template) and phase 6.3. User decisions (phase-6.md 6.3, STATUS.md):
+a template may hold **several canvases** (Phone + Tablet + feature graphic
+as one set) with their targets and variants, sharing styles and texts;
+"new project" takes all canvases, "insert" lets the user pick; templates
+are always **CC0**; fonts only under the **OFL**, with a licence file that
+is kept or generated from the font's name table; the web gallery runs on
+an own backend (Rust/axum, SQLite, Docker, `api.vitrinestudio.app`) with
+GitHub login and moderation.
+
+## Decision
+
+### Package `.vitrine-template`
+
+A zip of a project subset plus a manifest; the same layout extracted is
+what the app-wide store keeps (`<app data>/templates/<id>/`).
+
+```text
+template.yaml                  manifest
+project.yaml                   vitrine/1 project: the canvases, their targets
+                               and variants, styles; no store:/import:
+i18n/<lang>.yaml               only the keys the canvases use
+screenshots/<lang>/<key>.png   generated placeholders (core::template::placeholder)
+assets/…                       PNG/JPEG/SVG used by the canvases
+fonts/<file>.ttf|otf           OFL fonts named by the styles
+fonts/<stem>-OFL.txt           their licence (kept from the project or generated)
+previews/<canvas>.png          gallery preview per canvas (rendered)
+```
+
+`template.yaml` (`core::template::Manifest`, `deny_unknown_fields`):
+`format: vitrine-template/1`, `id` (`[a-z0-9][a-z0-9-]*`, ≤ 64), `name`,
+`description`, `author`, `tags` (≤ 12, id-like), `version` (free form,
+default `1.0.0`), `license: CC0-1.0` (the only value accepted),
+`project_format: vitrine/1`, `canvases` (`id`, `aspect`, `pages`,
+`targets`, `preview`) in project order, `fonts` (`file`, `family`,
+`license: OFL-1.1`, `license_file`, `copyright`), `generator`.
+
+Built-in templates (`phone`, `minimal`, formerly `core::templates`) are the
+same format, embedded from `crates/core/templates/<id>/`; their placeholders
+are generated on first use and they carry no stored previews (rendered on
+demand).
+
+### Reading a package safely (`Package::from_zip_bytes`, `from_dir`)
+
+- Limits (`Limits::default()`): 50 MB packed, 150 MB unpacked, 25 MB per
+  file (read with `take(limit + 1)`, the declared size is not trusted),
+  500 files, path depth 6.
+- Paths: relative, `/`-separated, no `..`/`.`/empty components, no
+  absolute paths, backslashes, colons, control characters or hidden
+  components; names differing only in case are refused. Zip symlink
+  entries and symlinks in store folders are refused. `__MACOSX/`,
+  `.DS_Store`, `Thumbs.db` are skipped; a single wrapper folder is
+  accepted.
+- Only the file kinds of the table above, checked by content: PNG/JPEG
+  magic bytes, SVG as UTF-8 without `<script`, event handler attributes,
+  `<!ENTITY`, `<foreignObject`, `javascript:` or external `href`s, fonts
+  parsed by skrifa, text files UTF-8 ≤ 2 MB.
+- Fonts: every font must be listed in the manifest and declare the OFL in
+  its name table (ID 13 licence description or ID 14 URL mentioning the
+  Open Font License / OFL / openfontlicense.org); its licence file must be
+  the OFL 1.1 text. A font declaring nothing is refused as "licence
+  unclear", any other licence as "may not be redistributed".
+- The project subset must load (`project_from_yaml`), match the manifest's
+  canvases, contain no `store:`/`import:` settings, have every referenced
+  asset, and validate with `core::validate` (bundled + package fonts, the
+  package files as assets) without errors – except findings that depend on
+  the user's later content (store rules, screenshots, text fit, unknown
+  fonts, imported frames).
+
+### Saving (`core::template::extract`)
+
+Selected canvases (default all) with the targets showing them, all styles,
+the strings their texts use (texts, language and variant overrides), image
+assets (files outside `assets/` are moved there, references follow), the
+project fonts whose family the styles name (OFL check; licence kept from
+`<stem>-OFL.txt`, `<stem>.txt`, `OFL.txt` or `LICENSE.txt` next to it if
+that is the OFL text, else generated: name ID 0 copyright, plus `with
+Reserved Font Name "…"` when ID 0/13 state one, plus the OFL 1.1 body
+taken from `assets/fonts/OFL.txt`), and generated placeholder screenshots
+for every screenshot key (device screen aspect from the catalog) instead
+of the project's screenshots. `store:` and `import:` are dropped. Previews
+are rendered by `vitrine_render::template::add_previews` (store gallery of
+the first page target per canvas, else its banner; default language;
+parametric frames only – never imported vendor bezels).
+
+### New project from a template (`instantiate::create_project`)
+
+All canvases, targets, styles, assets and fonts; texts are mapped to the
+chosen languages: same language, else its primary subtag (`de-AT` → `de`),
+else a template language with that primary subtag, else the template's
+default language (reported as "copied, to translate"). Language overrides
+and `visible_in.langs` keep entries that apply to a chosen language
+(prefix rule as in resolve), target `langs` are filtered (empty → all).
+**Placeholder screenshots are not copied**: the editor shows its own
+placeholder and validation keeps reporting missing screenshots, so a
+placeholder can never reach a store upload.
+
+### Insert canvases into an open project – merge rules (`insert::plan_insert`)
+
+Renames are applied with the ops API to a scratch copy of the template
+project (so every reference follows), then turned into one transaction
+for the project: `SetStyles` (merged), `SetString`s, `AddCanvas`es,
+`AddTarget`s – **one undo step** ("Insert … from template …"). Files are
+written before the ops and removed again if the ops fail.
+
+1. **Styles**, in the order colours → shadows → span styles → text styles
+   (so a renamed colour makes a style that uses it differ, too):
+   - name only in the template → added;
+   - same name, equal definition → shared;
+   - same name, different definition → **rename** (default): the
+     template's becomes `<name>-2` (next free) in the inserted canvases
+     and texts (span names in translations follow), or **use_project**:
+     the inserted canvases use the project's definition;
+   - a template shadow named like a built-in preset (`soft`, `hard`,
+     `none`) that the project does not redefine is a conflict too (adding
+     it would change the project's existing elements);
+   - the project's frame style and font settings win; template font
+     settings for families the project does not configure are added.
+2. **Ids**: a canvas or target id the project uses gets `-2`, `-3` …
+   appended (`ios-iphone-69` → `ios-iphone-69-2`; numbers in these ids
+   mean something); element ids follow the duplicate-canvas rule
+   (`title-1` → `title-2`).
+3. **Texts**: languages mapped as for a new project. A key the project
+   already has is shared when the texts are equal in every language, else
+   the template's key becomes `<template id>.<key>`.
+4. **Files**: assets and fonts (+ licence files) are copied to the same
+   paths; an identical existing file is reused, a different one gets
+   `-2` (references follow).
+
+Commands: `template_list|save|import|export|remove|insert_plan|insert`,
+image command `template_preview`; `project_new {template}` takes a
+built-in name, store id or file. CLI `vitrine template
+save|list|import|export|remove|insert|new`, `vitrine new --template
+<name|file>`. MCP `template_list|save|insert|import`, `project_create
+{template}`.
+
+### Gallery backend (`crates/gallery-server`)
+
+Binary `vitrine-gallery` (axum 0.8, rusqlite, files on disk, config via
+environment) for `api.vitrinestudio.app`, deployed by the owner with
+Docker behind his reverse proxy. It reuses `core` (the checks above,
+`regenerate_placeholders`: uploaded screenshots are always replaced by
+generated ones) and `render` (trusted previews rendered on the server, the
+uploaded `previews/` are discarded). Implemented: health, list/search,
+get, download, preview images, upload with validation (stored as
+`pending` unless `GALLERY_AUTO_APPROVE`), abuse reports, an admin
+moderation queue (approve/reject, bearer token from the environment),
+rate limiting of uploads/reports per client. **Stubs** (feature
+`github-oauth`, TODO): GitHub OAuth device/web flow; until then uploads
+use bearer tokens from `GALLERY_UPLOAD_TOKENS` (owner-issued, for testing).
+API sketch: `docs/gallery/API.md`; deployment, GDPR and Impressum:
+`docs/gallery/DEPLOY.md`.
+
+## Consequences
+
+- One format for built-in, saved, imported and gallery templates; the
+  store is plain folders.
+- Placeholders are cheap (a few KB each) and deterministic, so server
+  previews equal local ones.
+- Merge rules never change the project's existing look: conflicting styles
+  are renamed unless the user asks for the project's styles.
+- Not done yet: a GUI "browse gallery" (network client belongs to a
+  `publish`-like crate, not `core`), template versions/updates, frame
+  packs in templates (6.4), font subsetting.
