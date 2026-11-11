@@ -1,16 +1,23 @@
 ---
 title: Documentation
 linkTitle: Overview
-description: "How Vitrine Studio works – from the first project to the store upload."
+description: "The Vitrine Studio user guide – from the first project to the store upload."
 ---
 
 Vitrine Studio turns **one layout** into every screenshot your store listings
-need. These pages summarise how it works; the full user guide follows with the
-first release.
+need: every device size, every language, App Store and Google Play. This guide
+shows you how, task by task.
 
-**The short version:** a *project* is a folder. It holds one or more
-*canvases* – strips of store pages with backgrounds, texts and devices. A
-*target* (e.g. "App Store iPhone 6.9″" or "Google Play phone") says which
-canvas to render at which size, with which *variant* of the layout. Every
-target is rendered in every *language* of the project. Target × language ×
-variant = your images.
+{{< callout status >}}
+Vitrine Studio is **pre-release**. The first signed installers are being
+prepared, uploading to the stores works but is still being tested with live
+store accounts, and the template gallery can't be browsed from the app yet.
+Each page says where something is not finished.
+{{< /callout >}}
+
+**New here?** Read [How Vitrine Studio works](concepts/) (five minutes), then
+follow [Getting started](getting-started/) to make and export your first set.
+
+**Coming from fastlane frameit?** Go straight to
+[Migrating from fastlane](fastlane/). **Using Claude?** See
+[AI assistants (MCP)](ai-mcp/).

@@ -1,9 +1,11 @@
 # User guide – collected notes
 
-Raw notes for the future user guide / website (vitrinestudio.app). **Not prose yet.**
-Language: English (German translation later). Planned format: mdBook under
-`docs/guide/` (Phase 6). Every feature adds its user-facing facts here as bullet
-points under the matching chapter. Keep entries short, concrete, with commands.
+Raw developer-side notes behind the user guide. **Not prose.** The published
+user guide lives on the website: `website/content/en/docs/` (English) and
+`website/content/de/docs/` (German, same pages) – see `website/README.md`.
+Every feature adds its user-facing facts here as bullet points under the
+matching chapter (short, concrete, with commands) **and** updates the matching
+guide pages in both languages.
 
 ## Outline (planned chapters)
 1. Getting started (install, first project, tour of the editor)
@@ -341,7 +343,7 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - No browser context menu (Reload / Inspect Element) on right-click; text fields and selected text keep theirs (copy/paste, spelling). Developers: ⌥/Alt + right-click shows the web view's menu anywhere ("Inspect Element" in debug builds).
 
 ## Contributor notes
-- Website (2026-11-11): `website/` (Hugo, `hugo server` / `hugo --minify`); the docs pages in `website/content/en/docs/` are short summaries of this file – keep them in sync when a feature changes; landing-page texts live in the front matter of `website/content/<lang>/_index.md`.
+- Website (2026-11-11): `website/` (Hugo, `hugo server` / `hugo --minify`); the user guide in `website/content/{en,de}/docs/` (17 pages each, written 2026-11-11 from this file and the code) – keep it in sync when a feature changes (CLI help: `scripts/docs/cli-help.sh`; link check: `website/scripts/check-links.py`); landing-page texts live in the front matter of `website/content/<lang>/_index.md`.
 - Licence (2026-11-11, ADR 0022): code GPL-3.0-or-later (`LICENSE`); contributions need the CLA (`CLA.md`, signed via bot on the first pull request; `CONTRIBUTING.md`). Name, logo and app icons are not GPL (© Looking4Cache UG (haftungsbeschränkt); forks rebrand, `assets/brand/README.md`). Fonts OFL 1.1, hyphenation patterns MIT/BSD – their notices ship with the app. `vitrine --help` and the macOS About panel show copyright + licence.
 - Releases (2026-11-11, ADR 0026): `.github/workflows/release.yml` (tag `v*` → draft release; manual run → artifacts), owner checklist + secrets in `docs/dev/releasing.md`; scripts in `scripts/release/` (licence files, CLI sidecar, collect, `latest.json`); version = `[workspace.package] version` only. Licence check: `cargo deny check licenses` (`deny.toml`, CI job `licenses`); notices: `about.toml` + cargo-about.
 - Built-in device frames are own parametric artwork (devices.yaml + render/frames); how to add devices + ready-made Claude prompt: docs/dev/adding-devices.md.

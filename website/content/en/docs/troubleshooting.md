@@ -1,0 +1,106 @@
+---
+title: Troubleshooting & FAQ
+description: "Common validation findings and how to fix them, frequent questions, and current limits."
+weight: 160
+icon: help
+---
+
+## Validation findings
+
+The validation badge (app) and `vitrine validate` (CLI) report findings per
+target and language as **error**, **warning** or **info**. Errors make
+`vitrine validate` exit with 1; `--strict` fails on warnings too. The most
+common ones:
+
+| Code | Level | Meaning and fix |
+|---|---|---|
+| `screenshot_missing` | error | no screenshot with this key in the language or its fallbacks – a placeholder is shown. Add the file, or use *Preview mode* / `--preview` while designing. |
+| `screenshot_fallback` | info | the screenshot comes from a fallback language – fine. |
+| `screenshot_aspect` | warning | the capture's aspect differs from the device display – wrong device or wrong screenshot variant folder? |
+| `screenshot_upscale` | warning | the capture is enlarged more than 15 % and may look soft – use a capture from a larger device. |
+| `text_overflow` | error | the text doesn't fit even at its minimum size – see [Fitting long texts](../languages/#fitting-long-texts). |
+| `emergency_break` | warning | a word was broken without a hyphen – add a soft hyphen `\-`. |
+| `hyphenated` | info | the text was hyphenated automatically – check the render. |
+| `text_fallback` | warning / info | text from the default language ("not translated", warning) or from another fallback (info). |
+| `text_missing` | error | the key exists in no language – nothing is drawn. |
+| `text_in_gap`, `text_clipped` | warning | text reaches into a store gap or past its page and is cut off. |
+| `text_outside_safe_area` | warning | text outside the target's safe area. |
+| `missing_glyphs` | warning | characters no font can draw – add a [fallback font](../styles-fonts/#other-scripts-fallback-fonts). |
+| `variant_suggested` | info | the target's page aspect differs a lot from the canvas – consider a variant. |
+| `store_size`, `store_count`, `store_format` | error | the size, number of images or format is not accepted by the store slot (too few images is a warning). |
+| `imported_frame_missing` | info | Apple bezels or a frame pack aren't installed here – the built-in frame is drawn. |
+| `color_profile_unsupported` | info | an image's colour profile can't be used (CMYK, HDR) – it is drawn as sRGB. |
+
+In the app, **Show on the canvas** jumps to the element.
+
+## Questions
+
+**Where is the Save button?**
+There is none – every change is saved immediately, as one undo step.
+
+**Can I edit the project in a text editor or with Git while the app is open?**
+Yes. Changes on disk are picked up live. If you changed the same thing in the
+app at the same moment, the app reloads the file and tells you that your last
+edit was not saved.
+
+**My German headline is tiny.**
+Auto-fit shrank it to fit. Give German a [language override](../languages/#language-overrides)
+with a wider box or a higher minimum size, add a soft hyphen, or switch on
+hyphenation.
+
+**The phone sits too high on Google Play.**
+Google Play's 1:2 page is shorter than the iPhone page. Set the phone's
+*Anchor* to *Bottom*, or move it in a variant for the Play target.
+
+**How do I get real Apple device frames?**
+Download the Product Bezels from Apple and import them once – see
+[Devices & frames](../devices-frames/#apple-product-bezels). Importing the
+`.dmg` directly fails: open it in Finder, accept the licence, import the
+mounted volume.
+
+**A colleague sees different frames.**
+Apple bezels and app-wide frame packs are stored per computer. Without them,
+the built-in frame is drawn. Put frame packs you may share into the project's
+`frames/` folder; Apple's bezels must be imported by each person.
+
+**The export folder has old files.**
+Re-exporting removes images Vitrine Studio wrote earlier and no longer
+produces, but never other files. Delete foreign files yourself.
+
+**Upload says "no editable App Store version".**
+Create a new version in App Store Connect, then plan again. See
+[Store upload](../store-upload/#troubleshooting) for more messages.
+
+**Can I use Vitrine Studio without the app, e.g. in CI?**
+Yes – the [CLI](../cli/) validates, exports, imports and uploads; use the
+standalone CLI archive on build machines and `VITRINE_APP_DIR` for a separate
+settings folder.
+
+**Does Vitrine Studio send data anywhere?**
+Only when you ask it to: store uploads and connection tests go to Apple or
+Google, the gallery commands to `api.vitrinestudio.app`, and the daily update
+check asks GitHub whether a new version exists (switch it off in *App
+settings → Updates*). No statistics, no account.
+
+**Can an AI assistant break my project?**
+Every change is one undo step labelled with the assistant's name, and you see
+it live. Store uploads need your click. See [AI assistants](../ai-mcp/).
+
+## Current limits
+
+- Right-to-left layouts (Arabic, Hebrew) are not mirrored yet.
+- Text inside SVG images is not drawn yet.
+- Exports are sRGB only (no Display P3 output).
+- Gallery gaps of the native store apps are estimates; the store websites were
+  measured.
+- No Swedish hyphenation patterns.
+- Frame packs in `frames/` are not recompiled while the project is open –
+  re-open it after changing them.
+- The template gallery can't be browsed from the app yet.
+
+## Getting help
+
+Report bugs and ideas on
+[GitHub](https://github.com/vitrinestudio-app/vitrine/issues). Include the
+output of `vitrine validate --format json` if it's about a project, and never
+include store keys.

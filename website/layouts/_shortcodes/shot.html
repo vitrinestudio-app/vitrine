@@ -1,0 +1,6 @@
+{{- /* A screenshot or rendered image from assets/images with a caption.
+       {{< shot src="images/x.jpg" alt="…" caption="…" >}} */ -}}
+<figure class="docs-figure">
+  {{ partial "picture.html" (dict "src" (.Get "src") "alt" (.Get "alt" | default (.Get "caption" | plainify)) "sizes" "(min-width: 1100px) 760px, 100vw" "widths" (slice 760 1200 1520)) }}
+  {{- with .Get "caption" }}<figcaption>{{ . | markdownify }}</figcaption>{{ end }}
+</figure>

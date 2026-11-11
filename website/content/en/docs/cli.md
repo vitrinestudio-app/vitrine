@@ -1,66 +1,213 @@
 ---
 title: CLI reference
-description: "The `vitrine` command: new, validate, render, export, strings, import, frames, fonts, template, gallery, upload, mcp."
-weight: 80
+description: "Every vitrine command and option: new, validate, render, export, strings, import, frames, fonts, template, gallery, upload, mcp, install-cli."
+weight: 140
 icon: terminal
 ---
 
-Every command works on a project folder: `--project <DIR>` (default: the
-current folder). Exit codes: **0** ok, **1** the project has problems
-(validation errors, export failures), **2** the command could not run.
-Colours on a terminal unless `NO_COLOR` is set.
+The `vitrine` command line tool works on the same project folders as the app –
+for scripts, CI and quick checks. It ships with the app; see
+[Install](../install/#the-command-line-tool) to make it available in your
+terminal.
 
-## Projects
+Each section below has the command's complete `--help` text (click to open);
+it is generated from the tool itself (`scripts/docs/cli-help.sh`).
+
+## Global options and exit codes
+
+| Option | Meaning |
+|---|---|
+| `--project <DIR>` | the project folder (the one with `project.yaml`); default: the current folder |
+| `-q`, `--quiet` | print only results and errors |
+| `-v`, `--verbose` | print more details (every exported file, image sizes) |
+| `-V`, `--version` | print the version |
+
+Exit codes: **0** ok · **1** the project has problems (validation errors,
+failed exports, blocked upload plan) · **2** the command could not run (wrong
+arguments, project not found). Output is coloured on a terminal unless
+`NO_COLOR` is set.
+
+{{< cli-help "vitrine" >}}
+
+## `new` – create a project
 
 ```sh
-vitrine new my-app --lang en --lang de          # --template phone|minimal|<name|file>
-vitrine validate                                # --target, --lang, --preview, --strict, --format json
-vitrine render --canvas                         # --page N | --image N | --canvas | --gallery
-vitrine render --target play-phone --page 2 --width 400 -o page.png   # --width | --max-edge | --scale
-vitrine export                                  # --target, --lang, --out, --force, --no-gallery, --no-html
+vitrine new my-app                                   # Phone template, English
+vitrine new my-app --template minimal --lang en --lang de --lang fr
+vitrine new my-app --template ./bold.vitrine-template --name "My App"
+```
+
+The folder must not exist or be empty. The first `--lang` is the default
+language.
+
+{{< cli-help "vitrine new" >}}
+
+## `validate` – check a project
+
+```sh
+vitrine validate                          # every target × language
+vitrine validate --target play-phone --lang de
+vitrine validate --preview                # missing screenshots are warnings
+vitrine validate --strict                 # fail on warnings too (CI)
+vitrine validate --format json
+```
+
+Findings are listed per target and language as `error`, `warn` or `info` with a
+code (see [Troubleshooting](../troubleshooting/#validation-findings)).
+
+{{< cli-help "vitrine validate" >}}
+
+## `render` – a single preview PNG
+
+```sh
+vitrine render --target ios-iphone-69 --page 3 --width 600 -o page3.png
+vitrine render --canvas --lang de          # the whole canvas with hatched gaps
+vitrine render --gallery --max-edge 800    # the store gallery, 800 px high
+```
+
+Prints the path of the written file. With `--gallery`, `--max-edge` is the
+image **height**.
+
+{{< cli-help "vitrine render" >}}
+
+## `export` – write the images
+
+```sh
+vitrine export
+vitrine export --target ios-iphone-69 --target play-phone --lang en
+vitrine export --out dist/ --force
 vitrine export --layout fastlane --out fastlane
 ```
 
-`validate --strict` fails on warnings; `--preview` treats missing screenshots
-as warnings. `render` prints the path of the PNG it wrote.
+See [Export](../export/).
 
-## Texts and screenshots
+{{< cli-help "vitrine export" >}}
 
-```sh
-vitrine strings export --format csv|xliff12|xliff20 [--lang L] [-o DIR] [--missing-only] [--context]
-vitrine strings import FILE… [--dry-run] [--create-keys] [--empty keep|remove]
-vitrine import screenshots DIR [--format auto|vitrine|fastlane|flat] [--device-map A=B] [--lang-map A=B] [--key-map A=B] [--dry-run] [--save-mapping]
-```
-
-## Frames, fonts and templates
+## `strings` – translation exchange
 
 ```sh
-vitrine frames import PATH [--dry-run]          # Apple bezels: folder, zip or mounted DMG
-vitrine frames import PACK [--to app|project] [--id ID]   # own frame packs
-vitrine frames list [--packs]
-vitrine frames remove [--model] [--color] [--orientation] [--bezel] [--pack ID] [--all]
-vitrine fonts [--format json]                   # bundled font families
-vitrine template list | save | import | export | insert | remove | new
-vitrine gallery list | download | login | logout | upload
+vitrine strings export --format csv --delimiter semicolon --bom -o texts.csv
+vitrine strings export --format xliff20 --missing-only --context -o xliff/
+vitrine strings import xliff/*.xlf --dry-run
+vitrine strings import texts.csv --create-keys --empty remove
 ```
 
-## Store upload
+See [Languages & translation](../languages/#working-with-translators-csv-and-xliff).
+
+{{< cli-help "vitrine strings export" >}}
+{{< cli-help "vitrine strings import" >}}
+
+## `import screenshots`
 
 ```sh
-vitrine upload plan [--store apple|google] [--target ID]… [--lang L]… [--remote] [--force] [--format json]
-vitrine upload execute --confirm TOKEN [--yes] [--changes-not-sent-for-review]
-vitrine upload log [--last] [--events]
-vitrine upload refdata                          # App Store asset types (read-only)
+vitrine import screenshots fastlane/ --dry-run
+vitrine import screenshots shots/ --format flat --lang-map en-US=en --device-map "Pixel 9=android-phone"
 ```
 
-`upload` reads the store accounts of the app (`--app-dir` or `VITRINE_APP_DIR`
-selects another app data folder).
+See [Screenshots](../screenshots/#importing-a-folder-and-fastlane).
 
-## MCP
+{{< cli-help "vitrine import screenshots" >}}
+
+## `frames` – device frames
 
 ```sh
-vitrine mcp                                     # stdio: proxy to the running app (starts it if needed)
-vitrine mcp --headless --project my-app         # own session, no app
+vitrine frames import /Volumes/Bezel-iPhone-18     # Apple bezels (folder, .zip, mounted .dmg)
+vitrine frames import my-pack.zip --to project      # own frame pack
+vitrine frames list                                 # installed Apple frames
+vitrine frames list --packs                         # frame packs
+vitrine frames remove --model iphone-island --color silver
+vitrine frames remove --pack my-pack --from project
 ```
 
-Never prints anything else to stdout in this mode.
+See [Devices & frames](../devices-frames/).
+
+{{< cli-help "vitrine frames import" >}}
+{{< cli-help "vitrine frames list" >}}
+{{< cli-help "vitrine frames remove" >}}
+
+## `fonts`
+
+Lists the font families text styles can use: the bundled ones and those in the
+project's `fonts/` folder.
+
+{{< cli-help "vitrine fonts" >}}
+
+## `template` – templates
+
+```sh
+vitrine template list
+vitrine template save --name "Bold gradient" --tag dark -o bold.vitrine-template
+vitrine template insert bold-gradient --dry-run
+vitrine template import bold.vitrine-template --replace
+vitrine template export bold-gradient -o bold.vitrine-template
+vitrine template remove bold-gradient
+vitrine template new my-app --template bold-gradient   # same as vitrine new
+```
+
+See [Templates & gallery](../templates/).
+
+{{< cli-help "vitrine template save" >}}
+{{< cli-help "vitrine template insert" >}}
+{{< cli-help "vitrine template list" >}}
+{{< cli-help "vitrine template import" >}}
+{{< cli-help "vitrine template export" >}}
+{{< cli-help "vitrine template remove" >}}
+
+## `gallery` – the template gallery
+
+```sh
+vitrine gallery list --tag dark
+vitrine gallery download bold-gradient -o bold.vitrine-template
+vitrine gallery login
+vitrine gallery upload bold.vitrine-template
+vitrine gallery logout
+```
+
+{{< cli-help "vitrine gallery list" >}}
+{{< cli-help "vitrine gallery download" >}}
+{{< cli-help "vitrine gallery login" >}}
+{{< cli-help "vitrine gallery upload" >}}
+{{< cli-help "vitrine gallery logout" >}}
+
+## `upload` – store upload
+
+```sh
+vitrine upload plan --remote
+vitrine upload execute --confirm <token> --yes
+vitrine upload log --last --events
+vitrine upload refdata                      # App Store asset types, read-only
+```
+
+See [Store upload](../store-upload/#on-the-command-line).
+
+{{< cli-help "vitrine upload plan" >}}
+{{< cli-help "vitrine upload execute" >}}
+{{< cli-help "vitrine upload log" >}}
+{{< cli-help "vitrine upload refdata" >}}
+
+## `mcp` – MCP server over stdio
+
+```sh
+vitrine mcp                                 # connect to the running app (start it if needed)
+vitrine mcp --headless --project my-app     # own session, no app
+```
+
+In this mode nothing but MCP messages is printed to stdout. See
+[AI assistants](../ai-mcp/).
+
+{{< cli-help "vitrine mcp" >}}
+
+## `install-cli`
+
+Makes `vitrine` available in every terminal (macOS: link in `/usr/local/bin`,
+Windows: user PATH). The app's *Install command line tool…* does the same.
+
+{{< cli-help "vitrine install-cli" >}}
+
+## Environment variables
+
+| Variable | Meaning |
+|---|---|
+| `VITRINE_APP_DIR` | use this folder for the app data (settings, store accounts, frames, templates) instead of the platform folder |
+| `NO_COLOR` | no colours in the output |
+| `VITRINE_KEYRING=mock` | keep store keys in memory only (tests) – never touches the system keychain |

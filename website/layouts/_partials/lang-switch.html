@@ -8,7 +8,7 @@
     {{- else }}
       {{- $target := "" -}}
       {{- range $.Translations }}{{ if eq .Language.Lang $lang }}{{ $target = .RelPermalink }}{{ end }}{{ end -}}
-      {{- if not $target }}{{ $target = (index (where hugo.Sites "Language.Lang" $lang) 0).Home.RelPermalink }}{{ end }}
+      {{- if not $target }}{{ range $.Sites }}{{ if eq .Language.Lang $lang }}{{ $target = .Home.RelPermalink }}{{ end }}{{ end }}{{ end }}
       <a class="lang-switch__item" href="{{ $target }}" hreflang="{{ .LanguageCode }}" lang="{{ .LanguageCode }}" title="{{ .LanguageName }}">{{ upper $lang }}</a>
     {{- end }}
   {{- end }}
