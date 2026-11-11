@@ -74,7 +74,7 @@ is saved immediately as plain YAML.
 
 ![The editor with the example project](docs/gui/editor-dark.jpg)
 
-![A text added from the Add menu and edited on the canvas](docs/gui/text-editing.jpg)
+![A selected headline with its settings in the inspector](docs/gui/text-editing.jpg)
 
 ### Example
 
