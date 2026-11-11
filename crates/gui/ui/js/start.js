@@ -144,7 +144,7 @@ export async function openNewProject() {
 }
 
 /** Renders the start screen into `root` (the `#welcome` element). */
-export function mountStart(root, { version, onSettings }) {
+export function mountStart(root, { version, onSettings, onGuide }) {
   const err = errorLine();
   const recent = h('ul', { class: 'start-recent' });
 
@@ -226,7 +226,12 @@ export function mountStart(root, { version, onSettings }) {
           ),
         ),
         err.el,
-        h('button', { class: 'btn btn-small start-settings', type: 'button', onclick: () => onSettings?.() }, t('project.menu.app_settings')),
+        h(
+          'div',
+          { class: 'start-links' },
+          h('button', { class: 'btn btn-small', type: 'button', onclick: () => onSettings?.() }, t('project.menu.app_settings')),
+          h('button', { class: 'btn btn-small', type: 'button', onclick: () => onGuide?.() }, t('guide.menu')),
+        ),
         h('p', { class: 'muted small' }, isTauri ? t('start.drop') : ''),
         h('p', { class: 'muted small' }, `${t('app.version')} ${version}`),
       ),
