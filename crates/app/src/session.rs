@@ -237,6 +237,19 @@ pub struct Session {
     system_fonts: AtomicBool,
     /// What the GUI shows (pushed by the GUI, read by MCP).
     view: Mutex<ViewState>,
+    /// Elements copied with `edit_copy`/`edit_cut` (per open project, in
+    /// memory only).
+    clipboard: Mutex<Option<Clipboard>>,
+}
+
+/// Copied elements of this project (see `commands::edit_copy`).
+#[derive(Debug, Clone)]
+pub struct Clipboard {
+    /// Canvas the elements were copied from.
+    pub canvas: vitrine_core::model::CanvasId,
+    pub items: Vec<vitrine_core::edit::ClipItem>,
+    /// Pastes so far (each paste into the source canvas moves a bit further).
+    pub pastes: u32,
 }
 
 impl std::fmt::Debug for Session {
@@ -306,6 +319,7 @@ impl Session {
             edit_preview: Mutex::new(None),
             system_fonts: AtomicBool::new(false),
             view: Mutex::new(ViewState::default()),
+            clipboard: Mutex::new(None),
         }))
     }
 
@@ -459,6 +473,11 @@ impl Session {
     /// Stores the GUI's current view.
     pub fn set_view(&self, view: ViewState) {
         *lock(&self.view) = view;
+    }
+
+    /// The element clipboard (copy/cut/paste).
+    pub fn clipboard(&self) -> MutexGuard<'_, Option<Clipboard>> {
+        lock(&self.clipboard)
     }
 
     pub fn preview(&self) -> &PreviewCache {

@@ -45,7 +45,7 @@ Element kinds and their fields:
 - background: `fill` (a per-page background; canvas backgrounds are canvas `backgrounds`)
 - group: `children: [elements]`
 - common: `page`, `at`, `rotation` (degrees, clockwise), `pivot`, `anchor_y`,
-  `opacity`, `z`, `clip` (none|page), `visible`, `visible_in: {targets, langs}`, `lock_page`
+  `opacity`, `z`, `clip` (none|page), `visible`, `visible_in: {targets, langs}`, `lock_page`, `locked`
 
 ## Variants and language overrides
 `update_element` always changes the base element (all targets and

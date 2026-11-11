@@ -37,6 +37,10 @@ pub struct Element {
     /// Keep the home page when the element is dragged to another page
     /// (edit intents default `keep_page` from it). Default `false`.
     pub lock_page: bool,
+    /// Locked in the editor: the canvas does not select or drag the
+    /// element (the layers list still does). Editor-only, no effect on
+    /// rendering; edit intents (MCP, CLI) are not blocked. Default `false`.
+    pub locked: bool,
     /// Position relative to the home page's top-left corner, in lu. For
     /// devices, images, shapes and free text boxes this is the centre of the
     /// element. Default `(0, 0)`.
@@ -281,9 +285,10 @@ impl ElementKindTag {
 }
 
 /// Fields every element kind has.
-pub const COMMON_FIELDS: [&str; 13] = [
+pub const COMMON_FIELDS: [&str; 14] = [
     "page",
     "lock_page",
+    "locked",
     "at",
     "width",
     "height",
@@ -674,6 +679,7 @@ fn field_name(s: &'static str) -> &'static str {
 element_fields! {
     page: u32,
     lock_page: bool,
+    locked: bool,
     at: Point,
     #[serde(serialize_with = "num")]
     width: f64,
@@ -909,6 +915,7 @@ impl TryFrom<ElementWire> for Element {
             id: w.id,
             page: w.page.unwrap_or(0),
             lock_page: w.lock_page.unwrap_or(false),
+            locked: w.locked.unwrap_or(false),
             at: w.at.unwrap_or_default(),
             width: w.width,
             height: w.height,
@@ -928,12 +935,14 @@ impl TryFrom<ElementWire> for Element {
 }
 
 impl From<Element> for ElementWire {
+    #[allow(clippy::too_many_lines)]
     fn from(e: Element) -> Self {
         let mut w = ElementWire {
             id: e.id,
             kind: ElementKindTag::Background,
             page: Some(e.page),
             lock_page: e.lock_page.then_some(true),
+            locked: e.locked.then_some(true),
             at: (!e.at.is_zero()).then_some(e.at),
             width: e.width,
             height: e.height,
