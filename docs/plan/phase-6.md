@@ -82,6 +82,10 @@ and downloadable from a gallery.
       template fixed to **CC0** (user 2026-11-10: no licence choice; attribution/NC make no sense for store screenshots) – uploader confirms own rights + CC0 grant in the upload terms; fonts keep their own licence (OFL only). Licence file per font (user OK 2026-11-10): kept if present; otherwise generated when saving a template – copyright line (name ID 0, plus Reserved Font Name if stated) from the font + the standard OFL 1.1 text – only if the font itself declares OFL (name IDs 13/14); fonts without an OFL declaration are refused ("may not be redistributed / licence unclear"); the server re-checks on upload; size limits, safe zip handling, rate limits, abuse report,
       GDPR/Impressum; downloads without an account; in-app "browse gallery" opens the site or
       fetches an index (network → `publish`-like crate, not core)
+- [ ] User 2026-11-11: browsing and downloading the gallery need **no
+      account**; only publishing needs the GitHub login. The "New project"
+      dialog shows the server's templates next to the local ones and
+      downloads/installs on click (offline → quiet "gallery not reachable").
 - [x] Licence/attribution per template; checks on import (size limits, no
       executable content, path traversal)
 
