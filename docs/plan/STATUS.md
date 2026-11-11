@@ -59,6 +59,7 @@ current: update after each phase/merge and whenever the user decides something.
 - User-facing facts go to `docs/guide/NOTES.md` (English, notes only, no prose yet).
 
 ## Decisions taken with the user
+- 2026-11-11 Terminology: **Canvas** replaces Strip everywhere, incl. the YAML key (`canvases:`), example project and docs; device labels stay "Phone"/"Tablet".
 - 2026-11-11 Next work package planned in `docs/plan/next-2026-11-11.md` (fine-tuning list + Phase 6.2/6.3/6.4), start after the token limit reset (11:01). Open with the user: Canvas vs Strip wording, device naming (Phone/Tablet vs iPhone/iPad), which extra fonts to bundle.
 - 2026-11-11 Repository moved to https://github.com/vitrinestudio-app/vitrine with the full history (user: "ja, mit Historie"); old repo `Looking4Cache/arrangia` is archived by the user.
 - 2026-11-11 Licence: **GPL-3.0-or-later** for the code, with a licence-style **individual CLA** (contributors keep the copyright, grant the owner Looking4Cache UG (haftungsbeschränkt) a perpetual, irrevocable licence incl. relicensing under any licence + patent licence; Apache ICLA v2.2 structure + Harmony "any licence" outbound option; signed via CLA bot on pull requests). Name/logo/icons excluded from the GPL (© owner, unmodified copies may carry them, forks rebrand). No SPDX headers per file. Swedish hyphenation (LPPL 1.2) stays out (GPL-incompatible per FSF, compiled into the binary). ADR 0022; `LICENSE`, `CLA.md` (version 1.0), `CONTRIBUTING.md`.
