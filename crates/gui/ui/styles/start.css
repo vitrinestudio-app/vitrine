@@ -38,7 +38,10 @@
   font-size: 13px;
 }
 
-.start-settings {
+.start-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top: 2px;
 }
 
