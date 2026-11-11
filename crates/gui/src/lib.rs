@@ -14,7 +14,7 @@
 pub mod bridge;
 
 pub use vitrine_app::{
-    Actor, AppInfo, AppState, CommandError, ErrorCode, EventSink, Reply, Session, ViewState,
+    Actor, AppInfo, AppState, CommandError, ErrorCode, EventSink, Reply, Session, ViewState, about,
     app_info, commands, dialogs, dispatch, dispatch_as, error, events, preview, session, settings,
     store_test, stores, testutil, upload, view, watch,
 };

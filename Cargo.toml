@@ -8,8 +8,10 @@ edition = "2024"
 rust-version = "1.99"
 repository = "https://github.com/Looking4Cache/arrangia"
 homepage = "https://www.vitrinestudio.app"
-# No `license` field yet: the license is still undecided (see README, "Open questions").
-# Every crate sets `publish = false` until the license and crates.io names are settled.
+# GPL-3.0-or-later with a contributor licence agreement (ADR 0022, LICENSE, CLA.md).
+license = "GPL-3.0-or-later"
+authors = ["Looking4Cache UG (haftungsbeschränkt)"]
+# Every crate sets `publish = false` until the crates.io names are settled.
 
 [workspace.dependencies]
 # Internal crates

@@ -4,7 +4,7 @@ Guidance for Claude (and other agents) working in this repository.
 
 ## Project
 
-Vitrine Studio is an open-source (freeware) desktop app, written in Rust, for creating
+Vitrine Studio is an open-source (GPL-3.0-or-later) desktop app, written in Rust, for creating
 App Store and Play Store screenshots with device frames, texts, translations,
 panorama sets, store upload and an MCP interface. A layout is designed once and
 rendered automatically for every language, device class and store. Projects are
@@ -48,6 +48,7 @@ the roadmap in KONZEPT.md §12.
 ```
 Cargo.toml              workspace: shared package metadata, dependencies, lints
 rust-toolchain.toml     pinned toolchain (1.99.1)
+LICENSE                 GNU GPL v3 (verbatim); CLA.md, CONTRIBUTING.md (ADR 0022)
 crates/
   core/     vitrine-core     model, YAML IO, Operations API, resolve, layout,
                               validation, catalogs (data in crates/core/data/*.yaml)
@@ -251,8 +252,13 @@ targets macOS, Windows, Linux.
   verification date. Gallery gap values not yet measured on real store views
   are marked as `not yet measured`.
 - Architecture decisions go into `docs/adr/NNNN-title.md` (see ADR 0000).
-- No `license` field and `publish = false` in all manifests until the license
-  is decided. Do not add LICENSE files.
+- Licence: **GPL-3.0-or-later** (`LICENSE`, ADR 0022), set once in
+  `[workspace.package]` (`license.workspace = true` in every crate);
+  `publish = false` until the crates.io names are settled. Contributions need
+  the CLA (`CLA.md`, `CONTRIBUTING.md`). No SPDX headers per file. New
+  dependencies and bundled data need a GPL-3.0-compatible licence (MIT,
+  Apache-2.0, BSD, ISC, Zlib, MPL-2.0, Unicode-3.0, CC0, OFL for fonts) and
+  their notice; name, logo and icons (`assets/brand/`) are not GPL.
 - **Document as you go.** Every user-facing feature or finding adds short
   bullet notes to `docs/guide/NOTES.md` (English, notes only – the user guide
   is written later). Decisions taken with the user and the current phase state

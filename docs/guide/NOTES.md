@@ -87,7 +87,7 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - Markup: `**bold**`, `_italic_`, `[style]…[/]`, `\n`, soft hyphen `\-`.
 - Soft hyphen: invisible unless the line breaks there; then a visible hyphen.
 - Emergency break (word split without hyphen) is reported as a warning.
-- Automatic hyphenation: opt-in (`hyphenate: true`), only kicks in when text doesn't fit even at `shrink_to`. Bundled languages: en-us, en-gb, de (1996), fr, es, nl, it, da, pt, nb/no, fi. Swedish missing (pattern licence LPPL-only, pending project licence decision).
+- Automatic hyphenation: opt-in (`hyphenate: true`), only kicks in when text doesn't fit even at `shrink_to`. Bundled languages: en-us, en-gb, de (1996), fr, es, nl, it, da, pt, nb/no, fi. Swedish missing (pattern licence LPPL 1.2 only, GPL-incompatible; ADR 0022).
 - Exchange: CSV (Excel variants with BOM/`;` detected) and XLIFF 1.2/2.0; markup becomes protected inline tags so CAT tools don't break it; import shows a dry-run diff and post-import overflow check; one undo step.
 - CSV context column gives element/page/style and an approximate max length.
 - XLIFF/CSV export writes one file per non-default language; a sparse regional language (fr-CA) gets all keys it lacks with `--missing-only`.
@@ -260,6 +260,7 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - No browser context menu (Reload / Inspect Element) on right-click; text fields and selected text keep theirs (copy/paste, spelling). Developers: ⌥/Alt + right-click shows the web view's menu anywhere ("Inspect Element" in debug builds).
 
 ## Contributor notes
+- Licence (2026-11-11, ADR 0022): code GPL-3.0-or-later (`LICENSE`); contributions need the CLA (`CLA.md`, signed via bot on the first pull request; `CONTRIBUTING.md`). Name, logo and app icons are not GPL (© Looking4Cache UG (haftungsbeschränkt); forks rebrand, `assets/brand/README.md`). Fonts OFL 1.1, hyphenation patterns MIT/BSD – their notices ship with the app. `vitrine --help` and the macOS About panel show copyright + licence.
 - Built-in device frames are own parametric artwork (devices.yaml + render/frames); how to add devices + ready-made Claude prompt: docs/dev/adding-devices.md.
 
 ## 5. Limits & FAQ

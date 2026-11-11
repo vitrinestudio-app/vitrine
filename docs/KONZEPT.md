@@ -2,7 +2,7 @@
 
 > Website: vitrinestudio.app · Slug/Binary/Crate-Präfix: `vitrine`
 >
-> Open-Source-Desktop-Programm (Freeware) zum Erstellen von App-Store- und Play-Store-Screenshots mit Device-Frames, Texten, Übersetzungen, Panorama-Sets, Store-Upload und MCP-Schnittstelle.
+> Open-Source-Desktop-Programm (GPL-3.0-or-later, kostenlos) zum Erstellen von App-Store- und Play-Store-Screenshots mit Device-Frames, Texten, Übersetzungen, Panorama-Sets, Store-Upload und MCP-Schnittstelle.
 >
 > Stand: November 2026 · Status: Entwurf
 
@@ -619,7 +619,7 @@ pub enum Op {
 
 ### 10.4 Lizenz
 
-Noch offen (siehe 13). Vorschlag: **MIT OR Apache-2.0** (Rust-Standard, maximal kompatibel); Alternative Copyleft (MPL-2.0/GPL). Mitgelieferte Schriften unter SIL OFL. Keine Herstellergrafiken im Repository.
+**GPL-3.0-or-later** (entschieden am 11. November 2026, ADR 0022), damit Forks offen bleiben. Beiträge nur mit einer Contributor License Agreement im Lizenz-Stil (`CLA.md`): Beitragende behalten ihr Urheberrecht und räumen dem Inhaber (Looking4Cache UG (haftungsbeschränkt)) ein einfaches, unbefristetes, unwiderrufliches Nutzungsrecht ein, auch zur Lizenzierung unter anderen Lizenzen, plus eine Patentlizenz. Name, Logo und App-Icons stehen nicht unter der GPL. Mitgelieferte Schriften unter SIL OFL, Silbentrennmuster unter MIT/BSD; alle Rust-Abhängigkeiten GPL-3-kompatibel. Keine SPDX-Kopfzeilen pro Datei. Keine Herstellergrafiken im Repository.
 
 ---
 
@@ -664,8 +664,8 @@ Noch offen (siehe 13). Vorschlag: **MIT OR Apache-2.0** (Rust-Standard, maximal 
 - Mac-App-Screenshots von Anfang an
 - Web-Apps: Browser-Frame und Laptop-Frame (auch kombiniert)
 - Standardsprache pro Projekt in der App einstellbar
+- Lizenz: GPL-3.0-or-later mit CLA im Lizenz-Stil (am 11. November 2026, siehe 10.4)
 
 **Offen**
 
-1. **Lizenz:** MIT/Apache-2.0 oder Copyleft (MPL-2.0/GPL), damit Forks offen bleiben?
-2. **Lückenbreiten der Galerie-Profile:** müssen einmal an echten Store-Ansichten ausgemessen werden (App-Store-App auf iPhone und iPad, App-Store-Website, Mac App Store, Play-Store-App und -Website).
+1. **Lückenbreiten der Galerie-Profile:** müssen einmal an echten Store-Ansichten ausgemessen werden (App-Store-App auf iPhone und iPad, App-Store-Website, Mac App Store, Play-Store-App und -Website).

@@ -44,7 +44,7 @@ pub const EXIT_FAILURE: u8 = 2;
 
 /// Create App Store and Play Store screenshots from a single layout.
 #[derive(Debug, Parser)]
-#[command(name = "vitrine", version, about)]
+#[command(name = "vitrine", version, about, after_help = vitrine_app::about::NOTICE)]
 struct Cli {
     #[command(flatten)]
     global: Global,
