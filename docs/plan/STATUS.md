@@ -68,6 +68,7 @@ current: update after each phase/merge and whenever the user decides something.
 - User-facing facts go to `docs/guide/NOTES.md` (English, notes only, no prose yet).
 
 ## Decisions taken with the user
+- 2026-11-11 Frame pack format (`frame.yaml`, `frame: pack:<id>`, ADR 0024) confirmed by the user. Fernwood's feature graphic keeps its phones for now. The 9 proposed OFL fonts are to be bundled (Montserrat, Playfair Display, Lora, Nunito, Oswald, Bebas Neue, Caveat, Dancing Script, JetBrains Mono). The GUI edits found in the Fernwood fixture were accidental and were dropped.
 - 2026-11-11 Terminology: **Canvas** replaces Strip everywhere, incl. the YAML key (`strips:` → `canvases:`), example project and docs; device labels stay "Phone"/"Tablet".
 - 2026-11-11 Next work package planned in `docs/plan/next-2026-11-11.md` (fine-tuning list + Phase 6.2/6.3/6.4), start after the token limit reset (11:01). Open with the user: Canvas vs Strip wording, device naming (Phone/Tablet vs iPhone/iPad), which extra fonts to bundle.
 - 2026-11-11 Repository moved to https://github.com/vitrinestudio-app/vitrine with the full history (user: "ja, mit Historie"); old repo `Looking4Cache/arrangia` is archived by the user.
