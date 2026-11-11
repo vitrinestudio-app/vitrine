@@ -130,7 +130,8 @@ impl VitrineMcp {
             + Self::output_tools()
             + Self::history_tools()
             + Self::docs_tools()
-            + Self::upload_tools();
+            + Self::upload_tools()
+            + Self::template_tools();
         Self {
             app,
             progress,
