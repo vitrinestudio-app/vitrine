@@ -1,0 +1,7 @@
+{{- /* A highlighted note. {{< callout status >}}…markdown…{{< /callout >}}
+       Kinds: note (default), tip, status (pre-release state), warn. */ -}}
+{{- $kind := .Get 0 | default "note" -}}
+<aside class="callout callout--{{ $kind }}">
+  <strong class="callout__label">{{ T (printf "callout_%s" $kind) }}</strong>
+  {{ .Inner | .Page.RenderString (dict "display" "block") }}
+</aside>

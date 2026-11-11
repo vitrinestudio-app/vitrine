@@ -1,0 +1,9 @@
+{{- /* A screenshot that does not exist yet (listed in website/README.md,
+       "Images to replace later"). {{< placeholder "the upload dialog" >}} */ -}}
+<figure class="docs-figure docs-figure--todo">
+  <div class="docs-placeholder" role="img" aria-label="{{ T "shotSoon" }}: {{ .Get 0 | plainify }}">
+    {{ partial "icon.html" "eye" }}
+    <span>{{ T "shotSoon" }}</span>
+  </div>
+  <figcaption>{{ .Get 0 | markdownify }}</figcaption>
+</figure>
