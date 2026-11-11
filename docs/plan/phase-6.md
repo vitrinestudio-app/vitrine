@@ -205,11 +205,21 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
 - [ ] Hosts the template (and frame pack) gallery from 6.3/6.4
 
 ## 6.7 Documentation (own step)
-- [~] User guide from `docs/guide/NOTES.md`: getting started, editor,
-      languages, import (incl. fastlane), export, store upload setup (Apple
-      key, Google service account), MCP/Claude, CLI reference, project file
-      format reference – 2026-11-11: structure + short English summaries
-      on the website (`website/content/en/docs/`, 10 pages, sidebar,
-      prev/next); German pages are stubs ("Deutsche Übersetzung folgt")
-- [~] Published on the website (structure done); screenshots of the real app
-- [ ] `docs_get` MCP tool content stays in sync
+- [x] User guide from `docs/guide/NOTES.md` and the code (2026-11-11):
+      17 English pages in `website/content/en/docs/` – how it works,
+      install & update, getting started walkthrough, editor, devices &
+      frames, targets & store formats, styles & fonts, languages &
+      translation, screenshots, export, fastlane migration, store upload,
+      templates & gallery, AI assistants, CLI reference, project file
+      format, troubleshooting & FAQ, keyboard & mouse; full German
+      translation in `website/content/de/docs/` (German UI labels, "du",
+      English anchor ids). Pre-release state marked with `status` callouts.
+- [x] CLI reference generated from the real `--help` output
+      (`scripts/docs/cli-help.sh` → `website/data/cli_help.json`,
+      shortcode `cli-help`); link checker `website/scripts/check-links.py`
+- [~] Screenshots of the real app: 11 placeholders ("Screenshot coming
+      soon"), list in `website/README.md`; owner reviews the texts
+- [ ] `docs_get` MCP tool content stays in sync (it serves the model
+      reference for assistants – elements, ops, project, markup, targets,
+      scopes – not the user guide; no change needed now, a link to the
+      website guide in `overview` could be added once it is online)

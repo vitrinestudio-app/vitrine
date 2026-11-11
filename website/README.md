@@ -84,9 +84,50 @@ New screenshots will be generated once templates exist. Today's images:
 | `assets/images/iphone-gallery-en.jpg`, `iphone-gallery-fr.jpg`, `ipad-gallery-de.jpg`, `mac-gallery-en.jpg`, `web-gallery-en.jpg`, `blog-header-de.jpg` | home showcase tabs; `iphone-gallery-en.jpg` is also the Open Graph image (cropped to 1200×630) | galleries rendered from the new templates (`vitrine render --gallery`), 2× width; a dedicated 1200×630 OG image |
 | CSS/SVG mock-ups: hero canvas, language × device matrix, AI chat, terminal, upload plan, template cards | home | may stay as illustrations; template cards → real template previews once the gallery exists |
 
-Missing entirely: screenshots of the store upload dialog, the MCP settings
-("Add to Claude Desktop"), the translations table and the export overview
-page – useful for the docs pages.
+### Docs screenshots (placeholders today)
+
+The user guide marks missing screenshots with the `placeholder` shortcode
+(a hatched box "Screenshot coming soon" + caption). Replace each with
+`{{< shot src="images/<file>.jpg" alt="…" caption="…" >}}` in **both**
+languages (German pages: German UI, `?lang=de` in the dev bridge). Ideally 2×,
+light theme (or both), cropped to the dialog:
+
+| Page (`content/*/docs/`) | Shows |
+|---|---|
+| `getting-started.md` | start screen with the *New project* dialog (name, location, template cards, languages) |
+| `getting-started.md` | the export dialog (targets × languages grid, folder, layout, options) |
+| `editor.md` | the canvas context menu on a selected phone |
+| `devices-frames.md` | *Frame packages* dialog after analysing an Apple bezel package |
+| `targets.md` | *Canvases & targets* → *Add target* list (presets, badges, sizes) |
+| `languages.md` | Translations tab: a missing German text shown from the fallback, an overflowing French cell |
+| `screenshots.md` | *Import screenshots* dialog with a fastlane folder |
+| `export.md` | the export's `index.html` overview with the enlarged view |
+| `store-upload.md` | App settings → Stores (two accounts, Test, the Apple key help) |
+| `store-upload.md` | the upload plan table with *Confirm & upload* |
+| `ai-mcp.md` | App settings → *AI assistants (MCP)* (status, Add to Claude Desktop, Claude Code command) |
+
+Used today: `editor-dark.jpg` (getting started, outdated: says "Strip"),
+`inspector-text.jpg` (editor), `ipad-gallery-de.jpg`, `blog-header-de.jpg`
+(concepts, targets) and `canvas-phone-en.jpg` (concepts; rendered with
+`vitrine --project tests/fixtures/example render --target ios-iphone-69
+--canvas --width 2400`, converted to JPEG).
+
+## Docs
+
+- `content/en/docs/` is the user guide (17 pages + overview); `content/de/docs/`
+  the same pages in German (same file names, headings carry the English
+  anchor ids `{#…}` so `#fragment` links work in both languages). Change
+  both when a feature changes; the developer-side notes stay in
+  `docs/guide/NOTES.md`.
+- Shortcodes: `shot` (image from `assets/images` with caption), `placeholder`
+  (missing screenshot), `callout` (`note`, `tip`, `status` = pre-release,
+  `warn`), `cli-help "vitrine <cmd>"` (the `--help` text from
+  `data/cli_help.json`).
+- CLI reference data: `scripts/docs/cli-help.sh [path/to/vitrine]` regenerates
+  `data/cli_help.json` from the real `--help` output – run it after changing
+  a command or flag.
+- Link check: `hugo --minify && python3 scripts/check-links.py` (internal links
+  and `#fragments` of `public/`; exit 1 when something is broken).
 
 ## TODO (owner)
 
@@ -94,8 +135,9 @@ page – useful for the docs pages.
   the English pointers) are placeholders – the site must not go live with them.
 - **Downloads:** when installers exist, set `downloads_available = true` and
   the URLs under `[params.downloads]` in `hugo.toml`.
-- **Docs:** German translations of `content/de/docs/*` (today short summaries
-  that link to the English pages); the full user guide (phase 6.7).
+- **Docs:** review the user guide (en + de), replace the screenshot
+  placeholders (list above); once installers exist, update the "pre-release"
+  callouts (`install.md`, docs `_index.md`).
 - **Gallery pages:** browsing templates from `api.vitrinestudio.app` on the
   website (phase 6.3/6.6) – not built yet.
 - Domain, hosting and deployment (see above).
