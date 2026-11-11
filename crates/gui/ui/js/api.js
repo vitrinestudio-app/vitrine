@@ -62,6 +62,17 @@ export const api = {
   storePackageCheck: (account, packageName) => invoke('store_package_check', { account, package_name: packageName }),
   /** Opens an allow-listed help link in the system browser. */
   openUrl: (url) => invoke('open_url', { url }),
+  // ----- command line tool + updates (ADR 0026) -----
+  /** `{method, cli_path, cli_exists, installed, location?, conflict, note?}` */
+  cliInstallStatus: () => invoke('cli_install_status'),
+  /** Installs (or `remove`s) `vitrine` for terminals; the user confirmed. */
+  cliInstall: (remove = false) => invoke('cli_install', { confirm: true, remove }),
+  /** GUI-only: `{current_version, mode, reason, auto_check, checked_at, releases_url}`. */
+  updateStatus: () => invoke('update_status'),
+  /** GUI-only: `{checked, mode, reason, update?}`; never installs. */
+  updateCheck: (auto = false) => invoke('update_check', { auto }),
+  /** GUI-only: installs the checked update and restarts (after the user confirmed). */
+  updateInstall: () => invoke('update_install'),
   /** `{store, effective, locales, accounts, missing_accounts}`. */
   projectStoreGet: () => invoke('project_store_get'),
   /** `{apple?: obj|null, google?: obj|null, locales?: {apple?, google?}}` → one undo step. */

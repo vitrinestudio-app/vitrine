@@ -120,6 +120,14 @@ pub struct Settings {
     /// (per viewer, not per project). Still reachable from the Help menu.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub guide_seen: bool,
+    /// The GUI checks GitHub Releases for a new version once a day and
+    /// asks before installing (ADR 0026). On by default; no telemetry
+    /// (one anonymous GET of `latest.json`).
+    #[serde(skip_serializing_if = "is_true")]
+    pub update_check: bool,
+    /// Unix time (s) of the last update check (manual or automatic).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub update_checked_at: Option<i64>,
 }
 
 #[allow(clippy::trivially_copy_pass_by_ref)] // serde's skip_serializing_if signature
@@ -141,6 +149,8 @@ impl Default for Settings {
             store_accounts: Vec::new(),
             mcp_allow_headless_upload: false,
             guide_seen: false,
+            update_check: true,
+            update_checked_at: None,
         }
     }
 }
@@ -360,6 +370,8 @@ mod tests {
             store_accounts: Vec::new(),
             mcp_allow_headless_upload: false,
             guide_seen: true,
+            update_check: false,
+            update_checked_at: Some(1_762_790_405),
         };
         store.save(&s).unwrap();
         assert_eq!(store.load().unwrap(), s);
@@ -367,11 +379,13 @@ mod tests {
         assert!(yaml.contains("ui_language: de"), "{yaml}");
         assert!(yaml.contains("mcp_enabled: false"), "{yaml}");
         assert!(yaml.contains("guide_seen: true"), "{yaml}");
+        assert!(yaml.contains("update_check: false"), "{yaml}");
         assert!(
             !yaml.contains("mcp_autostart_gui"),
             "defaults stay out: {yaml}"
         );
         assert!(Settings::default().mcp_enabled && Settings::default().mcp_autostart_gui);
+        assert!(Settings::default().update_check);
 
         let updated = store
             .update(&serde_json::json!({"ui_language": null, "default_frame_style": "stylized"}))

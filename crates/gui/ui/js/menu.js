@@ -34,6 +34,7 @@ const ITEMS = [
   { id: 'importScreenshots', label: 'import.menu', project: true },
   { sep: true },
   { id: 'appSettings', label: 'project.menu.app_settings', key: 'mod+,' },
+  { id: 'checkUpdates', label: 'update.menu', app: true },
   { sep: true },
   { id: 'closeProject', label: 'project.menu.close', project: true },
 ];
@@ -60,10 +61,11 @@ const HELP_LINKS = [
 
 /**
  * `handlers`: { newProject, openProject, projectSettings, targets, exportDialog, uploadDialog, importScreenshots,
- * appSettings, closeProject, guide, gestures, hasProject() }.
+ * appSettings, checkUpdates, closeProject, guide, gestures, hasProject() }.
  */
 export function createMenu(handlers) {
-  const items = [...ITEMS, { sep: true }, ...HELP_ITEMS];
+  // "Check for updates…" only in the app (the dev bridge cannot update).
+  const items = [...ITEMS.filter((it) => !it.app || isTauri), { sep: true }, ...HELP_ITEMS];
   const button = h('button', { class: 'icon-btn menu-btn', type: 'button', title: t('project.menu.title'), 'aria-haspopup': 'menu' }, icon('menu'));
   let popup = null;
 
@@ -143,8 +145,9 @@ function nativeSpec(hasProject) {
   const item = (id, label, key, enabled = true) => ({ type: 'item', id, label, ...(key ? { key } : {}), enabled });
   const native = (it, label) => ({ type: 'predefined', item: it, label: t(label) });
   const sep = { type: 'separator' };
-  // File = the in-app entries; App settings moves to the application menu.
-  const file = ITEMS.filter((it) => it.id !== 'appSettings')
+  // File = the in-app entries; App settings and Check for updates move to
+  // the application menu.
+  const file = ITEMS.filter((it) => it.id !== 'appSettings' && it.id !== 'checkUpdates')
     .filter((it, i, all) => !(it.sep && all[i - 1]?.sep))
     .map((it) => (it.sep ? sep : item(it.id, t(it.label), it.key, !it.project || hasProject)));
   const settings = ITEMS.find((it) => it.id === 'appSettings');
@@ -154,6 +157,7 @@ function nativeSpec(hasProject) {
         label: 'Vitrine Studio',
         items: [
           native('about', 'native.about'),
+          item('checkUpdates', t('update.menu')),
           sep,
           item(settings.id, t(settings.label), settings.key),
           sep,

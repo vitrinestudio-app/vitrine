@@ -292,3 +292,18 @@
 .dlg-text.strong {
   font-weight: 600;
 }
+
+/* ----- updates + command line tool (ADR 0026) ----- */
+.update-notes {
+  max-height: 220px;
+  overflow: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+}
+
+.update-progress {
+  width: 100%;
+  margin: 8px 0 4px;
+}

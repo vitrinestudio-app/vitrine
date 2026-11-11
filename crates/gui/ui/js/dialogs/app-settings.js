@@ -3,12 +3,14 @@
 // new projects (language, frame style), AI assistants (MCP) (ADR 0015:
 // generic first – switch, status, port, autostart, how any MCP client
 // connects – then the client-specific setup: "Add to Claude Desktop",
-// Claude Code commands), store accounts (Phase 5.1, `stores.js`).
+// Claude Code commands), store accounts (Phase 5.1, `stores.js`), the
+// command line tool and updates (ADR 0026, `updates.js`).
 
 import { api } from '../api.js';
 import { clientLabel, onAssistantChange, refreshAssistantStatus } from '../assistant.js';
 import { h, icon } from '../dom.js';
 import { t } from '../i18n.js';
+import { cliRows, updateRows } from '../updates.js';
 import { openFramePackages } from './frame-packages.js';
 import { checkbox, choiceDialog, errorLine, input, openModal, row, select } from './modal.js';
 import { storeAccountRows } from './stores.js';
@@ -97,7 +99,9 @@ export async function openAppSettings({ section } = {}) {
           t('frames.settings_hint'),
         ),
         ...mcpRows(save, () => settings),
+        ...cliRows(),
         ...storeAccountRows(),
+        ...updateRows(save, () => settings),
         row(t('settings.file'), h('span', { class: 'mono small selectable' }, info.settings_file)),
       ),
     ],

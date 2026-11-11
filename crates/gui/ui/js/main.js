@@ -25,6 +25,7 @@ import { bindShortcuts } from './shortcuts.js';
 import { bindFolderDrop, mountStart, openNewProject, openProjectDialog, setOnOpened } from './start.js';
 import { store } from './store.js';
 import { isTauri } from './transport.js';
+import { checkForUpdates, initUpdates } from './updates.js';
 
 const params = new URLSearchParams(location.search);
 const theme = params.get('theme');
@@ -69,6 +70,7 @@ const appActions = {
   uploadDialog: () => openUpload(),
   importScreenshots: () => openScreenshotImport().catch(report),
   appSettings: () => openAppSettings().catch(report),
+  checkUpdates: () => checkForUpdates().catch(report),
   closeProject: () => closeProject().catch(report),
   guide: () => openGuide(),
   gestures: () => openGestureSheet(),
@@ -125,6 +127,8 @@ async function closeProject() {
 async function projectClosed() {
   store.set({ summary: null, overlay: null, canvas: null, target: null, variant: undefined, selection: [], hover: null, validation: null, clipboard: 0 });
   await showProject();
+  // Daily update check (ADR 0026; app setting, asks before installing).
+  initUpdates().catch((e) => console.warn('updates', e));
 }
 
 /** A project was opened (start screen, menu, or by an assistant over MCP). */
