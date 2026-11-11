@@ -1,11 +1,13 @@
 // Start screen (task 2.10), shown while no project is open: new project
-// (name, folder, template, languages), open…, recent projects (missing ones
+// (name, folder, template – built in, installed or imported from a
+// `.vitrine-template` file –, languages), open…, recent projects (missing ones
 // greyed, removable), and in Tauri dropping a folder onto the window.
 // `openNewProject` / `openProjectDialog` are also used by the app menu.
 
 import { api, listen } from './api.js';
 import { h, icon } from './dom.js';
-import { errorLine, input, openModal, row, select } from './dialogs/modal.js';
+import { errorLine, input, openModal, row } from './dialogs/modal.js';
+import { templatePicker } from './dialogs/templates.js';
 import { t } from './i18n.js';
 import { isTauri } from './transport.js';
 
@@ -77,7 +79,7 @@ export async function openNewProject() {
   }
   const m = openModal({
     title: t('start.new'),
-    size: 'medium',
+    size: 'large',
     body: [
       err.el,
       h(
@@ -124,14 +126,14 @@ export async function openNewProject() {
         ),
         row(
           t('start.template'),
-          select({
-            options: [
-              { value: 'phone', label: t('start.template.phone') },
-              { value: 'minimal', label: t('start.template.minimal') },
-            ],
+          templatePicker({
             value: template,
-            onchange: (v) => (template = v),
-          }),
+            onchange: (tpl) => {
+              if (tpl) template = tpl.id;
+            },
+            onerror: (e) => err.show(e),
+          }).el,
+          t('start.template.hint'),
         ),
         row(t('start.langs'), input({ value: langs, cls: 'mono', onchange: (v) => (langs = v) }), t('start.langs.hint')),
       ),

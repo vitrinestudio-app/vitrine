@@ -1,8 +1,8 @@
 // Canvases & targets editor (task 2.9): the project's canvases with
 // their targets, adding targets from catalog presets (grouped by
 // store/platform), a form for every target field, and canvas management
-// (new canvas – empty, starter layout or copy –, rename, duplicate, remove,
-// variants). Changes go through `target_patch` / `target_add_from_preset` /
+// (new canvas – empty, starter layout, copy or from a template –, rename,
+// duplicate, remove, variants, save as template). Changes go through `target_patch` / `target_add_from_preset` /
 // `target_remove` / `canvas_add` / `canvas_rename` / `canvas_remove` /
 // `canvas_variant` (ops are built in Rust) and `editor.apply`. Store-rule
 // hints come from validation findings of the target.
@@ -13,6 +13,7 @@ import { editor } from '../editor.js';
 import { t } from '../i18n.js';
 import { store } from '../store.js';
 import { checkbox, confirmDialog, errorLine, input, openModal, row, segmented, select } from './modal.js';
+import { insertFromTemplate, openSaveTemplate } from './templates.js';
 import { openNewVariant, removeVariant } from './variants.js';
 
 /** Value of the "+ New variant…" entry of the target form's variant select. */
@@ -63,7 +64,7 @@ export async function openTargets(focus, opts = {}) {
   let mode = opts.mode ?? 'edit';
   /** Canvas shown in `canvas` mode, preselected in `add` mode. */
   let selectedCanvas = opts.canvas ?? store.get().canvas;
-  /** State of the `new-canvas` form (`source`: empty | starter | copy). */
+  /** State of the `new-canvas` form (`source`: empty | starter | copy | template). */
   let newCanvas = { source: 'starter', from: store.get().canvas };
 
   const m = openModal({
@@ -324,11 +325,12 @@ export async function openTargets(focus, opts = {}) {
     const body = h('div', { class: 'form' });
     function draw() {
       const copy = st.source === 'copy';
+      if (st.source === 'template') return drawTemplate();
       const rows = [
         row(
           t('canvases.new.start'),
           segmented({
-            options: ['empty', 'starter', 'copy'].map((v) => ({ value: v, label: t(`canvases.new.start.${v}`) })),
+            options: ['empty', 'starter', 'copy', 'template'].map((v) => ({ value: v, label: t(`canvases.new.start.${v}`) })),
             value: st.source,
             onchange: (v) => {
               st.source = v;
@@ -372,8 +374,40 @@ export async function openTargets(focus, opts = {}) {
       }
       body.replaceChildren(...rows);
     }
+    /** "From template": picker, canvases of the template, style rule, report. */
+    let fromTemplate = null;
+    function drawTemplate() {
+      const start = row(
+        t('canvases.new.start'),
+        segmented({
+          options: ['empty', 'starter', 'copy', 'template'].map((v) => ({ value: v, label: t(`canvases.new.start.${v}`) })),
+          value: st.source,
+          onchange: (v) => {
+            st.source = v;
+            draw();
+          },
+        }),
+        t('canvases.new.start.template.hint'),
+      );
+      fromTemplate = insertFromTemplate({
+        err,
+        commit: canvasCommit,
+        onInserted: async (r) => {
+          const first = r.report.canvases[0]?.to;
+          if (first) {
+            await editor.setContext({ canvas: first });
+            selectedCanvas = first;
+          }
+          newCanvas = { source: 'starter', from: first ?? store.get().canvas };
+          mode = 'canvas';
+          await refresh();
+        },
+      });
+      body.replaceChildren(start, fromTemplate.el);
+    }
     draw();
     const create = async () => {
+      if (st.source === 'template') return fromTemplate?.insert();
       const args = {};
       if (st.id) args.id = st.id;
       if (st.source === 'copy') {
@@ -506,6 +540,7 @@ export async function openTargets(focus, opts = {}) {
           h('span', { class: 'spacer' }),
           h('button', { class: 'btn btn-small', type: 'button', disabled: !info.targets.length, onclick: () => showInEditor() }, t('canvases.show')),
           h('button', { class: 'btn btn-small', type: 'button', onclick: duplicate }, t('canvases.duplicate')),
+          h('button', { class: 'btn btn-small', type: 'button', title: t('templates.save.hint_short'), onclick: () => openSaveTemplate({ canvases: s.canvases, current: id }) }, t('templates.save.open')),
           h('button', { class: 'btn btn-small', type: 'button', disabled: last, title: last ? t('canvases.remove.last') : '', onclick: remove }, t('canvases.remove')),
         ),
         h(

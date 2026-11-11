@@ -228,4 +228,19 @@ export const api = {
   /** `args`: { model?, color?, orientation? } (none = all). */
   framesRemove: (args = {}) => invoke('frames_remove', args),
   framesThumbnail: (file, maxEdge) => invoke('frames_thumbnail', { file, max_edge: maxEdge }),
+
+  // ----- templates (6.3, ADR 0023) -----
+  /** Built-in and installed templates (`source`: builtin | installed). */
+  templateList: () => invoke('template_list'),
+  /** `{ name, id?, description?, author?, tags?, canvases?, replace?, file? }` → `{ template, report, file? }`. */
+  templateSave: (args) => invoke('template_save', args),
+  templateImport: (path, replace = false) => invoke('template_import', { path, replace }),
+  templateExport: (id, path) => invoke('template_export', { id, path }),
+  templateRemove: (id) => invoke('template_remove', { id }),
+  /** Dry run of an insert: `{ template, canvases?, styles? }` → report. */
+  templateInsertPlan: (args) => invoke('template_insert_plan', args),
+  /** Inserts canvases of a template (one undo step) → apply result + `report`. */
+  templateInsert: (args) => invoke('template_insert', args),
+  /** Preview PNG of a template canvas (default: the first). */
+  templatePreview: (id, canvas) => invoke('template_preview', canvas ? { id, canvas } : { id }),
 };

@@ -18,6 +18,7 @@ export const IMAGE_COMMANDS = new Set([
   'render_preview_string',
   'asset_thumbnail',
   'frames_thumbnail',
+  'template_preview',
 ]);
 
 const FORMATS = { 0: 'rgba', 1: 'png' };
