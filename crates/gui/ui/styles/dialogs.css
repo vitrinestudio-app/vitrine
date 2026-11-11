@@ -372,6 +372,26 @@ select.field {
   margin: 4px 6px;
 }
 
+/* Context menu (js/context-menu.js): keyboard focus like hover, shortcuts right. */
+.ctx-menu {
+  min-width: 220px;
+}
+
+.ctx-menu .menu-item:focus-visible {
+  outline: none;
+  background: var(--bg-hover);
+}
+
+.ctx-menu .ctx-icon {
+  width: 16px;
+  flex: none;
+}
+
+.ctx-menu .ctx-key {
+  margin-left: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
 .badge-btn {
   border: 0;
   font: inherit;
@@ -623,6 +643,20 @@ select.field {
 
 .ex-result.bad {
   color: var(--danger);
+}
+
+.ex-result .ex-when {
+  margin-left: auto;
+  font-size: var(--fs-small);
+}
+
+.ex-uptodate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+  color: var(--fg-muted);
 }
 
 .ex-props {

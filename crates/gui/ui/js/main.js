@@ -99,6 +99,11 @@ async function showProject() {
       zoomOut: () => shell.view?.zoomOut?.(),
       fit: () => shell.view?.fit?.(),
       zoomActual: () => shell.view?.zoomActual?.(),
+      // Element clipboard: only where elements are edited (the canvas view).
+      copy: () => store.get().view === 'canvas' && actions.copy(),
+      cut: () => store.get().view === 'canvas' && actions.cut(),
+      paste: () => store.get().view === 'canvas' && actions.paste(),
+      contextMenu: () => shell.canvas?.openMenu?.(),
     });
     installDropImport(() => shell.canvas);
   }
@@ -111,13 +116,13 @@ async function closeProject() {
 
 /** The backend has no project any more (closed here or by an assistant). */
 async function projectClosed() {
-  store.set({ summary: null, overlay: null, canvas: null, target: null, variant: undefined, selection: [], hover: null, validation: null });
+  store.set({ summary: null, overlay: null, canvas: null, target: null, variant: undefined, selection: [], hover: null, validation: null, clipboard: 0 });
   await showProject();
 }
 
 /** A project was opened (start screen, menu, or by an assistant over MCP). */
 async function projectOpened() {
-  store.set({ selection: [], hover: null, variant: undefined, canvas: null, target: null, lang: null, validation: null });
+  store.set({ selection: [], hover: null, variant: undefined, canvas: null, target: null, lang: null, validation: null, clipboard: 0 });
   await showProject();
 }
 

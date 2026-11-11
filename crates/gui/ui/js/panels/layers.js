@@ -3,7 +3,8 @@
 // adds), double-click renames, the eye toggles `visible` (an override in a
 // variant view), drag & drop reorders or moves into/out of groups
 // (`edit_arrange`, one undo step, positions kept). Rows show the home page
-// and, in a variant view, a marker for overridden elements.
+// and, in a variant view, a marker for overridden elements; elements locked
+// on the canvas (`locked`, context menu) show a lock that unlocks them.
 
 import { h, icon } from '../dom.js';
 import { currentCanvas, effectiveVariant } from '../store.js';
@@ -146,6 +147,7 @@ export function mount(el, { store, editor, api, t, viewArgs }) {
         const isGroup = e.kind === 'group';
         const shown = drawn.has(id);
         const over = variant ? overriddenOf(st.overlay, id) : [];
+        const locked = Boolean(st.overlay?.elements.find((x) => x.id === id)?.locked ?? st.overlay?.groups.find((x) => x.id === id)?.locked);
         const li = h('li', {
           class: `layer${shown ? '' : ' hidden-layer'}${over.length ? ' overridden' : ''}`,
           role: 'treeitem',
@@ -193,6 +195,21 @@ export function mount(el, { store, editor, api, t, viewArgs }) {
           h('span', { class: 'layer-name' }, h('span', { class: 'layer-id' }, id), e.kind === 'text' || e.kind === 'device' || e.kind === 'image' ? h('span', { class: 'layer-label' }, e.label) : null),
           over.length ? h('span', { class: 'layer-over', title: `${t('inspector.overrides')}: ${over.join(', ')}` }) : null,
           isGroup ? null : h('span', { class: 'layer-page', title: `${t('inspector.page')} ${e.page + 1} · ${canvas.page.ids[e.page] ?? ''}` }, String(e.page + 1)),
+          locked
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'layer-eye layer-lock',
+                  title: t('layers.lock'),
+                  onclick: (ev) => {
+                    ev.stopPropagation();
+                    editor.apply(api.elementPatch(viewArgs(), id, { locked: null }), { touched: [id] });
+                  },
+                },
+                icon('lock'),
+              )
+            : null,
           eye,
         ];
         li.append(...parts.filter(Boolean));

@@ -190,6 +190,7 @@
 
 .layer:hover .layer-eye,
 .layer.hidden-layer .layer-eye,
+.layer .layer-lock,
 .layer-eye:focus-visible {
   opacity: 1;
 }

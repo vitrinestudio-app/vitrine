@@ -6,11 +6,14 @@
 //
 //   ⌘Z / ⇧⌘Z (⌘Y)   undo / redo
 //   ⌫ / Delete       delete selection
+//   ⌘C / ⌘X / ⌘V     copy / cut / paste elements (element clipboard; the
+//                    DOM copy/cut/paste events cover the macOS Edit menu)
 //   ⌘D               duplicate
 //   ⌘G / ⇧⌘G         group / ungroup
 //   [ / ]            send backward / bring forward (⇧: to back / to front)
 //   arrows           nudge 1 lu (⇧: 10 lu)
 //   ⌘A               select all, Esc clears (or cancels a drag)
+//   ⇧F10 / menu key  context menu of the selection (canvas)
 //   ⌘+ / ⌘− / ⌘0     zoom in / out / fit; ⌘1 = 100 % (export pixels)
 
 export const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
@@ -19,10 +22,10 @@ export const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.user
 export function keyLabel(combo) {
   const parts = combo.split('+');
   if (isMac) {
-    const map = { mod: '⌘', shift: '⇧', alt: '⌥' };
+    const map = { mod: '⌘', shift: '⇧', alt: '⌥', delete: '⌫', escape: '⎋' };
     return parts.map((p) => map[p] ?? p.toUpperCase()).join('');
   }
-  const map = { mod: 'Ctrl', shift: 'Shift', alt: 'Alt' };
+  const map = { mod: 'Ctrl', shift: 'Shift', alt: 'Alt', delete: 'Del', escape: 'Esc' };
   return parts.map((p) => map[p] ?? p.toUpperCase()).join('+');
 }
 
@@ -57,7 +60,8 @@ export function menuOwns(e) {
 /**
  * Installs the shortcut listener. `handlers`: { undo, redo, remove,
  * duplicate, group, ungroup, reorder(order), nudge(dx, dy), selectAll,
- * escape, zoomIn, zoomOut, fit, zoomActual } (missing ones are skipped).
+ * escape, zoomIn, zoomOut, fit, zoomActual, copy, cut, paste, contextMenu }
+ * (missing ones are skipped).
  * Returns an uninstall function.
  */
 export function bindShortcuts(handlers) {
@@ -77,6 +81,9 @@ export function bindShortcuts(handlers) {
       if (key === 'z') handled = call(e.shiftKey ? 'redo' : 'undo');
       else if (key === 'y') handled = call('redo');
       else if (key === 'd') handled = call('duplicate');
+      else if (key === 'c' && !e.shiftKey && !textSelected()) handled = call('copy');
+      else if (key === 'x' && !e.shiftKey && !textSelected()) handled = call('cut');
+      else if (key === 'v' && !e.shiftKey) handled = call('paste');
       else if (key === 'g') handled = call(e.shiftKey ? 'ungroup' : 'group');
       else if (key === 'a') handled = call('selectAll');
       else if (key === '=' || key === '+') handled = call('zoomIn');
@@ -87,6 +94,7 @@ export function bindShortcuts(handlers) {
       const step = e.shiftKey ? 10 : 1;
       if (key === 'backspace' || key === 'delete') handled = call('remove');
       else if (key === 'escape') handled = call('escape');
+      else if ((key === 'f10' && e.shiftKey) || key === 'contextmenu') handled = call('contextMenu');
       else if (key === 'arrowleft') handled = call('nudge', -step, 0);
       else if (key === 'arrowright') handled = call('nudge', step, 0);
       else if (key === 'arrowup') handled = call('nudge', 0, -step);
@@ -96,6 +104,22 @@ export function bindShortcuts(handlers) {
     }
     if (handled) e.preventDefault();
   };
+  // The macOS Edit menu (native Cut/Copy/Paste items) sends these events
+  // instead of a keydown; a handled keydown above prevents them.
+  const onClipboard = (e) => {
+    if (isTyping(e) || (e.type !== 'paste' && textSelected())) return;
+    if (call(e.type === 'copy' ? 'copy' : e.type === 'cut' ? 'cut' : 'paste')) e.preventDefault();
+  };
   window.addEventListener('keydown', onKey);
-  return () => window.removeEventListener('keydown', onKey);
+  for (const type of ['copy', 'cut', 'paste']) document.addEventListener(type, onClipboard);
+  return () => {
+    window.removeEventListener('keydown', onKey);
+    for (const type of ['copy', 'cut', 'paste']) document.removeEventListener(type, onClipboard);
+  };
+}
+
+/** Is there selected page text (then ⌘C copies that text, not elements)? */
+function textSelected() {
+  const sel = window.getSelection();
+  return Boolean(sel && !sel.isCollapsed && sel.toString().trim());
 }

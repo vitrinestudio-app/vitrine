@@ -48,6 +48,8 @@ export const initialState = {
   status: '',
   /** Inspector toggle "only for <lang>": text edits go into the language override. */
   langScope: false,
+  /** Elements on the element clipboard (`edit_copy`/`edit_cut`; 0 = empty). */
+  clipboard: 0,
 };
 
 function same(a, b) {

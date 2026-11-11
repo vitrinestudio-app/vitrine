@@ -9,13 +9,21 @@
   touch-action: none;
 }
 
-.canvas-view.panning,
+/* Cursor feedback: empty space pans (grab), Shift on empty space draws a
+   marquee (crosshair), Space pans anywhere. */
+.canvas-view.over-empty,
 .canvas-view.space {
   cursor: grab;
 }
 
-.canvas-view.panning:active {
-  cursor: grabbing;
+.canvas-view.over-empty.shift:not(.space),
+.canvas-view.marquee {
+  cursor: crosshair;
+}
+
+.canvas-view.panning,
+.canvas-view.panning * {
+  cursor: grabbing !important;
 }
 
 /* World: positioned in lu, scaled by the zoom (transform set in JS). */
@@ -318,6 +326,54 @@
 
 .zoom-view.panning {
   cursor: grabbing;
+}
+
+/* Overlay scrollbars of every zoomable view (js/views/viewport.js). */
+.vp-scroll {
+  position: absolute;
+  z-index: 3;
+  border-radius: 6px;
+  cursor: default;
+  transition: background-color 0.15s;
+}
+
+.vp-scroll-x {
+  bottom: 2px;
+  height: 10px;
+}
+
+.vp-scroll-y {
+  right: 2px;
+  width: 10px;
+}
+
+.vp-scroll:hover,
+.vp-scroll.dragging {
+  background: var(--scroll-track);
+}
+
+.vp-thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 6px;
+  background: var(--scroll-thumb);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+.vp-scroll-x .vp-thumb {
+  height: 100%;
+}
+
+.vp-scroll-y .vp-thumb {
+  width: 100%;
+}
+
+.vp-scroll:hover .vp-thumb,
+.vp-scroll.dragging .vp-thumb {
+  background-color: var(--scroll-thumb-hover);
+  background-clip: padding-box;
 }
 
 /* Screen-space labels positioned from JS (captions under the images). */

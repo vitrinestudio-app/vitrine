@@ -130,6 +130,12 @@ export const api = {
   reorder: (view, ids, order) => invoke('edit_reorder', { ...view, ids, order }),
   duplicate: (view, ids, dx = 40, dy = 40) => invoke('edit_duplicate', { ...view, ids, dx, dy }),
   remove: (view, ids) => invoke('edit_remove', { ...view, ids }),
+  /** Element clipboard of the open project (in memory, Rust side). */
+  copy: (view, ids) => invoke('edit_copy', { ...view, ids }),
+  cut: (view, ids) => invoke('edit_cut', { ...view, ids }),
+  /** `page`: home page of the first pasted element (default: the copied pages). */
+  paste: (view, page) => invoke('edit_paste', { ...view, ...(page != null ? { page } : {}) }),
+  clipboard: () => invoke('edit_clipboard'),
   group: (view, ids) => invoke('edit_group', { ...view, ids }),
   ungroup: (view, ids) => invoke('edit_ungroup', { ...view, ids }),
   /** `langOverride`: reset the view language's override instead of the variant's. */
