@@ -8,7 +8,8 @@
 // the application menu (About, App settings…, Services, Hide, Quit), File
 // (the in-app menu's entries), Edit (Undo/Redo = project history, or the
 // focused text field's own undo; Cut/Copy/Paste/Select All native), Window
-// and Help (allow-listed store setup docs). Clicks arrive as `menu-action`
+// and Help (quick guide, keyboard & mouse sheet, allow-listed store setup
+// docs). The in-app menu ends with the same help entries. Clicks arrive as `menu-action`
 // events and run the same `handlers` as the in-app menu. Shortcut owner:
 // the shortcuts of native items (⌘N ⌘O ⌘E ⌘, ⌘Z ⇧⌘Z) belong to the native
 // menu there and the JS key handlers skip them (`menuOwns` in
@@ -37,6 +38,16 @@ const ITEMS = [
   { id: 'closeProject', label: 'project.menu.close', project: true },
 ];
 
+/**
+ * Help entries: end of the in-app menu and top of the native Help menu
+ * (help/guide.js, help/sheet.js). `hint`: key shown in the in-app menu only
+ * (`?` is no native accelerator; the JS handler in help/sheet.js owns it).
+ */
+const HELP_ITEMS = [
+  { id: 'guide', label: 'guide.menu' },
+  { id: 'gestures', label: 'help.gestures.menu', hint: '?' },
+];
+
 /** Links of the native Help menu (must be allow-listed in `open_url`). */
 const HELP_LINKS = [
   {
@@ -49,10 +60,10 @@ const HELP_LINKS = [
 
 /**
  * `handlers`: { newProject, openProject, projectSettings, targets, exportDialog, uploadDialog, importScreenshots,
- * appSettings, closeProject, hasProject() }.
+ * appSettings, closeProject, guide, gestures, hasProject() }.
  */
 export function createMenu(handlers) {
-  const items = ITEMS;
+  const items = [...ITEMS, { sep: true }, ...HELP_ITEMS];
   const button = h('button', { class: 'icon-btn menu-btn', type: 'button', title: t('project.menu.title'), 'aria-haspopup': 'menu' }, icon('menu'));
   let popup = null;
 
@@ -93,7 +104,7 @@ export function createMenu(handlers) {
                 },
               },
               h('span', { class: 'grow' }, t(it.label)),
-              it.key ? h('span', { class: 'muted small' }, keyLabel(it.key)) : null,
+              it.key || it.hint ? h('span', { class: 'muted small' }, it.key ? keyLabel(it.key) : it.hint) : null,
             ),
       ),
     );
@@ -173,7 +184,11 @@ function nativeSpec(hasProject) {
         role: 'window',
         items: [native('minimize', 'native.minimize'), native('maximize', 'native.zoom'), sep, native('close_window', 'native.close_window')],
       },
-      { label: t('native.help'), role: 'help', items: HELP_LINKS.map((l) => item(l.id, t(l.label))) },
+      {
+        label: t('native.help'),
+        role: 'help',
+        items: [...HELP_ITEMS.map((it) => item(it.id, t(it.label))), sep, ...HELP_LINKS.map((l) => item(l.id, t(l.label)))],
+      },
     ],
   };
 }
@@ -224,6 +239,11 @@ function runNative(handlers, id) {
   const link = HELP_LINKS.find((l) => l.id === id);
   if (link) {
     api.openUrl(link.url).catch((e) => console.warn('open_url', e));
+    return;
+  }
+  // Help opens on top of anything (also without a project).
+  if (HELP_ITEMS.some((x) => x.id === id)) {
+    handlers[id]?.();
     return;
   }
   // Like the in-app shortcuts: nothing while a dialog is open.
