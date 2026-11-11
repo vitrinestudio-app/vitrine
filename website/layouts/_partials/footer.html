@@ -1,0 +1,48 @@
+{{- $home := site.Home.RelPermalink -}}
+{{- $mark := resources.Get "brand/vitrine-studio-nobackground.svg" | fingerprint -}}
+<footer class="site-footer">
+  <div class="wrap site-footer__grid">
+    <div class="site-footer__brand">
+      <a class="brand" href="{{ $home }}">
+        <img class="brand__mark" src="{{ $mark.RelPermalink }}" alt="" width="32" height="32">
+        <span class="brand__name">Vitrine <span>Studio</span></span>
+      </a>
+      <p>{{ T "footerClaim" }}</p>
+      <p class="site-footer__licence">{{ T "footerLicence" | safeHTML }}</p>
+    </div>
+    <nav aria-label="{{ T "footerProduct" }}">
+      <h2>{{ T "footerProduct" }}</h2>
+      <ul>
+        <li><a href="{{ $home }}#features">{{ T "navFeatures" }}</a></li>
+        <li><a href="{{ $home }}#ai">{{ T "navAI" }}</a></li>
+        <li><a href="{{ $home }}#fastlane">fastlane</a></li>
+        <li><a href="{{ $home }}#templates">{{ T "navTemplates" }}</a></li>
+        <li><a href="{{ relLangURL "download/" }}">{{ T "navDownload" }}</a></li>
+      </ul>
+    </nav>
+    <nav aria-label="{{ T "navDocs" }}">
+      <h2>{{ T "navDocs" }}</h2>
+      <ul>
+        {{- with site.GetPage "/docs" }}
+        {{- range first 6 .Pages.ByWeight }}
+        <li><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></li>
+        {{- end }}
+        {{- end }}
+      </ul>
+    </nav>
+    <nav aria-label="{{ T "footerProject" }}">
+      <h2>{{ T "footerProject" }}</h2>
+      <ul>
+        <li><a href="{{ site.Params.github }}">GitHub</a></li>
+        <li><a href="{{ site.Params.github }}/blob/main/CONTRIBUTING.md">{{ T "contributing" }}</a></li>
+        <li><a href="{{ site.Params.github }}/blob/main/LICENSE">GPL-3.0-or-later</a></li>
+        {{- with site.GetPage "/impressum" }}<li><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></li>{{ end }}
+        {{- with site.GetPage "/datenschutz" }}<li><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></li>{{ end }}
+      </ul>
+    </nav>
+  </div>
+  <div class="wrap site-footer__bottom">
+    <p>© {{ now.Year }} {{ site.Params.company }} · {{ T "footerBrandNote" }}</p>
+    <p>{{ T "footerPrivacyNote" }}</p>
+  </div>
+</footer>

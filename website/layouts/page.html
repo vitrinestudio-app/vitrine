@@ -1,0 +1,14 @@
+{{ define "main" }}
+<article class="prose-page">
+  <header class="page-hero">
+    <div class="wrap wrap--narrow">
+      {{- with .Params.eyebrow }}<p class="eyebrow">{{ . }}</p>{{ end }}
+      <h1>{{ .Title }}</h1>
+      {{- with .Params.lead }}<p class="page-hero__lead">{{ . | markdownify }}</p>{{ end }}
+    </div>
+  </header>
+  <div class="wrap wrap--narrow prose">
+    {{ .Content }}
+  </div>
+</article>
+{{ end }}

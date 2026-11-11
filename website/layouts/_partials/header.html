@@ -1,0 +1,39 @@
+{{- $home := site.Home.RelPermalink -}}
+{{- $mark := resources.Get "brand/vitrine-studio-nobackground.svg" | fingerprint -}}
+{{- $docs := site.GetPage "/docs" -}}
+<header class="site-header" data-header>
+  <div class="wrap site-header__inner">
+    <a class="brand" href="{{ $home }}" aria-label="{{ site.Title }} – {{ T "home" }}">
+      <img class="brand__mark" src="{{ $mark.RelPermalink }}" alt="" width="36" height="36">
+      <span class="brand__name">Vitrine <span>Studio</span></span>
+    </a>
+
+    <nav class="site-nav" id="site-nav" aria-label="{{ T "mainNav" }}">
+      <ul>
+        <li><a href="{{ $home }}#features">{{ T "navFeatures" }}</a></li>
+        <li><a href="{{ $home }}#ai">{{ T "navAI" }}</a></li>
+        <li><a href="{{ $home }}#fastlane">fastlane</a></li>
+        <li><a href="{{ $home }}#templates">{{ T "navTemplates" }}</a></li>
+        {{- with $docs }}
+        <li><a href="{{ .RelPermalink }}"{{ if or (eq $.Section "docs") }} aria-current="page"{{ end }}>{{ T "navDocs" }}</a></li>
+        {{- end }}
+      </ul>
+      <div class="site-nav__tools">
+        {{ partial "lang-switch.html" . }}
+        <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-label="{{ T "toggleTheme" }}" title="{{ T "toggleTheme" }}">
+          <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+          <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>
+        </button>
+        <a class="icon-btn" href="{{ site.Params.github }}" aria-label="{{ T "sourceOnGithub" }}" title="GitHub">
+          {{ partial "icon.html" "github" }}
+        </a>
+        <a class="btn btn--small btn--grad" href="{{ relLangURL "download/" }}">{{ T "navDownload" }}</a>
+      </div>
+    </nav>
+
+    <button class="icon-btn nav-toggle" type="button" aria-controls="site-nav" aria-expanded="false" data-nav-toggle>
+      <span class="visually-hidden">{{ T "menu" }}</span>
+      <span class="nav-toggle__bars" aria-hidden="true"></span>
+    </button>
+  </div>
+</header>

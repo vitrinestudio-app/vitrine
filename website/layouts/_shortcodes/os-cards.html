@@ -1,0 +1,23 @@
+{{- /* Download cards per OS. Until installers exist they say "coming soon"
+       and link to GitHub (site.Params.downloads_available). */ -}}
+{{- $soon := .Get "soon" | default "Coming soon" -}}
+{{- $get := .Get "get" | default "Download" -}}
+{{- $d := site.Params.downloads -}}
+<div class="os-grid">
+  {{- range $os := slice
+      (dict "id" "macos" "name" "macOS" "info" (.Get "macos"))
+      (dict "id" "windows" "name" "Windows" "info" (.Get "windows"))
+      (dict "id" "linux" "name" "Linux" "info" (.Get "linux")) }}
+  <div class="os-card card card--hover">
+    <span class="feature__icon">{{ partial "icon.html" "laptop" }}</span>
+    <h2>{{ $os.name }}</h2>
+    <p>{{ $os.info }}</p>
+    {{- $url := index $d $os.id }}
+    {{- if and site.Params.downloads_available $url }}
+    <a class="btn btn--grad btn--small" href="{{ $url }}">{{ partial "icon.html" "download" }}<span>{{ $get }}</span></a>
+    {{- else }}
+    <span class="badge">{{ $soon }}</span>
+    {{- end }}
+  </div>
+  {{- end }}
+</div>

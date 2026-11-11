@@ -1,0 +1,63 @@
+baseURL = 'https://www.vitrinestudio.app/'
+title = 'Vitrine Studio'
+defaultContentLanguage = 'en'
+defaultContentLanguageInSubdir = false
+enableRobotsTXT = true
+disableKinds = ['taxonomy', 'term', 'rss']
+
+# No third parties: no analytics, no embedded services, no cookies.
+[privacy]
+  [privacy.disqus]
+    disable = true
+  [privacy.googleAnalytics]
+    disable = true
+  [privacy.instagram]
+    disable = true
+  [privacy.vimeo]
+    disable = true
+  [privacy.x]
+    disable = true
+  [privacy.youTube]
+    disable = true
+
+[languages]
+  [languages.en]
+    languageName = 'English'
+    languageCode = 'en'
+    weight = 1
+    contentDir = 'content/en'
+    [languages.en.params]
+      description = 'Open-source desktop app for App Store and Google Play screenshots: design once on a continuous canvas, render for every language, device and store, upload directly – with an MCP server for AI assistants.'
+  [languages.de]
+    languageName = 'Deutsch'
+    languageCode = 'de'
+    weight = 2
+    contentDir = 'content/de'
+    [languages.de.params]
+      description = 'Open-Source-Desktop-App für App-Store- und Google-Play-Screenshots: einmal auf einer durchgehenden Leinwand gestalten, für jede Sprache, jedes Gerät und jeden Store rendern, direkt hochladen – mit MCP-Server für KI-Assistenten.'
+
+[params]
+  github = 'https://github.com/vitrinestudio-app/vitrine'
+  gallery_api = 'https://api.vitrinestudio.app'
+  company = 'Looking4Cache UG (haftungsbeschränkt)'
+  # Flip to true and fill `downloads` below once signed installers are
+  # published (phase 6.5). Until then every download button says
+  # "coming soon" and links to GitHub.
+  downloads_available = false
+  [params.downloads]
+    macos = ''
+    windows = ''
+    linux = ''
+
+[markup]
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.highlight]
+    noClasses = false
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
+
+[imaging]
+  quality = 82
+  resampleFilter = 'Lanczos'
