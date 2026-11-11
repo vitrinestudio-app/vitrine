@@ -16,30 +16,61 @@ Website: <https://www.vitrinestudio.app>
 
 ## Status
 
-**Pre-alpha. Phase 1 (core + command line) and Phase 2 (desktop editor)
-are complete; Phase 3 (languages & import) is nearly done** – per-language
-text overrides, font fallbacks, opt-in automatic hyphenation, screenshot
-import (fastlane and folder layouts), translation exchange via CSV and
-XLIFF, and imported Apple Product Bezels (still to be verified with the
-real package). Projects can be created, designed, translated, validated
-and exported in the desktop app, or headless with the `vitrine` command
-line tool; AI assistants (e.g. Claude Desktop, Claude Code) can work on
-projects through MCP – the desktop app hosts the server, so you watch the
-assistant's edits live and can undo them; store
-upload is not built yet. The full
-concept (in German) is in [`docs/KONZEPT.md`](docs/KONZEPT.md), the task
-lists in [`docs/plan/`](docs/plan/) (`phase-1.md` … `phase-4.md`, with
-known gaps under "Follow-ups"), the current state in
+**Pre-alpha.** Phases 0–4 are complete: the core and the `vitrine` command
+line tool, the desktop editor, languages & import (per-language text
+overrides, font fallbacks, opt-in automatic hyphenation, screenshot import,
+CSV/XLIFF translation exchange, imported Apple Product Bezels) and the MCP
+interface for AI assistants.
+
+- **Phase 5 – store upload** is built: App Store Connect (screenshot sets,
+  plus the App Asset Library for iPhone Duo and the App Store header and
+  search results creatives) and Google Play, always as plan → confirm →
+  execute. Real-run testing with live store accounts is in progress.
+- **Phase 6 – polish towards 1.0** is in progress. Done: colour management
+  (Display P3 and other profiles converted to sRGB), the fastlane
+  import/export layout and an `index.html` overview of every export, the
+  licence (GPL-3.0-or-later with a CLA). Next: installers and signing,
+  templates with a gallery on `api.vitrinestudio.app`, own frame packages,
+  the website [www.vitrinestudio.app](https://www.vitrinestudio.app) and the
+  documentation.
+
+The full concept (in German) is in [`docs/KONZEPT.md`](docs/KONZEPT.md),
+the task lists in [`docs/plan/`](docs/plan/) (`phase-1.md` …
+`phase-6.md`, with known gaps under "Follow-ups"), the current state in
 [`docs/plan/STATUS.md`](docs/plan/STATUS.md).
+
+### Features
+
+- **Devices**: iPhone (including the foldable iPhone Duo, open or folded),
+  iPad, Mac, Android phones and tablets, Apple Watch and Wear OS
+  (screenshot-only exports), browser windows and notebooks – parametric
+  frames, or Apple Product Bezels you import yourself.
+- **Store formats** from presets: App Store and Google Play screenshot
+  sets, App Store header and search results creatives, the Play feature
+  graphic, web slides and banners cut from the same canvas.
+- **Languages**: fallback chains for texts and screenshots, per-language
+  overrides, automatic hyphenation, CSV/XLIFF for translators.
+- **Import & export**: screenshots from fastlane snapshot/screengrab or
+  plain folders; export in Vitrine Studio's own layout or the fastlane
+  `deliver`/`supply` layout (a migration path from frameit), with an
+  `index.html` overview; incremental and colour-managed (sRGB).
+- **Store upload** to App Store Connect and Google Play from the app, the
+  CLI or an AI assistant – nothing is sent without a plan and an explicit
+  confirmation.
+- **AI assistants**: an MCP server hosted by the desktop app, with an *Add to
+  Claude Desktop* button; the assistant's edits appear live and can be
+  undone.
 
 ### Desktop editor
 
 One canvas per strip with the store gaps hatched, direct manipulation
 (move, resize, rotate, snapping), an inspector per element kind, layers,
 assets with drag & drop import, a translations table and inline text
-editing, targets from store presets, a validation panel and an export
-dialog. Every preview is rendered by the same Rust pipeline as the
-export; every change is saved immediately as plain YAML.
+editing, canvases (strips), targets from store presets and variants
+managed in one dialog, a validation panel, an export dialog and an upload
+dialog. On macOS the app menu also lives in the native menu bar. Every
+preview is rendered by the same Rust pipeline as the export; every change
+is saved immediately as plain YAML.
 
 ![The editor with the example project](docs/gui/editor-dark.jpg)
 
@@ -125,6 +156,7 @@ vitrine render --project my-app --canvas    # preview PNG: --page N | --image N 
 vitrine render --project my-app --target play-phone --page 2 --width 400 -o page.png
 vitrine export --project my-app             # all targets × languages into my-app/export/
 vitrine export --target ios-iphone-69 --lang de --force   # --force ignores the incremental cache
+vitrine export --layout fastlane --out fastlane          # deliver/supply folders instead of frameit; --no-html, --no-gallery
 
 # translations for translators (CSV or XLIFF 1.2/2.0; markup becomes protected inline tags)
 vitrine strings export --format xliff20 --lang fr -o translations/   # --format csv --context --missing-only
@@ -137,6 +169,12 @@ vitrine import screenshots fastlane/screenshots --dry-run            # --device-
 vitrine frames import /Volumes/Bezel-iPhone-18 --dry-run             # folder, zip or DMG
 vitrine frames list
 vitrine frames remove --model iphone-island                          # --color, --orientation; --all removes everything
+
+# store upload: plan (dry run, prints a confirm token) → confirm → execute
+vitrine upload plan --store apple --remote                           # --target, --lang, --force, --format json
+vitrine upload execute --confirm <token>                             # --yes for scripts; Google: --changes-not-sent-for-review
+vitrine upload log --last                                            # --events: HTTP events of the run
+vitrine upload refdata                                               # App Store asset types (read-only)
 ```
 
 Exit codes: `0` success (warnings fail only with `validate --strict`), `1`
@@ -146,12 +184,20 @@ command could not run (usage error, project not loadable, IO error).
 `<project>/.cache/render/`). Colours are used on a terminal unless
 `NO_COLOR` is set.
 
+Store accounts (App Store Connect API key, Google Play service account)
+are set up once in the desktop app (App settings → *Stores*; secrets go
+into the system keychain), the app ↔ store mapping per project (Project
+settings → *Stores*); `upload` reads them (`--app-dir` selects the app
+data folder). The desktop app has the same flow under *Upload to
+stores…*; an AI assistant can plan uploads, but executing one needs
+your confirmation in the app.
+
 ## AI assistants (MCP)
 
 Vitrine Studio speaks [MCP](https://modelcontextprotocol.io), so any MCP-capable
 assistant can create a project, add devices and texts, translate, look at
 rendered previews (`render_preview` returns a PNG), check the layout,
-validate and export. The desktop app hosts the server: the assistant works
+validate, export and plan store uploads. The desktop app hosts the server: the assistant works
 on the project you have open, every change appears live (briefly outlined,
 with a small note naming the client, e.g. "Claude Desktop: …"), is one undo
 step labelled with the client's name, and you discuss it in your assistant.

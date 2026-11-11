@@ -15,15 +15,16 @@ The binding concept is **`docs/KONZEPT.md`** (German). Read it before changing
 the model, renderer or architecture. The user communicates in German; code,
 comments, commit messages and repo docs are in English.
 
-Status: pre-alpha. Phase 1 (core + CLI) and Phase 2 (GUI editor) are
-done and reviewed; Phase 3 (languages & import, `docs/plan/phase-3.md`)
-is nearly done; Phase 4 (MCP, `docs/plan/phase-4.md`) is in progress (MCP
-server, GUI hosting + Claude Desktop integration done; real-world check
-with Claude next); Phase 5 (store upload, `docs/plan/phase-5.md`) has
-started (5.1 accounts/config, 5.3/5.4 store clients, 5.2/5.5 upload plan,
-executor, CLI/GUI/MCP; real run pending). Current state and
-decisions: `docs/plan/STATUS.md`. See
-the roadmap in KONZEPT.md §12.
+Status: pre-alpha. Phases 0–4 (spike, core + CLI, GUI editor, languages &
+import, MCP) are done. Phase 5 (store upload, `docs/plan/phase-5.md`) is
+built – App Store Connect screenshot sets + App Asset Library (iPhone Duo,
+header/search creatives), Google Play, plan → confirm → execute – and the
+owner is testing real runs. Phase 6 (polish → 1.0, `docs/plan/phase-6.md`)
+is in progress: colour management, fastlane layout + `index.html` export
+overview and the licence (GPL-3.0-or-later + CLA) are done; next are
+installer/signing, templates + gallery (`api.vitrinestudio.app`), own frame
+packages, the website and the docs. Current state and decisions:
+`docs/plan/STATUS.md`. See the roadmap in KONZEPT.md §12.
 
 ## Core ideas
 
