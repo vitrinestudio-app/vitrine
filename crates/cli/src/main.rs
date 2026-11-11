@@ -10,7 +10,7 @@
 //! (store upload: plan → confirm token → execute; `vitrine-app`) and
 //! `template` (save/list/import/export/remove/insert/new, ADR 0023) and
 //! `gallery` (login/logout/list/upload/download at api.vitrinestudio.app,
-//! ADR 0025). The CLI only
+//! ADR 0025) and `install-cli` (`vitrine` on `PATH`, ADR 0026). The CLI only
 //! formats what `vitrine-core` and `vitrine-render` compute; it never
 //! edits project fields directly.
 //!
@@ -27,6 +27,7 @@ mod fonts;
 mod frames;
 mod gallery;
 mod import;
+mod install_cli;
 mod mcp;
 mod new;
 mod project;
@@ -122,6 +123,9 @@ enum Command {
     /// Template gallery (api.vitrinestudio.app): login with GitHub,
     /// logout, list, upload, download.
     Gallery(gallery::GalleryArgs),
+    /// Make `vitrine` available in terminals (macOS: symlink in
+    /// /usr/local/bin; Windows: user PATH; Linux: ~/.local/bin).
+    InstallCli(install_cli::InstallCliArgs),
 }
 
 impl Command {
@@ -140,6 +144,7 @@ impl Command {
             Self::Upload(_) => "upload",
             Self::Template(_) => "template",
             Self::Gallery(_) => "gallery",
+            Self::InstallCli(_) => "install-cli",
         }
     }
 }
@@ -159,6 +164,7 @@ fn main() -> ExitCode {
         Command::Upload(args) => upload::run(args, &cli.global),
         Command::Template(args) => template::run(args, &cli.global),
         Command::Gallery(args) => gallery::run(args, &cli.global),
+        Command::InstallCli(args) => install_cli::run(args, &cli.global),
     };
     match result {
         Ok(code) => ExitCode::from(code),

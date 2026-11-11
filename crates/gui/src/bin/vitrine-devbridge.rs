@@ -18,7 +18,10 @@
 //! discovery file in `<app-dir>/data/mcp.json`, so `vitrine mcp
 //! --app-dir <app-dir>` or a script can drive assistant edits while the
 //! browser shows them). "Add to Claude Desktop" always writes
-//! `<app-dir>/claude_desktop_config.json` here, never the real config.
+//! `<app-dir>/claude_desktop_config.json` here, never the real config;
+//! "Install command line tool" links into `<app-dir>/bin` (macOS/Linux;
+//! on Windows it would change the real user PATH). Updates (`update_*`)
+//! are GUI-only and absent here.
 //! Store account secrets go to an in-memory keychain (lost on exit) unless
 //! `--system-keychain` is given (then `VITRINE_KEYRING_SERVICE` decides
 //! the service name; use a test name). "Test connection" calls the real
@@ -91,7 +94,8 @@ fn main() -> ExitCode {
     let paths = AppPaths::in_dir(&app_dir);
     let discovery = vitrine_mcp::discovery::path(&paths);
     let mut state = AppState::new(paths, relay.clone(), Arc::new(o.dialogs))
-        .with_claude_desktop_config(app_dir.join("claude_desktop_config.json"));
+        .with_claude_desktop_config(app_dir.join("claude_desktop_config.json"))
+        .with_cli_link_dir(app_dir.join("bin"));
     if !o.system_keychain {
         state = state.with_secret_store(vitrine_gui::stores::credentials::SecretStore::mock());
     }
