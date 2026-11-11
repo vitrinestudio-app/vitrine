@@ -11,7 +11,7 @@ use axum::{Json, Router};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{Client, St, limit};
+use super::{Client, St, login_limit, poll_limit};
 use crate::AppState;
 use crate::auth::github::{GithubError, Poll, pkce};
 use crate::auth::{self, session};
@@ -89,12 +89,15 @@ async fn sign_in(state: &AppState, access_token: String) -> ApiResult<Value> {
 }
 
 async fn device(State(state): St, client: Client) -> ApiResult<Json<Value>> {
-    limit(&state, &client, "login")?;
+    login_limit(&state, &client)?;
     let code = state
         .github
         .device_code()
         .await
         .map_err(|e| github_error(&e))?;
+    state
+        .poll_gate
+        .started(&code.device_code, code.interval, code.expires_in);
     Ok(Json(
         serde_json::to_value(code).map_err(ApiError::internal)?,
     ))
@@ -105,7 +108,21 @@ struct TokenBody {
     device_code: String,
 }
 
-async fn token(State(state): St, Json(body): Json<TokenBody>) -> ApiResult<Json<Value>> {
+fn slow_down(interval: u64) -> ApiError {
+    ApiError::new(
+        StatusCode::BAD_REQUEST,
+        "slow_down",
+        "polling too fast; wait `interval` seconds between polls",
+    )
+    .with("interval", interval)
+}
+
+async fn token(
+    State(state): St,
+    client: Client,
+    Json(body): Json<TokenBody>,
+) -> ApiResult<Json<Value>> {
+    poll_limit(&state, &client)?;
     let code = body.device_code.trim();
     if code.is_empty() || code.len() > 200 {
         return Err(ApiError::new(
@@ -114,24 +131,31 @@ async fn token(State(state): St, Json(body): Json<TokenBody>) -> ApiResult<Json<
             "`device_code` is missing or malformed",
         ));
     }
-    match state
+    // GitHub's interval is enforced here, so a fast client never makes the
+    // server poll GitHub faster than allowed.
+    if state.config.enforce_poll_interval
+        && let Err(interval) = state.poll_gate.poll(code)
+    {
+        return Err(slow_down(interval));
+    }
+    let answer = state
         .github
         .poll_device(code)
         .await
-        .map_err(|e| github_error(&e))?
-    {
+        .map_err(|e| github_error(&e));
+    match answer {
+        Ok(Poll::SlowDown(i)) => state.poll_gate.set_interval(code, i),
+        Ok(Poll::Token(_)) | Err(_) => state.poll_gate.forget(code),
+        Ok(Poll::Pending) => {}
+    }
+    match answer? {
         Poll::Token(t) => Ok(Json(sign_in(&state, t).await?)),
         Poll::Pending => Err(ApiError::new(
             StatusCode::BAD_REQUEST,
             "authorization_pending",
             "waiting for the user to enter the code on GitHub",
         )),
-        Poll::SlowDown(interval) => Err(ApiError::new(
-            StatusCode::BAD_REQUEST,
-            "slow_down",
-            "polling too fast; wait `interval` seconds between polls",
-        )
-        .with("interval", interval)),
+        Poll::SlowDown(interval) => Err(slow_down(interval)),
     }
 }
 
@@ -174,7 +198,7 @@ fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
 
 async fn web_login(State(state): St, client: Client) -> ApiResult<Response> {
     web_secret(&state)?;
-    limit(&state, &client, "login")?;
+    login_limit(&state, &client)?;
     let oauth_state = session::random_hex(32).map_err(ApiError::internal)?;
     let (verifier, challenge) = pkce().map_err(ApiError::internal)?;
     session::put_state(&state.db(), &oauth_state, &verifier)?;

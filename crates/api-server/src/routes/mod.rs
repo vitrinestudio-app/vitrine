@@ -71,10 +71,8 @@ pub(crate) fn limit(state: &AppState, client: &Client, what: &str) -> ApiResult<
     }
 }
 
-/// Rate limit of public reads (browsing stays open without login, but a
-/// single client cannot hammer the server).
-pub(crate) fn read_limit(state: &AppState, client: &Client) -> ApiResult<()> {
-    if state.read_limiter.allow(&client.0) {
+fn check(limiter: &crate::ratelimit::RateLimiter, client: &Client) -> ApiResult<()> {
+    if limiter.allow(&client.0) {
         Ok(())
     } else {
         Err(ApiError::new(
@@ -83,6 +81,22 @@ pub(crate) fn read_limit(state: &AppState, client: &Client) -> ApiResult<()> {
             "too many requests; try again later",
         ))
     }
+}
+
+/// Rate limit of public reads (browsing stays open without login, but a
+/// single client cannot hammer the server).
+pub(crate) fn read_limit(state: &AppState, client: &Client) -> ApiResult<()> {
+    check(&state.read_limiter, client)
+}
+
+/// Rate limit of login starts (each one makes the server call GitHub).
+pub(crate) fn login_limit(state: &AppState, client: &Client) -> ApiResult<()> {
+    check(&state.login_limiter, client)
+}
+
+/// Rate limit of device-flow polls.
+pub(crate) fn poll_limit(state: &AppState, client: &Client) -> ApiResult<()> {
+    check(&state.poll_limiter, client)
 }
 
 async fn health() -> Json<Value> {

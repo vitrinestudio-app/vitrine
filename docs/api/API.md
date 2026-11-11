@@ -26,8 +26,10 @@ Every template is CC0-1.0; fonts inside keep the OFL.
 | POST | `/v1/templates/{id}/report` | abuse report `{"reason": "copyright|trademark|offensive|malware|other", "message": "…"}` → 202; rate limited |
 
 The four GET routes under `/v1/templates` share a read limit per client
-(`VITRINE_API_READ_RATE_LIMIT_PER_HOUR`, default 3000); reports, uploads and
-login starts share `VITRINE_API_RATE_LIMIT_PER_HOUR` (default 20). Over the
+(`VITRINE_API_READ_RATE_LIMIT_PER_HOUR`, default 3000); reports and uploads
+share `VITRINE_API_RATE_LIMIT_PER_HOUR` (default 20); login starts
+(`VITRINE_API_LOGIN_RATE_LIMIT_PER_HOUR`, 10) and device-flow polls
+(`VITRINE_API_POLL_RATE_LIMIT_PER_HOUR`, 300) have their own. Over a
 limit: 429 `rate_limited`.
 
 Template object:
@@ -109,8 +111,11 @@ cleaned up.
 | POST | `/v1/auth/logout` | bearer session token → `{"revoked": true}` (deleted); static tokens → 400 `static_token`; unknown → 401 |
 
 The client polls `/v1/auth/github/token` at most every `interval` seconds
-(RFC 8628); the server polls GitHub once per call and keeps nothing
-between polls.
+(RFC 8628). The server polls GitHub once per call and enforces GitHub's
+interval per device code (in memory, the code kept as a hash): a poll
+sooner than the last interval (from the device start, raised by GitHub's
+`slow_down`; 5 s for codes it did not start) is answered 400 `slow_down`
+with `interval` locally, without contacting GitHub.
 
 GitHub endpoints used (GitHub docs "Authorizing OAuth apps",
 <https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps>,

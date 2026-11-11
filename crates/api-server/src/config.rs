@@ -59,6 +59,18 @@ pub struct Config {
     /// `VITRINE_API_READ_RATE_LIMIT_PER_HOUR` (default 3000): public reads
     /// (list, detail, previews, downloads) per client and hour.
     pub read_rate_limit_per_hour: u32,
+    /// `VITRINE_API_LOGIN_RATE_LIMIT_PER_HOUR` (default 10): login starts
+    /// (`POST /v1/auth/github/device`, `GET /v1/auth/github/login`) per
+    /// client and hour.
+    pub login_rate_limit_per_hour: u32,
+    /// `VITRINE_API_POLL_RATE_LIMIT_PER_HOUR` (default 300): device-flow
+    /// polls (`POST /v1/auth/github/token`) per client and hour – one flow
+    /// polled every 5 s for 15 minutes needs 180.
+    pub poll_rate_limit_per_hour: u32,
+    /// Answer polls of a device code faster than GitHub's last interval
+    /// with `slow_down` locally, without asking GitHub (default on; tests
+    /// that poll back to back switch it off).
+    pub enforce_poll_interval: bool,
     /// `VITRINE_API_PUBLIC_URL` (default `https://api.vitrinestudio.app`):
     /// base of download/preview links and of the OAuth callback.
     pub public_url: String,
@@ -95,6 +107,9 @@ impl std::fmt::Debug for Config {
             .field("trust_proxy", &self.trust_proxy)
             .field("rate_limit_per_hour", &self.rate_limit_per_hour)
             .field("read_rate_limit_per_hour", &self.read_rate_limit_per_hour)
+            .field("login_rate_limit_per_hour", &self.login_rate_limit_per_hour)
+            .field("poll_rate_limit_per_hour", &self.poll_rate_limit_per_hour)
+            .field("enforce_poll_interval", &self.enforce_poll_interval)
             .field("public_url", &self.public_url)
             .field("github_client_id", &self.github_client_id)
             .field("github_client_secret", &set(&self.github_client_secret))
@@ -119,6 +134,9 @@ impl Default for Config {
             trust_proxy: false,
             rate_limit_per_hour: 20,
             read_rate_limit_per_hour: 3000,
+            login_rate_limit_per_hour: 10,
+            poll_rate_limit_per_hour: 300,
+            enforce_poll_interval: true,
             public_url: "https://api.vitrinestudio.app".to_owned(),
             github_client_id: DEFAULT_GITHUB_CLIENT_ID.to_owned(),
             github_client_secret: None,
@@ -241,6 +259,12 @@ impl Config {
         if let Some(v) = get("VITRINE_API_READ_RATE_LIMIT_PER_HOUR") {
             c.read_rate_limit_per_hour = parse("VITRINE_API_READ_RATE_LIMIT_PER_HOUR", &v)?;
         }
+        if let Some(v) = get("VITRINE_API_LOGIN_RATE_LIMIT_PER_HOUR") {
+            c.login_rate_limit_per_hour = parse("VITRINE_API_LOGIN_RATE_LIMIT_PER_HOUR", &v)?;
+        }
+        if let Some(v) = get("VITRINE_API_POLL_RATE_LIMIT_PER_HOUR") {
+            c.poll_rate_limit_per_hour = parse("VITRINE_API_POLL_RATE_LIMIT_PER_HOUR", &v)?;
+        }
         if let Some(v) = get("VITRINE_API_PUBLIC_URL") {
             v.trim().trim_end_matches('/').clone_into(&mut c.public_url);
         }
@@ -293,6 +317,8 @@ mod tests {
             ("VITRINE_API_MAX_UPLOAD_MB", "5"),
             ("VITRINE_API_PUBLIC_URL", "https://example.test/"),
             ("VITRINE_API_SESSION_DAYS", "7"),
+            ("VITRINE_API_LOGIN_RATE_LIMIT_PER_HOUR", "3"),
+            ("VITRINE_API_POLL_RATE_LIMIT_PER_HOUR", "100"),
         ])
         .unwrap();
         assert_eq!(c.bind.port(), 9000);
@@ -304,6 +330,11 @@ mod tests {
         assert_eq!(c.max_upload, 5 * 1024 * 1024);
         assert_eq!(c.public_url, "https://example.test");
         assert_eq!(c.session_days, 7);
+        assert_eq!(
+            (c.login_rate_limit_per_hour, c.poll_rate_limit_per_hour),
+            (3, 100)
+        );
+        assert!(c.enforce_poll_interval);
         assert_eq!(c.github_client_id, DEFAULT_GITHUB_CLIENT_ID);
         assert!(c.is_official("VitrineStudio-App"));
         assert!(!c.is_official("octocat"));

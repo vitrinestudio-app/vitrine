@@ -11,6 +11,7 @@
 //! - **Admin**: `VITRINE_API_ADMIN_TOKEN` as bearer token.
 
 pub mod github;
+pub mod poll;
 pub mod session;
 
 use axum::http::HeaderMap;

@@ -54,6 +54,10 @@ pub struct AppState {
     storage: storage::Storage,
     limiter: ratelimit::RateLimiter,
     read_limiter: ratelimit::RateLimiter,
+    login_limiter: ratelimit::RateLimiter,
+    poll_limiter: ratelimit::RateLimiter,
+    /// Last poll and interval per device code (device flow).
+    poll_gate: auth::poll::PollGate,
     github: auth::github::Github,
 }
 
@@ -66,6 +70,8 @@ impl AppState {
         let storage = storage::Storage::new(config.data_dir.join("templates"));
         let limiter = ratelimit::RateLimiter::new(config.rate_limit_per_hour);
         let read_limiter = ratelimit::RateLimiter::new(config.read_rate_limit_per_hour);
+        let login_limiter = ratelimit::RateLimiter::new(config.login_rate_limit_per_hour);
+        let poll_limiter = ratelimit::RateLimiter::new(config.poll_rate_limit_per_hour);
         let github = auth::github::Github::new(
             &config.github_url,
             &config.github_api_url,
@@ -77,6 +83,9 @@ impl AppState {
             storage,
             limiter,
             read_limiter,
+            login_limiter,
+            poll_limiter,
+            poll_gate: auth::poll::PollGate::default(),
             github,
         }))
     }

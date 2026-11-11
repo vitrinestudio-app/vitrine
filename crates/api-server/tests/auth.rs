@@ -18,7 +18,18 @@ use wiremock::matchers::{body_string_contains, header as has_header, method, pat
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn app(dir: &Path, github: &MockServer, secret: Option<&str>) -> Router {
-    let config = Config {
+    app_with(dir, github, secret, |_| {})
+}
+
+fn app_with(
+    dir: &Path,
+    github: &MockServer,
+    secret: Option<&str>,
+    adjust: impl FnOnce(&mut Config),
+) -> Router {
+    let mut config = Config {
+        // These tests poll back to back; `poll_interval_is_enforced` covers it.
+        enforce_poll_interval: false,
         data_dir: dir.to_owned(),
         auto_approve: true,
         github_url: github.uri(),
@@ -33,6 +44,7 @@ fn app(dir: &Path, github: &MockServer, secret: Option<&str>) -> Router {
         }],
         ..Config::default()
     };
+    adjust(&mut config);
     router(AppState::open(config).unwrap())
 }
 
@@ -450,4 +462,74 @@ async fn web_flow_with_state_cookie_and_pkce() {
     // States are single use.
     let (s, _, _) = call(&app, callback(Some(&good))).await;
     assert_eq!(s, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn poll_interval_is_enforced_without_asking_github() {
+    let tmp = tempfile::tempdir().unwrap();
+    let github = MockServer::start().await;
+    let app = app_with(tmp.path(), &github, None, |c| {
+        c.enforce_poll_interval = true;
+    });
+    mount_device_code(&github).await;
+    mount_token_answers(&github, &[json!({"error": "authorization_pending"})]).await;
+    let start = || {
+        Request::post("/v1/auth/github/device")
+            .body(Body::empty())
+            .unwrap()
+    };
+    let poll = || post_json("/v1/auth/github/token", &json!({"device_code": "dev-123"}));
+    assert_eq!(call(&app, start()).await.0, StatusCode::OK);
+    let (_, v, _) = call(&app, poll()).await;
+    assert_eq!(v["code"], "authorization_pending");
+    // Too early (interval 5 s from the device start): answered here.
+    let (s, v, _) = call(&app, poll()).await;
+    assert_eq!(
+        (s, v["code"].as_str()),
+        (StatusCode::BAD_REQUEST, Some("slow_down"))
+    );
+    assert_eq!(v["interval"], 5);
+    let token_requests = github
+        .received_requests()
+        .await
+        .unwrap()
+        .iter()
+        .filter(|r| r.url.path() == "/login/oauth/access_token")
+        .count();
+    assert_eq!(token_requests, 1, "GitHub was polled only once");
+}
+
+#[tokio::test]
+async fn login_starts_and_polls_have_their_own_limits() {
+    let tmp = tempfile::tempdir().unwrap();
+    let github = MockServer::start().await;
+    let app = app_with(tmp.path(), &github, None, |c| {
+        c.login_rate_limit_per_hour = 2;
+        c.poll_rate_limit_per_hour = 3;
+    });
+    mount_device_code(&github).await;
+    mount_token_answers(&github, &[json!({"error": "authorization_pending"})]).await;
+    let start = || {
+        Request::post("/v1/auth/github/device")
+            .body(Body::empty())
+            .unwrap()
+    };
+    assert_eq!(call(&app, start()).await.0, StatusCode::OK);
+    assert_eq!(call(&app, start()).await.0, StatusCode::OK);
+    let (s, v, _) = call(&app, start()).await;
+    assert_eq!(
+        (s, v["code"].as_str()),
+        (StatusCode::TOO_MANY_REQUESTS, Some("rate_limited"))
+    );
+    let poll = || post_json("/v1/auth/github/token", &json!({"device_code": "dev-123"}));
+    for _ in 0..3 {
+        assert_eq!(call(&app, poll()).await.0, StatusCode::BAD_REQUEST);
+    }
+    let (s, _, _) = call(&app, poll()).await;
+    assert_eq!(s, StatusCode::TOO_MANY_REQUESTS);
+    // Uploads/reports (the write limit) are not affected by either.
+    assert_eq!(
+        call(&app, upload("static-1", "1.0.0")).await.0,
+        StatusCode::CREATED
+    );
 }

@@ -35,8 +35,10 @@ authentication in `src/auth/` (`mod` = bearer, uploader identity, admin;
 - **Device flow** for the app and CLI: the server proxies GitHub's device
   code and token endpoints (`POST /v1/auth/github/device`, `POST
   /v1/auth/github/token`), so the client needs only the API and the
-  server keeps the client id in one place. The server keeps no state
-  between polls; it maps GitHub's OAuth errors to its own codes
+  server keeps the client id in one place. It enforces GitHub's interval
+  per device code (in-memory gate; too-early polls get `slow_down` without
+  a GitHub call) and has own per-client limits for login starts (10/h)
+  and polls (300/h), so it cannot be used to hammer GitHub. It maps GitHub's OAuth errors to its own codes
   (`authorization_pending`, `slow_down` + `interval`, `expired_token`,
   `access_denied`, …).
 - **Web flow** for a future website: `state` (random, stored hashed,

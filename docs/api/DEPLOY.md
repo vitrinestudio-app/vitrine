@@ -55,8 +55,10 @@ its position among the non-empty entries ("entry 2"), never by its value.
 | `VITRINE_API_PUBLIC_URL` | `https://api.vitrinestudio.app` | base of links in responses and of the OAuth callback (`…/v1/auth/github/callback`) |
 | `VITRINE_API_TRUST_PROXY` | `0` | client address from `X-Forwarded-For` |
 | `VITRINE_API_MAX_UPLOAD_MB` | `50` | upload body limit |
-| `VITRINE_API_RATE_LIMIT_PER_HOUR` | `20` | uploads, reports, login starts per client |
+| `VITRINE_API_RATE_LIMIT_PER_HOUR` | `20` | uploads and reports per client |
 | `VITRINE_API_READ_RATE_LIMIT_PER_HOUR` | `3000` | list/detail/preview/download per client |
+| `VITRINE_API_LOGIN_RATE_LIMIT_PER_HOUR` | `10` | login starts (`POST /v1/auth/github/device`, `GET /v1/auth/github/login`) per client |
+| `VITRINE_API_POLL_RATE_LIMIT_PER_HOUR` | `300` | device-flow polls (`POST /v1/auth/github/token`) per client (one flow every 5 s for 15 min = 180) |
 | `VITRINE_API_AUTO_APPROVE` | `0` | uploads public at once (testing only) |
 | `VITRINE_API_ADMIN_TOKEN` | – | moderation bearer token (unset = moderation off) |
 | `VITRINE_API_UPLOAD_TOKENS` | – | static upload tokens `token:login[:github_id],…` |
@@ -95,7 +97,7 @@ is ignored.
 | `GALLERY_TRUST_PROXY` | `VITRINE_API_TRUST_PROXY` |
 | `GALLERY_RATE_LIMIT_PER_HOUR` | `VITRINE_API_RATE_LIMIT_PER_HOUR` |
 | `GALLERY_PUBLIC_URL` | `VITRINE_API_PUBLIC_URL` |
-| – | new: `VITRINE_API_READ_RATE_LIMIT_PER_HOUR`, `VITRINE_API_GITHUB_CLIENT_ID`, `VITRINE_API_GITHUB_CLIENT_SECRET`, `VITRINE_API_SESSION_DAYS`, `VITRINE_API_OFFICIAL_LOGINS`, `VITRINE_API_WEB_LOGIN_RETURN_URL` |
+| – | new: `VITRINE_API_READ_RATE_LIMIT_PER_HOUR`, `VITRINE_API_LOGIN_RATE_LIMIT_PER_HOUR`, `VITRINE_API_POLL_RATE_LIMIT_PER_HOUR`, `VITRINE_API_GITHUB_CLIENT_ID`, `VITRINE_API_GITHUB_CLIENT_SECRET`, `VITRINE_API_SESSION_DAYS`, `VITRINE_API_OFFICIAL_LOGINS`, `VITRINE_API_WEB_LOGIN_RETURN_URL` |
 
 The old `GALLERY_*` variables are no longer read: a stack that still sets
 only them starts with defaults (moderation off, no static tokens).
