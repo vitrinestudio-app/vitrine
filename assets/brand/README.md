@@ -25,6 +25,8 @@ files in this folder, the app icons generated from them
 |---|---|
 | `vitrine-studio.svg` | Logo mark, full bleed (website, favicon, docs) |
 | `vitrine-studio-appicon.svg` | App icon on the macOS grid (824 px squircle on a 1024 canvas, soft shadow) – source of `crates/gui/icons/*` |
+| `vitrine-studio-nobackground.svg` / `.png` | Mark without the white tile (three pages only, transparent background) – website, docs, dark backgrounds |
+| `vitrine-studio.png` | 1024 px PNG of the full-bleed mark |
 | `vitrine-studio-mono.svg` | One-colour mark (menu bar / template images, small sizes) |
 
 The motif is the core idea of the app: three store pages with gaps, and one

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024">
+  <defs>
+    <style>
+      .cls-1{fill:url(#linear-gradient-1)}
+      .cls-2{fill:#ffffff;opacity:0.28}
+      .cls-3{fill:none;stroke:#ffffff;stroke-opacity:0.35;stroke-width:20.7}
+    </style>
+    <clipPath id="clip-path-1">
+      <path d="M397 236 C397 210.595 417.595 190 443 190 L581 190 C606.405 190 627 210.595 627 236 L627 788 C627 813.405 606.405 834 581 834 L443 834 C417.595 834 397 813.405 397 788 Z M118.7 316.5 C118.7 291.095 139.295 270.5 164.7 270.5 L302.7 270.5 C328.105 270.5 348.7 291.095 348.7 316.5 L348.7 707.5 C348.7 732.905 328.105 753.5 302.7 753.5 L164.7 753.5 C139.295 753.5 118.7 732.905 118.7 707.5 Z M675.3 316.5 C675.3 291.095 695.895 270.5 721.3 270.5 L859.3 270.5 C884.705 270.5 905.3 291.095 905.3 316.5 L905.3 707.5 C905.3 732.905 884.705 753.5 859.3 753.5 L721.3 753.5 C695.895 753.5 675.3 732.905 675.3 707.5 Z"/>
+    </clipPath>
+    <linearGradient id="linear-gradient-1" x1="95.7" y1="155.5" x2="896.521" y2="482.803" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6a5bff"/>
+      <stop offset="0.5" stop-color="#c04bf2"/>
+      <stop offset="1" stop-color="#ff7a59"/>
+    </linearGradient>
+  </defs>
+  <title>vitrine-studio.svg</title>
+  <g id="Layer_1" data-name="Layer 1">
+    <g clip-path="url(#clip-path-1)">
+      <rect x="95.7" y="155.5" width="832.6" height="713" class="cls-1"/>
+      <path d="M95.7 661.5 C302.7 523.5 521.2 799.5 928.3 569.5 L928.3 868.5 L95.7 868.5 Z" class="cls-2"/>
+      <path d="M95.7 466 C337.2 362.5 567.2 569.5 928.3 408.5" class="cls-3"/>
+    </g>
+  </g>
+</svg>
