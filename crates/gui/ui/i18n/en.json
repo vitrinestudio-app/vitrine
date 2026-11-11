@@ -667,6 +667,7 @@
   "fonts.system": "System fonts",
   "fonts.system.loaded": "Loaded as last resort",
   "fonts.system.off": "Not used (see the app settings).",
+  "fonts.system.unneeded": "On, but not needed: the bundled and project fonts cover every character of the texts.",
   "fonts.system_setting": "System fonts",
   "fonts.system_setting.on": "Use system fonts as last resort",
   "fonts.system_setting.hint": "For characters no bundled or project font has. Preview and export then depend on the fonts of this computer.",

@@ -309,6 +309,13 @@ impl Session {
         }))
     }
 
+    /// Whether the system font fallback (app setting) is on. System
+    /// families are only loaded for characters no bundled or project font
+    /// covers, so it can be on with none loaded.
+    pub fn system_font_fallback(&self) -> bool {
+        self.system_fonts.load(Ordering::Relaxed)
+    }
+
     /// Turns the system font fallback (app setting) on or off; rebuilds
     /// the render context when it changes.
     pub fn set_system_font_fallback(&self, on: bool) {

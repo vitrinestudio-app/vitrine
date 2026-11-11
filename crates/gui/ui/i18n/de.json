@@ -667,6 +667,7 @@
   "fonts.system": "Systemschriften",
   "fonts.system.loaded": "Als letzter Ausweg geladen",
   "fonts.system.off": "Nicht verwendet (siehe App-Einstellungen).",
+  "fonts.system.unneeded": "Eingeschaltet, aber nicht nötig: Die mitgelieferten und Projektschriften decken alle Zeichen der Texte ab.",
   "fonts.system_setting": "Systemschriften",
   "fonts.system_setting.on": "Systemschriften als letzten Ausweg verwenden",
   "fonts.system_setting.hint": "Für Zeichen, die keine mitgelieferte oder Projektschrift hat. Vorschau und Export hängen dann von den Schriften dieses Computers ab.",

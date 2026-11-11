@@ -273,6 +273,39 @@ fn validate_strings_catalog() {
     );
 }
 
+/// Regression: the project settings showed "Not used" while the app
+/// setting was on, because only the (often empty) list of loaded system
+/// families was reported.
+#[test]
+fn catalog_fonts_reports_system_fallback_setting() {
+    let f = fixture();
+    let fonts = call(&f.app, "catalog_fonts", Value::Null);
+    assert_eq!(fonts["system_enabled"], false);
+    call(
+        &f.app,
+        "settings_set",
+        json!({"settings": {"system_font_fallback": true}}),
+    );
+    // Without a project: the setting itself.
+    assert_eq!(
+        call(&f.app, "catalog_fonts", Value::Null)["system_enabled"],
+        true
+    );
+    // Opening applies the setting to the session.
+    open(&f);
+    let fonts = call(&f.app, "catalog_fonts", Value::Null);
+    assert_eq!(fonts["system_enabled"], true);
+    assert!(fonts["system"].is_array());
+    call(
+        &f.app,
+        "settings_set",
+        json!({"settings": {"system_font_fallback": false}}),
+    );
+    let fonts = call(&f.app, "catalog_fonts", Value::Null);
+    assert_eq!(fonts["system_enabled"], false);
+    assert_eq!(fonts["system"], json!([]));
+}
+
 #[test]
 fn export_emits_progress() {
     let f = fixture();
