@@ -95,6 +95,9 @@ bytes = "1.12.1"
 tower-service = "0.3.3"
 tokio-util = "0.7.20"
 getrandom = "0.3.4"
+# Template gallery backend (crates/gallery-server, ADR 0023): HTTP server.
+axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1", "json", "query"] }
+tower = "0.5.3"
 tauri = { version = "2.12.5", features = [] }
 tauri-build = { version = "2.7.4", features = [] }
 # File dialogs, used from Rust only (the web view keeps `core:default`).
