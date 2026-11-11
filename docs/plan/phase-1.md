@@ -9,7 +9,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## 1.1 Data model + YAML IO (`core`)
 - [x] Types: `Project`, `Languages` (default, available, fallback), `Styles`
-      (colors, text styles, span styles, shadow presets), `Strip` (page aspect,
+      (colors, text styles, span styles, shadow presets), `Canvas` (page aspect,
       count, backgrounds, elements, variants), `Element` (common props: id, kind,
       page, at, size, rotation, pivot, opacity, z, anchor_y, clip, visible_in) with
       kinds background / device / text / image / shape / group, `Variant`
@@ -23,7 +23,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Round-trip tests (load → save = identical), insta snapshots
 
 ## 1.2 Operations API (`core`)
-- [x] `Op` enum (add/update/remove element, set string, add/update strip,
+- [x] `Op` enum (add/update/remove element, set string, add/update canvas,
       add/update/remove target, set variant override, set styles, …), patch types
 - [x] `Project::apply(op) -> Result<Inverse>`; validation before apply
 - [x] Transactions (`apply_ops`) = one undo step; in-memory history
@@ -41,7 +41,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       generic-laptop, browser, imac, generic-monitor, none — outer size, display
       rect, radii, cutouts, colour variants, orientations, screenshot aspect
 - [x] Catalog loader embedded via `include_str!`, tests
-- [x] Optional page ids in the strip page spec (`ids: [hero, …]`, default
+- [x] Optional page ids in the canvas page spec (`ids: [hero, …]`, default
       `page-01`) for export naming
 - [x] Ops check device models, colour variants, gallery presets and store
       slot values against the catalog

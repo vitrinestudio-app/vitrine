@@ -8,14 +8,15 @@ use serde::Serialize;
 use super::{EditError, Editor, Handle, local_to_canvas, move_point};
 use crate::geometry::{Rect, Vec2};
 use crate::layout::{TextDiagnostic, TextLayouter, layout_text, span_styles};
-use crate::model::{ElementId, ElementKindTag, Lang, StripId, TargetId, VariantId};
+use crate::model::{CanvasId, ElementId, ElementKindTag, Lang, TargetId, VariantId};
 use crate::resolve::{ResolvedKind, ResolvedScene};
 
 /// Everything the GUI draws on top of the rendered preview.
 #[derive(Clone, Debug, Serialize)]
 pub struct Overlay {
     pub target: TargetId,
-    pub strip: StripId,
+    /// Canvas shown (its id).
+    pub canvas_id: CanvasId,
     pub lang: Lang,
     /// Variant shown and edited (`None` = base elements).
     pub variant: Option<VariantId>,
@@ -293,7 +294,7 @@ impl Editor<'_> {
 
         Overlay {
             target: scene.target.clone(),
-            strip: scene.strip.clone(),
+            canvas_id: scene.canvas.clone(),
             lang: scene.lang.clone(),
             variant: self.variant.clone(),
             canvas: frame.canvas,

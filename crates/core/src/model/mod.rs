@@ -5,6 +5,7 @@
 //! relative to the element's home page (0-based `page` index), colours are
 //! `#RRGGBB[AA]` or `@name` references into `styles.colors`.
 
+mod canvas;
 mod color;
 mod common;
 mod element;
@@ -13,7 +14,6 @@ pub(crate) mod fmt;
 mod ids;
 mod import;
 mod store;
-mod strip;
 mod style;
 mod target;
 
@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+pub use canvas::{Canvas, PageSpec, Variant};
 pub use color::{ColorRef, Rgba};
 pub use common::{AnchorY, Aspect, Clip, FitMode, PixelSize, Point, VisibleIn};
 pub use element::{
@@ -30,13 +31,12 @@ pub use element::{
     TextBox, TextFit, TextProps, VAlign,
 };
 pub use fill::{Fill, GradientStop, ImageFillMode};
-pub use ids::{ElementId, Lang, StringKey, StripId, TargetId, VariantId, is_valid_id};
+pub use ids::{CanvasId, ElementId, Lang, StringKey, TargetId, VariantId, is_valid_id};
 pub use import::{ImportMapping, ImportSettings};
 pub use store::{
     ApplePlatform, AppleStore, AppleUploadFlowSetting, GoogleStore, StoreKind, StoreLocaleMaps,
     StoreSettings,
 };
-pub use strip::{PageSpec, Strip, Variant};
 pub use style::{
     BUILTIN_SHADOWS, FontSettings, FrameStyle, Glow, ShadowLayer, ShadowPreset, SpanStyle,
     StyleKind, Styles, TextStyle, TextTransform, is_valid_family_name,
@@ -66,7 +66,7 @@ pub struct Project {
     #[serde(default, skip_serializing_if = "Styles::is_empty")]
     pub styles: Styles,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub strips: Vec<Strip>,
+    pub canvases: Vec<Canvas>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub targets: Vec<Target>,
     /// Store mapping: apps, account references, locale map (Phase 5).
@@ -146,7 +146,7 @@ impl Project {
             name: name.to_owned(),
             languages: Languages::new(default_lang),
             styles: Styles::default(),
-            strips: Vec::new(),
+            canvases: Vec::new(),
             targets: Vec::new(),
             store: StoreSettings::default(),
             import: ImportSettings::default(),
@@ -161,23 +161,23 @@ impl Project {
     /// langs.en: at`.
     pub fn drop_override_nulls(&mut self) -> Vec<String> {
         let mut out = Vec::new();
-        for s in &mut self.strips {
+        for s in &mut self.canvases {
             out.extend(s.drop_override_nulls());
         }
         out
     }
 
-    pub fn strip(&self, id: &str) -> Option<&Strip> {
-        self.strips.iter().find(|s| s.id.as_str() == id)
+    pub fn canvas(&self, id: &str) -> Option<&Canvas> {
+        self.canvases.iter().find(|s| s.id.as_str() == id)
     }
 
     pub fn target(&self, id: &str) -> Option<&Target> {
         self.targets.iter().find(|t| t.id.as_str() == id)
     }
 
-    /// Find an element by id in any strip (also inside groups).
-    pub fn element(&self, id: &str) -> Option<(&Strip, &Element)> {
-        self.strips
+    /// Find an element by id in any canvas (also inside groups).
+    pub fn element(&self, id: &str) -> Option<(&Canvas, &Element)> {
+        self.canvases
             .iter()
             .find_map(|s| s.element(id).map(|e| (s, e)))
     }
@@ -209,15 +209,15 @@ impl Project {
             ));
         }
         self.languages.check()?;
-        let mut strips = std::collections::BTreeSet::new();
+        let mut canvases = std::collections::BTreeSet::new();
         let mut elements = std::collections::BTreeSet::new();
-        for s in &self.strips {
-            if !strips.insert(&s.id) {
-                return Err(format!("duplicate strip id `{}`", s.id));
+        for s in &self.canvases {
+            if !canvases.insert(&s.id) {
+                return Err(format!("duplicate canvas id `{}`", s.id));
             }
             s.page
                 .check()
-                .map_err(|e| format!("strip `{}`: {e}", s.id))?;
+                .map_err(|e| format!("canvas `{}`: {e}", s.id))?;
             let mut dup = None;
             s.walk_elements(&mut |e| {
                 if !elements.insert(&e.id) && dup.is_none() {

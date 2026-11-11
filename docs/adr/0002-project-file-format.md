@@ -47,7 +47,7 @@ for byte, tested).
 - Properties whose default depends on the kind (`anchor_y`, `clip`) are
   `Option`s: an explicitly written default (`anchor_y: top`) is kept.
 - **Maps are written sorted by key** (`BTreeMap`): palette colours, styles,
-  variants, overrides, fallbacks, translations. Lists (strips, elements,
+  variants, overrides, fallbacks, translations. Lists (canvases, elements,
   backgrounds, targets) keep their order; element order is painting order.
 - Unknown fields are errors everywhere (`deny_unknown_fields`), reported
   with file, line, column and a snippet.
@@ -57,12 +57,12 @@ for byte, tested).
 - `format: vitrine/1` first; unknown formats are rejected.
 - **Ids are strings**: ASCII letters, digits, `-`, `_`, `.`, starting with a
   letter or digit. Element ids are unique across the whole project (ops
-  address elements by id alone); strip, target ids are unique in the
-  project, variant ids within their strip. Translation keys are flat
+  address elements by id alone); canvas, target ids are unique in the
+  project, variant ids within their canvas. Translation keys are flat
   strings and may contain dots (`hero.title`).
 - **Page ids**: `page: {aspect, count, ids: [hero, planner]}`; `ids` is
   optional and may be shorter than `count`, missing ids default to
-  `page-01`, `page-02` … (1-based). Page ids are unique within the strip and
+  `page-01`, `page-02` … (1-based). Page ids are unique within the canvas and
   name the export files (`<nn>_<page-id>.png`). Elements still refer to
   pages by index, so renaming a page id never breaks a reference.
 - **`page` is a 0-based index** (home page). Positions are relative to the

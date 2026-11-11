@@ -165,7 +165,7 @@ styles:
   set in variant overrides.
 - `RenameStyle {kind: color|text|span|shadow, from, to}` renames a style
   token and every reference in one undoable op: styles, elements,
-  variant overrides, language overrides, strip backgrounds, and for span
+  variant overrides, language overrides, canvas backgrounds, and for span
   styles the `[from]` tags in all translations (escaped `\[from]` stays).
   A name already in use is refused; a built-in shadow name may be taken
   over when the project does not define it yet.
@@ -197,7 +197,7 @@ null}` moved an English title to (0, 0)). Now:
 - Edits in a variant or language scope treat a `null` field as "remove it
   from the override" (`Editor::patch`; an override left empty disappears).
 - `SetVariantOverride`, `SetLangOverride`, `AddElement` (`langs`,
-  `overrides`), `AddStrip`, `AddLanguage` drop `null` fields from override
+  `overrides`), `AddCanvas`, `AddLanguage` drop `null` fields from override
   patches (`ElementPatch::drop_nulls`).
 - Loading drops `null` fields inside overrides of a hand-written file
   (`Project::drop_override_nulls`, recorded in

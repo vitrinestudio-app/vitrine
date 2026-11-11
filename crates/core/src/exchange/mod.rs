@@ -248,7 +248,7 @@ pub fn output_paths(files: &[ExportFile], out: &Path, out_is_dir: bool) -> Vec<P
         .collect()
 }
 
-/// Bytes → text: strips a UTF-8 BOM, decodes UTF-16 with BOM.
+/// Bytes → text: canvases a UTF-8 BOM, decodes UTF-16 with BOM.
 pub(crate) fn decode_text(data: &[u8]) -> Result<String, ExchangeError> {
     if let Some(rest) = data.strip_prefix(b"\xEF\xBB\xBF") {
         return String::from_utf8(rest.to_vec()).map_err(|_| ExchangeError::NotUtf8);

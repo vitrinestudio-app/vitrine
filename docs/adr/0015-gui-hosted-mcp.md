@@ -66,7 +66,7 @@ into it only when `Host::Gui`:
 `project_close` `project-closed`; the UI follows them when the actor is
 Claude (start screen → editor). `project-edited` with actor Claude makes
 the UI refresh like after its own edit (`editor.remoteEdit`; full reload
-when targets, languages or strips were added), outline the touched
+when targets, languages or canvases were added), outline the touched
 elements on the canvas for 1.5 s (`--claude` colour, SVG overlay; opacity
 animated per frame because the CSP forbids inline styles), stack a toast
 "Claude: <label>" (click selects the elements) and add the step to the
@@ -76,7 +76,7 @@ already read "Claude: …" (ADR 0013), so the undo tooltip shows them.
 
 GUI-hosted tool calls run with the GUI's `ViewState` in a thread-local
 (`params::with_gui_view`): omitted `target` defaults to the target the
-user looks at (when it shows the strip in question), omitted `lang` to the
+user looks at (when it shows the canvas in question), omitted `lang` to the
 GUI's language (edit context, `render_preview`, `layout_report`,
 `element_add`). Headless keeps the first target / default language.
 

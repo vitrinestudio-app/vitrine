@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use super::{Op, OpError, check_id, find_mut, invalid, list_mut};
 use crate::model::{
-    ColorRef, Element, ElementId, ElementKind, ElementPatch, Lang, Project, StringKey, StripId,
+    CanvasId, ColorRef, Element, ElementId, ElementKind, ElementPatch, Lang, Project, StringKey,
     StyleKind, TargetId, VariantId,
 };
 
@@ -33,7 +33,7 @@ impl Project {
                 id: to.to_string(),
             });
         }
-        let s = &mut self.strips[loc.strip];
+        let s = &mut self.canvases[loc.canvas];
         let e = find_mut(&mut s.elements, from.as_str())
             .ok_or_else(|| OpError::UnknownElement(from.to_string()))?;
         e.id = to.clone();
@@ -45,23 +45,23 @@ impl Project {
         Ok(Op::RenameElement { from: to, to: from })
     }
 
-    pub(super) fn rename_strip(&mut self, from: StripId, to: StripId) -> Result<Op, OpError> {
-        check_id("strip id", to.as_str())?;
-        let si = self.strip_index(&from)?;
+    pub(super) fn rename_canvas(&mut self, from: CanvasId, to: CanvasId) -> Result<Op, OpError> {
+        check_id("canvas id", to.as_str())?;
+        let si = self.canvas_index(&from)?;
         if from == to {
-            return Ok(Op::RenameStrip { from, to });
+            return Ok(Op::RenameCanvas { from, to });
         }
-        if self.strip(to.as_str()).is_some() {
+        if self.canvas(to.as_str()).is_some() {
             return Err(OpError::DuplicateId {
-                what: "strip",
+                what: "canvas",
                 id: to.to_string(),
             });
         }
-        self.strips[si].id = to.clone();
-        for t in self.targets.iter_mut().filter(|t| t.strip == from) {
-            t.strip = to.clone();
+        self.canvases[si].id = to.clone();
+        for t in self.targets.iter_mut().filter(|t| t.canvas == from) {
+            t.canvas = to.clone();
         }
-        Ok(Op::RenameStrip { from: to, to: from })
+        Ok(Op::RenameCanvas { from: to, to: from })
     }
 
     pub(super) fn rename_target(&mut self, from: TargetId, to: TargetId) -> Result<Op, OpError> {
@@ -82,7 +82,7 @@ impl Project {
                 *t = to.clone();
             }
         };
-        for s in &mut self.strips {
+        for s in &mut self.canvases {
             walk_mut(&mut s.elements, &mut |e| {
                 if let Some(v) = &mut e.visible_in {
                     rename(&mut v.targets);
@@ -101,16 +101,16 @@ impl Project {
 
     pub(super) fn rename_variant(
         &mut self,
-        strip: StripId,
+        canvas: CanvasId,
         from: VariantId,
         to: VariantId,
     ) -> Result<Op, OpError> {
         check_id("variant id", to.as_str())?;
-        let si = self.strip_index(&strip)?;
-        let variants = &mut self.strips[si].variants;
+        let si = self.canvas_index(&canvas)?;
+        let variants = &mut self.canvases[si].variants;
         if !variants.contains_key(&from) {
             return Err(OpError::UnknownVariant {
-                strip: strip.to_string(),
+                canvas: canvas.to_string(),
                 variant: from.to_string(),
             });
         }
@@ -124,13 +124,13 @@ impl Project {
             let v = variants.remove(&from).unwrap_or_default();
             variants.insert(to.clone(), v);
             for t in &mut self.targets {
-                if t.strip == strip && t.variant.as_ref() == Some(&from) {
+                if t.canvas == canvas && t.variant.as_ref() == Some(&from) {
                     t.variant = Some(to.clone());
                 }
             }
         }
         Ok(Op::RenameVariant {
-            strip,
+            canvas,
             from: to,
             to: from,
         })
@@ -143,7 +143,7 @@ impl Project {
         index: Option<usize>,
     ) -> Result<Op, OpError> {
         let loc = self.locate(&id)?;
-        let s = &self.strips[loc.strip];
+        let s = &self.canvases[loc.canvas];
         if let Some(p) = parent {
             let pe = s
                 .element(p.as_str())
@@ -175,7 +175,7 @@ impl Project {
             }
         };
         let index = super::check_index(index, len)?;
-        let s = &mut self.strips[loc.strip];
+        let s = &mut self.canvases[loc.canvas];
         let e = list_mut(s, loc.parent.as_ref()).remove(loc.index);
         list_mut(s, parent).insert(index, e);
         Ok(Op::MoveElementTo {
@@ -187,7 +187,7 @@ impl Project {
 
     pub(super) fn reset_override_field(
         &mut self,
-        strip: StripId,
+        canvas: CanvasId,
         variant: VariantId,
         element: ElementId,
         field: &str,
@@ -195,7 +195,7 @@ impl Project {
         if !ElementPatch::is_field_name(field) {
             return Err(invalid(format!("unknown element field `{field}`")));
         }
-        let v = self.variant_mut(&strip, &variant)?;
+        let v = self.variant_mut(&canvas, &variant)?;
         let Some(patch) = v.overrides.get_mut(&element) else {
             return Err(invalid(format!(
                 "variant `{variant}` has no override for `{element}`"
@@ -211,7 +211,7 @@ impl Project {
             v.overrides.remove(&element);
         }
         Ok(Op::SetVariantOverride {
-            strip,
+            canvas,
             variant,
             element,
             patch: Some(old),
@@ -274,7 +274,7 @@ impl Project {
         self.languages = languages;
         let strings = self.strings.remove(&lang).unwrap_or_default();
         let mut lang_overrides = BTreeMap::new();
-        for s in &mut self.strips {
+        for s in &mut self.canvases {
             walk_mut(&mut s.elements, &mut |e| {
                 if let ElementKind::Text(t) = &mut e.kind
                     && let Some(p) = t.langs.remove(&lang)
@@ -294,7 +294,7 @@ impl Project {
     /// Is `key` used by a text element or a variant override?
     pub fn string_key_in_use(&self, key: &str) -> bool {
         let mut used = false;
-        for s in &self.strips {
+        for s in &self.canvases {
             s.walk_elements(&mut |e| {
                 if let ElementKind::Text(t) = &e.kind {
                     used |= t.text.as_str() == key;
@@ -332,7 +332,7 @@ impl Project {
                 m.insert(to.clone(), v);
             }
         }
-        for s in &mut self.strips {
+        for s in &mut self.canvases {
             walk_mut(&mut s.elements, &mut |e| {
                 if let ElementKind::Text(t) = &mut e.kind
                     && t.text == from
@@ -433,7 +433,7 @@ impl Project {
                 }
             }
         }
-        for s in &mut self.strips {
+        for s in &mut self.canvases {
             if kind == StyleKind::Color {
                 for b in &mut s.backgrounds {
                     for c in b.colors_mut() {

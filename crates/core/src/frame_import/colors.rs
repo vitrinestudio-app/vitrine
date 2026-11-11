@@ -84,8 +84,8 @@ pub fn set_default_frame_ops(
     let (old_default, new_default) = (effective(&project.styles.frame), effective(&frame));
     let mut colors = Vec::new();
     if old_default != new_default {
-        for strip in &project.strips {
-            strip.walk_elements(&mut |e| {
+        for canvas in &project.canvases {
+            canvas.walk_elements(&mut |e| {
                 let ElementKind::Device(d) = &e.kind else {
                     return;
                 };
@@ -104,7 +104,7 @@ pub fn set_default_frame_ops(
                     base_color = c;
                 }
                 // Variant overrides that inherit the project default.
-                for (vid, v) in &strip.variants {
+                for (vid, v) in &canvas.variants {
                     let Some(p) = v.overrides.get(&e.id) else {
                         continue;
                     };
@@ -132,7 +132,7 @@ pub fn set_default_frame_ops(
                     let mut patch = p.clone();
                     patch.color = Some(c);
                     colors.push(Op::SetVariantOverride {
-                        strip: strip.id.clone(),
+                        canvas: canvas.id.clone(),
                         variant: vid.clone(),
                         element: e.id.clone(),
                         patch: Some(patch),
@@ -307,7 +307,7 @@ mod tests {
         .unwrap();
         // An override colour in a variant.
         p.apply(Op::SetVariantOverride {
-            strip: p.strips[0].id.clone(),
+            canvas: p.canvases[0].id.clone(),
             variant: VariantId::new("tablet-landscape"),
             element: phone.clone(),
             patch: Some(crate::io::from_yaml("{ rotation: -4, color: black-titanium }").unwrap()),
@@ -319,7 +319,7 @@ mod tests {
         assert_eq!(ops.len(), 3);
         p.apply_ops(ops).unwrap();
         assert_eq!(color(&p).as_deref(), Some("silver"));
-        let over = &p.strips[0].variants[&VariantId::new("tablet-landscape")].overrides[&phone];
+        let over = &p.canvases[0].variants[&VariantId::new("tablet-landscape")].overrides[&phone];
         assert_eq!(over.color, Some(Some("black".into())));
         assert_eq!(
             set_default_frame_ops(&p, apple, Some(&ix)),

@@ -18,7 +18,7 @@ styles:
   spans:
     accent:   { color: "@accent" }
 
-strips:
+canvases:
   - id: phone
     page: { aspect: "1320:2868", count: 5 }
     backgrounds:
@@ -57,14 +57,14 @@ strips:
 
 targets:
   - id: ios-phone-69
-    strip: phone
+    canvas: phone
     size: [1320, 2868]
     screenshots: ios-phone            # welche Screenshot-Variante
     gallery: appstore-iphone          # Lücken-Preset
     store: { apple: { display_type: APP_IPHONE_67 } }   # gegen aktuelle API prüfen
 
   - id: android-phone
-    strip: phone
+    canvas: phone
     size: [1080, 2160]                # ≤ 2:1, Anker passen Layout an
     screenshots: android-phone
     device_map: { iphone-island: android-punchhole }    # Gerätetausch
@@ -72,7 +72,7 @@ targets:
     store: { google: { image_type: phoneScreenshots } }
 
   - id: ios-ipad-13-landscape
-    strip: phone
+    canvas: phone
     variant: tablet-landscape
     group: 2                          # 2 Handy-Seiten → 1 Querformat-Bild
     size: [2752, 2064]
@@ -83,7 +83,7 @@ targets:
 
   - id: blog-header
     kind: banner                      # ein durchgehendes Bild statt Einzelseiten
-    strip: phone
+    canvas: phone
     region: { pages: [0, 2] }         # Seiten 1–3; alternativ freies Rechteck
     size: [2400, 1000]
     fit: cover

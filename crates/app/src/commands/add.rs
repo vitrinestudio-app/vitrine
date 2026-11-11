@@ -2,7 +2,7 @@
 //! Text / Image / Shape / Background". The element is built here with
 //! sensible defaults for the view (device model from the target's catalog
 //! preset, a new translation key with placeholder text, the `headline`
-//! style …) and added to the base strip as one undo step, centred on the
+//! style …) and added to the base canvas as one undo step, centred on the
 //! given page.
 
 use std::collections::BTreeMap;
@@ -71,8 +71,8 @@ const MAX_SHARE: f64 = 0.6;
 
 /// Catalog device for `target`: its preset's device (preset = target id,
 /// else a preset with the same screenshot folder), else the first device
-/// of the strip, else the first phone of the catalog.
-fn default_model(project: &Project, target: Option<&Target>, strip: &str) -> String {
+/// of the canvas, else the first phone of the catalog.
+fn default_model(project: &Project, target: Option<&Target>, canvas: &str) -> String {
     let preset = target.and_then(|t| {
         catalog::target_preset(t.id.as_str())
             .filter(|p| p.device.is_some())
@@ -87,7 +87,7 @@ fn default_model(project: &Project, target: Option<&Target>, strip: &str) -> Str
         return d;
     }
     let mut existing = None;
-    if let Some(s) = project.strip(strip) {
+    if let Some(s) = project.canvas(canvas) {
         s.walk_elements(&mut |e| {
             if existing.is_none()
                 && let ElementKind::Device(d) = &e.kind
@@ -142,7 +142,7 @@ struct Placement<'a> {
     project: &'a Project,
     dir: &'a Path,
     target: Option<&'a Target>,
-    strip: &'a str,
+    canvas: &'a str,
     id: &'a str,
     page: u32,
     page_h: f64,
@@ -166,7 +166,7 @@ fn build(
             let model = args
                 .model
                 .clone()
-                .unwrap_or_else(|| default_model(p, at.target, at.strip));
+                .unwrap_or_else(|| default_model(p, at.target, at.canvas));
             let dev = catalog::device(&model)
                 .ok_or_else(|| CommandError::not_found(format!("unknown device `{model}`")))?;
             json!({
@@ -262,11 +262,11 @@ pub fn element_add(app: &AppState, args: ElementAddArgs) -> CmdResult<EditResult
         None
     };
     edit(app, &args.view(), format!("Add {label_kind}"), |s, p, c| {
-        let strip = with_editor(s, p, c, |ed| Ok(ed.strip().clone()))?;
-        if args.page >= strip.page.count {
+        let canvas = with_editor(s, p, c, |ed| Ok(ed.canvas().clone()))?;
+        if args.page >= canvas.page.count {
             return Err(CommandError::invalid(format!(
-                "page {} does not exist (the strip has {})",
-                args.page, strip.page.count
+                "page {} does not exist (the canvas has {})",
+                args.page, canvas.page.count
             )));
         }
         let id = match &args.id {
@@ -284,10 +284,10 @@ pub fn element_add(app: &AppState, args: ElementAddArgs) -> CmdResult<EditResult
             project: p,
             dir: s.dir(),
             target: p.target(c.target.as_str()),
-            strip: strip.id.as_str(),
+            canvas: canvas.id.as_str(),
             id: id.as_str(),
             page: args.page,
-            page_h: strip.page.aspect.page_height(),
+            page_h: canvas.page.aspect.page_height(),
         };
         let (mut element, mut ops, index) =
             build(kind, &args, image_default.as_deref(), &placement)?;
@@ -308,7 +308,7 @@ pub fn element_add(app: &AppState, args: ElementAddArgs) -> CmdResult<EditResult
         let element: Element = serde_json::from_value(element)
             .map_err(|e| CommandError::invalid(format!("invalid element: {e}")))?;
         ops.push(Op::AddElement {
-            strip: strip.id.clone(),
+            canvas: canvas.id.clone(),
             parent: None,
             index,
             element,

@@ -4,7 +4,7 @@
 //! Every `edit_*` command takes the view context `{target, lang, variant}`
 //! (`target` default: the first target, `lang` default: the project's
 //! default language; `variant` missing = the target's own variant, `null` =
-//! the base elements, a name = that variant of the target's strip), turns
+//! the base elements, a name = that variant of the target's canvas), turns
 //! the gesture into ops with a [`core::edit::Editor`](Editor) and applies
 //! them as **one** undo step with a readable history label. Commands taking
 //! several `ids` plan them one after another on a scratch copy, so each
@@ -81,7 +81,7 @@ pub struct ViewContext {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lang: Option<String>,
     /// Missing = the target's own variant, `null` = the base elements, a
-    /// name = that variant of the target's strip.
+    /// name = that variant of the target's canvas.
     #[serde(
         default,
         deserialize_with = "double_option",
@@ -134,7 +134,7 @@ impl From<EditError> for CommandError {
             EditError::Resolve(e) => e.into(),
             EditError::Op(e) => e.into(),
             EditError::UnknownElement(_)
-            | EditError::WrongStrip { .. }
+            | EditError::WrongCanvas { .. }
             | EditError::UnknownVariant { .. } => {
                 CommandError::new(ErrorCode::NotFound, e.to_string())
             }
@@ -209,36 +209,36 @@ pub(super) struct Plan {
 }
 
 /// The edit context for element `id`: `ctx` when its target shows the
-/// element's strip, else the same context on the first target showing that
-/// strip, so one command can edit elements of several strips in one undo
-/// step (e.g. "bring all titles to front" on the iPhone and iPad strips).
-/// A named variant must exist in that strip too.
+/// element's canvas, else the same context on the first target showing that
+/// canvas, so one command can edit elements of several canvases in one undo
+/// step (e.g. "bring all titles to front" on the iPhone and iPad canvases).
+/// A named variant must exist in that canvas too.
 pub(super) fn ctx_for(project: &Project, ctx: &EditContext, id: &str) -> CmdResult<EditContext> {
-    let Some((strip, _)) = project.element(id) else {
+    let Some((canvas, _)) = project.element(id) else {
         return Ok(ctx.clone()); // the editor reports the unknown element
     };
     if project
         .target(ctx.target.as_str())
-        .is_some_and(|t| t.strip == strip.id)
+        .is_some_and(|t| t.canvas == canvas.id)
     {
         return Ok(ctx.clone());
     }
     let target = project
         .targets
         .iter()
-        .find(|t| t.strip == strip.id)
+        .find(|t| t.canvas == canvas.id)
         .ok_or_else(|| {
             CommandError::invalid(format!(
-                "element `{id}`: no target shows its strip `{}`",
-                strip.id
+                "element `{id}`: no target shows its canvas `{}`",
+                canvas.id
             ))
         })?;
     if let Some(Some(v)) = &ctx.variant
-        && !strip.variants.contains_key(v)
+        && !canvas.variants.contains_key(v)
     {
         return Err(CommandError::not_found(format!(
-            "element `{id}`: strip `{}` has no variant `{v}`",
-            strip.id
+            "element `{id}`: canvas `{}` has no variant `{v}`",
+            canvas.id
         )));
     }
     let mut out = ctx.clone();
@@ -247,8 +247,8 @@ pub(super) fn ctx_for(project: &Project, ctx: &EditContext, id: &str) -> CmdResu
 }
 
 /// Plans `f` for each of `ids` in turn on a scratch copy of `project`, so
-/// later intents see the effect of earlier ones. Elements of other strips
-/// than the view's are planned on a target showing their strip
+/// later intents see the effect of earlier ones. Elements of other canvases
+/// than the view's are planned on a target showing their canvas
 /// ([`ctx_for`]).
 fn plan_each(
     session: &Session,
@@ -285,7 +285,7 @@ fn parents(project: &Project) -> BTreeMap<String, String> {
         }
     }
     let mut out = BTreeMap::new();
-    for s in &project.strips {
+    for s in &project.canvases {
         walk(&s.elements, &mut out);
     }
     out
@@ -324,7 +324,7 @@ fn top_level(project: &Project, ids: &[String]) -> CmdResult<Vec<String>> {
 /// Position of every element in painting (list) order.
 fn list_order(project: &Project) -> BTreeMap<String, usize> {
     let mut out = BTreeMap::new();
-    for s in &project.strips {
+    for s in &project.canvases {
         s.walk_elements(&mut |e| {
             let n = out.len();
             out.insert(e.id.to_string(), n);
@@ -785,12 +785,12 @@ pub enum OverrideScope {
 pub struct ElementResetOverrideArgs {
     #[serde(default)]
     pub id: Option<String>,
-    /// Several elements, also of different strips (one undo step).
+    /// Several elements, also of different canvases (one undo step).
     #[serde(default)]
     pub ids: Vec<String>,
     pub scope: OverrideScope,
-    /// `variant`: the variant (default: per strip, the variant of `target`
-    /// when it shows the strip, else of the first target showing it).
+    /// `variant`: the variant (default: per canvas, the variant of `target`
+    /// when it shows the canvas, else of the first target showing it).
     #[serde(default)]
     pub variant: Option<String>,
     /// `lang`: the language whose override is reset (exactly this one,
@@ -805,22 +805,22 @@ pub struct ElementResetOverrideArgs {
     pub target: Option<String>,
 }
 
-/// The variant of `strip` an override reset without explicit variant
-/// works on: that of `target` when it shows the strip, else that of the
-/// first target showing the strip.
+/// The variant of `canvas` an override reset without explicit variant
+/// works on: that of `target` when it shows the canvas, else that of the
+/// first target showing the canvas.
 fn default_variant(
     project: &Project,
     target: Option<&str>,
-    strip: &vitrine_core::model::Strip,
+    canvas: &vitrine_core::model::Canvas,
 ) -> CmdResult<VariantId> {
     let t = target
         .and_then(|t| project.target(t))
-        .filter(|t| t.strip == strip.id)
-        .or_else(|| project.targets.iter().find(|t| t.strip == strip.id));
+        .filter(|t| t.canvas == canvas.id)
+        .or_else(|| project.targets.iter().find(|t| t.canvas == canvas.id));
     t.and_then(|t| t.variant.clone()).ok_or_else(|| {
         CommandError::invalid(format!(
-            "no variant given and the target showing strip `{}` has none; pass `variant`",
-            strip.id
+            "no variant given and the target showing canvas `{}` has none; pass `variant`",
+            canvas.id
         ))
     })
 }
@@ -937,17 +937,17 @@ fn reset_lang_ops(
 
 /// Ops resetting the fields of `args` in the variant override of `id`.
 fn reset_variant_ops(p: &Project, id: &str, args: &ElementResetOverrideArgs) -> CmdResult<Vec<Op>> {
-    let (strip, e) = p
+    let (canvas, e) = p
         .element(id)
         .ok_or_else(|| CommandError::not_found(format!("unknown element `{id}`")))?;
     let v = match &args.variant {
         Some(v) => VariantId::parse(v).map_err(CommandError::invalid)?,
-        None => default_variant(p, args.target.as_deref(), strip)?,
+        None => default_variant(p, args.target.as_deref(), canvas)?,
     };
-    let Some(var) = strip.variants.get(&v) else {
+    let Some(var) = canvas.variants.get(&v) else {
         return Err(CommandError::not_found(format!(
-            "strip `{}` has no variant `{v}`",
-            strip.id
+            "canvas `{}` has no variant `{v}`",
+            canvas.id
         )));
     };
     if !var.overrides.contains_key(&e.id) {
@@ -960,7 +960,7 @@ fn reset_variant_ops(p: &Project, id: &str, args: &ElementResetOverrideArgs) -> 
     let mut ops = Vec::new();
     for f in fields {
         ops.extend(vitrine_core::edit::reset_override(
-            p, &strip.id, &v, &e.id, f,
+            p, &canvas.id, &v, &e.id, f,
         )?);
     }
     Ok(ops)

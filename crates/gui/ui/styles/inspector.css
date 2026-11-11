@@ -1,4 +1,4 @@
-/* Inspector, its form controls and the strip settings (task 2.6). */
+/* Inspector, its form controls and the canvas settings (task 2.6). */
 
 /* A little more room for the inspector than the shell default. */
 .app {
@@ -743,7 +743,7 @@ body.scrubbing * {
   color: var(--danger);
 }
 
-/* Strip settings. */
+/* Canvas settings. */
 .page-ids {
   display: grid;
   grid-template-columns: 1fr 1fr;

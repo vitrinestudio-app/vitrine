@@ -1,4 +1,4 @@
-//! Output targets: render a strip into a concrete pixel size, optionally
+//! Output targets: render a canvas into a concrete pixel size, optionally
 //! with device swaps, grouping, a variant and a store slot.
 
 use std::collections::BTreeMap;
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::common::PixelSize;
 use super::fmt::{flow_map, flow_seq, flow_style, num};
-use super::ids::{Lang, StripId, TargetId, VariantId, is_valid_id};
+use super::ids::{CanvasId, Lang, TargetId, VariantId, is_valid_id};
 use crate::catalog::{CornerRadius, GalleryProfile};
 
 /// Pages export (one image per page or page group) or one banner image.
@@ -57,7 +57,7 @@ pub struct Target {
     pub id: TargetId,
     #[serde(default, skip_serializing_if = "TargetKind::is_pages")]
     pub kind: TargetKind,
-    pub strip: StripId,
+    pub canvas: CanvasId,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant: Option<VariantId>,
     /// Pages per export image (`group: 2` = two portrait pages side by side).
@@ -76,7 +76,7 @@ pub struct Target {
         serialize_with = "flow_map"
     )]
     pub device_map: BTreeMap<String, String>,
-    /// Banner only: part of the strip (default: whole strip).
+    /// Banner only: part of the canvas (default: whole canvas).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region: Option<Region>,
     /// Banner only (default `cover`).
@@ -161,11 +161,11 @@ impl SafeArea {
 }
 
 impl Target {
-    pub fn new(id: TargetId, strip: StripId, size: PixelSize) -> Self {
+    pub fn new(id: TargetId, canvas: CanvasId, size: PixelSize) -> Self {
         Self {
             id,
             kind: TargetKind::Pages,
-            strip,
+            canvas,
             variant: None,
             group: None,
             size,

@@ -18,8 +18,8 @@ use crate::catalog::Device;
 use crate::frame_import::{BezelChoice, select_bezel};
 use crate::geometry::{CanvasLayout, Rect, Vec2};
 use crate::model::{
-    Align, AnchorY, Clip, DeviceProps, Element, ElementId, ElementKind, ElementPatch, FitMode,
-    FrameStyle, ImageProps, Orientation, PixelSize, Project, Rgba, ShapeKind, ShapeProps, Strip,
+    Align, AnchorY, Canvas, Clip, DeviceProps, Element, ElementId, ElementKind, ElementPatch,
+    FitMode, FrameStyle, ImageProps, Orientation, PixelSize, Project, Rgba, ShapeKind, ShapeProps,
     Target, TextProps, VAlign, VariantId,
 };
 
@@ -31,7 +31,7 @@ pub const DEFAULT_TEXT_WIDTH: f64 = 840.0;
 pub(super) struct Inputs<'a> {
     pub project: &'a Project,
     pub target: &'a Target,
-    pub strip: &'a Strip,
+    pub canvas: &'a Canvas,
     pub lang: &'a str,
     pub chain: Vec<String>,
     pub layout: CanvasLayout,
@@ -67,12 +67,12 @@ pub(super) fn resolve_elements(
     let (variant_id, variant) = match &inp.target.variant {
         None => (None, None),
         Some(v) => {
-            if let Some(var) = inp.strip.variants.get(v) {
+            if let Some(var) = inp.canvas.variants.get(v) {
                 (Some(v.clone()), Some(var))
             } else {
                 d.warn(
                     DiagnosticCode::UnknownVariant,
-                    format!("strip `{}` has no variant `{v}`", inp.strip.id),
+                    format!("canvas `{}` has no variant `{v}`", inp.canvas.id),
                 );
                 (None, None)
             }
@@ -80,7 +80,7 @@ pub(super) fn resolve_elements(
     };
     if let Some(var) = variant {
         for id in var.overrides.keys() {
-            if inp.strip.element(id.as_str()).is_none() {
+            if inp.canvas.element(id.as_str()).is_none() {
                 d.warn(
                     DiagnosticCode::UnknownOverrideElement,
                     format!("variant override for unknown element `{id}`"),
@@ -100,7 +100,7 @@ pub(super) fn resolve_elements(
             .unwrap_or(FrameStyle::Detailed),
         out: Vec::new(),
     };
-    for e in &inp.strip.elements {
+    for e in &inp.canvas.elements {
         w.element(e, d);
     }
     d.element = None;
@@ -166,12 +166,12 @@ impl Walker<'_, '_> {
         if !self.visible(&e) {
             return;
         }
-        if e.page >= self.inp.strip.page.count {
+        if e.page >= self.inp.canvas.page.count {
             d.warn(
                 DiagnosticCode::PageOutOfRange,
                 format!(
-                    "home page {} is outside the strip ({} pages)",
-                    e.page, self.inp.strip.page.count
+                    "home page {} is outside the canvas ({} pages)",
+                    e.page, self.inp.canvas.page.count
                 ),
             );
         }

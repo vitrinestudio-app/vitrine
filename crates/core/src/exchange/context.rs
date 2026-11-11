@@ -19,7 +19,7 @@ pub const AVG_CHAR_EM: f64 = 0.55;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct KeyUsage {
     pub element: String,
-    pub strip: String,
+    pub canvas: String,
     /// 1-based page number (as shown in the GUI).
     pub page: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -45,11 +45,14 @@ impl KeyUsage {
         Some(per_line * self.max_lines?)
     }
 
-    /// One line for a note: `title-plan (strip phone, page 1, style
+    /// One line for a note: `title-plan (canvas phone, page 1, style
     /// headline): box 860 lu, max 2 lines, ≈ 17 chars/line (≈ 24 at the
     /// minimum size)`.
     pub fn describe(&self) -> String {
-        let mut s = format!("{} (strip {}, page {}", self.element, self.strip, self.page);
+        let mut s = format!(
+            "{} (canvas {}, page {}",
+            self.element, self.canvas, self.page
+        );
         if let Some(st) = &self.style {
             let _ = write!(s, ", style {st}");
         }
@@ -105,7 +108,7 @@ fn chars(width: f64, size: f64) -> Option<u32> {
     })
 }
 
-fn usage(p: &Project, strip: &str, e: &Element) -> Option<(String, KeyUsage)> {
+fn usage(p: &Project, canvas: &str, e: &Element) -> Option<(String, KeyUsage)> {
     let ElementKind::Text(t) = &e.kind else {
         return None;
     };
@@ -131,7 +134,7 @@ fn usage(p: &Project, strip: &str, e: &Element) -> Option<(String, KeyUsage)> {
         t.text.to_string(),
         KeyUsage {
             element: e.id.to_string(),
-            strip: strip.to_owned(),
+            canvas: canvas.to_owned(),
             page: e.page + 1,
             style: t.style.clone(),
             box_width,
@@ -145,7 +148,7 @@ fn usage(p: &Project, strip: &str, e: &Element) -> Option<(String, KeyUsage)> {
 /// Context of every key used by a text element.
 pub fn key_contexts(p: &Project) -> BTreeMap<String, KeyContext> {
     let mut out: BTreeMap<String, KeyContext> = BTreeMap::new();
-    for s in &p.strips {
+    for s in &p.canvases {
         s.walk_elements(&mut |e| {
             if let Some((key, u)) = usage(p, s.id.as_str(), e) {
                 out.entry(key).or_default().usages.push(u);
@@ -158,7 +161,7 @@ pub fn key_contexts(p: &Project) -> BTreeMap<String, KeyContext> {
 /// All keys: used by a text element or present in any language.
 pub fn all_keys(p: &Project) -> BTreeSet<String> {
     let mut keys = BTreeSet::new();
-    for s in &p.strips {
+    for s in &p.canvases {
         s.walk_elements(&mut |e| {
             if let ElementKind::Text(t) = &e.kind {
                 keys.insert(t.text.to_string());

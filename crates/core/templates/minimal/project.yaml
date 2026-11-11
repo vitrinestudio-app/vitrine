@@ -8,7 +8,7 @@ name: __NAME__
 languages:
   default: __DEFAULT_LANG__
   available: __LANGS__
-strips:
+canvases:
 - id: main
   page: {aspect: 1320:2868, count: 1, ids: [home]}
   backgrounds:
@@ -32,7 +32,7 @@ strips:
     screenshot: home
 targets:
 - id: ios-iphone-69
-  strip: main
+  canvas: main
   size: [1320, 2868]
   screenshots: ios-phone
   gallery: appstore-iphone

@@ -43,7 +43,7 @@ For every target (filtered) and each of its languages (`langs`, default
 all available; filtered): `resolve` → map its diagnostics → lay out every
 text with `layout::layout_text` (the same helper the renderer uses) → per
 element checks. Store rules and the anchor check run once per target on
-the first resolved frame. A target with an unknown strip is reported and
+the first resolved frame. A target with an unknown canvas is reported and
 skipped.
 
 ### Levels (decisions)
@@ -86,7 +86,7 @@ skipped.
   presets (`APP_IPHONE_DUO`) → info. Alpha: exports never have an alpha
   channel, so `alpha: false` holds by construction.
 - Anchors: a pages target without variant whose page (column) height
-  deviates from the strip's by more than `Thresholds::variant_aspect`
+  deviates from the canvas's by more than `Thresholds::variant_aspect`
   (**15 %**, `DEFAULT_VARIANT_ASPECT`) → info suggesting a variant.
 - An element whose (rotated) bounds touch no page → warn.
 - Catalog-unknown `screenshots` variant key on a target → info (custom

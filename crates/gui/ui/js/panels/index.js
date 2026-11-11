@@ -8,7 +8,7 @@ import { t } from '../i18n.js';
 import { store, viewArgs } from '../store.js';
 import * as assets from './assets.js';
 import * as layers from './layers.js';
-import * as strips from './strips.js';
+import * as canvases from './canvases.js';
 import * as translations from './translations.js';
 
 /**
@@ -27,7 +27,7 @@ export function panelContext() {
 
 /** Left sidebar tabs, in order: `{ id, icon, title (i18n key), module }`. */
 export const SIDEBAR_TABS = [
-  { id: 'strips', icon: 'strips', title: 'panel.strips', module: strips },
+  { id: 'canvases', icon: 'canvases', title: 'panel.canvases', module: canvases },
   { id: 'layers', icon: 'layers', title: 'panel.layers', module: layers },
   { id: 'assets', icon: 'assets', title: 'panel.assets', module: assets },
   { id: 'translations', icon: 'translations', title: 'panel.translations', module: translations },

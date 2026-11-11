@@ -1,4 +1,4 @@
-// Form controls of the inspector and the strip settings (task 2.6):
+// Form controls of the inspector and the canvas settings (task 2.6):
 // numeric inputs with scrub-drag labels, colour inputs with project and
 // catalog swatches, selects, segmented controls, toggles, text inputs and
 // the fill editor (colour, gradients with stops, image).

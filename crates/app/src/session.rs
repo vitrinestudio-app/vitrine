@@ -55,9 +55,9 @@ pub struct Changes {
     pub name: bool,
     pub languages: bool,
     pub styles: bool,
-    /// Strips whose spec, backgrounds, variants or elements changed, plus
-    /// added and removed strips.
-    pub strips: Vec<String>,
+    /// Canvases whose spec, backgrounds, variants or elements changed, plus
+    /// added and removed canvases.
+    pub canvases: Vec<String>,
     /// Added, removed or changed elements (a group also counts as changed
     /// when one of its children changed).
     pub elements: Vec<String>,
@@ -91,13 +91,13 @@ impl Changes {
                 .filter(|i| seen.insert(i.clone()))
                 .collect()
         };
-        let strip_ids = ids(
-            old.strips.iter().map(|s| s.id.to_string()).collect(),
-            new.strips.iter().map(|s| s.id.to_string()).collect(),
+        let canvas_ids = ids(
+            old.canvases.iter().map(|s| s.id.to_string()).collect(),
+            new.canvases.iter().map(|s| s.id.to_string()).collect(),
         );
-        c.strips = strip_ids
+        c.canvases = canvas_ids
             .into_iter()
-            .filter(|id| old.strip(id) != new.strip(id))
+            .filter(|id| old.canvas(id) != new.canvas(id))
             .collect();
         let (old_el, new_el) = (elements(old), elements(new));
         let el_ids = ids(
@@ -137,7 +137,7 @@ impl Changes {
 /// All elements by id (including group children).
 fn elements(p: &Project) -> BTreeMap<String, &Element> {
     let mut out = BTreeMap::new();
-    for s in &p.strips {
+    for s in &p.canvases {
         s.walk_elements(&mut |e| {
             out.insert(e.id.to_string(), e);
         });
@@ -252,11 +252,11 @@ pub fn label_for(ops: &[Op]) -> String {
     let one = |op: &Op| -> String {
         let v = serde_json::to_value(op).unwrap_or_default();
         let tag = v.get("op").and_then(|t| t.as_str()).unwrap_or("change");
-        let id = ["id", "key", "strip"]
+        let id = ["id", "key", "canvas"]
             .iter()
             .find_map(|k| v.get(k).and_then(|x| x.as_str()))
             .or_else(|| {
-                ["element", "target", "strip"]
+                ["element", "target", "canvas"]
                     .iter()
                     .find_map(|k| v.get(k).and_then(|x| x.get("id")).and_then(|x| x.as_str()))
             });

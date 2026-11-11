@@ -1,7 +1,7 @@
 //! Inspector and layers commands: read one element as base / override /
 //! effective values, patch fields (base or variant override decided in
 //! core, [`Editor::patch`]), rename, re-arrange in the layer tree, and the
-//! strip settings (page geometry, backgrounds, variants).
+//! canvas settings (page geometry, backgrounds, variants).
 //!
 //! Like the `edit_*` commands every change is one undo step and answers
 //! with an [`EditResult`]; a change that changes nothing answers
@@ -13,10 +13,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use vitrine_core::Project;
 use vitrine_core::model::{
-    Aspect, ElementId, ElementKindTag, ElementPatch, Fill, Lang, StringKey, Strip, Variant,
+    Aspect, Canvas, ElementId, ElementKindTag, ElementPatch, Fill, Lang, StringKey, Variant,
     VariantId,
 };
-use vitrine_core::ops::{Op, StripPatch, TargetPatch};
+use vitrine_core::ops::{CanvasPatch, Op, TargetPatch};
 use vitrine_core::resolve::{lang_chain, lookup_text};
 
 use super::AppState;
@@ -50,7 +50,7 @@ pub struct ElementText {
 pub struct ElementInfo {
     pub id: String,
     pub kind: ElementKindTag,
-    pub strip: String,
+    pub canvas: String,
     /// Enclosing group.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<String>,
@@ -99,16 +99,16 @@ pub fn element_get(app: &AppState, args: ElementGetArgs) -> CmdResult<ElementInf
     let lang = ctx.lang.to_string();
     let (variant, overridden, (lang_langs, lang_overridden)) =
         with_editor(&session, &project, &ctx, |ed| {
-            // Checks that the element exists in the view's strip.
+            // Checks that the element exists in the view's canvas.
             ed.kind(&args.id)
                 .ok_or_else(|| vitrine_core::edit::EditError::UnknownElement(args.id.clone()))?;
             if project
                 .element(&args.id)
-                .is_none_or(|(s, _)| s.id != ed.strip().id)
+                .is_none_or(|(s, _)| s.id != ed.canvas().id)
             {
-                return Err(vitrine_core::edit::EditError::WrongStrip {
+                return Err(vitrine_core::edit::EditError::WrongCanvas {
                     element: args.id.clone(),
-                    strip: ed.strip().id.to_string(),
+                    canvas: ed.canvas().id.to_string(),
                 });
             }
             Ok((
@@ -117,12 +117,12 @@ pub fn element_get(app: &AppState, args: ElementGetArgs) -> CmdResult<ElementInf
                 ed.lang_overridden_fields(&args.id),
             ))
         })?;
-    let (strip, e) = project
+    let (canvas, e) = project
         .element(&args.id)
         .ok_or_else(|| CommandError::not_found(format!("unknown element `{}`", args.id)))?;
     let over = variant
         .as_ref()
-        .and_then(|v| strip.variants.get(v))
+        .and_then(|v| canvas.variants.get(v))
         .and_then(|v| v.overrides.get(&e.id))
         .cloned();
     let effective = match &over {
@@ -162,8 +162,8 @@ pub fn element_get(app: &AppState, args: ElementGetArgs) -> CmdResult<ElementInf
     Ok(ElementInfo {
         id: e.id.to_string(),
         kind: e.kind_tag(),
-        strip: strip.id.to_string(),
-        parent: parent_of(strip, &e.id),
+        canvas: canvas.id.to_string(),
+        parent: parent_of(canvas, &e.id),
         children: e.children().iter().map(|c| c.id.to_string()).collect(),
         variant: variant.map(|v| v.to_string()),
         base: element_json(e)?,
@@ -177,9 +177,9 @@ pub fn element_get(app: &AppState, args: ElementGetArgs) -> CmdResult<ElementInf
     })
 }
 
-fn parent_of(strip: &Strip, id: &ElementId) -> Option<String> {
+fn parent_of(canvas: &Canvas, id: &ElementId) -> Option<String> {
     let mut out = None;
-    strip.walk_elements(&mut |e| {
+    canvas.walk_elements(&mut |e| {
         if e.children().iter().any(|c| &c.id == id) {
             out = Some(e.id.to_string());
         }
@@ -335,7 +335,7 @@ pub fn element_patch(app: &AppState, args: ElementPatchArgs) -> CmdResult<EditRe
                 }
                 if !patch.is_empty() {
                     // Each id has its own element and override: independent
-                    // ops (elements of other strips on a target showing
+                    // ops (elements of other canvases on a target showing
                     // theirs).
                     let c = ctx_for(&scratch, &c, id)?;
                     part.extend(with_editor(s, &scratch, &c, |ed| ed.patch(id, patch))?);
@@ -384,7 +384,7 @@ pub fn edit_rename(app: &AppState, args: EditRenameArgs) -> CmdResult<EditResult
 view_args! {
     pub struct EditArrangeArgs {
         pub id: String,
-        /// Group to move into (`null`/missing = top level of the strip).
+        /// Group to move into (`null`/missing = top level of the canvas).
         #[serde(default)]
         pub parent: Option<String>,
         /// Position in the new list after taking the element out (0 =
@@ -410,15 +410,15 @@ pub fn edit_arrange(app: &AppState, args: EditArrangeArgs) -> CmdResult<EditResu
     })
 }
 
-// ----- strips ------------------------------------------------------------------
+// ----- canvases ------------------------------------------------------------------
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct StripArgs {
-    pub strip: String,
+pub struct CanvasArgs {
+    pub canvas: String,
 }
 
-/// A variant of a strip.
+/// A variant of a canvas.
 #[derive(Debug, Clone, Serialize)]
 pub struct VariantInfo {
     pub id: String,
@@ -430,9 +430,9 @@ pub struct VariantInfo {
     pub targets: Vec<String>,
 }
 
-/// Strip settings.
+/// Canvas settings.
 #[derive(Debug, Clone, Serialize)]
-pub struct StripInfo {
+pub struct CanvasInfo {
     pub id: String,
     /// `w:h`.
     pub aspect: String,
@@ -445,20 +445,20 @@ pub struct StripInfo {
     /// Canvas backgrounds, bottom to top.
     pub backgrounds: Vec<Fill>,
     pub variants: Vec<VariantInfo>,
-    /// Targets showing the strip.
+    /// Targets showing the canvas.
     pub targets: Vec<String>,
 }
 
-fn strip_of<'p>(p: &'p Project, id: &str) -> CmdResult<&'p Strip> {
-    p.strip(id)
-        .ok_or_else(|| CommandError::not_found(format!("unknown strip `{id}`")))
+fn canvas_of<'p>(p: &'p Project, id: &str) -> CmdResult<&'p Canvas> {
+    p.canvas(id)
+        .ok_or_else(|| CommandError::not_found(format!("unknown canvas `{id}`")))
 }
 
-pub fn strip_get(app: &AppState, args: StripArgs) -> CmdResult<StripInfo> {
+pub fn canvas_get(app: &AppState, args: CanvasArgs) -> CmdResult<CanvasInfo> {
     let session = app.session()?;
     session.with_project(|p| {
-        let s = strip_of(p, &args.strip)?;
-        Ok(StripInfo {
+        let s = canvas_of(p, &args.canvas)?;
+        Ok(CanvasInfo {
             id: s.id.to_string(),
             aspect: s.page.aspect.to_string(),
             count: s.page.count,
@@ -476,7 +476,7 @@ pub fn strip_get(app: &AppState, args: StripArgs) -> CmdResult<StripInfo> {
                     targets: p
                         .targets
                         .iter()
-                        .filter(|t| t.strip == s.id && t.variant.as_ref() == Some(id))
+                        .filter(|t| t.canvas == s.id && t.variant.as_ref() == Some(id))
                         .map(|t| t.id.to_string())
                         .collect(),
                 })
@@ -484,7 +484,7 @@ pub fn strip_get(app: &AppState, args: StripArgs) -> CmdResult<StripInfo> {
             targets: p
                 .targets
                 .iter()
-                .filter(|t| t.strip == s.id)
+                .filter(|t| t.canvas == s.id)
                 .map(|t| t.id.to_string())
                 .collect(),
         })
@@ -494,8 +494,8 @@ pub fn strip_get(app: &AppState, args: StripArgs) -> CmdResult<StripInfo> {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[allow(clippy::option_option)]
-pub struct StripPatchArgs {
-    pub strip: String,
+pub struct CanvasPatchArgs {
+    pub canvas: String,
     #[serde(default)]
     pub aspect: Option<String>,
     /// Page count; explicit page ids beyond it are dropped. Refused while
@@ -511,9 +511,9 @@ pub struct StripPatchArgs {
 }
 
 /// Elements (incl. group children) whose home page is `>= count`.
-fn on_pages_from(strip: &Strip, count: u32) -> Vec<String> {
+fn on_pages_from(canvas: &Canvas, count: u32) -> Vec<String> {
     let mut out = Vec::new();
-    strip.walk_elements(&mut |e| {
+    canvas.walk_elements(&mut |e| {
         if e.page >= count {
             out.push(e.id.to_string());
         }
@@ -521,11 +521,11 @@ fn on_pages_from(strip: &Strip, count: u32) -> Vec<String> {
     out
 }
 
-pub fn strip_patch(app: &AppState, args: StripPatchArgs) -> CmdResult<EditResult> {
+pub fn canvas_patch(app: &AppState, args: CanvasPatchArgs) -> CmdResult<EditResult> {
     let session = app.session()?;
     let project = session.snapshot();
-    let s = strip_of(&project, &args.strip)?;
-    let mut patch = StripPatch::default();
+    let s = canvas_of(&project, &args.canvas)?;
+    let mut patch = CanvasPatch::default();
     let mut what = Vec::new();
     if let Some(a) = &args.aspect {
         let a = Aspect::parse(a).map_err(CommandError::invalid)?;
@@ -536,7 +536,7 @@ pub fn strip_patch(app: &AppState, args: StripPatchArgs) -> CmdResult<EditResult
     }
     let count = args.count.unwrap_or(s.page.count);
     if count == 0 {
-        return Err(CommandError::invalid("a strip needs at least one page"));
+        return Err(CommandError::invalid("a canvas needs at least one page"));
     }
     if count != s.page.count {
         let blocked = on_pages_from(s, count);
@@ -583,7 +583,7 @@ pub fn strip_patch(app: &AppState, args: StripPatchArgs) -> CmdResult<EditResult
         session.unchanged()
     } else {
         session.apply_ops(
-            vec![Op::UpdateStrip {
+            vec![Op::UpdateCanvas {
                 id: s.id.clone(),
                 patch,
             }],
@@ -596,14 +596,14 @@ pub fn strip_patch(app: &AppState, args: StripPatchArgs) -> CmdResult<EditResult
     })
 }
 
-/// A change to the variants of a strip.
+/// A change to the variants of a canvas.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 #[allow(clippy::option_option)]
 pub enum VariantAction {
     /// Add a variant: empty (optionally with a content scale) or a copy
     /// of variant `from` (its content scale and overrides); `targets` of
-    /// the strip show it from then on (same undo step).
+    /// the canvas show it from then on (same undo step).
     Add {
         id: String,
         #[serde(default)]
@@ -628,16 +628,16 @@ pub enum VariantAction {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct StripVariantArgs {
-    pub strip: String,
+pub struct CanvasVariantArgs {
+    pub canvas: String,
     pub change: VariantAction,
 }
 
-/// Ops adding variant `id` to `strip` (empty, or a copy of `from` with
+/// Ops adding variant `id` to `canvas` (empty, or a copy of `from` with
 /// `content_scale` replaced when given) and making `targets` show it.
 fn variant_add_ops(
     project: &Project,
-    strip: &vitrine_core::model::StripId,
+    canvas: &vitrine_core::model::CanvasId,
     id: &str,
     content_scale: Option<f64>,
     from: Option<&str>,
@@ -647,11 +647,11 @@ fn variant_add_ops(
     let variant = match from {
         Some(f) => {
             let mut v = project
-                .strip(strip.as_str())
+                .canvas(canvas.as_str())
                 .and_then(|s| s.variants.get(f))
                 .cloned()
                 .ok_or_else(|| {
-                    CommandError::not_found(format!("unknown variant `{f}` of `{strip}`"))
+                    CommandError::not_found(format!("unknown variant `{f}` of `{canvas}`"))
                 })?;
             if content_scale.is_some() {
                 v.content_scale = content_scale;
@@ -664,15 +664,15 @@ fn variant_add_ops(
         },
     };
     let mut ops = vec![Op::AddVariant {
-        strip: strip.clone(),
+        canvas: canvas.clone(),
         id: new.clone(),
         variant,
     }];
     for t in targets {
         let target = project
             .target(t)
-            .filter(|x| &x.strip == strip)
-            .ok_or_else(|| CommandError::invalid(format!("`{t}` is not a target of `{strip}`")))?;
+            .filter(|x| &x.canvas == canvas)
+            .ok_or_else(|| CommandError::invalid(format!("`{t}` is not a target of `{canvas}`")))?;
         ops.push(Op::UpdateTarget {
             id: target.id.clone(),
             patch: TargetPatch {
@@ -684,10 +684,10 @@ fn variant_add_ops(
     Ok(ops)
 }
 
-pub fn strip_variant(app: &AppState, args: StripVariantArgs) -> CmdResult<EditResult> {
+pub fn canvas_variant(app: &AppState, args: CanvasVariantArgs) -> CmdResult<EditResult> {
     let session = app.session()?;
     let project = session.snapshot();
-    let strip = strip_of(&project, &args.strip)?.id.clone();
+    let canvas = canvas_of(&project, &args.canvas)?.id.clone();
     let vid = |s: &str| VariantId::parse(s).map_err(CommandError::invalid);
     let (ops, label, created) = match &args.change {
         VariantAction::Add {
@@ -698,7 +698,7 @@ pub fn strip_variant(app: &AppState, args: StripVariantArgs) -> CmdResult<EditRe
         } => {
             let ops = variant_add_ops(
                 &project,
-                &strip,
+                &canvas,
                 id,
                 *content_scale,
                 from.as_deref(),
@@ -715,7 +715,7 @@ pub fn strip_variant(app: &AppState, args: StripVariantArgs) -> CmdResult<EditRe
             let mut ops: Vec<Op> = project
                 .targets
                 .iter()
-                .filter(|t| t.strip == strip && t.variant.as_ref() == Some(&v))
+                .filter(|t| t.canvas == canvas && t.variant.as_ref() == Some(&v))
                 .map(|t| Op::UpdateTarget {
                     id: t.id.clone(),
                     patch: TargetPatch {
@@ -725,14 +725,14 @@ pub fn strip_variant(app: &AppState, args: StripVariantArgs) -> CmdResult<EditRe
                 })
                 .collect();
             ops.push(Op::RemoveVariant {
-                strip: strip.clone(),
+                canvas: canvas.clone(),
                 id: v,
             });
             (ops, format!("Remove variant {id}"), Vec::new())
         }
         VariantAction::Rename { id, to } => (
             vec![Op::RenameVariant {
-                strip: strip.clone(),
+                canvas: canvas.clone(),
                 from: vid(id)?,
                 to: vid(to)?,
             }],
@@ -742,14 +742,14 @@ pub fn strip_variant(app: &AppState, args: StripVariantArgs) -> CmdResult<EditRe
         VariantAction::Scale { id, content_scale } => {
             let scale = content_scale.unwrap_or(None);
             let current = project
-                .strip(strip.as_str())
+                .canvas(canvas.as_str())
                 .and_then(|s| s.variants.get(id.as_str()))
                 .and_then(|v| v.content_scale);
             let ops = if current == scale {
                 Vec::new()
             } else {
                 vec![Op::SetVariantContentScale {
-                    strip: strip.clone(),
+                    canvas: canvas.clone(),
                     variant: vid(id)?,
                     content_scale: scale,
                 }]
@@ -874,7 +874,7 @@ mod tests {
             json!({"target": "ios-iphone-69", "lang": "de", "id": "title-plan"}),
         );
         assert_eq!(e["kind"], "text");
-        assert_eq!(e["strip"], "phone");
+        assert_eq!(e["canvas"], "phone");
         assert_eq!(e["text"]["lang"], "de");
         assert!(e["text"]["value"].is_string());
         assert!(e.get("variant").is_none());
@@ -898,7 +898,7 @@ mod tests {
 
     #[test]
     #[allow(clippy::too_many_lines)]
-    fn overrides_reset_batch_updates_and_cross_strip_edits() {
+    fn overrides_reset_batch_updates_and_cross_canvas_edits() {
         let (_tmp, app) = app();
         let get = |id: &str, lang: &str| {
             call(
@@ -946,7 +946,7 @@ mod tests {
             "element_get",
             json!({"target": "mac", "id": "mac-title-plan"}),
         );
-        assert_eq!(mac["base"]["align"], "left", "other strip, same step");
+        assert_eq!(mac["base"]["align"], "left", "other canvas, same step");
         call(&app, "undo", Value::Null);
         assert!(
             get("title-plan", "de")["lang_override"]
@@ -955,7 +955,7 @@ mod tests {
         );
         assert!(get("title-plan", "fr").get("lang_override").is_none());
 
-        // Bring titles of two strips to front in one step.
+        // Bring titles of two canvases to front in one step.
         let r = call(
             &app,
             "edit_reorder",
@@ -963,13 +963,13 @@ mod tests {
         );
         assert!(r["applied"].as_bool().unwrap());
         let summary = call(&app, "project_get", Value::Null);
-        for (strip, id) in [(0, "title-plan"), (1, "mac-title-plan")] {
-            let els = summary["project"]["strips"][strip]["elements"]
+        for (canvas, id) in [(0, "title-plan"), (1, "mac-title-plan")] {
+            let els = summary["project"]["canvases"][canvas]["elements"]
                 .as_array()
                 .unwrap();
-            assert_eq!(els.last().unwrap()["id"], id, "{strip}");
+            assert_eq!(els.last().unwrap()["id"], id, "{canvas}");
         }
-        // Rotate several across strips.
+        // Rotate several across canvases.
         let r = call(
             &app,
             "edit_rotate",
@@ -1175,13 +1175,13 @@ mod tests {
         );
         assert_eq!(last_undo(&r), "Reorder hero");
         let s = call(&app, "project_summary", Value::Null);
-        assert_eq!(s["strips"][0]["elements"][0]["id"], "hero");
+        assert_eq!(s["canvases"][0]["elements"][0]["id"], "hero");
     }
 
     #[test]
-    fn strip_settings_and_variants() {
+    fn canvas_settings_and_variants() {
         let (_tmp, app) = app();
-        let s = call(&app, "strip_get", json!({"strip": "phone"}));
+        let s = call(&app, "canvas_get", json!({"canvas": "phone"}));
         assert_eq!(s["count"], 6);
         assert_eq!(s["ids"][0], "plan");
         assert!(s["variants"].as_array().unwrap().iter().any(|v| {
@@ -1193,40 +1193,41 @@ mod tests {
                     .any(|t| t == "play-phone")
         }));
         // A page that is still a home page cannot be removed.
-        let err = dispatch(&app, "strip_patch", json!({"strip": "phone", "count": 5})).unwrap_err();
+        let err =
+            dispatch(&app, "canvas_patch", json!({"canvas": "phone", "count": 5})).unwrap_err();
         assert_eq!(err.code, ErrorCode::OpRejected);
         let r = call(
             &app,
-            "strip_patch",
-            json!({"strip": "phone", "count": 7, "ids": ["a", "", "c"],
+            "canvas_patch",
+            json!({"canvas": "phone", "count": 7, "ids": ["a", "", "c"],
                    "backgrounds": ["#112233"]}),
         );
         assert_eq!(
             last_undo(&r),
             "Edit page count, page ids, backgrounds of phone"
         );
-        let s = call(&app, "strip_get", json!({"strip": "phone"}));
+        let s = call(&app, "canvas_get", json!({"canvas": "phone"}));
         assert_eq!(s["ids"], json!(["a", "page-02", "c"]));
         assert_eq!(s["page_ids"][6], "page-07");
         assert_eq!(s["backgrounds"], json!(["#112233"]));
-        call(&app, "strip_patch", json!({"strip": "phone", "count": 6}));
+        call(&app, "canvas_patch", json!({"canvas": "phone", "count": 6}));
         call(
             &app,
-            "strip_variant",
-            json!({"strip": "phone", "change": {"action": "add", "id": "tall", "content_scale": 0.9}}),
+            "canvas_variant",
+            json!({"canvas": "phone", "change": {"action": "add", "id": "tall", "content_scale": 0.9}}),
         );
         call(
             &app,
-            "strip_variant",
-            json!({"strip": "phone", "change": {"action": "rename", "id": "tall", "to": "taller"}}),
+            "canvas_variant",
+            json!({"canvas": "phone", "change": {"action": "rename", "id": "tall", "to": "taller"}}),
         );
         let r = call(
             &app,
-            "strip_variant",
-            json!({"strip": "phone", "change": {"action": "scale", "id": "taller", "content_scale": null}}),
+            "canvas_variant",
+            json!({"canvas": "phone", "change": {"action": "scale", "id": "taller", "content_scale": null}}),
         );
         assert_eq!(last_undo(&r), "Content scale of taller");
-        let s = call(&app, "strip_get", json!({"strip": "phone"}));
+        let s = call(&app, "canvas_get", json!({"canvas": "phone"}));
         let v = s["variants"]
             .as_array()
             .unwrap()
@@ -1236,20 +1237,20 @@ mod tests {
         assert!(v.get("content_scale").is_none());
         call(
             &app,
-            "strip_variant",
-            json!({"strip": "phone", "change": {"action": "remove", "id": "taller"}}),
+            "canvas_variant",
+            json!({"canvas": "phone", "change": {"action": "remove", "id": "taller"}}),
         );
         // A variant in use is removed too; its targets fall back to the base.
         let r = call(
             &app,
-            "strip_variant",
-            json!({"strip": "phone", "change": {"action": "remove", "id": "android"}}),
+            "canvas_variant",
+            json!({"canvas": "phone", "change": {"action": "remove", "id": "android"}}),
         );
         assert_eq!(last_undo(&r), "Remove variant android");
         let err = dispatch(
             &app,
-            "strip_variant",
-            json!({"strip": "phone", "change": {"action": "remove", "id": "android"}}),
+            "canvas_variant",
+            json!({"canvas": "phone", "change": {"action": "remove", "id": "android"}}),
         )
         .unwrap_err();
         assert_eq!(err.code, ErrorCode::OpRejected);

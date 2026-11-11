@@ -44,9 +44,9 @@ fn mcp_session_creates_designs_translates_and_exports() {
         "selection_get",
         "catalog_devices",
         "catalog_targets",
-        "strip_add",
-        "strip_duplicate",
-        "strip_remove",
+        "canvas_add",
+        "canvas_duplicate",
+        "canvas_remove",
         "target_add",
         "element_add",
         "element_update",
@@ -349,7 +349,7 @@ fn mcp_reloads_external_edits_and_reports_broken_files() {
 }
 
 /// Feedback of a real session (2026-11-10): resetting overrides, several
-/// language adjustments in one step, edits across strips, docs without
+/// language adjustments in one step, edits across canvases, docs without
 /// resources, a mapping-list asset import.
 #[test]
 fn mcp_overrides_batches_docs_and_asset_mapping() {
@@ -416,7 +416,7 @@ fn mcp_overrides_batches_docs_and_asset_mapping() {
     let fr = c.call("element_get", json!({"id": "title-plan", "lang": "fr"}));
     assert!(fr.get("lang_override").is_none(), "undone together: {fr}");
 
-    // Ids of two strips in one call (phone and mac).
+    // Ids of two canvases in one call (phone and mac).
     let r = c.call(
         "element_reorder",
         json!({"ids": ["title-plan", "mac-title-plan"], "order": "front"}),

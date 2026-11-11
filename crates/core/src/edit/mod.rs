@@ -26,25 +26,25 @@
 // parameter, residual, step.
 #![allow(clippy::many_single_char_names)]
 
+mod canvas;
 mod lang;
 mod overlay;
-mod strip;
 
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
+pub use canvas::{CanvasCopy, copy_canvas, fresh_element_id, unique_canvas_id, unique_string_key};
 pub use lang::{DefaultLanguageImpact, LostScreenshot, LostText, default_language_impact};
 pub use overlay::{
     Overlay, OverlayElement, OverlayGroup, OverlayHandle, OverlayImage, OverlayPage, OverlayText,
 };
-pub use strip::{StripCopy, copy_strip, fresh_element_id, unique_string_key, unique_strip_id};
 
 use crate::geometry::{Rect, Vec2};
 use crate::model::fmt::double_option;
 use crate::model::{
-    Element, ElementId, ElementKind, ElementKindTag, ElementPatch, FrameStyle, GroupProps,
-    LANG_OVERRIDE_FIELDS, Lang, Point, Project, Strip, StripId, Target, TextBox, VariantId,
+    Canvas, CanvasId, Element, ElementId, ElementKind, ElementKindTag, ElementPatch, FrameStyle,
+    GroupProps, LANG_OVERRIDE_FIELDS, Lang, Point, Project, Target, TextBox, VariantId,
 };
 use crate::ops::{Op, OpError};
 use crate::resolve::{
@@ -68,7 +68,7 @@ pub struct EditContext {
     pub lang: Lang,
     /// Variant edits are written to. Missing = the target's own variant,
     /// `null` = the base elements (the target is then shown without its
-    /// variant), a name = that variant of the target's strip.
+    /// variant), a name = that variant of the target's canvas.
     #[serde(
         default,
         deserialize_with = "double_option",
@@ -128,7 +128,7 @@ impl EditContext {
         self
     }
 
-    /// Edit `variant` of the target's strip.
+    /// Edit `variant` of the target's canvas.
     #[must_use]
     pub fn with_variant(mut self, variant: VariantId) -> Self {
         self.variant = Some(Some(variant));
@@ -145,10 +145,10 @@ pub enum EditError {
     Op(#[from] OpError),
     #[error("unknown element `{0}`")]
     UnknownElement(String),
-    #[error("element `{element}` is not on strip `{strip}` of the target")]
-    WrongStrip { element: String, strip: String },
-    #[error("unknown variant `{variant}` in strip `{strip}`")]
-    UnknownVariant { strip: String, variant: String },
+    #[error("element `{element}` is not on canvas `{canvas}` of the target")]
+    WrongCanvas { element: String, canvas: String },
+    #[error("unknown variant `{variant}` in canvas `{canvas}`")]
+    UnknownVariant { canvas: String, variant: String },
     #[error(
         "element `{0}` is not drawn for this target (unknown device model or no visible children)"
     )]
@@ -405,19 +405,19 @@ fn unique_id_except(project: &Project, base: &str, taken: &BTreeSet<ElementId>) 
 /// there is nothing to reset.
 pub fn reset_override(
     project: &Project,
-    strip: &StripId,
+    canvas: &CanvasId,
     variant: &VariantId,
     element: &ElementId,
     field: Option<&str>,
 ) -> Result<Vec<Op>, EditError> {
     let s = project
-        .strip(strip.as_str())
-        .ok_or_else(|| EditError::Op(OpError::UnknownStrip(strip.to_string())))?;
+        .canvas(canvas.as_str())
+        .ok_or_else(|| EditError::Op(OpError::UnknownCanvas(canvas.to_string())))?;
     let v = s
         .variants
         .get(variant)
         .ok_or_else(|| EditError::UnknownVariant {
-            strip: strip.to_string(),
+            canvas: canvas.to_string(),
             variant: variant.to_string(),
         })?;
     let Some(patch) = v.overrides.get(element) else {
@@ -425,7 +425,7 @@ pub fn reset_override(
     };
     Ok(match field {
         None => vec![Op::SetVariantOverride {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             variant: variant.clone(),
             element: element.clone(),
             patch: None,
@@ -436,7 +436,7 @@ pub fn reset_override(
             }
             if patch.fields().contains(&f) {
                 vec![Op::ResetOverrideField {
-                    strip: strip.clone(),
+                    canvas: canvas.clone(),
                     variant: variant.clone(),
                     element: element.clone(),
                     field: f.to_owned(),
@@ -463,7 +463,7 @@ pub struct Editor<'a> {
     project: &'a Project,
     options: ResolveOptions<'a>,
     target: &'a Target,
-    strip: &'a Strip,
+    canvas: &'a Canvas,
     lang: Lang,
     variant: Option<VariantId>,
     scope: EditScope,
@@ -490,25 +490,25 @@ impl<'a> Editor<'a> {
         let target = project
             .target(ctx.target.as_str())
             .ok_or_else(|| ResolveError::UnknownTarget(ctx.target.to_string()))?;
-        let strip =
+        let canvas =
             project
-                .strip(target.strip.as_str())
-                .ok_or_else(|| ResolveError::UnknownStrip {
+                .canvas(target.canvas.as_str())
+                .ok_or_else(|| ResolveError::UnknownCanvas {
                     target: target.id.to_string(),
-                    strip: target.strip.to_string(),
+                    canvas: target.canvas.to_string(),
                 })?;
         let variant = match &ctx.variant {
             None => target
                 .variant
                 .clone()
-                .filter(|v| strip.variants.contains_key(v)),
+                .filter(|v| canvas.variants.contains_key(v)),
             Some(v) => v.clone(),
         };
         if let Some(v) = &variant
-            && !strip.variants.contains_key(v)
+            && !canvas.variants.contains_key(v)
         {
             return Err(EditError::UnknownVariant {
-                strip: strip.id.to_string(),
+                canvas: canvas.id.to_string(),
                 variant: v.to_string(),
             });
         }
@@ -520,7 +520,7 @@ impl<'a> Editor<'a> {
             project,
             options,
             target,
-            strip,
+            canvas,
             lang: ctx.lang.clone(),
             variant,
             scope: ctx.scope,
@@ -533,9 +533,9 @@ impl<'a> Editor<'a> {
         self.variant.as_ref()
     }
 
-    /// The strip shown by the target.
-    pub fn strip(&self) -> &Strip {
-        self.strip
+    /// The canvas shown by the target.
+    pub fn canvas(&self) -> &Canvas {
+        self.canvas
     }
 
     /// The scene as the editor sees it (target with the edit variant).
@@ -552,7 +552,7 @@ impl<'a> Editor<'a> {
     /// for texts in [`EditScope::Lang`], else the variant or the base.
     fn write_to(&self, id: &str) -> WriteTo {
         let is_text = self
-            .strip
+            .canvas
             .element(id)
             .is_some_and(|e| matches!(e.kind, ElementKind::Text(_)));
         if self.scope == EditScope::Lang && is_text {
@@ -589,23 +589,23 @@ impl<'a> Editor<'a> {
     // ----- lookups -----------------------------------------------------------
 
     fn base_element(&self, id: &str) -> Result<&'a Element, EditError> {
-        let (strip, e) = self
+        let (canvas, e) = self
             .project
             .element(id)
             .ok_or_else(|| EditError::UnknownElement(id.to_owned()))?;
-        if strip.id != self.strip.id {
-            return Err(EditError::WrongStrip {
+        if canvas.id != self.canvas.id {
+            return Err(EditError::WrongCanvas {
                 element: id.to_owned(),
-                strip: self.strip.id.to_string(),
+                canvas: self.canvas.id.to_string(),
             });
         }
         Ok(e)
     }
 
     /// Element `id` of `project` with the override of `to` applied.
-    fn effective_in(project: &Project, strip: &StripId, id: &str, to: &WriteTo) -> Element {
-        let Some(s) = project.strip(strip.as_str()) else {
-            unreachable!("strip checked by the caller")
+    fn effective_in(project: &Project, canvas: &CanvasId, id: &str, to: &WriteTo) -> Element {
+        let Some(s) = project.canvas(canvas.as_str()) else {
+            unreachable!("canvas checked by the caller")
         };
         let e = s
             .element(id)
@@ -638,7 +638,7 @@ impl<'a> Editor<'a> {
         self.base_element(id)?;
         Ok(Self::effective_in(
             self.project,
-            &self.strip.id,
+            &self.canvas.id,
             id,
             &self.write_to(id),
         ))
@@ -654,13 +654,13 @@ impl<'a> Editor<'a> {
             },
             WriteTo::Variant(v) => {
                 let existing = project
-                    .strip(self.strip.id.as_str())
+                    .canvas(self.canvas.id.as_str())
                     .and_then(|s| s.variants.get(v))
                     .and_then(|v| v.overrides.get(id))
                     .cloned()
                     .unwrap_or_default();
                 Op::SetVariantOverride {
-                    strip: self.strip.id.clone(),
+                    canvas: self.canvas.id.clone(),
                     variant: v.clone(),
                     element: id.clone(),
                     patch: merge_override(&existing, &patch),
@@ -691,13 +691,13 @@ impl<'a> Editor<'a> {
         // of a field it does not set) changes nothing.
         let unchanged = match &op {
             Op::SetVariantOverride {
-                strip,
+                canvas,
                 variant,
                 element,
                 patch,
             } => {
                 self.project
-                    .strip(strip.as_str())
+                    .canvas(canvas.as_str())
                     .and_then(|s| s.variants.get(variant))
                     .and_then(|v| v.overrides.get(element))
                     == patch.as_ref()
@@ -787,7 +787,7 @@ impl<'a> Editor<'a> {
 
     /// Resolve `project` with element `id` (and its groups) forced visible.
     fn resolve_focused(&self, project: &mut Project, id: &str) -> Result<ResolvedScene, EditError> {
-        force_visible(project, &self.strip.id, id);
+        force_visible(project, &self.canvas.id, id);
         Ok(resolve(
             project,
             self.target.id.as_str(),
@@ -820,7 +820,7 @@ impl<'a> Editor<'a> {
     ) -> Result<Vec<Op>, EditError> {
         let mut scratch = self.view.clone();
         scratch.apply_ops(pre.iter().cloned())?;
-        let start = Self::effective_in(&scratch, &self.strip.id, id.as_str(), to);
+        let start = Self::effective_in(&scratch, &self.canvas.id, id.as_str(), to);
         let (start, _) = start
             .patched(fixed)
             .map_err(|e| EditError::Invalid(format!("element `{id}`: {e}")))?;
@@ -1037,12 +1037,12 @@ impl<'a> Editor<'a> {
 
     /// Sum of the rotations of the groups enclosing `id` (effective values).
     fn ancestors_rotation(&self, id: &str) -> f64 {
-        ancestors(self.strip, id)
+        ancestors(self.canvas, id)
             .iter()
             .map(|g| {
                 Self::effective_in(
                     self.project,
-                    &self.strip.id,
+                    &self.canvas.id,
                     g.id.as_str(),
                     &self.write_to(g.id.as_str()),
                 )
@@ -1154,12 +1154,12 @@ impl<'a> Editor<'a> {
         keep_visual_position: bool,
     ) -> Result<Vec<Op>, EditError> {
         let e = self.effective(id)?;
-        if page >= self.strip.page.count {
+        if page >= self.canvas.page.count {
             return Err(EditError::Op(OpError::PageOutOfRange {
                 element: id.to_owned(),
-                strip: self.strip.id.to_string(),
+                canvas: self.canvas.id.to_string(),
                 page,
-                count: self.strip.page.count,
+                count: self.canvas.page.count,
             }));
         }
         if page == e.page {
@@ -1191,7 +1191,7 @@ impl<'a> Editor<'a> {
     /// `z` is a separate field). Always changes the base.
     pub fn reorder_z(&self, id: &str, order: ZOrder) -> Result<Vec<Op>, EditError> {
         let e = self.base_element(id)?;
-        let siblings = siblings(self.strip, id);
+        let siblings = siblings(self.canvas, id);
         let len = siblings.len();
         let Some(i) = siblings.iter().position(|s| s.id == e.id) else {
             return Err(EditError::UnknownElement(id.to_owned()));
@@ -1244,7 +1244,7 @@ impl<'a> Editor<'a> {
             copy = moved;
         }
         let mut overrides = crate::ops::VariantOverrides::new();
-        for (vid, v) in &self.strip.variants {
+        for (vid, v) in &self.canvas.variants {
             for (old, new) in &renames {
                 if let Some(p) = v.overrides.get(old) {
                     let mut p = p.clone();
@@ -1267,14 +1267,14 @@ impl<'a> Editor<'a> {
                 }
             }
         }
-        let parent = parent_of(self.strip, id);
-        let index = siblings(self.strip, id)
+        let parent = parent_of(self.canvas, id);
+        let index = siblings(self.canvas, id)
             .iter()
             .position(|s| s.id.as_str() == id)
             .map(|i| i + 1);
         Ok((
             vec![Op::AddElement {
-                strip: self.strip.id.clone(),
+                canvas: self.canvas.id.clone(),
                 parent: parent.map(|p| p.id.clone()),
                 index,
                 element: copy,
@@ -1302,12 +1302,12 @@ impl<'a> Editor<'a> {
         let Some(first) = ids.first() else {
             return Err(EditError::Invalid("nothing to group".into()));
         };
-        let parent = parent_of(self.strip, first.as_str()).map(|p| p.id.clone());
-        let siblings = siblings(self.strip, first.as_str());
+        let parent = parent_of(self.canvas, first.as_str()).map(|p| p.id.clone());
+        let siblings = siblings(self.canvas, first.as_str());
         let mut members = Vec::new();
         for id in ids {
             let e = self.base_element(id.as_str())?;
-            if parent_of(self.strip, id.as_str()).map(|p| p.id.clone()) != parent {
+            if parent_of(self.canvas, id.as_str()).map(|p| p.id.clone()) != parent {
                 return Err(EditError::Invalid(format!(
                     "`{id}` is not in the same group as `{first}`"
                 )));
@@ -1344,7 +1344,7 @@ impl<'a> Editor<'a> {
             kind: ElementKind::Group(GroupProps::default()),
         };
         let mut ops = vec![Op::AddElement {
-            strip: self.strip.id.clone(),
+            canvas: self.canvas.id.clone(),
             parent: parent.clone(),
             index: Some(members[0].0),
             element: group,
@@ -1370,8 +1370,8 @@ impl<'a> Editor<'a> {
         let ElementKind::Group(props) = &g.kind else {
             return Err(EditError::Invalid(format!("`{id}` is not a group")));
         };
-        let parent = parent_of(self.strip, id).map(|p| p.id.clone());
-        let index = siblings(self.strip, id)
+        let parent = parent_of(self.canvas, id).map(|p| p.id.clone());
+        let index = siblings(self.canvas, id)
             .iter()
             .position(|s| s.id.as_str() == id)
             .unwrap_or(0);
@@ -1380,7 +1380,7 @@ impl<'a> Editor<'a> {
             project: self.project,
             options: self.options,
             target: self.target,
-            strip: self.strip,
+            canvas: self.canvas,
             lang: self.lang.clone(),
             variant: None,
             scope: EditScope::All,
@@ -1488,7 +1488,7 @@ impl<'a> Editor<'a> {
     }
 
     /// Move element `id` to position `index` of group `parent`'s children
-    /// (`None` = top level of the strip; `index` counted after taking the
+    /// (`None` = top level of the canvas; `index` counted after taking the
     /// element out, default end = topmost). Always changes the base. When
     /// the enclosing groups change, the element keeps its drawn position
     /// and canvas angle in this view (their offsets and rotations are
@@ -1510,8 +1510,8 @@ impl<'a> Editor<'a> {
             }
             None => None,
         };
-        let old_parent = parent_of(self.strip, id).map(|p| p.id.clone());
-        let siblings = siblings(self.strip, id);
+        let old_parent = parent_of(self.canvas, id).map(|p| p.id.clone());
+        let siblings = siblings(self.canvas, id);
         let at = siblings.iter().position(|s| s.id == e.id);
         let mv = Op::MoveElementTo {
             id: e.id.clone(),
@@ -1532,13 +1532,13 @@ impl<'a> Editor<'a> {
         // Rotation of the new enclosing groups (the parent cannot lie inside
         // the moved element, so its chain does not change).
         let new_rot: f64 = parent.as_ref().map_or(0.0, |p| {
-            let own = self.strip.element(p.as_str()).map_or(0.0, |g| g.rotation);
-            own + ancestors(self.strip, p.as_str())
+            let own = self.canvas.element(p.as_str()).map_or(0.0, |g| g.rotation);
+            own + ancestors(self.canvas, p.as_str())
                 .iter()
                 .map(|g| g.rotation)
                 .sum::<f64>()
         });
-        let old_rot: f64 = ancestors(self.strip, id).iter().map(|g| g.rotation).sum();
+        let old_rot: f64 = ancestors(self.canvas, id).iter().map(|g| g.rotation).sum();
         let mut fixed = ElementPatch::default();
         let rot = clean(normalize_angle(e.rotation + old_rot - new_rot));
         if (rot - e.rotation).abs() > 1e-12 {
@@ -1564,7 +1564,7 @@ impl<'a> Editor<'a> {
         let e = self.base_element(id)?;
         match &self.variant {
             None => Ok(Vec::new()),
-            Some(v) => reset_override(self.project, &self.strip.id, v, &e.id, field),
+            Some(v) => reset_override(self.project, &self.canvas.id, v, &e.id, field),
         }
     }
 
@@ -1606,7 +1606,7 @@ impl<'a> Editor<'a> {
     /// Fields of `id` set by language overrides for the view language
     /// (YAML names) and the languages they come from (most general first).
     pub fn lang_overridden_fields(&self, id: &str) -> (Vec<Lang>, Vec<&'static str>) {
-        let Some(t) = self.strip.element(id).and_then(Element::text_props) else {
+        let Some(t) = self.canvas.element(id).and_then(Element::text_props) else {
             return (Vec::new(), Vec::new());
         };
         let list = t.lang_overrides_for(self.lang.as_str());
@@ -1630,7 +1630,7 @@ impl<'a> Editor<'a> {
     pub fn overridden_fields(&self, id: &str) -> Vec<&'static str> {
         self.variant
             .as_ref()
-            .and_then(|v| self.strip.variants.get(v))
+            .and_then(|v| self.canvas.variants.get(v))
             .and_then(|v| v.overrides.get(id))
             .map(ElementPatch::fields)
             .unwrap_or_default()
@@ -1638,7 +1638,7 @@ impl<'a> Editor<'a> {
 
     /// Kind of element `id`.
     pub fn kind(&self, id: &str) -> Option<ElementKindTag> {
-        self.strip.element(id).map(Element::kind_tag)
+        self.canvas.element(id).map(Element::kind_tag)
     }
 }
 
@@ -1662,7 +1662,7 @@ fn rename_tree(
 }
 
 /// Groups enclosing `id`, outermost first.
-fn ancestors<'s>(strip: &'s Strip, id: &str) -> Vec<&'s Element> {
+fn ancestors<'s>(canvas: &'s Canvas, id: &str) -> Vec<&'s Element> {
     fn walk<'s>(list: &'s [Element], id: &str, path: &mut Vec<&'s Element>) -> bool {
         for e in list {
             if e.id.as_str() == id {
@@ -1677,22 +1677,22 @@ fn ancestors<'s>(strip: &'s Strip, id: &str) -> Vec<&'s Element> {
         false
     }
     let mut path = Vec::new();
-    walk(&strip.elements, id, &mut path);
+    walk(&canvas.elements, id, &mut path);
     path
 }
 
-fn parent_of<'s>(strip: &'s Strip, id: &str) -> Option<&'s Element> {
-    ancestors(strip, id).last().copied()
+fn parent_of<'s>(canvas: &'s Canvas, id: &str) -> Option<&'s Element> {
+    ancestors(canvas, id).last().copied()
 }
 
-/// The list holding `id` (strip elements or the parent group's children).
-fn siblings<'s>(strip: &'s Strip, id: &str) -> &'s [Element] {
-    parent_of(strip, id).map_or(&strip.elements, |p| p.children())
+/// The list holding `id` (canvas elements or the parent group's children).
+fn siblings<'s>(canvas: &'s Canvas, id: &str) -> &'s [Element] {
+    parent_of(canvas, id).map_or(&canvas.elements, |p| p.children())
 }
 
 /// Make element `id` and its enclosing groups visible in `project` (base
 /// and all overrides), so a hidden element can still be measured.
-fn force_visible(project: &mut Project, strip: &StripId, id: &str) {
+fn force_visible(project: &mut Project, canvas: &CanvasId, id: &str) {
     fn walk(list: &mut [Element], chain: &[ElementId]) {
         for e in list {
             if chain.contains(&e.id) {
@@ -1704,7 +1704,7 @@ fn force_visible(project: &mut Project, strip: &StripId, id: &str) {
             }
         }
     }
-    let Some(s) = project.strips.iter_mut().find(|s| &s.id == strip) else {
+    let Some(s) = project.canvases.iter_mut().find(|s| &s.id == canvas) else {
         return;
     };
     let mut chain: Vec<ElementId> = ancestors(s, id).iter().map(|e| e.id.clone()).collect();

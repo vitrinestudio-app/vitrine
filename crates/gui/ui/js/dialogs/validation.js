@@ -168,8 +168,8 @@ function mountPanel(anchor, shell) {
     const st = store.get();
     const tg = f.target && st.summary.targets.find((x) => x.id === f.target);
     const patch = {};
-    if (tg && tg.strip !== st.strip) patch.strip = tg.strip;
-    if (tg && (tg.id !== st.target || patch.strip)) patch.target = tg.id;
+    if (tg && tg.canvas !== st.canvas) patch.canvas = tg.canvas;
+    if (tg && (tg.id !== st.target || patch.canvas)) patch.target = tg.id;
     if (f.lang && f.lang !== st.lang) patch.lang = f.lang;
     if (Object.keys(patch).length) await editor.setContext(patch);
     if (store.get().view !== 'canvas') store.set({ view: 'canvas' });

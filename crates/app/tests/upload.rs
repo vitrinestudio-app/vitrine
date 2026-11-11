@@ -868,7 +868,7 @@ name: "Upload test"
 languages:
   default: en
   available: [en, de]
-strips:
+canvases:
 - id: main
   page: {aspect: 1320:2868, count: 2, ids: [one, two]}
   backgrounds:
@@ -890,12 +890,12 @@ strips:
     align: center
 targets:
 - id: iphone
-  strip: main
+  canvas: main
   size: [1320, 2868]
   gallery: appstore-iphone
   store: {apple: {display_type: APP_IPHONE_67}}
 - id: play
-  strip: main
+  canvas: main
   size: [1080, 2160]
   gallery: play-phone
   store: {google: {image_type: phoneScreenshots}}
@@ -1218,7 +1218,7 @@ async fn executes_both_stores_and_then_nothing_is_left() {
 async fn feature_graphic_uploads_as_one_opaque_png() {
     let project = PROJECT.replace(
         "store:\n  apple:",
-        "- id: feature\n  kind: banner\n  strip: main\n  size: [1024, 500]\n  \
+        "- id: feature\n  kind: banner\n  canvas: main\n  size: [1024, 500]\n  \
          region: {pages: [0, 1]}\n  fit: cover\n  \
          store: {google: {image_type: featureGraphic}}\nstore:\n  apple:",
     );
@@ -1982,7 +1982,7 @@ name: "Library test"
 languages:
   default: en
   available: [en, de]
-strips:
+canvases:
 - id: main
   page: {aspect: 1320:2868, count: 2, ids: [one, two]}
   backgrounds:
@@ -2004,16 +2004,16 @@ strips:
     align: center
 targets:
 - id: iphone
-  strip: main
+  canvas: main
   size: [1320, 2868]
   store: {apple: {display_type: APP_IPHONE_67}}
 - id: duo
-  strip: main
+  canvas: main
   size: [1398, 2034]
   store: {apple: {display_type: APP_IPHONE_DUO}}
 - id: header
   kind: banner
-  strip: main
+  canvas: main
   size: [3840, 1646]
   region: {pages: [0, 1]}
   fit: cover

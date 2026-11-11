@@ -55,7 +55,7 @@ styles:
       layers:
       - {color: "#1B3A2440", blur: 30, y: 18}
       - {color: "#1B3A2426", blur: 6, y: 4}
-strips:
+canvases:
 - id: phone
   page: {aspect: 1320:2868, count: 6, ids: [plan, beds, companions, neighbours, harvest, calendar]}
   backgrounds:
@@ -538,19 +538,19 @@ strips:
     fit: {shrink_to: 17, max_lines: 4}
 targets:
 - id: ios-iphone-69
-  strip: phone
+  canvas: phone
   size: [1320, 2868]
   screenshots: ios-phone
   gallery: appstore-iphone
   store: {apple: {display_type: APP_IPHONE_67}}
 - id: ios-iphone-63
-  strip: phone
+  canvas: phone
   size: [1206, 2622]
   screenshots: ios-phone
   gallery: appstore-iphone
   store: {apple: {display_type: APP_IPHONE_61}}
 - id: play-phone
-  strip: phone
+  canvas: phone
   variant: android
   size: [1080, 2160]
   screenshots: android-phone
@@ -558,7 +558,7 @@ targets:
   device_map: {iphone-island: android-punchhole}
   store: {google: {image_type: phoneScreenshots}}
 - id: ios-ipad-13-landscape
-  strip: phone
+  canvas: phone
   variant: tablet-landscape
   group: 2
   size: [2752, 2064]
@@ -567,20 +567,20 @@ targets:
   device_map: {iphone-island: ipad-modern}
   store: {apple: {display_type: APP_IPAD_PRO_3GEN_129}}
 - id: mac
-  strip: mac
+  canvas: mac
   size: [2880, 1800]
   screenshots: mac
   gallery: appstore-mac
   store: {apple: {display_type: APP_DESKTOP}}
 - id: web-slides
-  strip: web
+  canvas: web
   size: [1920, 1080]
   screenshots: web
   format: jpeg
   quality: 90
 - id: blog-header
   kind: banner
-  strip: phone
+  canvas: phone
   variant: banner
   size: [2400, 1000]
   screenshots: ios-phone
@@ -591,7 +591,7 @@ targets:
   quality: 88
 - id: play-feature-graphic
   kind: banner
-  strip: phone
+  canvas: phone
   variant: banner
   size: [1024, 500]
   screenshots: android-phone
@@ -602,7 +602,7 @@ targets:
   store: {google: {image_type: featureGraphic}}
 - id: open-graph
   kind: banner
-  strip: web
+  canvas: web
   size: [1200, 630]
   screenshots: web
   region: {pages: [0, 0]}

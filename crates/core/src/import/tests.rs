@@ -7,7 +7,7 @@ use super::*;
 use crate::model::Lang;
 use crate::ops::Op;
 
-/// Phone strip (keys home, planner, garden-plan) with an iPhone and an
+/// Phone canvas (keys home, planner, garden-plan) with an iPhone and an
 /// iPad target; languages en (default) + de.
 fn project() -> Project {
     let yaml = "format: vitrine/1
@@ -16,7 +16,7 @@ name: t
 languages:
   default: en
   available: [en, de]
-strips:
+canvases:
 - id: s
   page: {aspect: 1000:2000, count: 3}
   elements:
@@ -24,8 +24,8 @@ strips:
   - {id: d2, kind: device, page: 1, at: {x: 500, y: 1000}, width: 600, model: iphone-island, screenshot: planner}
   - {id: d3, kind: device, page: 2, at: {x: 500, y: 1000}, width: 600, model: iphone-island, screenshot: garden-plan}
 targets:
-- {id: phone, strip: s, size: [1320, 2868], screenshots: ios-phone}
-- {id: pad, strip: s, size: [2064, 2752], screenshots: ios-tablet}
+- {id: phone, canvas: s, size: [1320, 2868], screenshots: ios-phone}
+- {id: pad, canvas: s, size: [2064, 2752], screenshots: ios-tablet}
 ";
     crate::io::project_from_yaml(yaml).unwrap_or_else(|e| panic!("{e}"))
 }
@@ -541,7 +541,7 @@ fn project_with_android() -> Project {
     let mut p = project();
     let yaml = p.to_yaml().unwrap().replace(
         "targets:\n",
-        "targets:\n- {id: play, strip: s, size: [1080, 2160], screenshots: android-phone}\n- {id: play-tab, strip: s, size: [1600, 2560], screenshots: android-tablet}\n",
+        "targets:\n- {id: play, canvas: s, size: [1080, 2160], screenshots: android-phone}\n- {id: play-tab, canvas: s, size: [1600, 2560], screenshots: android-tablet}\n",
     );
     p = crate::io::project_from_yaml(&yaml).unwrap_or_else(|e| panic!("{e}"));
     p.languages.available.push(Lang::new("he"));

@@ -62,7 +62,7 @@ fill an activity list (4.3b).
 
 ### View state
 
-`ViewState { strip, target, lang, variant, selection }` lives in the
+`ViewState { canvas, target, lang, variant, selection }` lives in the
 session (reset when a project is opened). `variant` follows the view
 context of the edit commands (missing = the target's own, `null` = base,
 a name = that variant). The GUI pushes it with `view_set` 250 ms after its

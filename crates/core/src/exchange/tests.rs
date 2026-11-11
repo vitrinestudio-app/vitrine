@@ -97,7 +97,7 @@ fn csv_layout_and_context() {
     let plan_title = csv.lines().find(|l| l.starts_with("plan.title,")).unwrap();
     assert!(
         plan_title
-            .contains("title-plan (strip phone, page 1, style headline): box 860 lu, max 2 lines"),
+            .contains("title-plan (canvas phone, page 1, style headline): box 860 lu, max 2 lines"),
         "{plan_title}"
     );
 }

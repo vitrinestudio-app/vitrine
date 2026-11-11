@@ -197,7 +197,7 @@ fn banner_target() {
     assert!(close(img.source.x, 0.0) && close(img.source.w, 3000.0));
     assert!(close(img.source.h, 1250.0));
     assert_eq!(img.pages, [0, 1, 2]);
-    // No variant: the banner uses the strip's own page height.
+    // No variant: the banner uses the canvas's own page height.
     assert!(close(f.layout.page_height, f.layout.reference_page_height));
     insta::assert_yaml_snapshot!("banner_blog_header_en", snapshot_value(&s));
 }
@@ -247,11 +247,11 @@ fn missing_screenshot_is_a_placeholder() {
     let ResolvedKind::Device(_) = &s.element("hero-phone").unwrap().props else {
         panic!()
     };
-    // The web strip is not used by this target; check with a web target.
+    // The web canvas is not used by this target; check with a web target.
     let mut p = p;
     let mut t = p.targets[0].clone();
     t.id = vitrine_core::model::TargetId::new("web");
-    t.strip = vitrine_core::model::StripId::new("web");
+    t.canvas = vitrine_core::model::CanvasId::new("web");
     t.size = vitrine_core::model::PixelSize::new(2880, 1800);
     t.screenshots = None;
     t.gallery = None;
@@ -299,7 +299,7 @@ fn free_aspect_device_follows_the_screenshot() {
     let mut p = sample();
     let mut t = p.targets[0].clone();
     t.id = vitrine_core::model::TargetId::new("web");
-    t.strip = vitrine_core::model::StripId::new("web");
+    t.canvas = vitrine_core::model::CanvasId::new("web");
     t.size = vitrine_core::model::PixelSize::new(2880, 1800);
     t.screenshots = None;
     t.gallery = None;

@@ -39,10 +39,10 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 Largely there: target preset `play-feature-graphic` (1024×500, banner,
 `slot: google.image_type featureGraphic`, rules `google-feature-graphic`)
 and the Play client knows `featureGraphic`. Close to Apple's header /
-search-results creatives (banners from a strip region).
+search-results creatives (banners from a canvas region).
 - [ ] Check end to end: example fixture target, export, store rules (24-bit
       PNG/JPEG, no alpha), upload plan + Play upload as single image
-- [ ] Template / quick action "banner from this strip" shared with the Apple
+- [ ] Template / quick action "banner from this canvas" shared with the Apple
       creatives (region + fit), GUI wording
 
 ## 6.3 Templates (+ web gallery)

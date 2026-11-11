@@ -6,7 +6,7 @@
 // Events (`editor.on(name, fn)`):
 //   invalidate  { all: true } | { rects: [Rect lu] } – pixels to re-render
 //   reset       {}                                    – view context changed
-//                                                      (target/variant/lang/strip):
+//                                                      (target/variant/lang/canvas):
 //                                                      rebuild everything
 //   highlight   { ids }                               – briefly outline these
 //                                                      elements (assistant edits)
@@ -46,17 +46,17 @@ function rectsOf(overlay, ids) {
 }
 
 /**
- * `{strip, target, variant}` of state `s` made valid for `summary`: an
- * unknown strip falls back to the first one with a target, an unknown
- * target (or one of another strip) to the strip's first target, an
+ * `{canvas, target, variant}` of state `s` made valid for `summary`: an
+ * unknown canvas falls back to the first one with a target, an unknown
+ * target (or one of another canvas) to the canvas's first target, an
  * unknown variant to the target's own.
  */
 export function validContext(summary, s) {
-  const strip = summary.strips.some((x) => x.id === s.strip) ? s.strip : summary.targets[0]?.strip ?? summary.strips[0]?.id ?? null;
-  const target = summary.targets.some((x) => x.id === s.target && x.strip === strip) ? s.target : summary.targets.find((x) => x.strip === strip)?.id ?? null;
-  const variants = summary.strips.find((x) => x.id === strip)?.variants ?? [];
-  const variant = typeof s.variant === 'string' && !variants.includes(s.variant) ? undefined : strip === s.strip ? s.variant : undefined;
-  return { strip, target, variant };
+  const canvas = summary.canvases.some((x) => x.id === s.canvas) ? s.canvas : summary.targets[0]?.canvas ?? summary.canvases[0]?.id ?? null;
+  const target = summary.targets.some((x) => x.id === s.target && x.canvas === canvas) ? s.target : summary.targets.find((x) => x.canvas === canvas)?.id ?? null;
+  const variants = summary.canvases.find((x) => x.id === canvas)?.variants ?? [];
+  const variant = typeof s.variant === 'string' && !variants.includes(s.variant) ? undefined : canvas === s.canvas ? s.variant : undefined;
+  return { canvas, target, variant };
 }
 
 let validateTimer = 0;
@@ -79,12 +79,12 @@ export const editor = {
       throw e;
     }
     const s = store.get();
-    const strip = summary.strips.some((x) => x.id === s.strip) ? s.strip : summary.targets[0]?.strip ?? summary.strips[0]?.id;
-    const target = summary.targets.some((x) => x.id === s.target && x.strip === strip)
+    const canvas = summary.canvases.some((x) => x.id === s.canvas) ? s.canvas : summary.targets[0]?.canvas ?? summary.canvases[0]?.id;
+    const target = summary.targets.some((x) => x.id === s.target && x.canvas === canvas)
       ? s.target
-      : summary.targets.find((x) => x.strip === strip)?.id ?? null;
+      : summary.targets.find((x) => x.canvas === canvas)?.id ?? null;
     const lang = summary.languages.available.includes(s.lang) ? s.lang : summary.languages.default;
-    store.set({ summary, strip, target, lang });
+    store.set({ summary, canvas, target, lang });
     const [history] = await Promise.all([api.historyState(), this.refreshOverlay()]);
     store.set({ history });
     emit('reset', {});
@@ -92,12 +92,12 @@ export const editor = {
     return true;
   },
 
-  /** Switches the view context (any of strip, target, lang, variant). */
+  /** Switches the view context (any of canvas, target, lang, variant). */
   async setContext(patch) {
     const s = store.get();
     const next = { ...patch };
-    if ('strip' in patch && patch.strip !== s.strip) {
-      const target = s.summary.targets.find((x) => x.strip === patch.strip);
+    if ('canvas' in patch && patch.canvas !== s.canvas) {
+      const target = s.summary.targets.find((x) => x.canvas === patch.canvas);
       next.target = target?.id ?? null;
       next.variant = undefined;
     }
@@ -147,14 +147,14 @@ export const editor = {
     let overlay;
     let contextChanged = false;
     const c0 = result.changes ?? {};
-    if (c0.strips?.length || c0.targets?.length) {
-      // Strips, variants or targets may have been added, renamed or removed
+    if (c0.canvases?.length || c0.targets?.length) {
+      // Canvases, variants or targets may have been added, renamed or removed
       // (also by undo/redo): keep the view context valid before asking for
       // the overlay.
       const summary = await api.summary();
       const s = store.get();
       const next = validContext(summary, s);
-      contextChanged = next.strip !== s.strip || next.target !== s.target || next.variant !== s.variant;
+      contextChanged = next.canvas !== s.canvas || next.target !== s.target || next.variant !== s.variant;
       store.set({ summary, ...next });
       overlay = await this.refreshOverlay();
     } else {
@@ -174,7 +174,7 @@ export const editor = {
       const a = rectsOf(before, ids);
       const b = rectsOf(overlay, ids);
       if (a && b) payload = { rects: [...a, ...b].map((r) => inflate(r, DIRTY_MARGIN + Math.max(r.w, r.h) * 0.05)) };
-    } else if (!broad && !c.strips.length) {
+    } else if (!broad && !c.canvases.length) {
       payload = { rects: [] };
     }
     emit('invalidate', payload);
@@ -193,19 +193,19 @@ export const editor = {
   /**
    * Shows a step made by someone else through the backend session
    * (`project-edited` with an assistant actor, ADR 0015): same refresh as
-   * `apply`, or a full reload when targets, strips or languages changed.
+   * `apply`, or a full reload when targets, canvases or languages changed.
    */
   async remoteEdit(ev) {
     const c = ev.changes ?? {};
     const summary = store.get().summary;
     if (!summary) return null;
-    const newStrip = (c.strips ?? []).some((id) => !summary.strips.some((x) => x.id === id));
-    if (c.targets?.length || c.languages || newStrip) {
+    const newCanvas = (c.canvases ?? []).some((id) => !summary.canvases.some((x) => x.id === id));
+    if (c.targets?.length || c.languages || newCanvas) {
       await this.load();
       return null;
     }
     const history = await api.historyState();
-    const changes = { elements: [], strings: [], targets: [], strips: [], ...c };
+    const changes = { elements: [], strings: [], targets: [], canvases: [], ...c };
     return this.apply(Promise.resolve({ applied: true, revision: ev.revision, history, changes }));
   },
 

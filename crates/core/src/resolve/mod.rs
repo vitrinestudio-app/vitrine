@@ -108,8 +108,8 @@ impl std::fmt::Debug for ResolveOptions<'_> {
 pub enum ResolveError {
     #[error("unknown target `{0}`")]
     UnknownTarget(String),
-    #[error("target `{target}` refers to unknown strip `{strip}`")]
-    UnknownStrip { target: String, strip: String },
+    #[error("target `{target}` refers to unknown canvas `{canvas}`")]
+    UnknownCanvas { target: String, canvas: String },
     #[error("invalid language code `{0}`")]
     InvalidLang(String),
 }
@@ -124,12 +124,13 @@ pub fn resolve(
     let target = project
         .target(target_id)
         .ok_or_else(|| ResolveError::UnknownTarget(target_id.to_owned()))?;
-    let strip = project
-        .strip(target.strip.as_str())
-        .ok_or_else(|| ResolveError::UnknownStrip {
-            target: target_id.to_owned(),
-            strip: target.strip.to_string(),
-        })?;
+    let canvas =
+        project
+            .canvas(target.canvas.as_str())
+            .ok_or_else(|| ResolveError::UnknownCanvas {
+                target: target_id.to_owned(),
+                canvas: target.canvas.to_string(),
+            })?;
     let lang_id = Lang::parse(lang).map_err(|_| ResolveError::InvalidLang(lang.to_owned()))?;
 
     let mut d = Diags::default();
@@ -139,10 +140,10 @@ pub fn resolve(
             format!("language `{lang}` is not listed in `languages.available`"),
         );
     }
-    let frame = frame::frame(target, strip, options.catalog, &mut d);
+    let frame = frame::frame(target, canvas, options.catalog, &mut d);
     let styles = StyleResolver::new(&project.styles);
     let spans = styles.spans(&mut d);
-    let backgrounds = strip
+    let backgrounds = canvas
         .backgrounds
         .iter()
         .map(|f| styles.fill(f, &mut d))
@@ -151,7 +152,7 @@ pub fn resolve(
         &elements::Inputs {
             project,
             target,
-            strip,
+            canvas,
             lang,
             chain: lang_chain(project, lang),
             layout: frame.layout,
@@ -166,7 +167,7 @@ pub fn resolve(
             let only = elements::screenshot_only(
                 &elements,
                 &frame.layout,
-                strip.page.count,
+                canvas.page.count,
                 options.catalog,
                 &mut d,
             );
@@ -176,7 +177,7 @@ pub fn resolve(
         };
     Ok(ResolvedScene {
         target: target.id.clone(),
-        strip: strip.id.clone(),
+        canvas: canvas.id.clone(),
         lang: lang_id,
         variant,
         frame,

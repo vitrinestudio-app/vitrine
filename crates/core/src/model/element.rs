@@ -26,7 +26,7 @@ use super::fmt::{double_option, flow_style, num};
 use super::ids::{ElementId, Lang, StringKey, is_valid_id};
 use super::style::{FrameStyle, Glow};
 
-/// An element on a strip.
+/// An element on a canvas.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(try_from = "ElementWire", into = "ElementWire")]
 pub struct Element {
@@ -73,7 +73,7 @@ pub enum ElementKind {
 }
 
 /// Background layer on its home page (canvas-wide backgrounds live in
-/// `Strip::backgrounds`).
+/// `Canvas::backgrounds`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct BackgroundProps {
     pub fill: Fill,

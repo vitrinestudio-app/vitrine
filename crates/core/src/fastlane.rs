@@ -400,17 +400,17 @@ name: t
 languages:
   default: en
   available: [en, de, fr-CA, xx]
-strips:
+canvases:
 - id: s
   page: {aspect: 1000:2000, count: 2}
 targets:
-- {id: phone, strip: s, size: [1320, 2868], store: {apple: {display_type: APP_IPHONE_67}}}
-- {id: phone-old, strip: s, size: [1290, 2796], store: {apple: {display_type: APP_IPHONE_67}}}
-- {id: pad-old, strip: s, size: [2048, 2732], store: {apple: {display_type: APP_IPAD_PRO_129}}}
-- {id: play, strip: s, size: [1080, 2160], store: {google: {image_type: phoneScreenshots}}}
-- {id: fg, kind: banner, strip: s, size: [1024, 500], store: {google: {image_type: featureGraphic}}}
-- {id: odd, strip: s, size: [1000, 1000], store: {apple: {display_type: APP_IPHONE_67}}}
-- {id: web, strip: s, size: [1920, 1080]}
+- {id: phone, canvas: s, size: [1320, 2868], store: {apple: {display_type: APP_IPHONE_67}}}
+- {id: phone-old, canvas: s, size: [1290, 2796], store: {apple: {display_type: APP_IPHONE_67}}}
+- {id: pad-old, canvas: s, size: [2048, 2732], store: {apple: {display_type: APP_IPAD_PRO_129}}}
+- {id: play, canvas: s, size: [1080, 2160], store: {google: {image_type: phoneScreenshots}}}
+- {id: fg, kind: banner, canvas: s, size: [1024, 500], store: {google: {image_type: featureGraphic}}}
+- {id: odd, canvas: s, size: [1000, 1000], store: {apple: {display_type: APP_IPHONE_67}}}
+- {id: web, canvas: s, size: [1920, 1080]}
 store:
   locales:
     google: {fr-CA: fr-CA}

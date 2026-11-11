@@ -1,4 +1,4 @@
-// App shell (KONZEPT §9.1): top bar (project, strip, target, language,
+// App shell (KONZEPT §9.1): top bar (project, canvas, target, language,
 // variant, validation badge, undo/redo), left sidebar tabs, centre view
 // with the bottom view switch and zoom controls, right inspector.
 
@@ -10,7 +10,7 @@ import { t } from './i18n.js';
 import { panelContext, SIDEBAR_TABS } from './panels/index.js';
 import * as inspector from './panels/inspector.js';
 import { keyLabel } from './shortcuts.js';
-import { currentStrip, currentTarget, effectiveVariant, store } from './store.js';
+import { currentCanvas, currentTarget, effectiveVariant, store } from './store.js';
 import { mountCanvas } from './views/canvas.js';
 import { mountGallery } from './views/gallery.js';
 import { mountLanguages } from './views/languages.js';
@@ -24,7 +24,7 @@ const ADD = '__add__';
 
 /**
  * `app`: app-level actions from main.js: `{ menu (button element), targets(), exportDialog(),
- * assistant (MCP indicator element), addStrip(), addTarget(), addLanguage(), addVariant() }`
+ * assistant (MCP indicator element), addCanvas(), addTarget(), addLanguage(), addVariant() }`
  * (the last four back the "+ Add…" entries of the top-bar pickers).
  */
 export function mountShell(app = {}) {
@@ -41,7 +41,7 @@ export function mountShell(app = {}) {
     renderTop();
     return add?.();
   };
-  const strip = picker({ label: t('top.strip'), onchange: choose(app.addStrip, (v) => editor.setContext({ strip: v })) });
+  const canvas = picker({ label: t('top.canvas'), onchange: choose(app.addCanvas, (v) => editor.setContext({ canvas: v })) });
   const target = picker({ label: t('top.target'), onchange: choose(app.addTarget, (v) => editor.setContext({ target: v })) });
   const lang = picker({ label: t('top.lang'), onchange: choose(app.addLanguage, (v) => editor.setContext({ lang: v })) });
   const variant = picker({
@@ -60,7 +60,7 @@ export function mountShell(app = {}) {
     h('img', { class: 'logo', src: 'img/logo.svg', alt: '' }),
     name,
     h('span', { class: 'sep' }),
-    strip.el,
+    canvas.el,
     target.el,
     targetsBtn,
     lang.el,
@@ -82,9 +82,9 @@ export function mountShell(app = {}) {
     if (!s) return;
     name.textContent = s.name;
     name.title = s.dir;
-    strip.set([...s.strips.map((x) => ({ value: x.id, label: x.id })), addEntry('top.add.strip')], st.strip);
+    canvas.set([...s.canvases.map((x) => ({ value: x.id, label: x.id })), addEntry('top.add.canvas')], st.canvas);
     target.set(
-      [...s.targets.filter((x) => x.strip === st.strip).map((x) => ({ value: x.id, label: `${x.id}  (${x.size[0]}×${x.size[1]})`, short: x.id })), addEntry('top.add.target')],
+      [...s.targets.filter((x) => x.canvas === st.canvas).map((x) => ({ value: x.id, label: `${x.id}  (${x.size[0]}×${x.size[1]})`, short: x.id })), addEntry('top.add.target')],
       st.target ?? '',
     );
     lang.set(
@@ -99,7 +99,7 @@ export function mountShell(app = {}) {
       st.lang,
     );
     const tg = currentTarget(st);
-    const sp = currentStrip(st);
+    const sp = currentCanvas(st);
     const own = tg?.variant ?? null;
     const options = [{ value: '', label: own ? `${own} · ${t('top.variant.target')}` : `${t('top.variant.base')} · ${t('top.variant.target')}`, short: own ?? t('top.variant.base') }];
     if (own) options.push({ value: BASE, label: t('top.variant.base'), short: t('top.variant.base') });
@@ -132,7 +132,7 @@ export function mountShell(app = {}) {
     }
     badge.title = v ? `${v.errors} ${t('top.validation.errors')}, ${v.warnings} ${t('top.validation.warnings')}` : t('top.validation');
   }
-  store.select((st) => [st.summary, st.strip, st.target, st.lang, st.variant, st.history, st.validation], renderTop);
+  store.select((st) => [st.summary, st.canvas, st.target, st.lang, st.variant, st.history, st.validation], renderTop);
 
   // ----- left sidebar -------------------------------------------------------------
   const sidebar = document.getElementById('sidebar');
