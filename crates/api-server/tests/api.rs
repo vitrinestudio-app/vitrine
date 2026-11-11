@@ -1,5 +1,6 @@
 //! The gallery API in-process (no network): upload with validation,
-//! moderation, list/search, detail, download, previews, reports.
+//! moderation, list/search, detail, download, previews, reports, official
+//! flag.
 
 use std::path::Path;
 
@@ -9,20 +10,31 @@ use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 use tower::ServiceExt;
+use vitrine_api_server::{AppState, Config, StaticToken, router};
 use vitrine_core::Project;
 use vitrine_core::template::extract::{SaveOptions, extract};
-use vitrine_gallery_server::{AppState, Config, router};
 
 fn app(dir: &Path, auto_approve: bool) -> Router {
     let config = Config {
         data_dir: dir.to_owned(),
         admin_token: Some("admin-secret".into()),
-        upload_tokens: [
-            ("up-1".to_owned(), "octocat".to_owned()),
-            ("up-2".to_owned(), "other".to_owned()),
-        ]
-        .into_iter()
-        .collect(),
+        upload_tokens: vec![
+            StaticToken {
+                token: "up-1".into(),
+                login: "octocat".into(),
+                github_id: None,
+            },
+            StaticToken {
+                token: "up-2".into(),
+                login: "other".into(),
+                github_id: None,
+            },
+            StaticToken {
+                token: "up-official".into(),
+                login: "vitrinestudio-app".into(),
+                github_id: Some(1000),
+            },
+        ],
         auto_approve,
         rate_limit_per_hour: 5,
         ..Config::default()
@@ -135,6 +147,8 @@ async fn upload_moderate_list_download() {
     let t = &v["templates"][0];
     assert_eq!(t["id"], "fernwood-mac");
     assert_eq!(t["license"], "CC0-1.0");
+    assert_eq!(t["uploader"], "octocat");
+    assert_eq!(t["official"], false);
     assert!(
         t["canvases"][0]["preview_url"]
             .as_str()
@@ -206,4 +220,41 @@ async fn auto_approve_and_rate_limit() {
             .0,
         StatusCode::NOT_FOUND
     );
+}
+
+#[tokio::test]
+async fn official_uploads_are_flagged() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app = app(tmp.path(), true);
+    let (s, _) = json_of(&app, upload(Some("up-official"), package("1.0.0"))).await;
+    assert_eq!(s, StatusCode::CREATED);
+    let (_, v) = json_of(&app, get("/v1/templates/fernwood-mac")).await;
+    assert_eq!(v["official"], true);
+    assert_eq!(v["uploader"], "vitrinestudio-app");
+    // Another static token with a different login cannot take it over.
+    assert_eq!(
+        send(&app, upload(Some("up-1"), package("2.0.0"))).await.0,
+        StatusCode::CONFLICT
+    );
+}
+
+#[tokio::test]
+async fn public_reads_need_no_login_but_are_rate_limited() {
+    let tmp = tempfile::tempdir().unwrap();
+    let config = Config {
+        data_dir: tmp.path().to_owned(),
+        read_rate_limit_per_hour: 3,
+        ..Config::default()
+    };
+    let app = router(AppState::open(config).unwrap());
+    for _ in 0..3 {
+        assert_eq!(send(&app, get("/v1/templates")).await.0, StatusCode::OK);
+    }
+    let (s, v) = json_of(&app, get("/v1/templates/anything")).await;
+    assert_eq!(
+        (s, v["code"].as_str()),
+        (StatusCode::TOO_MANY_REQUESTS, Some("rate_limited"))
+    );
+    // Health is never limited.
+    assert_eq!(send(&app, get("/health")).await.0, StatusCode::OK);
 }

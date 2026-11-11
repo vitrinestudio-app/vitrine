@@ -6106,6 +6106,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
+name = "vitrine-api-server"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "base64 0.23.1",
+ "getrandom 0.3.4",
+ "http-body-util",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+ "tower",
+ "vitrine-core",
+ "vitrine-render",
+ "wiremock",
+]
+
+[[package]]
 name = "vitrine-app"
 version = "0.0.0"
 dependencies = [
@@ -6142,10 +6164,14 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
+ "vitrine-api-server",
  "vitrine-app",
  "vitrine-core",
  "vitrine-mcp",
+ "vitrine-publish",
  "vitrine-render",
+ "wiremock",
 ]
 
 [[package]]
@@ -6168,23 +6194,6 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "zip",
-]
-
-[[package]]
-name = "vitrine-gallery-server"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "axum",
- "http-body-util",
- "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "tower",
- "vitrine-core",
- "vitrine-render",
 ]
 
 [[package]]

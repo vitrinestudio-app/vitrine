@@ -1,91 +1,37 @@
-//! HTTP routes (API sketch: `docs/gallery/API.md`).
+//! Template gallery: list/search, detail, download, previews, upload,
+//! abuse reports (`docs/api/API.md`).
 
-use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::Json;
+use axum::Router;
 use axum::body::Bytes;
-use axum::extract::{ConnectInfo, DefaultBodyLimit, FromRequestParts, Path, Query, State};
-use axum::http::request::Parts;
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
-use axum::{Json, Router};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use vitrine_core::template::{Limits, Package, is_template_id};
 use vitrine_render::template::{PREVIEW_HEIGHT, add_previews};
 
+use super::{Client, St, limit, read_limit};
 use crate::AppState;
 use crate::auth;
-use crate::db::{self, APPROVED, PENDING, REJECTED, TemplateRow};
+use crate::db::{self, APPROVED, PENDING, TemplateRow};
 use crate::error::{ApiError, ApiResult};
 
-type St = State<Arc<AppState>>;
-
-/// All routes.
-pub fn router(state: Arc<AppState>) -> Router {
-    let max = state.config.max_upload;
-    let r = Router::new()
-        .route("/health", get(health))
+pub(super) fn routes(max_upload: usize) -> Router<Arc<AppState>> {
+    Router::new()
         .route("/v1/templates", get(list))
         .route(
             "/v1/templates",
-            post(upload).layer(DefaultBodyLimit::max(max)),
+            post(upload).layer(DefaultBodyLimit::max(max_upload)),
         )
         .route("/v1/templates/{id}", get(detail))
         .route("/v1/templates/{id}/download", get(download))
         .route("/v1/templates/{id}/previews/{canvas}", get(preview))
         .route("/v1/templates/{id}/report", post(report))
-        .route("/v1/admin/queue", get(admin_queue))
-        .route("/v1/admin/templates/{id}/{action}", post(admin_action));
-    #[cfg(feature = "github-oauth")]
-    let r = r.merge(auth::github::routes());
-    r.with_state(state)
-}
-
-/// Rate-limit key of the client: `X-Forwarded-For` (first hop) behind a
-/// trusted proxy, else the peer address.
-struct Client(String);
-
-impl FromRequestParts<Arc<AppState>> for Client {
-    type Rejection = std::convert::Infallible;
-
-    #[allow(clippy::unused_async_trait_impl)]
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &Arc<AppState>,
-    ) -> Result<Self, Self::Rejection> {
-        let forwarded = state
-            .config
-            .trust_proxy
-            .then(|| parts.headers.get("x-forwarded-for")?.to_str().ok())
-            .flatten()
-            .and_then(|v| v.split(',').next())
-            .map(|v| v.trim().to_owned());
-        let peer = parts
-            .extensions
-            .get::<ConnectInfo<SocketAddr>>()
-            .map(|c| c.0.ip().to_string());
-        Ok(Self(
-            forwarded.or(peer).unwrap_or_else(|| "unknown".to_owned()),
-        ))
-    }
-}
-
-fn limit(state: &AppState, client: &Client, what: &str) -> ApiResult<()> {
-    if state.limiter.allow(&format!("{what}:{}", client.0)) {
-        Ok(())
-    } else {
-        Err(ApiError::new(
-            StatusCode::TOO_MANY_REQUESTS,
-            "rate_limited",
-            "too many requests; try again later",
-        ))
-    }
-}
-
-async fn health() -> Json<Value> {
-    Json(json!({ "status": "ok", "version": env!("CARGO_PKG_VERSION") }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -96,7 +42,7 @@ struct ListQuery {
     offset: Option<u32>,
 }
 
-fn with_links(state: &AppState, t: &TemplateRow) -> Value {
+pub(super) fn with_links(state: &AppState, t: &TemplateRow) -> Value {
     let base = format!("{}/v1/templates/{}", state.config.public_url, t.id);
     let mut v = serde_json::to_value(t).unwrap_or(Value::Null);
     v["download_url"] = json!(format!("{base}/download"));
@@ -107,14 +53,16 @@ fn with_links(state: &AppState, t: &TemplateRow) -> Value {
             }
         }
     }
-    if let Some(o) = v.as_object_mut() {
-        o.remove("uploader");
-    }
-    v["uploader"] = json!(t.uploader);
+    v["official"] = json!(state.config.is_official(&t.uploader));
     v
 }
 
-async fn list(State(state): St, Query(q): Query<ListQuery>) -> ApiResult<Json<Value>> {
+async fn list(
+    State(state): St,
+    client: Client,
+    Query(q): Query<ListQuery>,
+) -> ApiResult<Json<Value>> {
+    read_limit(&state, &client)?;
     let limit = q.limit.unwrap_or(50).clamp(1, 100);
     let offset = q.offset.unwrap_or(0);
     let rows = db::search(
@@ -141,12 +89,18 @@ fn approved(state: &AppState, id: &str) -> ApiResult<TemplateRow> {
     }
 }
 
-async fn detail(State(state): St, Path(id): Path<String>) -> ApiResult<Json<Value>> {
+async fn detail(
+    State(state): St,
+    client: Client,
+    Path(id): Path<String>,
+) -> ApiResult<Json<Value>> {
+    read_limit(&state, &client)?;
     let t = approved(&state, &id)?;
     Ok(Json(with_links(&state, &t)))
 }
 
-async fn download(State(state): St, Path(id): Path<String>) -> ApiResult<Response> {
+async fn download(State(state): St, client: Client, Path(id): Path<String>) -> ApiResult<Response> {
+    read_limit(&state, &client)?;
     let t = approved(&state, &id)?;
     let bytes = state
         .storage
@@ -167,8 +121,10 @@ async fn download(State(state): St, Path(id): Path<String>) -> ApiResult<Respons
 
 async fn preview(
     State(state): St,
+    client: Client,
     Path((id, canvas)): Path<(String, String)>,
 ) -> ApiResult<Response> {
+    read_limit(&state, &client)?;
     let t = approved(&state, &id)?;
     let canvas = canvas.trim_end_matches(".png");
     let png = state
@@ -197,7 +153,7 @@ async fn upload(
     headers: HeaderMap,
     body: Bytes,
 ) -> ApiResult<(StatusCode, Json<Value>)> {
-    let login = auth::uploader(&state, &headers)?;
+    let who = auth::uploader(&state, &headers)?;
     limit(&state, &client, "upload")?;
     let max = state.config.max_upload;
     let pkg = tokio::task::spawn_blocking(move || validate_upload(&body, max))
@@ -206,7 +162,7 @@ async fn upload(
         .map_err(|e| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "invalid_template", e))?;
     let m = &pkg.manifest;
     if let Some(existing) = db::get(&state.db(), &m.id)? {
-        if existing.uploader != login {
+        if !who.owns(&existing.uploader, existing.uploader_id) {
             return Err(ApiError::new(
                 StatusCode::CONFLICT,
                 "id_taken",
@@ -240,7 +196,8 @@ async fn upload(
         tags: json!(m.tags),
         version: m.version.clone(),
         license: vitrine_core::template::LICENSE,
-        uploader: login,
+        uploader: who.login,
+        uploader_id: who.github_id,
         status: status.to_owned(),
         canvases: serde_json::to_value(&m.canvases).unwrap_or(Value::Null),
         fonts: json!(fonts),
@@ -284,39 +241,4 @@ async fn report(
     let message: String = body.message.chars().take(2000).collect();
     db::add_report(&state.db(), &t.id, &body.reason, &message)?;
     Ok((StatusCode::ACCEPTED, Json(json!({ "received": true }))))
-}
-
-async fn admin_queue(State(state): St, headers: HeaderMap) -> ApiResult<Json<Value>> {
-    auth::admin(&state, &headers)?;
-    let db = state.db();
-    let pending = db::search(&db, PENDING, None, None, 100, 0)?;
-    let reports = db::open_reports(&db)?;
-    Ok(Json(json!({ "pending": pending, "reports": reports })))
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct ModerationBody {
-    #[serde(default)]
-    note: String,
-}
-
-async fn admin_action(
-    State(state): St,
-    headers: HeaderMap,
-    Path((id, action)): Path<(String, String)>,
-    body: Option<Json<ModerationBody>>,
-) -> ApiResult<Json<Value>> {
-    auth::admin(&state, &headers)?;
-    let status = match action.as_str() {
-        "approve" => APPROVED,
-        "reject" => REJECTED,
-        _ => return Err(ApiError::not_found("action")),
-    };
-    let note = body.map(|b| b.0.note).unwrap_or_default();
-    let db = state.db();
-    if !db::set_status(&db, &id, status, &note)? {
-        return Err(ApiError::not_found("template"));
-    }
-    db::resolve_reports(&db, &id)?;
-    Ok(Json(json!({ "id": id, "status": status })))
 }

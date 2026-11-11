@@ -1,4 +1,5 @@
-//! SQLite: template metadata, abuse reports.
+//! SQLite: template metadata, abuse reports, login sessions and pending
+//! OAuth states (`<data>/api.sqlite`).
 
 use std::path::Path;
 
@@ -27,6 +28,7 @@ pub fn init(db: &Connection) -> rusqlite::Result<()> {
              tags TEXT NOT NULL DEFAULT '[]',
              version TEXT NOT NULL,
              uploader TEXT NOT NULL,
+             uploader_id INTEGER,
              status TEXT NOT NULL,
              canvases TEXT NOT NULL DEFAULT '[]',
              fonts TEXT NOT NULL DEFAULT '[]',
@@ -43,6 +45,19 @@ pub fn init(db: &Connection) -> rusqlite::Result<()> {
              message TEXT NOT NULL DEFAULT '',
              created_at INTEGER NOT NULL,
              resolved INTEGER NOT NULL DEFAULT 0
+         );
+         CREATE TABLE IF NOT EXISTS sessions (
+             token_hash TEXT PRIMARY KEY,
+             login TEXT NOT NULL,
+             github_id INTEGER NOT NULL,
+             created_at INTEGER NOT NULL,
+             expires_at INTEGER NOT NULL
+         );
+         CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions (expires_at);
+         CREATE TABLE IF NOT EXISTS oauth_states (
+             state_hash TEXT PRIMARY KEY,
+             verifier TEXT NOT NULL,
+             expires_at INTEGER NOT NULL
          );",
     )
 }
@@ -58,6 +73,10 @@ pub struct TemplateRow {
     pub version: String,
     pub license: &'static str,
     pub uploader: String,
+    /// Numeric GitHub user id of the uploader (absent for static tokens
+    /// configured without one). Not shown in responses.
+    #[serde(skip)]
+    pub uploader_id: Option<i64>,
     pub status: String,
     pub canvases: serde_json::Value,
     pub fonts: serde_json::Value,
@@ -67,7 +86,7 @@ pub struct TemplateRow {
     pub updated_at: i64,
 }
 
-const COLUMNS: &str = "id, name, description, author, tags, version, uploader, status, canvases, fonts, size, downloads, created_at, updated_at";
+const COLUMNS: &str = "id, name, description, author, tags, version, uploader, status, canvases, fonts, size, downloads, created_at, updated_at, uploader_id";
 
 fn row(r: &rusqlite::Row<'_>) -> rusqlite::Result<TemplateRow> {
     let json = |i: usize| -> rusqlite::Result<serde_json::Value> {
@@ -90,6 +109,7 @@ fn row(r: &rusqlite::Row<'_>) -> rusqlite::Result<TemplateRow> {
         downloads: r.get(11)?,
         created_at: r.get(12)?,
         updated_at: r.get(13)?,
+        uploader_id: r.get(14)?,
     })
 }
 
@@ -138,13 +158,15 @@ pub fn search(
         .collect()
 }
 
-/// Inserts or replaces a template row (a new version resets moderation).
+/// Inserts or replaces a template row (a new version resets moderation;
+/// the uploader login follows a renamed GitHub account).
 pub fn upsert(db: &Connection, t: &TemplateRow) -> rusqlite::Result<()> {
     db.execute(
-        "INSERT INTO templates (id, name, description, author, tags, version, uploader, status, canvases, fonts, size, downloads, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, ?12, ?12)
+        "INSERT INTO templates (id, name, description, author, tags, version, uploader, status, canvases, fonts, size, downloads, created_at, updated_at, uploader_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, ?12, ?12, ?13)
          ON CONFLICT(id) DO UPDATE SET name = ?2, description = ?3, author = ?4, tags = ?5,
-             version = ?6, status = ?8, canvases = ?9, fonts = ?10, size = ?11, updated_at = ?12",
+             version = ?6, uploader = ?7, status = ?8, canvases = ?9, fonts = ?10, size = ?11,
+             updated_at = ?12, uploader_id = COALESCE(?13, uploader_id)",
         params![
             t.id,
             t.name,
@@ -158,6 +180,7 @@ pub fn upsert(db: &Connection, t: &TemplateRow) -> rusqlite::Result<()> {
             t.fonts.to_string(),
             t.size,
             t.updated_at,
+            t.uploader_id,
         ],
     )?;
     Ok(())

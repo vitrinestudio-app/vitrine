@@ -20,6 +20,7 @@ vitrine-render = { path = "crates/render" }
 vitrine-publish = { path = "crates/publish" }
 vitrine-mcp = { path = "crates/mcp" }
 vitrine-app = { path = "crates/app" }
+vitrine-api-server = { path = "crates/api-server" }
 
 # Serialization (project files are YAML, see docs/KONZEPT.md 3.1)
 serde = { version = "1.0.229", features = ["derive"] }
@@ -95,7 +96,7 @@ bytes = "1.12.1"
 tower-service = "0.3.3"
 tokio-util = "0.7.20"
 getrandom = "0.3.4"
-# Template gallery backend (crates/gallery-server, ADR 0023): HTTP server.
+# Backend of api.vitrinestudio.app (crates/api-server, ADR 0023/0025): HTTP server.
 axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1", "json", "query"] }
 tower = "0.5.3"
 tauri = { version = "2.12.5", features = [] }

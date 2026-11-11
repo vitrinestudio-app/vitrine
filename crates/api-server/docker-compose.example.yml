@@ -1,0 +1,36 @@
+# Example for the owner's Docker server (docs/api/DEPLOY.md). Copy next to
+# a checkout, fill in the secrets in .env (never commit them), then:
+#   docker compose -f docker-compose.example.yml up -d --build
+# The reverse proxy terminates TLS for api.vitrinestudio.app and forwards to
+# 127.0.0.1:8080.
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: crates/api-server/Dockerfile
+    image: vitrine-api:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # The volume keeps its name from the gallery-server deployment.
+      - gallery-data:/data
+    environment:
+      VITRINE_API_PUBLIC_URL: https://api.vitrinestudio.app
+      VITRINE_API_TRUST_PROXY: "1"
+      VITRINE_API_MAX_UPLOAD_MB: "50"
+      VITRINE_API_RATE_LIMIT_PER_HOUR: "20"
+      VITRINE_API_AUTO_APPROVE: "0"
+      VITRINE_API_SESSION_DAYS: "90"
+      VITRINE_API_OFFICIAL_LOGINS: vitrinestudio-app
+      # Public, not a secret (the default; set only to use another OAuth App).
+      VITRINE_API_GITHUB_CLIENT_ID: Ov23linU2WEHOoBNEFpq
+      # Secrets from .env: VITRINE_API_ADMIN_TOKEN=…,
+      # VITRINE_API_UPLOAD_TOKENS=token:login[:github_id],…,
+      # VITRINE_API_GITHUB_CLIENT_SECRET=… (web flow only)
+      VITRINE_API_ADMIN_TOKEN: ${VITRINE_API_ADMIN_TOKEN}
+      VITRINE_API_UPLOAD_TOKENS: ${VITRINE_API_UPLOAD_TOKENS:-}
+      VITRINE_API_GITHUB_CLIENT_SECRET: ${VITRINE_API_GITHUB_CLIENT_SECRET:-}
+
+volumes:
+  gallery-data:
