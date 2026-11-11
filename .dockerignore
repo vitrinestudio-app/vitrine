@@ -1,4 +1,4 @@
-# Docker build context of crates/gallery-server/Dockerfile
+# Docker build context of crates/api-server/Dockerfile
 target/
 .claude/
 tests/fixtures/example/golden/

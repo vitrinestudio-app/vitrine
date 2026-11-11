@@ -8,7 +8,9 @@
 //! and project font families) and `mcp` (MCP
 //! server over stdio for AI assistants; `vitrine-mcp`) and `upload`
 //! (store upload: plan → confirm token → execute; `vitrine-app`) and
-//! `template` (save/list/import/export/remove/insert/new, ADR 0023). The CLI only
+//! `template` (save/list/import/export/remove/insert/new, ADR 0023) and
+//! `gallery` (login/logout/list/upload/download at api.vitrinestudio.app,
+//! ADR 0025). The CLI only
 //! formats what `vitrine-core` and `vitrine-render` compute; it never
 //! edits project fields directly.
 //!
@@ -23,6 +25,7 @@
 mod export;
 mod fonts;
 mod frames;
+mod gallery;
 mod import;
 mod mcp;
 mod new;
@@ -116,6 +119,9 @@ enum Command {
     /// Templates: save canvases as a template, list, import, export,
     /// remove, insert into the project, new project from a template.
     Template(template::TemplateArgs),
+    /// Template gallery (api.vitrinestudio.app): login with GitHub,
+    /// logout, list, upload, download.
+    Gallery(gallery::GalleryArgs),
 }
 
 impl Command {
@@ -133,6 +139,7 @@ impl Command {
             Self::Mcp(_) => "mcp",
             Self::Upload(_) => "upload",
             Self::Template(_) => "template",
+            Self::Gallery(_) => "gallery",
         }
     }
 }
@@ -151,6 +158,7 @@ fn main() -> ExitCode {
         Command::Mcp(args) => mcp::run(args, &cli.global),
         Command::Upload(args) => upload::run(args, &cli.global),
         Command::Template(args) => template::run(args, &cli.global),
+        Command::Gallery(args) => gallery::run(args, &cli.global),
     };
     match result {
         Ok(code) => ExitCode::from(code),

@@ -1,9 +1,8 @@
-//! `vitrine-gallery`: the template gallery backend. Configuration via
-//! `GALLERY_*` environment variables (see `Config`, `docs/gallery/DEPLOY.md`).
+//! `vitrine-api`: the backend of `api.vitrinestudio.app` (template gallery,
+//! GitHub login). Configuration via `VITRINE_API_*` environment variables
+//! (see `Config`, `docs/api/DEPLOY.md`).
 
-use std::net::SocketAddr;
-
-use vitrine_gallery_server::{AppState, Config, router};
+use vitrine_api_server::{AppState, Config, serve};
 
 fn main() -> anyhow::Result<()> {
     let config = Config::from_env()?;
@@ -14,13 +13,8 @@ fn main() -> anyhow::Result<()> {
         .build()?;
     rt.block_on(async move {
         let listener = tokio::net::TcpListener::bind(bind).await?;
-        eprintln!("vitrine-gallery listening on {bind}");
-        axum::serve(
-            listener,
-            router(state).into_make_service_with_connect_info::<SocketAddr>(),
-        )
-        .with_graceful_shutdown(shutdown())
-        .await?;
+        eprintln!("vitrine-api listening on {bind}");
+        serve(listener, state, shutdown()).await?;
         Ok(())
     })
 }

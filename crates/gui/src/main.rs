@@ -274,6 +274,8 @@ json_commands! {
     template_remove: commands::TemplateIdArgs,
     template_insert_plan: commands::TemplateInsertArgs,
     template_insert: commands::TemplateInsertArgs,
+    gallery_list: commands::GalleryListArgs,
+    gallery_download: commands::GalleryDownloadArgs,
 }
 
 image_commands! {
@@ -285,6 +287,7 @@ image_commands! {
     asset_thumbnail: commands::AssetThumbnailArgs,
     frames_thumbnail: commands::FramesThumbnailArgs,
     template_preview: commands::TemplatePreviewArgs,
+    gallery_preview: commands::GalleryPreviewArgs,
 }
 
 /// GUI-only command (no `vitrine-app` counterpart): installs the native
@@ -501,6 +504,9 @@ fn main() {
             template_insert_plan,
             template_insert,
             template_preview,
+            gallery_list,
+            gallery_download,
+            gallery_preview,
             menu_set,
         ])
         .build(tauri::generate_context!())

@@ -1,6 +1,6 @@
 [package]
-name = "vitrine-gallery-server"
-description = "Vitrine Studio template gallery backend (api.vitrinestudio.app): list, download, upload with validation, moderation"
+name = "vitrine-api-server"
+description = "Vitrine Studio backend (api.vitrinestudio.app): template gallery, GitHub login, moderation"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,17 +11,11 @@ authors.workspace = true
 publish = false
 
 [[bin]]
-name = "vitrine-gallery"
+name = "vitrine-api"
 path = "src/main.rs"
 
 [lints]
 workspace = true
-
-[features]
-default = []
-# GitHub OAuth login for uploaders (ADR 0023). Design + stub routes only
-# (TODO): the routes answer 501 until the flow is implemented.
-github-oauth = []
 
 [dependencies]
 vitrine-core.workspace = true
@@ -32,8 +26,16 @@ rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
+# GitHub OAuth (device + web flow): token exchange and `GET /user`.
+reqwest = { workspace = true, features = ["form"] }
+# Session tokens and OAuth state: random values, stored as SHA-256 hashes;
+# PKCE challenge (base64url of SHA-256).
+getrandom.workspace = true
+sha2.workspace = true
+base64.workspace = true
 
 [dev-dependencies]
 tower = { workspace = true, features = ["util"] }
 http-body-util.workspace = true
 tempfile.workspace = true
+wiremock.workspace = true
