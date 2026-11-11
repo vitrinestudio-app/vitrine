@@ -3,8 +3,6 @@
 
 use std::path::PathBuf;
 
-use arrangia_app::CommandError;
-use arrangia_app::commands::AppState;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, ProgressNotificationParam};
 use rmcp::service::RequestContext;
@@ -12,9 +10,11 @@ use rmcp::{RoleServer, tool, tool_router};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
+use vitrine_app::CommandError;
+use vitrine_app::commands::AppState;
 
 use crate::output::ToolOutput;
-use crate::server::{ArrangiaMcp, cmd, image_cmd};
+use crate::server::{VitrineMcp, cmd, image_cmd};
 
 /// What `render_preview` shows.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, serde::Serialize, JsonSchema)]
@@ -315,7 +315,7 @@ fn issues(app: &AppState, target: &str, lang: &str) -> Result<Value, CommandErro
 }
 
 #[tool_router(router = output_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "Render a PNG preview with the export renderer and return it as an image – look at it after every visual change. view: image (one output image as exported; pick `image` index or `page`), canvas (whole strip with page borders and hatched gaps), gallery (all images with store gaps). Also returns size, the number of output images and errors/warnings of this target × language. Example: {\"target\": \"ios-iphone-69\", \"lang\": \"de\", \"page\": 2}.",
         annotations(read_only_hint = true)

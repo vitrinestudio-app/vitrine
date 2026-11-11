@@ -1,8 +1,8 @@
-# Arrangia device catalog (KONZEPT §4.1): data for the built-in parametric
+# Vitrine Studio device catalog (KONZEPT §4.1): data for the built-in parametric
 # frames. Our own generic artwork, no vendor graphics: the shapes resemble
 # device classes but do not reproduce any product. Drawing is done in
-# `arrangia-render` (styles `stylized` and `detailed`). Loaded by
-# `arrangia_core::catalog` (embedded at build time).
+# `vitrine-render` (styles `stylized` and `detailed`). Loaded by
+# `vitrine_core::catalog` (embedded at build time).
 #
 # Geometry
 #   unit         model unit of the numbers (mm for hardware, px for the

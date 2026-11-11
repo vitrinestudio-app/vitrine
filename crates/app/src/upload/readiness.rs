@@ -14,10 +14,10 @@
 
 use std::collections::BTreeMap;
 
-use arrangia_core::Project;
-use arrangia_core::catalog;
-use arrangia_core::model::{Lang, StoreKind, Target};
 use serde::{Deserialize, Serialize};
+use vitrine_core::Project;
+use vitrine_core::catalog;
+use vitrine_core::model::{Lang, StoreKind, Target};
 
 use crate::stores::StoreAccount;
 

@@ -1,13 +1,13 @@
-//! `arrangia` – command line interface.
+//! `vitrine` – command line interface.
 //!
 //! Commands: `new` (project from a template), `render` (preview/debug PNG),
 //! `export` (all files of targets × languages), `validate`, `strings
 //! export|import` (translation exchange), `import screenshots`
-//! (fastlane / Arrangia / flat folders → `screenshots/`), `frames`
+//! (fastlane / Vitrine Studio / flat folders → `screenshots/`), `frames`
 //! (import/list/remove vendor device frames, app-wide) and `mcp` (MCP
-//! server over stdio for AI assistants; `arrangia-mcp`) and `upload`
-//! (store upload: plan → confirm token → execute; `arrangia-app`). The CLI only
-//! formats what `arrangia-core` and `arrangia-render` compute; it never
+//! server over stdio for AI assistants; `vitrine-mcp`) and `upload`
+//! (store upload: plan → confirm token → execute; `vitrine-app`). The CLI only
+//! formats what `vitrine-core` and `vitrine-render` compute; it never
 //! edits project fields directly.
 //!
 //! Exit codes (all commands):
@@ -44,7 +44,7 @@ pub const EXIT_FAILURE: u8 = 2;
 
 /// Create App Store and Play Store screenshots from a single layout.
 #[derive(Debug, Parser)]
-#[command(name = "arrangia", version, about)]
+#[command(name = "vitrine", version, about)]
 struct Cli {
     #[command(flatten)]
     global: Global,
@@ -97,7 +97,7 @@ enum Command {
     Validate(validate::ValidateArgs),
     /// Exchange translations with translators (CSV, XLIFF).
     Strings(strings::StringsArgs),
-    /// Import files into the project (`screenshots <dir>`: fastlane, Arrangia or flat folders).
+    /// Import files into the project (`screenshots <dir>`: fastlane, Vitrine Studio or flat folders).
     #[command(subcommand)]
     Import(import::ImportCommand),
     /// Import, list and remove vendor device frames (Apple Product Bezels).
@@ -161,31 +161,31 @@ mod tests {
 
     #[test]
     fn parses_validate_subcommand() {
-        let cli = Cli::try_parse_from(["arrangia", "validate", "--project", "demo"]).unwrap();
+        let cli = Cli::try_parse_from(["vitrine", "validate", "--project", "demo"]).unwrap();
         assert_eq!(cli.command.name(), "validate");
         assert_eq!(cli.global.project, PathBuf::from("demo"));
     }
 
     #[test]
     fn project_is_global() {
-        let cli = Cli::try_parse_from(["arrangia", "--project", "demo", "export"]).unwrap();
+        let cli = Cli::try_parse_from(["vitrine", "--project", "demo", "export"]).unwrap();
         assert_eq!(cli.command.name(), "export");
         assert_eq!(cli.global.project, PathBuf::from("demo"));
     }
 
     #[test]
     fn render_selection_is_exclusive() {
-        assert!(Cli::try_parse_from(["arrangia", "render", "--page", "1", "--canvas"]).is_err());
+        assert!(Cli::try_parse_from(["vitrine", "render", "--page", "1", "--canvas"]).is_err());
         assert!(
-            Cli::try_parse_from(["arrangia", "render", "--width", "1", "--scale", "1"]).is_err()
+            Cli::try_parse_from(["vitrine", "render", "--width", "1", "--scale", "1"]).is_err()
         );
-        assert!(Cli::try_parse_from(["arrangia", "render", "--canvas", "--scale", "0.5"]).is_ok());
+        assert!(Cli::try_parse_from(["vitrine", "render", "--canvas", "--scale", "0.5"]).is_ok());
     }
 
     #[test]
     fn parses_mcp() {
         let cli = Cli::try_parse_from([
-            "arrangia",
+            "vitrine",
             "mcp",
             "--project",
             "demo",
@@ -203,7 +203,7 @@ mod tests {
             args.app_dir.as_deref(),
             Some(std::path::Path::new("/tmp/a"))
         );
-        let cli = Cli::try_parse_from(["arrangia", "mcp"]).unwrap();
+        let cli = Cli::try_parse_from(["vitrine", "mcp"]).unwrap();
         let Command::Mcp(args) = &cli.command else {
             unreachable!()
         };
@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn parses_import_screenshots() {
         let cli = Cli::try_parse_from([
-            "arrangia",
+            "vitrine",
             "import",
             "screenshots",
             "shots",
@@ -230,7 +230,7 @@ mod tests {
         .unwrap();
         assert_eq!(cli.command.name(), "import");
         assert!(
-            Cli::try_parse_from(["arrangia", "import", "screenshots", "x", "--format", "zip"])
+            Cli::try_parse_from(["vitrine", "import", "screenshots", "x", "--format", "zip"])
                 .is_err()
         );
     }

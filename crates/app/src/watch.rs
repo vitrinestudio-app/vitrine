@@ -4,9 +4,9 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use arrangia_core::io::{I18N_DIR, PROJECT_FILE};
 use notify::RecursiveMode;
 use notify_debouncer_full::{DebounceEventResult, Debouncer, RecommendedCache, new_debouncer};
+use vitrine_core::io::{I18N_DIR, PROJECT_FILE};
 
 /// Debounce window: bursts of writes (atomic saves, copies) become one batch.
 pub const DEBOUNCE: Duration = Duration::from_millis(150);

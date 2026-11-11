@@ -7,8 +7,6 @@
 
 use std::collections::BTreeMap;
 
-use arrangia_app::CommandError;
-use arrangia_app::commands::AppState;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
@@ -16,11 +14,13 @@ use rmcp::{RoleServer, tool, tool_router};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
+use vitrine_app::CommandError;
+use vitrine_app::commands::AppState;
 
 use super::project::compact_summary;
 use crate::output::ToolOutput;
 use crate::params::{EditCtx, edit_line, edit_params, edit_summary, merged};
-use crate::server::{ArrangiaMcp, cmd};
+use crate::server::{VitrineMcp, cmd};
 
 /// Patchable element fields (YAML names), documented for the model (a
 /// macro so `concat!` can put it into tool descriptions).
@@ -450,7 +450,7 @@ impl EditCtx {
 }
 
 #[tool_router(router = element_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "List elements in painting order (bottom first): id, kind, home page, label (text in the default language, device model …), translation key, parent group.",
         annotations(read_only_hint = true)
@@ -824,7 +824,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Power tool: apply raw model ops atomically as ONE undo step (all or nothing). JSON form {\"op\": \"<name>\", …}. update_element always writes the base element; overrides use set_lang_override / reset_lang_override_field / set_variant_override / reset_override_field. Every op and field: call docs_get {topic: \"ops\"} (also resource arrangia://docs/ops). Prefer the specific tools; use this for multi-part changes that must be one step."
+        description = "Power tool: apply raw model ops atomically as ONE undo step (all or nothing). JSON form {\"op\": \"<name>\", …}. update_element always writes the base element; overrides use set_lang_override / reset_lang_override_field / set_variant_override / reset_override_field. Every op and field: call docs_get {topic: \"ops\"} (also resource vitrine://docs/ops). Prefer the specific tools; use this for multi-part changes that must be one step."
     )]
     async fn apply_ops(
         &self,
@@ -855,7 +855,7 @@ impl ArrangiaMcp {
 
 #[cfg(test)]
 mod tests {
-    use arrangia_core::model::ElementPatch;
+    use vitrine_core::model::ElementPatch;
 
     use super::*;
 

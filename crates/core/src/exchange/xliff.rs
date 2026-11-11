@@ -4,7 +4,7 @@
 //!
 //! Inline markup ([`MarkupMode::Inline`]):
 //!
-//! | Arrangia      | XLIFF 2.0                                              | XLIFF 1.2                         |
+//! | Vitrine Studio      | XLIFF 2.0                                              | XLIFF 1.2                         |
 //! |---------------|--------------------------------------------------------|-----------------------------------|
 //! | `**…**`       | `<pc type="fmt" subType="xlf:b" dataRefStart…>`        | `<g ctype="bold">`                |
 //! | `_…_`         | `<pc type="fmt" subType="xlf:i" …>`                    | `<g ctype="italic">`              |
@@ -13,7 +13,7 @@
 //! | `\-`          | `<ph dataRef="\-"/>`                                   | `<x ctype="x-soft-hyphen"/>`      |
 //!
 //! 2.0 keeps the original markers in `<originalData>`, so import maps
-//! `dataRef*` back to the exact marker. Text between tags is Arrangia
+//! `dataRef*` back to the exact marker. Text between tags is Vitrine Studio
 //! source text (escapes like `\*` kept), so import only concatenates.
 
 use std::collections::HashMap;
@@ -32,7 +32,7 @@ use crate::model::Project;
 const NS_12: &str = "urn:oasis:names:tc:xliff:document:1.2";
 const NS_20: &str = "urn:oasis:names:tc:xliff:document:2.0";
 
-const MARKUP_NOTE: &str = "Inline markup is Arrangia syntax: **bold**, _italic_, \
+const MARKUP_NOTE: &str = "Inline markup is Vitrine Studio syntax: **bold**, _italic_, \
 [style]styled text[/], \\n line break, \\- optional hyphen. Keep the markers.";
 
 // ----- writing -------------------------------------------------------------------------
@@ -251,7 +251,7 @@ pub(super) fn export(p: &Project, lang: &str, format: Format, opts: &ExportOptio
             for (_, note) in &notes {
                 let mut s = String::new();
                 esc_text(note, &mut s);
-                let _ = writeln!(units, "        <note from=\"arrangia\">{s}</note>");
+                let _ = writeln!(units, "        <note from=\"vitrine\">{s}</note>");
             }
             units.push_str("      </trans-unit>\n");
         } else {
@@ -299,7 +299,7 @@ pub(super) fn export(p: &Project, lang: &str, format: Format, opts: &ExportOptio
     if v12 {
         let _ = writeln!(
             doc,
-            "<xliff xmlns=\"{NS_12}\" version=\"1.2\">\n  <file original=\"{original}\" source-language=\"{}\" target-language=\"{}\" datatype=\"plaintext\">\n    <header>\n      <tool tool-id=\"arrangia\" tool-name=\"Arrangia\" tool-version=\"{}\"/>",
+            "<xliff xmlns=\"{NS_12}\" version=\"1.2\">\n  <file original=\"{original}\" source-language=\"{}\" target-language=\"{}\" datatype=\"plaintext\">\n    <header>\n      <tool tool-id=\"vitrine\" tool-name=\"Vitrine Studio\" tool-version=\"{}\"/>",
             esc_attr(&src_lang),
             esc_attr(lang),
             env!("CARGO_PKG_VERSION"),

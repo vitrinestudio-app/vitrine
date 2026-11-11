@@ -5,7 +5,7 @@
 
 ## Context
 
-Arrangia makes a number of foundational decisions (renderer libraries, text
+Vitrine Studio makes a number of foundational decisions (renderer libraries, text
 engine, YAML crate, license, gallery gap values …) that later contributors –
 human or AI – need to understand without digging through chat logs or commit
 history. The concept document (`docs/KONZEPT.md`) describes the target state

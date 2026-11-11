@@ -1,6 +1,6 @@
 use super::*;
-use arrangia_core::catalog::{DeviceClass, catalog};
-use arrangia_core::model::{Appearance, Chrome};
+use vitrine_core::catalog::{DeviceClass, catalog};
+use vitrine_core::model::{Appearance, Chrome};
 
 const STYLES: [FrameStyle; 2] = [FrameStyle::Stylized, FrameStyle::Detailed];
 

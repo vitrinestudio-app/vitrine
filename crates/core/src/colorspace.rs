@@ -1,4 +1,4 @@
-//! Colour management of imported images (ADR 0021): everything Arrangia
+//! Colour management of imported images (ADR 0021): everything Vitrine Studio
 //! draws is sRGB, so screenshots, image assets and imported bezels are
 //! converted to sRGB once, right after decoding.
 //!

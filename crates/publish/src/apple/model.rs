@@ -1,5 +1,5 @@
 //! Typed models of the App Store Connect JSON:API resources used by the
-//! client (only the fields Arrangia needs). See ADR 0017.
+//! client (only the fields Vitrine Studio needs). See ADR 0017.
 
 use serde::{Deserialize, Serialize};
 

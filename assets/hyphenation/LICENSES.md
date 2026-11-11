@@ -5,11 +5,11 @@ are **unmodified** copies of the plain-text pattern files of the
 [hyph-utf8](https://github.com/hyphenation/tex-hyphen) project
 (`hyph-utf8/tex/generic/hyph-utf8/patterns/txt/`, commit
 `5684c0f51c0b81133db2efbe60a408b4155a3ff5`, fetched 2026-11-10). They are
-embedded into `arrangia-core` (`core::layout::hyphen`, ADR 0009) and read
+embedded into `vitrine-core` (`core::layout::hyphen`, ADR 0009) and read
 with Liang's algorithm.
 
 Each language has its own licence, taken from the metadata header of the
-corresponding `tex/hyph-*.tex` file. Arrangia's own licence is not decided
+corresponding `tex/hyph-*.tex` file. Vitrine Studio's own licence is not decided
 yet, so only patterns under permissive licences (MIT, BSD, or a
 "free distribution" notice) are bundled. Where a file is dual-licensed,
 the permissive option is used. Copyright notices and licence texts are
@@ -29,7 +29,7 @@ distributions (e.g. in an "acknowledgements" document).
 | `da` | Danish | © 1994 Frank Jensen | MIT (dual LPPL 1.3 / MIT) | yes |
 | `nb` | Norwegian Bokmål (`no`, `nb`) | © 2004–2005 Rune Kleveland, Ole Michael Selberg, 2007 Karl Ove Hufthammer | permissive notice (A) | yes |
 | `fi` | Finnish | © 1986, 1988, 1989 Kauko Saarinen | "Patterns may be freely distributed" | yes |
-| `sv` | Swedish | © 1994 Jan Michael Rynning | LPPL 1.2 only | **no** – LPPL is not a plain permissive licence (conditions on modified versions); left out until Arrangia's licence is decided |
+| `sv` | Swedish | © 1994 Jan Michael Rynning | LPPL 1.2 only | **no** – LPPL is not a plain permissive licence (conditions on modified versions); left out until Vitrine Studio's licence is decided |
 
 Other hyph-utf8 languages were not reviewed and are not bundled. To add
 one: check the licence in its `tex/hyph-<lang>.tex` header, copy the

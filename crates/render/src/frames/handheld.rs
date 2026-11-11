@@ -1,8 +1,8 @@
 //! Phones and tablets: buttons, housing, front glass, screen, cutouts.
 
-use arrangia_core::catalog::{ButtonStyle, CutoutKind, CutoutShape, DeviceClass, Edge, HingeAt};
-use arrangia_core::geometry::Rect;
 use tiny_skia::{FillRule, Mask, Pixmap};
+use vitrine_core::catalog::{ButtonStyle, CutoutKind, CutoutShape, DeviceClass, Edge, HingeAt};
+use vitrine_core::geometry::Rect;
 
 use super::Ctx;
 use super::palette::{contrast, luma, mix, shade};
@@ -370,7 +370,7 @@ trait CutoutExt {
     fn right_end(&self) -> f64;
 }
 
-impl CutoutExt for arrangia_core::catalog::Cutout {
+impl CutoutExt for vitrine_core::catalog::Cutout {
     fn right_end(&self) -> f64 {
         self.x + self.w - self.h / 2.0
     }

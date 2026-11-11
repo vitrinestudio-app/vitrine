@@ -61,7 +61,10 @@ fn needs_a_project_and_known_commands() {
     assert_eq!(e.code, ErrorCode::UnknownCommand);
     let e = dispatch(&f.app, "project_open", json!({"folder": "x"})).unwrap_err();
     assert_eq!(e.code, ErrorCode::InvalidArgs);
-    assert_eq!(call(&f.app, "app_info", Value::Null)["name"], "Arrangia");
+    assert_eq!(
+        call(&f.app, "app_info", Value::Null)["name"],
+        "Vitrine Studio"
+    );
 }
 
 #[test]
@@ -109,7 +112,7 @@ fn new_project_from_template() {
         "settings_set",
         json!({"settings": {"default_project_language": "de", "default_frame_style": "stylized"}}),
     );
-    let dir = f.dir.parent().unwrap().join("new.arrangia");
+    let dir = f.dir.parent().unwrap().join("new.vitrine");
     let s = call(
         &f.app,
         "project_new",

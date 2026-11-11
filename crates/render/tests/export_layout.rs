@@ -3,14 +3,14 @@
 
 use std::path::Path;
 
-use arrangia_core::Project;
-use arrangia_core::io::project_from_yaml;
-use arrangia_core::layout::FontLibrary;
-use arrangia_render::export::{ExportLayout, ExportOptions, FileKind, export};
-use arrangia_render::scene::RenderContext;
+use vitrine_core::Project;
+use vitrine_core::io::project_from_yaml;
+use vitrine_core::layout::FontLibrary;
+use vitrine_render::export::{ExportLayout, ExportOptions, FileKind, export};
+use vitrine_render::scene::RenderContext;
 
 const PROJECT: &str = r##"
-format: arrangia/1
+format: vitrine/1
 name: Layout <Test>
 languages: {default: en, available: [en, de]}
 strips:

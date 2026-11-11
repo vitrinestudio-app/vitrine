@@ -4,7 +4,6 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use arrangia_app::CommandError;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
@@ -12,10 +11,11 @@ use rmcp::{RoleServer, tool, tool_router};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
+use vitrine_app::CommandError;
 
 use crate::output::ToolOutput;
 use crate::params::{edit_line, edit_summary};
-use crate::server::{ArrangiaMcp, cmd};
+use crate::server::{VitrineMcp, cmd};
 
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -100,7 +100,7 @@ fn edited(r: &Value) -> ToolOutput {
 }
 
 #[tool_router(router = string_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "Translations: languages, keys, lang → key → text, and which text elements use each key. Example: {\"lang\": \"de\"}.",
         annotations(read_only_hint = true)

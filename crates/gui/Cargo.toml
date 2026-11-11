@@ -1,27 +1,27 @@
 [package]
-name = "arrangia-gui"
-description = "Arrangia desktop editor (Tauri 2)"
+name = "vitrine-gui"
+description = "Vitrine Studio desktop editor (Tauri 2)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 publish = false
-default-run = "arrangia-gui"
+default-run = "vitrine-gui"
 
 [lib]
-name = "arrangia_gui"
+name = "vitrine_gui"
 path = "src/lib.rs"
 
 [[bin]]
-name = "arrangia-gui"
+name = "vitrine-gui"
 path = "src/main.rs"
 
 # Dev harness: serves ui/ and the commands over HTTP for browser-based
 # checks (docs/adr/0008). Never part of the release bundle.
 [[bin]]
-name = "arrangia-devbridge"
-path = "src/bin/arrangia-devbridge.rs"
+name = "vitrine-devbridge"
+path = "src/bin/vitrine-devbridge.rs"
 required-features = ["devbridge"]
 
 [features]
@@ -31,9 +31,9 @@ devbridge = []
 tauri-build.workspace = true
 
 [dependencies]
-arrangia-app.workspace = true
+vitrine-app.workspace = true
 # The GUI hosts the MCP endpoint (ADR 0015).
-arrangia-mcp = { workspace = true, features = ["http"] }
+vitrine-mcp = { workspace = true, features = ["http"] }
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true
 serde.workspace = true
@@ -42,11 +42,11 @@ serde_json.workspace = true
 [dev-dependencies]
 tempfile.workspace = true
 # examples/preview_transport.rs
-arrangia-core.workspace = true
-arrangia-render.workspace = true
+vitrine-core.workspace = true
+vitrine-render.workspace = true
 png.workspace = true
 # Enables the bridge for the integration tests (`cargo test --all`).
-arrangia-gui = { path = ".", features = ["devbridge"] }
+vitrine-gui = { path = ".", features = ["devbridge"] }
 
 [lints]
 workspace = true

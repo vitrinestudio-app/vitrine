@@ -44,7 +44,7 @@ In-App Event media for comparison:
 
 ### Safe area and text rules
 Sources: https://developer.apple.com/app-store/asset-best-practices/ and the 2.3.3 help page.
-- **Safe area:** Apple gives no numeric safe area. It is "defined in each template" (Figma Universal; Photoshop/Pixelmator for Header, Search results and Universal; Sketch Universal). Apple says to keep key art inside the safe area and the focal point in the centre, because the crop varies by device and orientation. **Gap: Arrangia would need the template geometry, which is not published as numbers.**
+- **Safe area:** Apple gives no numeric safe area. It is "defined in each template" (Figma Universal; Photoshop/Pixelmator for Header, Search results and Universal; Sketch Universal). Apple says to keep key art inside the safe area and the focal point in the centre, because the crop varies by device and orientation. **Gap: Vitrine Studio would need the template geometry, which is not published as numbers.**
 - **Text:** "a short phrase that enhances your visual rather than describes it". Localize it for all supported languages.
 - **Not allowed:**
   - prices or discounts, URLs, the © symbol, unverifiable awards

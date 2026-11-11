@@ -17,7 +17,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       group, variant, device_map, screenshots, region, fit, gaps, store slot),
       `GalleryProfile`
 - [x] Color references `@name`, lu units, sign conventions from ADR 0001
-- [x] YAML load/save with `serde-saphyr`; stable field order; `format: arrangia/1`;
+- [x] YAML load/save with `serde-saphyr`; stable field order; `format: vitrine/1`;
       revision number; atomic save (temp file + rename)
 - [x] i18n files `i18n/<lang>.yaml` (key → text)
 - [x] Round-trip tests (load → save = identical), insta snapshots
@@ -85,7 +85,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] PNG 24-bit no alpha + JPEG; naming `export/<target>/<lang>/<nn>_<page-id>.png`
       (grouped: `<nn>_<id1>+<id2>.png`)
 - [x] Parallel with rayon; incremental via per-file hashes
-      (`export/.arrangia-export.json`)
+      (`export/.vitrine-export.json`)
 - [ ] Image shadows from the image alpha (currently the image rect);
       SVG text needs a font database for usvg (text in SVG assets is
       currently not rendered) (→ Follow-ups)
@@ -102,7 +102,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Apple presets verified against App Store Connect (2026-11-09)
 
 ## 1.9 CLI
-- [x] `arrangia new <dir>` (from a template), `render` (preview PNG of page /
+- [x] `vitrine new <dir>` (from a template), `render` (preview PNG of page /
       canvas / gallery), `export [--target] [--lang]`, `validate` (exit code)
 - [x] Exit codes: 0 ok (warnings only fail `validate --strict`), 1 project
       problems (validation errors, export failures), 2 could not run (usage,
@@ -126,7 +126,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Golden tests (`crates/render/tests/golden.rs`): all output images
       of all targets (en) + de for iPhone and blog header at 25 %, gallery
       previews at 320 px; per-channel tolerance 8/255, max 0.5 % differing
-      pixels; `ARRANGIA_UPDATE_GOLDEN=1` to update; `*.actual.png` /
+      pixels; `VITRINE_UPDATE_GOLDEN=1` to update; `*.actual.png` /
       `*.diff.png` on failure; fixture validation test; CLI test
       (`validate --strict` + export of the web targets)
 - [x] Windows: YAML round-trip tests independent of checkout line

@@ -4,12 +4,12 @@
 
 use std::collections::BTreeSet;
 
-use arrangia_core::catalog;
-use arrangia_core::model::{
+use serde::{Deserialize, Serialize};
+use vitrine_core::catalog;
+use vitrine_core::model::{
     GalleryRef, Orientation, PixelSize, Region, StripId, Target, TargetId, TargetKind,
 };
-use arrangia_core::ops::{Op, TargetPatch};
-use serde::{Deserialize, Serialize};
+use vitrine_core::ops::{Op, TargetPatch};
 
 use super::AppState;
 use super::edit::EditResult;
@@ -69,7 +69,7 @@ pub struct TargetAddArgs {
 
 /// `base`, or `base-2`, `base-3` … if taken (by the project or `taken`).
 pub(super) fn unique_target_id(
-    project: &arrangia_core::Project,
+    project: &vitrine_core::Project,
     base: &str,
     taken: &BTreeSet<String>,
 ) -> String {
@@ -89,7 +89,7 @@ pub(super) fn unique_target_id(
 /// `page_count` pages; the id defaults to the preset id made unique
 /// against the project and `taken`.
 pub(super) fn preset_target(
-    project: &arrangia_core::Project,
+    project: &vitrine_core::Project,
     args: &TargetAddArgs,
     page_count: u32,
     taken: &BTreeSet<String>,

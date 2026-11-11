@@ -6,13 +6,13 @@
 
 mod common;
 
-use arrangia_publish::apple::library::{
-    CATEGORY_CREATIVE, CATEGORY_SCREENSHOTS, RefDataFilter, is_asset_has_placements,
-};
-use arrangia_publish::apple::{Client, Config, LibraryUpload};
-use arrangia_publish::{Error, UploadStep, ignore_progress};
 use common::{ProgressLog, ec_key, fast_options};
 use serde_json::{Value, json};
+use vitrine_publish::apple::library::{
+    CATEGORY_CREATIVE, CATEGORY_SCREENSHOTS, RefDataFilter, is_asset_has_placements,
+};
+use vitrine_publish::apple::{Client, Config, LibraryUpload};
+use vitrine_publish::{Error, UploadStep, ignore_progress};
 use wiremock::matchers::{body_bytes, body_json, body_partial_json, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 

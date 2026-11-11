@@ -9,7 +9,7 @@ use crate::model::PixelSize;
 /// every other run of characters becomes one `-`. Empty → `file`.
 ///
 /// ```
-/// use arrangia_core::import::slugify;
+/// use vitrine_core::import::slugify;
 /// assert_eq!(slugify("Home Screen (1)"), "home-screen-1");
 /// assert_eq!(slugify("01_home"), "01_home");
 /// ```

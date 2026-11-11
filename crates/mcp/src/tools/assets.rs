@@ -12,11 +12,11 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use arrangia_app::CommandError;
+use vitrine_app::CommandError;
 
 use super::project::NoParams;
 use crate::output::ToolOutput;
-use crate::server::{ArrangiaMcp, cmd};
+use crate::server::{VitrineMcp, cmd};
 
 /// Kind of imported file.
 #[derive(Debug, Clone, Copy, Deserialize, serde::Serialize, JsonSchema)]
@@ -105,7 +105,7 @@ pub enum SourceFormat {
     #[default]
     Auto,
     /// `<lang>/[<variant>/]<key>.png` like the project.
-    Arrangia,
+    Vitrine,
     /// fastlane snapshot output (`de-DE/iPhone 16 Pro Max-01_home.png`).
     Fastlane,
     /// All files in one folder.
@@ -149,7 +149,7 @@ pub struct ScreenshotsImportParams {
 
 /// One entry of a mapping-list import (the call's settings as defaults).
 fn import_one(
-    app: &arrangia_app::commands::AppState,
+    app: &vitrine_app::commands::AppState,
     p: &AssetsImportParams,
     f: &ImportFile,
 ) -> Result<Value, CommandError> {
@@ -177,7 +177,7 @@ fn import_one(
 }
 
 #[tool_router(router = asset_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "Files of the project: screenshots (path, language, variant, key, size), assets, fonts, which device elements use each screenshot key, which elements use each asset, and the screenshot variants the targets need.",
         annotations(read_only_hint = true)

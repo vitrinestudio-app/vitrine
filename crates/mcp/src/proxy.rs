@@ -1,7 +1,7 @@
-//! `arrangia mcp` as a stdio ↔ Streamable HTTP proxy to a running GUI
+//! `vitrine mcp` as a stdio ↔ Streamable HTTP proxy to a running GUI
 //! (feature `proxy`, ADR 0015).
 //!
-//! Claude Desktop starts `arrangia mcp` and speaks newline-delimited
+//! Claude Desktop starts `vitrine mcp` and speaks newline-delimited
 //! JSON-RPC over stdio. The proxy forwards every message unchanged as one
 //! `POST /mcp` to the GUI's endpoint (bearer token from the discovery
 //! file) and writes every JSON-RPC message of the answer – a JSON body or
@@ -26,16 +26,16 @@
 //!   closed (`DELETE`).
 //!
 //! Server-initiated messages outside a request (the optional `GET` SSE
-//! stream) are not forwarded; Arrangia sends none.
+//! stream) are not forwarded; Vitrine Studio sends none.
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrangia_app::settings::AppPaths;
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinSet;
+use vitrine_app::settings::AppPaths;
 
 use crate::discovery::{self, Discovery};
 
@@ -236,7 +236,7 @@ impl Proxy {
         {
             self.emit(&json!({
                 "jsonrpc": "2.0", "id": msg["id"],
-                "error": {"code": -32603, "message": format!("Arrangia GUI: {e}")},
+                "error": {"code": -32603, "message": format!("Vitrine Studio GUI: {e}")},
             }));
         }
     }
@@ -248,7 +248,7 @@ impl Proxy {
             .await
             .ok()
             .flatten()
-            .ok_or("no running Arrangia GUI found (is it still open?)")?;
+            .ok_or("no running Vitrine Studio GUI found (is it still open?)")?;
         let init = {
             let mut up = self.up.lock().await;
             up.url = gui.url;
@@ -454,8 +454,8 @@ mod tests {
     fn standard_headers() {
         let call = json!({"method": "tools/call", "params": {"name": "element_add"}});
         assert_eq!(name_of(&call), Some("element_add"));
-        let read = json!({"method": "resources/read", "params": {"uri": "arrangia://x"}});
-        assert_eq!(name_of(&read), Some("arrangia://x"));
+        let read = json!({"method": "resources/read", "params": {"uri": "vitrine://x"}});
+        assert_eq!(name_of(&read), Some("vitrine://x"));
         assert_eq!(name_of(&json!({"method": "tools/list"})), None);
         assert_eq!(header_value("tools/call"), "tools/call");
         assert_eq!(header_value("é"), "=?base64?w6k=?=");

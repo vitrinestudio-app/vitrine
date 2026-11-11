@@ -1,8 +1,8 @@
 //! Path builders for the frames: rectangles with per-corner radii (circular
 //! or "continuous"), pills, circles, the notch outline.
 
-use arrangia_core::geometry::Rect;
 use tiny_skia::{Path, PathBuilder, Rect as SkRect};
+use vitrine_core::geometry::Rect;
 
 /// Circular (`κ`) control distance of a quarter circle, measured from the
 /// corner point along the edge: `r − 0.5523 r`.

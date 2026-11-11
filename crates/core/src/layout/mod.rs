@@ -3,11 +3,11 @@
 //! positioned glyph runs in **lu**.
 //!
 //! Layout never sees pixels: glyph positions are unhinted and in lu, so
-//! preview and export break lines identically. `arrangia-render` only
+//! preview and export break lines identically. `vitrine-render` only
 //! rasterises the resulting [`TextLayout`] (glyph outlines as paths).
 //!
 //! ```
-//! use arrangia_core::layout::{Fit, FontLibrary, ResolvedTextStyle, TextInput, TextLayouter};
+//! use vitrine_core::layout::{Fit, FontLibrary, ResolvedTextStyle, TextInput, TextLayouter};
 //!
 //! let mut layouter = TextLayouter::new(FontLibrary::bundled());
 //! let style = ResolvedTextStyle { size: 72.0, ..ResolvedTextStyle::default() };

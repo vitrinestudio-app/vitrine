@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
-use arrangia_core::Project;
+use vitrine_core::Project;
 
 use super::manifest::ManifestEntry;
 use super::{ExportLayout, FileKind, image_size};
@@ -103,7 +103,7 @@ pub fn render(
     let mut h = String::with_capacity(16 * 1024 + items.len() * 512);
     h.push_str("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n");
     h.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
-    h.push_str("<meta name=\"generator\" content=\"Arrangia\">\n");
+    h.push_str("<meta name=\"generator\" content=\"Vitrine Studio\">\n");
     let _ = writeln!(h, "<title>{} · export</title>", esc(name));
     h.push_str("<style>\n");
     h.push_str(CSS);

@@ -1,7 +1,7 @@
 //! Contact sheet of all built-in parametric frames.
 //!
 //! ```sh
-//! cargo run -p arrangia-render --release --example frames
+//! cargo run -p vitrine-render --release --example frames
 //! ```
 //!
 //! Writes `docs/spike/frames_catalog_stylized.png` and
@@ -19,16 +19,16 @@
 
 use std::path::Path;
 
-use arrangia_core::geometry::Rect;
-use arrangia_core::model::{Appearance, Chrome, FrameStyle, Orientation};
-use arrangia_render::blur::{ShadowPx, draw_shadow};
-use arrangia_render::frames::{
+use tiny_skia::{FillRule, Pixmap, Transform};
+use vitrine_core::geometry::Rect;
+use vitrine_core::model::{Appearance, Chrome, FrameStyle, Orientation};
+use vitrine_render::blur::{ShadowPx, draw_shadow};
+use vitrine_render::frames::{
     catalog_device, device_geometry, device_size, draw_device, glyphs, shapes,
     with_screenshot_aspect,
 };
-use arrangia_render::paint::{Rgba, hex, linear, shader_paint, solid, with_alpha};
-use arrangia_render::raster::save_png_rgb;
-use tiny_skia::{FillRule, Pixmap, Transform};
+use vitrine_render::paint::{Rgba, hex, linear, shader_paint, solid, with_alpha};
+use vitrine_render::raster::save_png_rgb;
 
 const SHEET_W: f64 = 2800.0;
 const GAP: f64 = 70.0;
@@ -266,8 +266,8 @@ fn closeups(dir: &Path) -> anyhow::Result<()> {
 
 struct Placed {
     item: Item,
-    dev: arrangia_core::resolve::ResolvedDevice,
-    size: arrangia_core::geometry::Vec2,
+    dev: vitrine_core::resolve::ResolvedDevice,
+    size: vitrine_core::geometry::Vec2,
 }
 
 fn place(item: Item, style: &FrameStyle) -> Placed {
@@ -325,7 +325,7 @@ fn sheet(style: &FrameStyle, name: &str) -> Pixmap {
     }
     text(
         &mut pm,
-        &format!("Arrangia parametric frames · {name}"),
+        &format!("Vitrine Studio parametric frames · {name}"),
         60.0,
         86.0,
         40.0,
@@ -526,7 +526,7 @@ fn theme(dark: bool) -> Theme {
 }
 
 fn lighter(c: Rgba) -> Rgba {
-    arrangia_render::frames::palette::shade(c, 0.35)
+    vitrine_render::frames::palette::shade(c, 0.35)
 }
 
 /// Mobile / tablet app: status bar, title, hero card, list or grid, tab bar.

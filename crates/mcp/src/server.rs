@@ -1,4 +1,4 @@
-//! [`ArrangiaMcp`]: the MCP server handler over an [`AppState`].
+//! [`VitrineMcp`]: the MCP server handler over an [`AppState`].
 //!
 //! The handler owns no project state of its own: it holds an
 //! `Arc<AppState>` (headless: its own; GUI: the app's live state), so the
@@ -12,13 +12,10 @@
 //!    and `project-edited` events name the assistant,
 //! 3. first syncs with the disk (reload when the files changed; a
 //!    `project.yaml` that does not load is reported as error `load`),
-//! 4. then calls `arrangia_app::commands` – never the model directly.
+//! 4. then calls `vitrine_app::commands` – never the model directly.
 
 use std::sync::Arc;
 
-use arrangia_app::commands::AppState;
-use arrangia_app::{Actor, CommandError, ErrorCode, Reply};
-use arrangia_core::Project;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::tool::ToolCallContext;
 use rmcp::model::{
@@ -30,6 +27,9 @@ use rmcp::model::{
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer, ServerHandler};
 use serde_json::Value;
+use vitrine_app::commands::AppState;
+use vitrine_app::{Actor, CommandError, ErrorCode, Reply};
+use vitrine_core::Project;
 
 use crate::output::{ToolOutput, error_result};
 use crate::progress::ProgressRelay;
@@ -41,7 +41,7 @@ pub const INSTRUCTIONS: &str = include_str!("instructions.md");
 /// Who hosts the server.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Host {
-    /// `arrangia mcp --headless`: own session, no GUI.
+    /// `vitrine mcp --headless`: own session, no GUI.
     Headless,
     /// The GUI's live session (ADR 0015): omitted targets/languages
     /// default to the GUI's view; sessions and tool calls are reported in
@@ -49,9 +49,9 @@ pub enum Host {
     Gui,
 }
 
-/// The Arrangia MCP server (tools + resources) over an [`AppState`].
+/// The Vitrine Studio MCP server (tools + resources) over an [`AppState`].
 #[derive(Clone)]
-pub struct ArrangiaMcp {
+pub struct VitrineMcp {
     app: Arc<AppState>,
     progress: Option<Arc<ProgressRelay>>,
     host: Host,
@@ -96,9 +96,9 @@ impl Drop for SessionGuard {
     }
 }
 
-impl std::fmt::Debug for ArrangiaMcp {
+impl std::fmt::Debug for VitrineMcp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ArrangiaMcp")
+        f.debug_struct("VitrineMcp")
             .field("host", &self.host)
             .finish_non_exhaustive()
     }
@@ -116,7 +116,7 @@ pub fn client_info(ctx: &RequestContext<RoleServer>) -> (String, Option<String>)
     (name, info.and_then(|i| i.title))
 }
 
-impl ArrangiaMcp {
+impl VitrineMcp {
     /// A server over `app`. `progress` must be the app's event sink (or
     /// wrap it) for `export` to send progress notifications.
     pub fn new(app: Arc<AppState>, progress: Option<Arc<ProgressRelay>>, host: Host) -> Self {
@@ -235,7 +235,7 @@ pub fn sync_with_disk(app: &AppState) -> Result<(), CommandError> {
         return Ok(());
     };
     session.reload("external");
-    let on_disk = arrangia_core::io::disk_revision(session.dir());
+    let on_disk = vitrine_core::io::disk_revision(session.dir());
     let loaded = session.revision();
     let broken = match &on_disk {
         Ok(Some(rev)) => *rev != loaded,
@@ -250,16 +250,16 @@ pub fn sync_with_disk(app: &AppState) -> Result<(), CommandError> {
             ErrorCode::Load,
             format!(
                 "project.yaml on disk was changed and does not load: {why}. \
-                 Arrangia still holds revision {loaded} in memory; nothing was changed."
+                 Vitrine Studio still holds revision {loaded} in memory; nothing was changed."
             ),
         ));
     }
     Ok(())
 }
 
-/// Runs a JSON command of `arrangia_app::commands` by name.
+/// Runs a JSON command of `vitrine_app::commands` by name.
 pub fn cmd(app: &AppState, name: &str, args: Value) -> Result<Value, CommandError> {
-    match arrangia_app::dispatch(app, name, args)? {
+    match vitrine_app::dispatch(app, name, args)? {
         Reply::Json(v) => Ok(v),
         Reply::Image(_) => Err(CommandError::internal(format!(
             "`{name}` answers with an image"
@@ -267,13 +267,13 @@ pub fn cmd(app: &AppState, name: &str, args: Value) -> Result<Value, CommandErro
     }
 }
 
-/// Runs an image command of `arrangia_app::commands` by name.
+/// Runs an image command of `vitrine_app::commands` by name.
 pub fn image_cmd(
     app: &AppState,
     name: &str,
     args: Value,
-) -> Result<Arc<arrangia_app::preview::PreviewImage>, CommandError> {
-    match arrangia_app::dispatch(app, name, args)? {
+) -> Result<Arc<vitrine_app::preview::PreviewImage>, CommandError> {
+    match vitrine_app::dispatch(app, name, args)? {
         Reply::Image(i) => Ok(i),
         Reply::Json(_) => Err(CommandError::internal(format!(
             "`{name}` answers with JSON"
@@ -287,7 +287,7 @@ fn is_argument_error(message: &str) -> bool {
     message.starts_with("failed to deserialize parameters")
 }
 
-impl ServerHandler for ArrangiaMcp {
+impl ServerHandler for VitrineMcp {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(
             ServerCapabilities::builder()
@@ -297,7 +297,7 @@ impl ServerHandler for ArrangiaMcp {
         )
         .with_server_info(
             Implementation::new(crate::SERVER_NAME, env!("CARGO_PKG_VERSION"))
-                .with_title("Arrangia"),
+                .with_title("Vitrine Studio"),
         )
         .with_instructions(INSTRUCTIONS)
     }
@@ -420,21 +420,21 @@ mod tests {
         assert!(!is_argument_error("tool not found"));
     }
 
-    fn headless_example() -> (tempfile::TempDir, ArrangiaMcp) {
+    fn headless_example() -> (tempfile::TempDir, VitrineMcp) {
         let tmp = tempfile::tempdir().unwrap();
         let dir = tmp.path().join("p");
-        arrangia_app::testutil::copy_project(&arrangia_app::testutil::example_fixture(), &dir)
+        vitrine_app::testutil::copy_project(&vitrine_app::testutil::example_fixture(), &dir)
             .unwrap();
         let app = Arc::new(
             AppState::new(
-                arrangia_app::settings::AppPaths::in_dir(&tmp.path().join("app")),
-                Arc::new(arrangia_app::events::NullSink),
-                Arc::new(arrangia_app::dialogs::NoDialogs),
+                vitrine_app::settings::AppPaths::in_dir(&tmp.path().join("app")),
+                Arc::new(vitrine_app::events::NullSink),
+                Arc::new(vitrine_app::dialogs::NoDialogs),
             )
             .without_watcher(),
         );
         app.open_project(&dir).unwrap();
-        (tmp, ArrangiaMcp::new(app, None, Host::Headless))
+        (tmp, VitrineMcp::new(app, None, Host::Headless))
     }
 
     #[test]
@@ -491,7 +491,7 @@ mod tests {
         )
         .unwrap();
         // A file that does not load is reported before any write.
-        std::fs::write(&file, "format: arrangia/1\nrevision: 99\nbogus: [\n").unwrap();
+        std::fs::write(&file, "format: vitrine/1\nrevision: 99\nbogus: [\n").unwrap();
         let e = sync_with_disk(&app).unwrap_err();
         assert_eq!(e.code, ErrorCode::Load);
         assert!(e.message.contains("does not load"), "{}", e.message);

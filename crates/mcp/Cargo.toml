@@ -1,6 +1,6 @@
 [package]
-name = "arrangia-mcp"
-description = "Arrangia MCP server (rmcp) on top of the shared application layer"
+name = "vitrine-mcp"
+description = "Vitrine Studio MCP server (rmcp) on top of the shared application layer"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -24,12 +24,12 @@ http = [
     "dep:tokio-util",
     "dep:getrandom",
 ]
-# `arrangia mcp` as a stdio proxy to a running GUI (the CLI enables it).
+# `vitrine mcp` as a stdio proxy to a running GUI (the CLI enables it).
 proxy = ["dep:reqwest"]
 
 [dependencies]
-arrangia-core.workspace = true
-arrangia-app.workspace = true
+vitrine-core.workspace = true
+vitrine-app.workspace = true
 rmcp.workspace = true
 schemars.workspace = true
 serde.workspace = true

@@ -4,15 +4,15 @@
 
 use std::collections::BTreeMap;
 
-use arrangia_core::catalog;
-use arrangia_core::edit::{DefaultLanguageImpact, default_language_impact as impact};
-use arrangia_core::model::{
+use serde::Deserialize;
+use vitrine_core::catalog;
+use vitrine_core::edit::{DefaultLanguageImpact, default_language_impact as impact};
+use vitrine_core::model::{
     FontSettings, FrameStyle, Lang, Languages, Rgba, ShadowPreset, SpanStyle, StyleKind, Styles,
     TextStyle,
 };
-use arrangia_core::ops::Op;
-use arrangia_core::resolve::FsAssets;
-use serde::Deserialize;
+use vitrine_core::ops::Op;
+use vitrine_core::resolve::FsAssets;
 
 use super::edit::double_option;
 use super::{AppState, NoArgs};
@@ -227,7 +227,7 @@ pub fn styles_patch(app: &AppState, args: StylesPatchArgs) -> CmdResult<ApplyRes
         // A new default frame source remaps the colours of the devices that
         // inherit it (ADR 0012), in the same undo step.
         let index = app.frame_index();
-        ops.extend(arrangia_core::frame_import::set_default_frame_ops(
+        ops.extend(vitrine_core::frame_import::set_default_frame_ops(
             &scratch,
             frame,
             index.as_deref(),

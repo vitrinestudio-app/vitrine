@@ -1,7 +1,7 @@
 //! Frame colours: catalog palette entries, free `#hex` colours, helpers.
 
-use arrangia_core::catalog::ColorVariant;
-use arrangia_core::resolve::{DeviceColor, ResolvedDevice};
+use vitrine_core::catalog::ColorVariant;
+use vitrine_core::resolve::{DeviceColor, ResolvedDevice};
 
 use crate::paint::{Rgba, hex};
 
@@ -18,7 +18,7 @@ pub struct Palette {
     pub glass: Rgba,
 }
 
-fn rgba(c: arrangia_core::model::Rgba) -> Rgba {
+fn rgba(c: vitrine_core::model::Rgba) -> Rgba {
     [c.r, c.g, c.b, 255]
 }
 
@@ -56,7 +56,7 @@ impl Palette {
         match (&dev.color, &dev.palette) {
             (_, Some(v)) => Self::from_variant(v),
             (DeviceColor::Custom(c), None) => Self::from_color(rgba(*c)),
-            (DeviceColor::Named(name), None) => arrangia_core::catalog::catalog()
+            (DeviceColor::Named(name), None) => vitrine_core::catalog::catalog()
                 .devices
                 .colors
                 .get(name)

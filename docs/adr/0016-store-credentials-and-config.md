@@ -17,7 +17,7 @@ are data with source and date.
 
 ### Accounts are app-wide (`settings.yaml`)
 
-`Settings.store_accounts: Vec<StoreAccount>` (`arrangia_app::stores`):
+`Settings.store_accounts: Vec<StoreAccount>` (`vitrine_app::stores`):
 `{id, kind: apple|google, label, apple: {issuer_id, key_id}, google:
 {client_email, project_id?}}` – public facts only. Ids are generated from
 the label (`apple-my-team`, `-2` on collision). `settings_set` refuses to
@@ -30,15 +30,15 @@ Git, keys and the people who may use them are per machine. A project only
 references an account id; a missing reference is reported
 (`project_store_get.missing_accounts`), not an error.
 
-### Secrets in the system keychain (`arrangia_publish::credentials`)
+### Secrets in the system keychain (`vitrine_publish::credentials`)
 
 - `keyring` 4.2 (`v1` feature: macOS Keychain, Windows Credential Manager,
   Secret Service on Linux) plus `keyring-core` 1.0 for the store API and
-  its in-memory mock. Entry: service `app.arrangia`
-  (`ARRANGIA_KEYRING_SERVICE` overrides), user `<account id>/<kind>`,
+  its in-memory mock. Entry: service `app.vitrinestudio`
+  (`VITRINE_KEYRING_SERVICE` overrides), user `<account id>/<kind>`,
   password = the whole file content (Apple `.p8` PEM, Google service
   account JSON).
-- `ARRANGIA_KEYRING=mock` selects a process-wide in-memory store; the MCP
+- `VITRINE_KEYRING=mock` selects a process-wide in-memory store; the MCP
   integration tests set it, and the dev bridge uses a mock unless
   `--system-keychain` is given. App unit tests always get
   `SecretStore::mock()` (`AppState::with_secret_store`), so CI never
@@ -58,11 +58,11 @@ references an account id; a missing reference is reported
 
 `store_account_test` reads the secret, validates it again and calls
 `AppState::connection_tester()` (`trait ConnectionTester` in
-`arrangia_app::stores`). Without a tester (CLI, headless MCP) the command
+`vitrine_app::stores`). Without a tester (CLI, headless MCP) the command
 answers `not_implemented` with `details: {secret: "ok"}`.
 
 Wired 2026-11-10 (after the clients, ADR 0017, were merged):
-`arrangia_app::store_test::StoreClientTester`, installed by the GUI
+`vitrine_app::store_test::StoreClientTester`, installed by the GUI
 (`main.rs`) and the dev bridge. Read-only on purpose:
 
 - Apple: signs an ES256 token and calls `GET /v1/apps?limit=1`
@@ -78,8 +78,8 @@ Wired 2026-11-10 (after the clients, ADR 0017, were merged):
   answers), `rate_limited`, `timeout`, `invalid_key`, `other`.
 - Short timeout (20 s) and one retry. The test runs on its own thread with
   a current-thread tokio runtime (callers may already be inside a runtime).
-- Dev bridge only: `ARRANGIA_ASC_BASE_URL`, `ARRANGIA_PLAY_BASE_URL`,
-  `ARRANGIA_PLAY_TOKEN_URL` redirect it to a mock server; only loopback
+- Dev bridge only: `VITRINE_ASC_BASE_URL`, `VITRINE_PLAY_BASE_URL`,
+  `VITRINE_PLAY_TOKEN_URL` redirect it to a mock server; only loopback
   `http://127.0.0.1:` / `localhost:` / `[::1]:` URLs are accepted. Tests:
   `crates/app/tests/store_connection.rs` (wiremock, in-memory keychain).
 
@@ -139,7 +139,7 @@ the mapping in the GUI.
 
 ## Consequences
 
-- `arrangia-app` depends on `arrangia-publish` (credentials only so far;
+- `vitrine-app` depends on `vitrine-publish` (credentials only so far;
   the clients will join it). `core` stays network- and keychain-free.
 - On macOS the keychain item belongs to the binary that created it; a
   rebuilt (differently signed) app may ask the user once to allow access.
@@ -174,6 +174,6 @@ the mapping in the GUI.
   nothing changes in Play (`google::Client::check_package`). 404 →
   `details.reason: not_found`, 403 → `no_permission`.
 - Endpoints for both come from `UploadConfig` (production; loopback
-  overrides via `ARRANGIA_ASC_BASE_URL`/`ARRANGIA_PLAY_*` in CLI/dev
+  overrides via `VITRINE_ASC_BASE_URL`/`VITRINE_PLAY_*` in CLI/dev
   bridge, set directly in tests). Tests: `crates/publish/tests/{apple,
   google}.rs`, `crates/app/tests/store_setup.rs`.

@@ -1,7 +1,7 @@
-# Arrangia gallery profiles (KONZEPT §3.3): how a store shows the exported
+# Vitrine Studio gallery profiles (KONZEPT §3.3): how a store shows the exported
 # images side by side. Used for the gaps on the canvas (content in a gap is
 # not exported) and for the gallery preview. Loaded by
-# `arrangia_core::catalog` (embedded at build time).
+# `vitrine_core::catalog` (embedded at build time).
 #
 # Units: lu relative to ONE EXPORTED IMAGE. With `basis: width` (default)
 # 1000 lu = the image width; with `basis: height` 1000 lu = the image height

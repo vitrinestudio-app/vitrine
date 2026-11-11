@@ -1,8 +1,8 @@
 //! Screen content: the screenshot mapped onto the screen rect, or a
 //! placeholder when it is missing.
 
-use arrangia_core::geometry::Rect;
 use tiny_skia::{FillRule, FilterQuality, Path, Pattern, Pixmap, SpreadMode, Stroke, Transform};
+use vitrine_core::geometry::Rect;
 
 use super::Ctx;
 use super::glyphs;

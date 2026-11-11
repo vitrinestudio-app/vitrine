@@ -32,9 +32,9 @@ pub mod remote;
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 use std::time::Duration;
 
-use arrangia_core::model::StoreKind;
-use arrangia_publish::{ClientOptions, PollPolicy, RetryPolicy};
 use serde::{Deserialize, Serialize};
+use vitrine_core::model::StoreKind;
+use vitrine_publish::{ClientOptions, PollPolicy, RetryPolicy};
 
 pub use exec::{RunHandle, RunReport, RunState, SetRun, SetRunStatus, StoreFailure};
 pub use plan::PlanArgs;

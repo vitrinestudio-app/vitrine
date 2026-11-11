@@ -7,13 +7,13 @@ use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
-use arrangia_core::frame_import::{
+use serde::{Deserialize, Serialize};
+use vitrine_core::frame_import::{
     Assignment, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, InstalledColor, InstalledFrame,
     Package, PackageError, RemoveFilter, Rules, import, normalize_name,
 };
-use arrangia_core::model::Orientation;
-use arrangia_render::raster::{Filter, SourceImage};
-use serde::{Deserialize, Serialize};
+use vitrine_core::model::Orientation;
+use vitrine_render::raster::{Filter, SourceImage};
 
 use super::{AppState, NoArgs};
 use crate::error::{CmdResult, CommandError, ErrorCode};
@@ -53,7 +53,7 @@ fn rules(source: &str) -> CmdResult<&'static Rules> {
 
 /// Opens a package. A disk image with a licence agreement gives an error
 /// with `details: {kind: "dmg_license", dmg, volume}` so the UI can explain
-/// it (localized) and offer the folder picker; Arrangia never accepts the
+/// it (localized) and offer the folder picker; Vitrine Studio never accepts the
 /// agreement itself.
 fn open_package(path: &Path) -> CmdResult<Package> {
     Package::open(path).map_err(package_error)
@@ -124,7 +124,7 @@ pub fn frames_import_apply(app: &AppState, args: FramesImportApplyArgs) -> CmdRe
         for a in args.assignments {
             let value = match (a.model, a.color, a.orientation) {
                 (Some(model), Some(color), Some(orientation)) => {
-                    if arrangia_core::catalog::device(&model).is_none() {
+                    if vitrine_core::catalog::device(&model).is_none() {
                         return Err(CommandError::invalid(format!("unknown model `{model}`")));
                     }
                     if color.trim().is_empty() {

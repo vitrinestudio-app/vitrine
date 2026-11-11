@@ -1,18 +1,18 @@
 //! Render tests for effects that depend on the drawn pixels rather than the
 //! element rectangle: image shadows from the alpha channel.
 //!
-//! Set `ARRANGIA_RENDER_DEBUG_DIR` to also write the rendered images there.
+//! Set `VITRINE_RENDER_DEBUG_DIR` to also write the rendered images there.
 
 #![allow(clippy::many_single_char_names)]
 
 use std::path::Path;
 
-use arrangia_core::io::project_from_yaml;
-use arrangia_core::layout::FontLibrary;
-use arrangia_core::resolve::{FsAssets, ResolveOptions, resolve};
-use arrangia_render::raster::save_png_rgb;
-use arrangia_render::scene::{RenderContext, RenderOptions, Rendered};
 use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
+use vitrine_core::io::project_from_yaml;
+use vitrine_core::layout::FontLibrary;
+use vitrine_core::resolve::{FsAssets, ResolveOptions, resolve};
+use vitrine_render::raster::save_png_rgb;
+use vitrine_render::scene::{RenderContext, RenderOptions, Rendered};
 
 /// A red ring on a transparent background (outer radius 45, inner 35 of 100).
 const RING_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="#FF0000" stroke-width="10"/></svg>"##;
@@ -44,7 +44,7 @@ fn write_assets(root: &Path) {
 }
 
 fn debug(r: &Rendered, name: &str) {
-    if let Ok(dir) = std::env::var("ARRANGIA_RENDER_DEBUG_DIR") {
+    if let Ok(dir) = std::env::var("VITRINE_RENDER_DEBUG_DIR") {
         save_png_rgb(&r.pixmap, &Path::new(&dir).join(name), [255, 255, 255]).unwrap();
     }
 }
@@ -58,7 +58,7 @@ fn luma(r: &Rendered, x: u32, y: u32) -> u8 {
 }
 
 const IMAGES: &str = r##"
-format: arrangia/1
+format: vitrine/1
 name: fx
 languages: {default: en, available: [en]}
 styles:
@@ -111,7 +111,7 @@ fn image_shadow_follows_the_alpha_channel() {
 }
 
 const TEXTS: &str = r##"
-format: arrangia/1
+format: vitrine/1
 name: fx-text
 languages: {default: en, available: [en]}
 styles:
@@ -153,11 +153,11 @@ fn text_outline_sits_outside_the_fill_and_glow_fades() {
     let mut p = project_from_yaml(TEXTS).unwrap();
     let en = p
         .strings
-        .entry(arrangia_core::model::Lang::new("en"))
+        .entry(vitrine_core::model::Lang::new("en"))
         .or_default();
-    en.insert(arrangia_core::model::StringKey::new("h"), "H".into());
+    en.insert(vitrine_core::model::StringKey::new("h"), "H".into());
     en.insert(
-        arrangia_core::model::StringKey::new("hs"),
+        vitrine_core::model::StringKey::new("hs"),
         "H[plain]H[/]".into(),
     );
     let s = resolve(

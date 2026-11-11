@@ -29,7 +29,7 @@ import { renderStripSettings } from './strip-settings.js';
 
 const KIND_ICON = { device: 'device', text: 'text', image: 'image', shape: 'shape', group: 'group', background: 'background' };
 const BUILTIN_SHADOWS = ['soft', 'hard', 'none'];
-const collapsed = new Set(JSON.parse(safeGet('arrangia.inspector.collapsed') ?? '[]'));
+const collapsed = new Set(JSON.parse(safeGet('vitrine.inspector.collapsed') ?? '[]'));
 
 function safeGet(k) {
   try {
@@ -117,7 +117,7 @@ export function mount(el, ctx) {
     const toggle = () => {
       if (collapsed.has(id)) collapsed.delete(id);
       else collapsed.add(id);
-      safeSet('arrangia.inspector.collapsed', JSON.stringify([...collapsed]));
+      safeSet('vitrine.inspector.collapsed', JSON.stringify([...collapsed]));
       sec.classList.toggle('closed');
     };
     sec.append(

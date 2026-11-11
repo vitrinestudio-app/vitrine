@@ -4,18 +4,18 @@
 //! sizes come from `browser_chrome` in `devices.yaml` (px at the reference
 //! width, scaled with the window width).
 
-use arrangia_core::catalog::BrowserTheme;
-use arrangia_core::model::Appearance;
 use tiny_skia::{FillRule, LineCap, LineJoin, Path, PathBuilder, Pixmap, Stroke, Transform};
+use vitrine_core::catalog::BrowserTheme;
+use vitrine_core::model::Appearance;
 
 use super::Ctx;
 use super::glyphs;
 use super::layout::{ChromeArea, browser_chrome};
 use super::shapes;
 use crate::paint::{Rgba, hex, solid, with_alpha};
-use arrangia_core::geometry::Rect;
+use vitrine_core::geometry::Rect;
 
-fn rgba(c: arrangia_core::model::Rgba) -> Rgba {
+fn rgba(c: vitrine_core::model::Rgba) -> Rgba {
     [c.r, c.g, c.b, c.a]
 }
 

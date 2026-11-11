@@ -1,6 +1,6 @@
-//! # arrangia-publish
+//! # vitrine-publish
 //!
-//! Store upload, kept out of `arrangia-core` so the core stays free of
+//! Store upload, kept out of `vitrine-core` so the core stays free of
 //! network code (`docs/KONZEPT.md`, section 7).
 //!
 //! Responsibilities:
@@ -37,7 +37,7 @@ pub use tokio_util::sync::CancellationToken;
 
 pub mod credentials;
 
-/// The stores Arrangia can publish to.
+/// The stores Vitrine Studio can publish to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Store {
     /// Apple App Store (App Store Connect API).

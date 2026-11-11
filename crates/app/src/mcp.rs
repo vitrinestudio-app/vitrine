@@ -1,7 +1,7 @@
 //! State of the GUI-hosted MCP endpoint (ADR 0015) as the UI sees it.
 //!
-//! `arrangia-app` does not depend on the MCP server. The host (the GUI,
-//! via `arrangia_mcp::host`) reports into [`McpStatus`] through
+//! `vitrine-app` does not depend on the MCP server. The host (the GUI,
+//! via `vitrine_mcp::host`) reports into [`McpStatus`] through
 //! [`crate::AppState::update_mcp_status`] (which emits `mcp-status`) and
 //! registers an [`McpControl`] so the `mcp_set_enabled` command can start
 //! and stop it. Headless front ends (CLI, tests) leave both alone: the
@@ -64,7 +64,7 @@ pub struct McpStatus {
     /// Why it does not run (bind failed …).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
-    /// The discovery file `arrangia mcp` reads.
+    /// The discovery file `vitrine mcp` reads.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub discovery_file: Option<std::path::PathBuf>,
     pub clients: Vec<McpClient>,

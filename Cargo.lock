@@ -131,156 +131,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arrangia-app"
-version = "0.0.0"
-dependencies = [
- "arrangia-core",
- "arrangia-publish",
- "arrangia-render",
- "aws-lc-rs",
- "base64 0.23.1",
- "directories",
- "getrandom 0.3.4",
- "imagesize 0.14.0",
- "notify",
- "notify-debouncer-full",
- "png",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "thiserror 2.0.21",
- "tiny-skia",
- "tokio",
- "wiremock",
-]
-
-[[package]]
-name = "arrangia-cli"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "arrangia-app",
- "arrangia-core",
- "arrangia-mcp",
- "arrangia-render",
- "base64 0.23.1",
- "clap",
- "directories",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "arrangia-core"
-version = "0.0.0"
-dependencies = [
- "csv",
- "flate2",
- "imagesize 0.14.0",
- "insta",
- "moxcms",
- "parley",
- "png",
- "proptest",
- "quick-xml",
- "serde",
- "serde-saphyr",
- "serde_json",
- "skrifa",
- "tempfile",
- "thiserror 2.0.21",
- "zip",
-]
-
-[[package]]
-name = "arrangia-gui"
-version = "0.0.0"
-dependencies = [
- "arrangia-app",
- "arrangia-core",
- "arrangia-gui",
- "arrangia-mcp",
- "arrangia-render",
- "png",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tempfile",
-]
-
-[[package]]
-name = "arrangia-mcp"
-version = "0.0.0"
-dependencies = [
- "arrangia-app",
- "arrangia-core",
- "base64 0.23.1",
- "bytes",
- "getrandom 0.3.4",
- "http-body-util",
- "hyper",
- "hyper-util",
- "png",
- "reqwest",
- "rmcp",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "tokio-util",
- "tower-service",
-]
-
-[[package]]
-name = "arrangia-publish"
-version = "0.0.0"
-dependencies = [
- "arrangia-core",
- "aws-lc-rs",
- "base64 0.23.1",
- "bytes",
- "getrandom 0.3.4",
- "jsonwebtoken",
- "keyring",
- "keyring-core",
- "md-5",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tokio-util",
- "wiremock",
- "zeroize",
-]
-
-[[package]]
-name = "arrangia-render"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "arrangia-core",
- "fast_image_resize",
- "image",
- "moxcms",
- "png",
- "rayon",
- "resvg",
- "serde",
- "serde_json",
- "skrifa",
- "tempfile",
- "thiserror 2.0.21",
- "tiny-skia",
-]
-
-[[package]]
 name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6186,6 +6036,156 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "vitrine-app"
+version = "0.0.0"
+dependencies = [
+ "aws-lc-rs",
+ "base64 0.23.1",
+ "directories",
+ "getrandom 0.3.4",
+ "imagesize 0.14.0",
+ "notify",
+ "notify-debouncer-full",
+ "png",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tiny-skia",
+ "tokio",
+ "vitrine-core",
+ "vitrine-publish",
+ "vitrine-render",
+ "wiremock",
+]
+
+[[package]]
+name = "vitrine-cli"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "base64 0.23.1",
+ "clap",
+ "directories",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "vitrine-app",
+ "vitrine-core",
+ "vitrine-mcp",
+ "vitrine-render",
+]
+
+[[package]]
+name = "vitrine-core"
+version = "0.0.0"
+dependencies = [
+ "csv",
+ "flate2",
+ "imagesize 0.14.0",
+ "insta",
+ "moxcms",
+ "parley",
+ "png",
+ "proptest",
+ "quick-xml",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "skrifa",
+ "tempfile",
+ "thiserror 2.0.21",
+ "zip",
+]
+
+[[package]]
+name = "vitrine-gui"
+version = "0.0.0"
+dependencies = [
+ "png",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tempfile",
+ "vitrine-app",
+ "vitrine-core",
+ "vitrine-gui",
+ "vitrine-mcp",
+ "vitrine-render",
+]
+
+[[package]]
+name = "vitrine-mcp"
+version = "0.0.0"
+dependencies = [
+ "base64 0.23.1",
+ "bytes",
+ "getrandom 0.3.4",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "png",
+ "reqwest",
+ "rmcp",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "tower-service",
+ "vitrine-app",
+ "vitrine-core",
+]
+
+[[package]]
+name = "vitrine-publish"
+version = "0.0.0"
+dependencies = [
+ "aws-lc-rs",
+ "base64 0.23.1",
+ "bytes",
+ "getrandom 0.3.4",
+ "jsonwebtoken",
+ "keyring",
+ "keyring-core",
+ "md-5",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "vitrine-core",
+ "wiremock",
+ "zeroize",
+]
+
+[[package]]
+name = "vitrine-render"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "fast_image_resize",
+ "image",
+ "moxcms",
+ "png",
+ "rayon",
+ "resvg",
+ "serde",
+ "serde_json",
+ "skrifa",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tiny-skia",
+ "vitrine-core",
+]
 
 [[package]]
 name = "vswhom"

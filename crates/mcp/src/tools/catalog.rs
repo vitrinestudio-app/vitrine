@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 
 use super::project::NoParams;
 use crate::output::ToolOutput;
-use crate::server::{ArrangiaMcp, cmd};
+use crate::server::{VitrineMcp, cmd};
 
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -36,7 +36,7 @@ fn matches(v: &Value, key: &str, want: Option<&str>) -> bool {
 }
 
 #[tool_router(router = catalog_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "Device models for device elements (`model`): id, label, class, orientations, colour variants (`color`), display aspect and typical screenshot sizes.",
         annotations(read_only_hint = true)

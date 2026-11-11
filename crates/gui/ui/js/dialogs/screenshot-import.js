@@ -1,5 +1,5 @@
 // Screenshot import dialog (task 3.3): pick a folder (fastlane snapshot
-// output, an Arrangia `screenshots/` tree or a flat folder), preview the
+// output, a Vitrine Studio `screenshots/` tree or a flat folder), preview the
 // plan from `import_plan` grouped by language · variant, correct rows
 // (language, variant, key, skip) or the device/locale mapping, then
 // `import_apply` (re-plans with the same arguments, copies, optionally
@@ -16,7 +16,7 @@ import { notifyImported } from '../panels/importer.js';
 import { store } from '../store.js';
 import { checkbox, errorLine, openModal, select } from './modal.js';
 
-const FORMATS = ['auto', 'fastlane', 'arrangia', 'flat'];
+const FORMATS = ['auto', 'fastlane', 'vitrine', 'flat'];
 const ACTIONS = ['new', 'overwrite', 'unchanged', 'duplicate', 'unresolved'];
 const ACTION_CLASS = { new: 'ok', overwrite: 'warn', duplicate: 'warn', unresolved: 'error', unchanged: '' };
 const KEY_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;

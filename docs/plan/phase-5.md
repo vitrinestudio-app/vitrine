@@ -7,7 +7,7 @@ screenshot order.
 Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## Principles (from the concept, binding)
-- Crate `arrangia-publish`: direct REST calls (`reqwest` + rustls), JWT via
+- Crate `vitrine-publish`: direct REST calls (`reqwest` + rustls), JWT via
   `jsonwebtoken`, no vendor SDKs; `core` stays free of network code.
 - **Plan → show → confirm → execute.** Never upload without a plan and an
   explicit confirmation – also not via MCP (confirm token from the plan).
@@ -42,7 +42,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       CLI/GUI/MCP
 
 ## 5.3 App Store Connect client
-Client part done 2026-11-10 (`arrangia_publish::apple`, ADR 0017). Apple
+Client part done 2026-11-10 (`vitrine_publish::apple`, ADR 0017). Apple
 deprecated the set-based screenshot API in 4.5.1 (App Asset Library
 replaces it) – open question in ADR 0017.
 - [x] JWT ES256 (15 min, max 20; team + individual keys), apps → editable
@@ -64,12 +64,12 @@ replaces it) – open question in ADR 0017.
       `ios-creative-universal`: slot `placement`); Duo; the set-based
       flow never gets `placement` slots or `APP_IPHONE_DUO`; reuse by content marker;
       `upload refdata` (CLI + GUI "Show App Store asset types")
-- [ ] User checks the real ref data once (`arrangia upload refdata`) and the
+- [ ] User checks the real ref data once (`vitrine upload refdata`) and the
       mapping in `data/asset-library.yaml` (display classes, header/search
       groups, Duo inner/outer groups)
 
 ## 5.4 Google Play client
-Client part done 2026-11-10 (`arrangia_publish::google`, ADR 0017).
+Client part done 2026-11-10 (`vitrine_publish::google`, ADR 0017).
 - [x] OAuth2 JWT bearer (service account) → access token
 - [x] `edits.insert` → per language & image type `edits.images.deleteall` →
       `edits.images.upload` (order = upload order) → `edits.commit`
@@ -77,8 +77,8 @@ Client part done 2026-11-10 (`arrangia_publish::google`, ADR 0017).
 
 ## 5.5 Execute + UI (done 2026-11-10, ADR 0018; GUI not yet checked visually)
 - [x] Executor with progress events, cancel, resume, upload log
-- [x] CLI: `arrangia upload plan [--store apple|google] [--target] [--lang]`,
-      `arrangia upload execute --confirm <token>`, `arrangia upload log`
+- [x] CLI: `vitrine upload plan [--store apple|google] [--target] [--lang]`,
+      `vitrine upload execute --confirm <token>`, `vitrine upload log`
 - [x] GUI: "Upload…" dialog (plan table: store/target/language/changes/rule
       problems → confirm → progress → result/log) + MCP confirmation dialog
 - [x] MCP: `upload_plan`, `upload_execute {confirm_token}`, `upload_status`,

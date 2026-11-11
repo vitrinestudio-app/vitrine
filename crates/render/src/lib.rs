@@ -1,4 +1,4 @@
-//! # arrangia-render
+//! # vitrine-render
 //!
 //! One renderer for everything: GUI preview, export and MCP `render_preview`
 //! all come from this pipeline, so line breaks and positions in the preview
@@ -12,7 +12,7 @@
 //! - **Device frames** drawn parametrically from catalog data in the styles
 //!   `stylized` and `detailed`, plus imported and custom frame packs.
 //! - **Text rendering**: glyph outlines of the `TextLayout` computed by
-//!   `arrangia_core::layout`, drawn as paths (`text`).
+//!   `vitrine_core::layout`, drawn as paths (`text`).
 //! - **Export**: cutting pages (omitting gap content), banners, gallery
 //!   previews, removing alpha, encoding PNG/JPEG.
 //!
@@ -34,18 +34,18 @@ pub use scene::{
     Scale, rasterize, render_canvas,
 };
 
-/// Page width in lu as defined by `arrangia-core`.
+/// Page width in lu as defined by `vitrine-core`.
 pub fn core_page_width_lu() -> f64 {
-    arrangia_core::PAGE_WIDTH_LU
+    vitrine_core::PAGE_WIDTH_LU
 }
 
 /// Scale factor from logical units to pixels for a target page width in px.
 ///
 /// ```
-/// assert!((arrangia_render::px_per_lu(1320) - 1.32).abs() < 1e-9);
+/// assert!((vitrine_render::px_per_lu(1320) - 1.32).abs() < 1e-9);
 /// ```
 pub fn px_per_lu(page_width_px: u32) -> f64 {
-    f64::from(page_width_px) / arrangia_core::PAGE_WIDTH_LU
+    f64::from(page_width_px) / vitrine_core::PAGE_WIDTH_LU
 }
 
 #[cfg(test)]

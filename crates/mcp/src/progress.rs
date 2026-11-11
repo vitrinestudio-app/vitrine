@@ -8,10 +8,10 @@
 
 use std::sync::{Arc, Mutex, PoisonError};
 
-use arrangia_app::EventSink;
-use arrangia_app::events::{EXPORT_PROGRESS, NullSink};
 use serde_json::Value;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use vitrine_app::EventSink;
+use vitrine_app::events::{EXPORT_PROGRESS, NullSink};
 
 /// Event sink that forwards everything and taps `export-progress`.
 pub struct ProgressRelay {
@@ -66,8 +66,8 @@ impl EventSink for ProgressRelay {
 
 #[cfg(test)]
 mod tests {
-    use arrangia_app::events::RecordingSink;
     use serde_json::json;
+    use vitrine_app::events::RecordingSink;
 
     use super::*;
 

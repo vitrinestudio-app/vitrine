@@ -1,4 +1,4 @@
-//! Built-in project templates (`arrangia new`, GUI "New project"): a
+//! Built-in project templates (`vitrine new`, GUI "New project"): a
 //! project folder (KONZEPT §3.1) with `project.yaml`, `i18n/<lang>.yaml`,
 //! `.gitignore` and empty `screenshots/<default>/`, `assets/`, `fonts/`.
 //!
@@ -166,13 +166,13 @@ pub fn strings_for(template: Template, lang: &str) -> String {
     format!("# TODO: translate to `{lang}` (copied from `{from}`)\n{s}")
 }
 
-/// Project name derived from a folder (`grove.arrangia` → `grove`).
+/// Project name derived from a folder (`grove.vitrine` → `grove`).
 pub fn default_name(dir: &Path) -> String {
     std::path::absolute(dir)
         .ok()
         .and_then(|p| {
             p.file_name()
-                .map(|n| n.to_string_lossy().trim_end_matches(".arrangia").to_owned())
+                .map(|n| n.to_string_lossy().trim_end_matches(".vitrine").to_owned())
         })
         .filter(|n| !n.is_empty())
         .unwrap_or_else(|| "My App".to_owned())
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn creates_a_loadable_project_and_refuses_non_empty_folders() {
         let tmp = tempfile::tempdir().unwrap();
-        let dir = tmp.path().join("grove.arrangia");
+        let dir = tmp.path().join("grove.vitrine");
         let p = create_project(&dir, "Grove", Template::Minimal, &langs(&["de", "en"])).unwrap();
         assert_eq!(p.name, "Grove");
         assert_eq!(p.languages.default.as_str(), "de");

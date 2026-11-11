@@ -1,4 +1,4 @@
-//! Arrangia inline markup as a tree ([`Node`]) and back, for exchange
+//! Vitrine Studio inline markup as a tree ([`Node`]) and back, for exchange
 //! formats that represent bold/italic/spans as inline elements (XLIFF
 //! `<pc>`/`<g>`) and line breaks/soft hyphens as placeholders.
 //!

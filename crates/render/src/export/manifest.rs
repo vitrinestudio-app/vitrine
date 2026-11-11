@@ -1,4 +1,4 @@
-//! The incremental-export manifest `<export>/.arrangia-export.json`:
+//! The incremental-export manifest `<export>/.vitrine-export.json`:
 //! path → entry with the input hash and what the file is (target,
 //! language, kind, image, pixel size, layout, store locale), so the
 //! overview page lists every current file and stale files of a re-export

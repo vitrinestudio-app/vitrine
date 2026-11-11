@@ -8,13 +8,13 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use arrangia_core::Project;
-use arrangia_core::catalog;
-use arrangia_core::edit::unique_id;
-use arrangia_core::model::{Element, ElementId, ElementKind, Lang, StringKey, Target};
-use arrangia_core::ops::Op;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use vitrine_core::Project;
+use vitrine_core::catalog;
+use vitrine_core::edit::unique_id;
+use vitrine_core::model::{Element, ElementId, ElementKind, Lang, StringKey, Target};
+use vitrine_core::ops::Op;
 
 use super::AppState;
 use super::assets::{first_image_asset, image_dims};

@@ -20,13 +20,13 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use arrangia_core::Project;
-use arrangia_core::catalog::{self, Store as CatalogStore};
-use arrangia_core::model::{ApplePlatform, AppleUploadFlowSetting, Lang, StoreKind, Target};
-use arrangia_core::validate::{FindingCode, Severity, ValidationReport};
-use arrangia_publish::google as gp;
-use arrangia_render::export::{ExportOptions, ExportReport, FileKind};
 use serde::{Deserialize, Serialize};
+use vitrine_core::Project;
+use vitrine_core::catalog::{self, Store as CatalogStore};
+use vitrine_core::model::{ApplePlatform, AppleUploadFlowSetting, Lang, StoreKind, Target};
+use vitrine_core::validate::{FindingCode, Severity, ValidationReport};
+use vitrine_publish::google as gp;
+use vitrine_render::export::{ExportOptions, ExportReport, FileKind};
 
 use super::library::{self as lib, AssetLibraryFlow};
 use super::log::UploadLog;
@@ -94,10 +94,7 @@ pub fn images_dir(dir: &Path) -> PathBuf {
 fn slot_of(target: &Target, store: StoreKind) -> Option<&str> {
     let slot = target.store.as_ref()?;
     match store {
-        StoreKind::Apple => slot
-            .apple
-            .as_ref()
-            .map(arrangia_core::model::AppleSlot::key),
+        StoreKind::Apple => slot.apple.as_ref().map(vitrine_core::model::AppleSlot::key),
         StoreKind::Google => slot.google.as_ref().map(|g| g.image_type.as_str()),
     }
 }
@@ -161,7 +158,7 @@ pub(crate) struct LocalPlan {
 struct FingerprintInput<'a> {
     project: &'a str,
     revision: u64,
-    store: &'a arrangia_core::model::StoreSettings,
+    store: &'a vitrine_core::model::StoreSettings,
     selection: &'a Selection,
     sets: Vec<FingerprintSet<'a>>,
 }
@@ -319,7 +316,7 @@ pub(crate) fn build_local(
     let export = if slotted.is_empty() {
         ExportReport::default()
     } else {
-        arrangia_render::export::export(
+        vitrine_render::export::export(
             &project,
             &session.render_context(),
             &ExportOptions {
@@ -511,7 +508,7 @@ pub(crate) fn build_local(
                         height: f.height,
                         bytes: size,
                         sha256: sha256_hex(&bytes),
-                        md5: arrangia_publish::apple::md5_hex(&bytes),
+                        md5: vitrine_publish::apple::md5_hex(&bytes),
                     });
                 }
                 if set.images.is_empty() && !set.problems.iter().any(|p| p.blocking) {
@@ -783,17 +780,17 @@ fn refine(set: &mut PlanSet, found: Found, force: bool) {
 /// The store-level problem "no editable App Store version": short message,
 /// values for the localized text, link to the app's versions page.
 pub(crate) fn no_editable_version_problem(
-    e: &arrangia_publish::Error,
+    e: &vitrine_publish::Error,
     app_id: Option<&str>,
 ) -> Option<Problem> {
-    let info = arrangia_publish::apple::no_editable_version(e)?;
+    let info = vitrine_publish::apple::no_editable_version(e)?;
     let mut p = Problem::blocking(
         "no_editable_version",
         remote::store_message(StoreKind::Apple, e),
     )
     .with_vars(serde_json::json!({
         "latest": info.latest.as_ref().map(|(v, _)| v),
-        "state": info.latest.as_ref().map(|(_, s)| arrangia_publish::apple::version_state_label(s)),
+        "state": info.latest.as_ref().map(|(_, s)| vitrine_publish::apple::version_state_label(s)),
         "suggestion": info.suggestion,
         "platform": info.platform,
     }));
@@ -807,13 +804,13 @@ pub(crate) fn no_editable_version_problem(
 async fn check_apple(
     config: &super::UploadConfig,
     account: &crate::stores::StoreAccount,
-    secret: &arrangia_publish::credentials::Secret,
+    secret: &vitrine_publish::credentials::Secret,
     project: &Project,
     sp: &mut StorePlan,
     force: bool,
 ) -> RemoteInfo {
     let setting = remote::flow_setting(project);
-    let fail = |sp: &mut StorePlan, code: &str, e: &arrangia_publish::Error| {
+    let fail = |sp: &mut StorePlan, code: &str, e: &vitrine_publish::Error| {
         let msg = remote::store_message(StoreKind::Apple, e);
         sp.problems.push(Problem::blocking(code, msg.clone()));
         RemoteInfo {
@@ -854,7 +851,7 @@ async fn check_apple(
                     sp.problems.push(p);
                     return info;
                 }
-                let code = if e.kind() == arrangia_publish::ErrorKind::Conflict {
+                let code = if e.kind() == vitrine_publish::ErrorKind::Conflict {
                     "no_editable_version"
                 } else if setting == AppleUploadFlowSetting::AssetLibrary && lib::unavailable(&e) {
                     "asset_library_unavailable"
@@ -916,7 +913,7 @@ async fn check_apple(
                     set.problems.push(Problem::warn(
                         "placement_size",
                         format!(
-                            "no image spec of {} accepts {}x{} (see `arrangia upload refdata`); App Store Connect may reject the images",
+                            "no image spec of {} accepts {}x{} (see `vitrine upload refdata`); App Store Connect may reject the images",
                             r.group,
                             set.images.first().map_or(0, |i| i.width),
                             set.images.first().map_or(0, |i| i.height)
@@ -963,12 +960,12 @@ async fn check_apple(
 
 async fn check_google(
     config: &super::UploadConfig,
-    secret: &arrangia_publish::credentials::Secret,
+    secret: &vitrine_publish::credentials::Secret,
     sp: &mut StorePlan,
     force: bool,
 ) -> RemoteInfo {
     let package = sp.app.clone().unwrap_or_default();
-    let fail = |sp: &mut StorePlan, code: &str, e: &arrangia_publish::Error| {
+    let fail = |sp: &mut StorePlan, code: &str, e: &vitrine_publish::Error| {
         let msg = remote::store_message(StoreKind::Google, e);
         sp.problems.push(Problem::blocking(code, msg.clone()));
         RemoteInfo {

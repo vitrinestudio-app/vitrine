@@ -78,7 +78,7 @@ use crate::preview::PreviewImage;
 use crate::session::Session;
 use crate::settings::{AppPaths, RecentStore, SettingsStore};
 use crate::stores::ConnectionTester;
-use arrangia_publish::credentials::SecretStore;
+use vitrine_publish::credentials::SecretStore;
 
 /// Arguments of commands that take none (`{}` or `null`).
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
@@ -108,7 +108,7 @@ pub struct AppState {
     /// Store upload: config, running run, MCP confirmations (ADR 0018).
     upload: crate::upload::UploadState,
     /// Apple apps per account id for the app picker (this app session).
-    store_apps: Mutex<std::collections::HashMap<String, Vec<arrangia_publish::apple::AppSummary>>>,
+    store_apps: Mutex<std::collections::HashMap<String, Vec<vitrine_publish::apple::AppSummary>>>,
 }
 
 impl std::fmt::Debug for AppState {
@@ -153,7 +153,7 @@ impl AppState {
 
     /// The keychain for store secrets: set by [`Self::with_secret_store`],
     /// else `SecretStore::from_env()` (system keychain, or the in-memory
-    /// store with `ARRANGIA_KEYRING=mock`). Unit tests always get a mock.
+    /// store with `VITRINE_KEYRING=mock`). Unit tests always get a mock.
     pub fn secret_store(&self) -> CmdResult<Arc<SecretStore>> {
         if let Some(s) = self.secrets.get() {
             return Ok(s.clone());
@@ -183,7 +183,7 @@ impl AppState {
     pub(crate) fn cached_store_apps(
         &self,
         account: &str,
-    ) -> Option<Vec<arrangia_publish::apple::AppSummary>> {
+    ) -> Option<Vec<vitrine_publish::apple::AppSummary>> {
         self.store_apps
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -195,7 +195,7 @@ impl AppState {
     pub(crate) fn cache_store_apps(
         &self,
         account: &str,
-        apps: Option<Vec<arrangia_publish::apple::AppSummary>>,
+        apps: Option<Vec<vitrine_publish::apple::AppSummary>>,
     ) {
         let mut cache = self
             .store_apps
@@ -219,7 +219,7 @@ impl AppState {
         self
     }
 
-    /// Claude Desktop's config file (override, `ARRANGIA_CLAUDE_DESKTOP_CONFIG`
+    /// Claude Desktop's config file (override, `VITRINE_CLAUDE_DESKTOP_CONFIG`
     /// or the platform path).
     pub fn claude_desktop_config(&self) -> CmdResult<PathBuf> {
         self.claude_config

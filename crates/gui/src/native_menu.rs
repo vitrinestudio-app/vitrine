@@ -264,8 +264,8 @@ mod tests {
     fn parses_and_validates_the_ui_spec() {
         let spec: MenuSpec = serde_json::from_value(serde_json::json!({
             "menus": [
-                {"label": "Arrangia", "items": [
-                    {"type": "predefined", "item": "about", "label": "About Arrangia"},
+                {"label": "Vitrine Studio", "items": [
+                    {"type": "predefined", "item": "about", "label": "About Vitrine Studio"},
                     {"type": "separator"},
                     {"type": "item", "id": "appSettings", "label": "Settings…", "key": "mod+,"},
                     {"type": "predefined", "item": "hide_others", "label": "Hide Others"},

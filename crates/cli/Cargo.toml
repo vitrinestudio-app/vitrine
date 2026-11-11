@@ -1,6 +1,6 @@
 [package]
-name = "arrangia-cli"
-description = "Arrangia command line interface"
+name = "vitrine-cli"
+description = "Vitrine Studio command line interface"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,14 +9,14 @@ homepage.workspace = true
 publish = false
 
 [[bin]]
-name = "arrangia"
+name = "vitrine"
 path = "src/main.rs"
 
 [dependencies]
-arrangia-core.workspace = true
-arrangia-render.workspace = true
-arrangia-mcp = { workspace = true, features = ["proxy"] }
-arrangia-app.workspace = true
+vitrine-core.workspace = true
+vitrine-render.workspace = true
+vitrine-mcp = { workspace = true, features = ["proxy"] }
+vitrine-app.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 directories.workspace = true
@@ -26,7 +26,7 @@ serde_json.workspace = true
 [dev-dependencies]
 tempfile.workspace = true
 # tests/mcp_proxy.rs hosts the GUI's endpoint in-process.
-arrangia-mcp = { workspace = true, features = ["proxy", "http"] }
+vitrine-mcp = { workspace = true, features = ["proxy", "http"] }
 base64.workspace = true
 
 [lints]

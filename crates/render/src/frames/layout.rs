@@ -10,11 +10,11 @@
 //! are not symmetric (notch, lens offsets) are built in model space and
 //! mapped with [`Layout::m`].
 
-use arrangia_core::catalog::{self, BrowserChrome, Device, DeviceClass, HingeAt};
-use arrangia_core::geometry::{Rect, Vec2};
-use arrangia_core::model::Chrome;
-use arrangia_core::resolve::ResolvedDevice;
 use tiny_skia::{Path, PathBuilder, Point, Transform};
+use vitrine_core::catalog::{self, BrowserChrome, Device, DeviceClass, HingeAt};
+use vitrine_core::geometry::{Rect, Vec2};
+use vitrine_core::model::Chrome;
+use vitrine_core::resolve::ResolvedDevice;
 
 use super::shapes::{self, Radii};
 

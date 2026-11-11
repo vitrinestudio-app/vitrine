@@ -13,7 +13,7 @@ use serde_json::{Map, Value, json};
 use super::project::NoParams;
 use crate::output::ToolOutput;
 use crate::params::{edit_line, edit_summary};
-use crate::server::{ArrangiaMcp, cmd};
+use crate::server::{VitrineMcp, cmd};
 
 /// Kind of a style token (for renames).
 #[derive(Debug, Clone, Copy, Deserialize, serde::Serialize, JsonSchema)]
@@ -92,7 +92,7 @@ fn merge_entries(
 }
 
 #[tool_router(router = style_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "All style tokens of the project: colors (name → hex), text styles (font, weight, size in lu, line height, colour …), span styles, shadow presets, font settings, frame style.",
         annotations(read_only_hint = true)

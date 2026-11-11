@@ -1,24 +1,24 @@
 //! Render and export tests on a small inline project.
 //!
-//! Set `ARRANGIA_RENDER_DEBUG_DIR` to also write the rendered images there
+//! Set `VITRINE_RENDER_DEBUG_DIR` to also write the rendered images there
 //! for visual inspection.
 
 #![allow(clippy::many_single_char_names)]
 
 use std::path::Path;
 
-use arrangia_core::Project;
-use arrangia_core::io::project_from_yaml;
-use arrangia_core::layout::FontLibrary;
-use arrangia_core::model::{Lang, StringKey};
-use arrangia_core::resolve::{FsAssets, ResolveOptions, ResolvedScene, resolve};
-use arrangia_render::export::{ExportOptions, FileKind, IssueSource, export};
-use arrangia_render::raster::save_png_rgb;
-use arrangia_render::scene::{CanvasOptions, RenderContext, RenderOptions, Rendered};
 use tiny_skia::Pixmap;
+use vitrine_core::Project;
+use vitrine_core::io::project_from_yaml;
+use vitrine_core::layout::FontLibrary;
+use vitrine_core::model::{Lang, StringKey};
+use vitrine_core::resolve::{FsAssets, ResolveOptions, ResolvedScene, resolve};
+use vitrine_render::export::{ExportOptions, FileKind, IssueSource, export};
+use vitrine_render::raster::save_png_rgb;
+use vitrine_render::scene::{CanvasOptions, RenderContext, RenderOptions, Rendered};
 
 const PROJECT: &str = r##"
-format: arrangia/1
+format: vitrine/1
 name: render-test
 languages: {default: en, available: [en, de]}
 strips:
@@ -148,7 +148,7 @@ fn scene(p: &Project, root: &Path, target: &str) -> ResolvedScene {
 }
 
 fn debug(r: &Rendered, name: &str) {
-    if let Ok(dir) = std::env::var("ARRANGIA_RENDER_DEBUG_DIR") {
+    if let Ok(dir) = std::env::var("VITRINE_RENDER_DEBUG_DIR") {
         save_png_rgb(&r.pixmap, &Path::new(&dir).join(name), [255, 255, 255]).unwrap();
     }
 }
@@ -321,7 +321,7 @@ fn export_reports_progress_and_can_be_cancelled() {
         targets: vec!["pages".into()],
         langs: vec!["de".into()],
         gallery: false,
-        hooks: arrangia_render::export::ExportHooks {
+        hooks: vitrine_render::export::ExportHooks {
             progress: Some(Arc::new(move |_, done, total| {
                 assert!(done <= total);
                 seen.fetch_add(1, Ordering::Relaxed);
@@ -340,7 +340,7 @@ fn export_reports_progress_and_can_be_cancelled() {
         &ctx,
         &ExportOptions {
             out_dir: Some(dir.path().join("out2")),
-            hooks: arrangia_render::export::ExportHooks {
+            hooks: vitrine_render::export::ExportHooks {
                 progress: None,
                 cancel: Some(cancel),
             },

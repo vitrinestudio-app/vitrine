@@ -17,7 +17,7 @@
 //! On failure `*.actual.png` and `*.diff.png` are written next to the
 //! reference (ignored by Git) and a summary is printed.
 //!
-//! `ARRANGIA_UPDATE_GOLDEN=1 cargo test -p arrangia-render --test golden`
+//! `VITRINE_UPDATE_GOLDEN=1 cargo test -p vitrine-render --test golden`
 //! rewrites references that are missing or outside the tolerance and
 //! removes stale ones; review the image diff before committing.
 //!
@@ -27,15 +27,15 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use arrangia_core::Project;
-use arrangia_core::model::ImageFormat;
-use arrangia_core::resolve::{FsAssets, ResolveOptions, resolve};
-use arrangia_core::validate::{Severity, ValidateOptions, validate};
-use arrangia_render::export::{gallery, image_file_name};
-use arrangia_render::raster::{save_png_rgb, to_rgb};
-use arrangia_render::scene::{Quality, RenderContext, RenderOptions, Scale};
 use rayon::prelude::*;
 use tiny_skia::Pixmap;
+use vitrine_core::Project;
+use vitrine_core::model::ImageFormat;
+use vitrine_core::resolve::{FsAssets, ResolveOptions, resolve};
+use vitrine_core::validate::{Severity, ValidateOptions, validate};
+use vitrine_render::export::{gallery, image_file_name};
+use vitrine_render::raster::{save_png_rgb, to_rgb};
+use vitrine_render::scene::{Quality, RenderContext, RenderOptions, Scale};
 
 /// Render scale relative to the target size.
 const SCALE: f64 = 0.25;
@@ -74,7 +74,7 @@ fn golden_dir() -> PathBuf {
 }
 
 fn update_mode() -> bool {
-    std::env::var_os("ARRANGIA_UPDATE_GOLDEN").is_some_and(|v| !v.is_empty() && v != "0")
+    std::env::var_os("VITRINE_UPDATE_GOLDEN").is_some_and(|v| !v.is_empty() && v != "0")
 }
 
 /// One rendered image with its reference path relative to `golden/`.
@@ -298,7 +298,7 @@ fn example_project_matches_golden_images() {
     assert!(
         failures.is_empty(),
         "{} of {} golden images do not match (actual/diff images written next to the references in {}; \
-         run with ARRANGIA_UPDATE_GOLDEN=1 to accept):\n{}",
+         run with VITRINE_UPDATE_GOLDEN=1 to accept):\n{}",
         failures.len(),
         cases.len(),
         golden.display(),
@@ -324,6 +324,6 @@ fn example_project_validates_without_errors_or_warnings() {
         report
             .findings
             .iter()
-            .any(|f| f.code == arrangia_core::validate::FindingCode::ScreenshotFallback)
+            .any(|f| f.code == vitrine_core::validate::FindingCode::ScreenshotFallback)
     );
 }

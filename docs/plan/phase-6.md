@@ -2,7 +2,7 @@
 
 Scope: KONZEPT.md §12, Phase 6 ("Vorlagen, eigene Frame-Pakete,
 Farbmanagement P3 → sRGB, Feature Graphic, Installer/Signierung, Website
-arrangia.app, Doku"). Done when release 1.0 ships.
+vitrinestudio.app, Doku"). Done when release 1.0 ships.
 
 User decisions 2026-11-10: work on Phase 6 in parallel with the Phase 5
 real-run tests; split **website** and **documentation** into separate
@@ -51,13 +51,13 @@ from template. User 2026-11-10: templates should be uploadable to the web
 and downloadable from a gallery.
 - [ ] Template format: a project folder subset (strip(s), styles, fonts,
       placeholder screenshots) + `template.yaml` (name, author, licence,
-      preview images, required fonts, tags); packed as `.arrangia-template`
+      preview images, required fonts, tags); packed as `.vitrine-template`
       (zip); no vendor graphics, fonts only with redistributable licences
 - [ ] Save canvas / project as template (GUI + CLI + MCP), new project from
       template (built-in + local + downloaded), insert canvas from template
 - [ ] App-wide template store (`<app data>/templates/`), list/remove
-- [ ] Web gallery on arrangia.app (see 6.6): browse, preview, download;
-      upload flow. User 2026-11-10: **own backend** (e.g. `api.arrangia.app`
+- [ ] Web gallery on vitrinestudio.app (see 6.6): browse, preview, download;
+      upload flow. User 2026-11-10: **own backend** (e.g. `api.vitrinestudio.app`
       on the user's Docker server; user also runs PHP and Node.js
       elsewhere). Stack (user OK 2026-11-10): Rust (axum) in
       this workspace (`crates/gallery-server`), Docker image, SQLite, files
@@ -73,7 +73,7 @@ and downloadable from a gallery.
 ## 6.4 Own frame packages
 KONZEPT §4.2 (frames, point 3): any PNG or SVG frame plus a small
 `frame.yaml` (screen rectangle, mask / corner radius, model mapping) in the
-project's `frames/` or app-wide. Arrangia ships no vendor images.
+project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
 - [ ] `frame.yaml` format (reuse the imported-bezel store and screen
       detection from `core::frame_import`, ADR 0012): images per
       orientation/colour, screen rect or auto-detect, mask/corner radius,
@@ -92,7 +92,7 @@ project's `frames/` or app-wide. Arrangia ships no vendor images.
 - [ ] Bundles via Tauri bundler: macOS `.app` + `.dmg` (universal or per
       arch), Windows `.msi`/NSIS, Linux AppImage/`.deb`(/rpm)
 - [ ] Ship the CLI with the GUI (Phase 4 TODO: CLI path for bundled builds –
-      `arrangia` inside the bundle, PATH install option / symlink, Claude
+      `vitrine` inside the bundle, PATH install option / symlink, Claude
       Desktop config pointing at it)
 - [ ] macOS: Developer ID signing + notarization (`notarytool`), hardened
       runtime, entitlements (network client, user-selected files, keychain);
@@ -108,9 +108,9 @@ project's `frames/` or app-wide. Arrangia ships no vendor images.
       LICENSE file yet), third-party licence notices (fonts, hyphenation,
       crates: `cargo about`/`cargo deny`)
 
-## 6.6 Website arrangia.app (own step)
+## 6.6 Website vitrinestudio.app (own step)
 - [ ] Static site (generator choice, hosting – open question), landing
-      page, screenshots made with Arrangia itself, download links per OS,
+      page, screenshots made with Vitrine Studio itself, download links per OS,
       feature overview, fastlane frameit migration page
 - [ ] Hosts the template (and frame pack) gallery from 6.3/6.4
 

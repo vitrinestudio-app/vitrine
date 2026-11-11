@@ -2,11 +2,11 @@
 //! hatched (their content "disappears" in the store), dashed page
 //! boundaries and page labels.
 
-use arrangia_core::geometry::Viewport;
-use arrangia_core::layout::{ResolvedTextStyle, TextInput, TextLayouter};
-use arrangia_core::model::Rgba;
-use arrangia_core::resolve::ResolvedScene;
 use tiny_skia::{FillRule, Mask, PathBuilder, Pixmap, Stroke, StrokeDash};
+use vitrine_core::geometry::Viewport;
+use vitrine_core::layout::{ResolvedTextStyle, TextInput, TextLayouter};
+use vitrine_core::model::Rgba;
+use vitrine_core::resolve::ResolvedScene;
 
 use crate::geometry::view_transform;
 use crate::paint::{round_rect, solid};

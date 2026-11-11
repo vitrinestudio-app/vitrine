@@ -394,7 +394,7 @@ mod tests {
     use super::*;
 
     fn project() -> Project {
-        let yaml = "format: arrangia/1
+        let yaml = "format: vitrine/1
 revision: 1
 name: t
 languages:

@@ -1,5 +1,5 @@
 //! App Asset Library mapping (`data/asset-library.yaml`, ADR 0019): which
-//! placement type, display class and platforms an Arrangia store slot
+//! placement type, display class and platforms a Vitrine Studio store slot
 //! becomes. Placement *groups* are not here – they are runtime strings from
 //! App Store Connect's reference data and resolved by the upload.
 

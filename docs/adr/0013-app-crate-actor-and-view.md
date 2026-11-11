@@ -8,8 +8,8 @@
 Phase 4 lets Claude edit projects over MCP. The user decided that the GUI
 hosts the MCP server, so Claude's edits run through the GUI's own session:
 visible live, undoable, and labelled (`docs/plan/phase-4.md`). The session
-and command layer of ADR 0008 lived in `arrangia-gui`, next to Tauri. MCP
-(and the headless `arrangia mcp --project`) need exactly the same
+and command layer of ADR 0008 lived in `vitrine-gui`, next to Tauri. MCP
+(and the headless `vitrine mcp --project`) need exactly the same
 behaviour – ops, edit intents, validation, revision checks, atomic saves –
 without depending on Tauri.
 
@@ -17,19 +17,19 @@ without depending on Tauri.
 
 ### Crate split
 
-New crate `crates/app` (`arrangia-app`, `publish = false`, workspace
-lints, no Tauri dependency – `cargo tree -p arrangia-app | grep -i tauri`
+New crate `crates/app` (`vitrine-app`, `publish = false`, workspace
+lints, no Tauri dependency – `cargo tree -p vitrine-app | grep -i tauri`
 is empty). It holds everything of ADR 0008 that is not tied to a
 transport: `commands` (functions, `dispatch` table, args/results,
 `CommandError`), `session`, `preview`, `settings` (YAML + recent projects
-in SQLite, `ARRANGIA_APP_DIR`), `watch`, `events` (`EventSink`),
+in SQLite, `VITRINE_APP_DIR`), `watch`, `events` (`EventSink`),
 `dialogs` (`Dialogs` trait, `NoDialogs`, `FixedDialogs`), `testutil`, plus
 the new `actor` and `view`. The unit tests moved with the code.
 
-`arrangia-gui` keeps the Tauri binary (`main.rs`: generated wrappers,
+`vitrine-gui` keeps the Tauri binary (`main.rs`: generated wrappers,
 Tauri `EventSink`/`Dialogs`), the dev bridge (`bridge.rs`,
-`bin/arrangia-devbridge.rs`, its tests) and `ui/`. Its library re-exports
-the `arrangia-app` modules, so `arrangia_gui::commands` etc. still work.
+`bin/vitrine-devbridge.rs`, its tests) and `ui/`. Its library re-exports
+the `vitrine-app` modules, so `vitrine_gui::commands` etc. still work.
 The move itself changed no behaviour. The CLI keeps its direct
 core/render paths.
 
@@ -72,9 +72,9 @@ validate it against the project.
 
 ## Consequences
 
-- MCP tools are thin adapters over `arrangia_app::commands` against the
+- MCP tools are thin adapters over `vitrine_app::commands` against the
   live `AppState` of the GUI or a headless one; no second code path.
-- `arrangia-app` builds without Tauri (fast, also on CI runners without
+- `vitrine-app` builds without Tauri (fast, also on CI runners without
   web view libraries).
 - Edits made outside an `Actor::scope` count as the user's; the MCP
   server must wrap its calls.

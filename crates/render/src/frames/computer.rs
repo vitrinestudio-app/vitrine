@@ -2,9 +2,9 @@
 //! optional chin, stand). Front views without perspective; depth is
 //! suggested by shading only.
 
-use arrangia_core::catalog::CutoutKind;
-use arrangia_core::geometry::Rect;
 use tiny_skia::Pixmap;
+use vitrine_core::catalog::CutoutKind;
+use vitrine_core::geometry::Rect;
 
 use super::Ctx;
 use super::browser;

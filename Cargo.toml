@@ -7,17 +7,17 @@ version = "0.0.0"
 edition = "2024"
 rust-version = "1.99"
 repository = "https://github.com/Looking4Cache/arrangia"
-homepage = "https://arrangia.app"
+homepage = "https://www.vitrinestudio.app"
 # No `license` field yet: the license is still undecided (see README, "Open questions").
 # Every crate sets `publish = false` until the license and crates.io names are settled.
 
 [workspace.dependencies]
 # Internal crates
-arrangia-core = { path = "crates/core" }
-arrangia-render = { path = "crates/render" }
-arrangia-publish = { path = "crates/publish" }
-arrangia-mcp = { path = "crates/mcp" }
-arrangia-app = { path = "crates/app" }
+vitrine-core = { path = "crates/core" }
+vitrine-render = { path = "crates/render" }
+vitrine-publish = { path = "crates/publish" }
+vitrine-mcp = { path = "crates/mcp" }
+vitrine-app = { path = "crates/app" }
 
 # Serialization (project files are YAML, see docs/KONZEPT.md 3.1)
 serde = { version = "1.0.229", features = ["derive"] }
@@ -38,11 +38,11 @@ anyhow = "1.0.104"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "fs", "sync"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "http2", "json", "multipart"] }
 jsonwebtoken = "11.1.0"
-# Store clients (arrangia-publish): MD5 for the App Store Connect commit
+# Store clients (vitrine-publish): MD5 for the App Store Connect commit
 # checksum, wiping key material, test-time key generation (aws-lc-rs is
 # already rustls' crypto backend, so no second crypto stack).
 md-5 = "0.10.6"
-# Upload plan hashes and confirm tokens (arrangia-app::upload).
+# Upload plan hashes and confirm tokens (vitrine-app::upload).
 sha2 = "0.10.9"
 zeroize = "1.9.1"
 aws-lc-rs = "1.19.0"
@@ -50,7 +50,7 @@ aws-lc-rs = "1.19.0"
 # Storage and secrets
 rusqlite = { version = "0.41.1", features = ["bundled"] }
 # keyring 4 (`v1` feature) picks the platform store; keyring-core gives the
-# store API and the in-memory mock used by tests and `ARRANGIA_KEYRING=mock`.
+# store API and the in-memory mock used by tests and `VITRINE_KEYRING=mock`.
 keyring = "4.2.0"
 keyring-core = "1.0.1"
 
@@ -79,12 +79,12 @@ resvg = { version = "0.49.0", default-features = false }
 # Front ends
 clap = { version = "4.6.7", features = ["derive"] }
 # Official MCP SDK (exact pin: the API moves fast). `transport-streamable-http-server`
-# is enabled by arrangia-mcp's `http` feature (GUI-hosted server, Phase 4.3b).
+# is enabled by vitrine-mcp's `http` feature (GUI-hosted server, Phase 4.3b).
 rmcp = { version = "=3.9.0", default-features = false, features = ["server", "macros", "schemars", "transport-io"] }
 # JSON schemas of the MCP tool arguments (same major version as rmcp uses).
 schemars = "1.2.3"
 base64 = "0.23.0"
-# GUI-hosted MCP endpoint (arrangia-mcp feature `http`, ADR 0015): hyper 1 serves
+# GUI-hosted MCP endpoint (vitrine-mcp feature `http`, ADR 0015): hyper 1 serves
 # rmcp's tower service on 127.0.0.1; the bearer token comes from getrandom.
 hyper = { version = "1.12.0", features = ["server", "http1"] }
 hyper-util = { version = "0.1.21", features = ["tokio"] }
@@ -102,7 +102,7 @@ tauri-plugin-dialog = "2.8.4"
 notify = "8.2.0"
 notify-debouncer-full = "0.7.0"
 directories = "6.0.0"
-# Dev-only HTTP bridge (`arrangia-devbridge`, feature `devbridge`); not shipped.
+# Dev-only HTTP bridge (`vitrine-devbridge`, feature `devbridge`); not shipped.
 
 # Testing
 insta = { version = "1.49.0", features = ["yaml"] }

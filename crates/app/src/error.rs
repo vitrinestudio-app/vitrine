@@ -87,21 +87,21 @@ impl CommandError {
     }
 }
 
-impl From<arrangia_core::ops::OpError> for CommandError {
-    fn from(e: arrangia_core::ops::OpError) -> Self {
+impl From<vitrine_core::ops::OpError> for CommandError {
+    fn from(e: vitrine_core::ops::OpError) -> Self {
         Self::new(ErrorCode::OpRejected, e.to_string())
     }
 }
 
-impl From<arrangia_core::resolve::ResolveError> for CommandError {
-    fn from(e: arrangia_core::resolve::ResolveError) -> Self {
+impl From<vitrine_core::resolve::ResolveError> for CommandError {
+    fn from(e: vitrine_core::resolve::ResolveError) -> Self {
         Self::new(ErrorCode::Render, e.to_string())
     }
 }
 
-impl From<arrangia_core::io::IoError> for CommandError {
-    fn from(e: arrangia_core::io::IoError) -> Self {
-        use arrangia_core::io::IoError;
+impl From<vitrine_core::io::IoError> for CommandError {
+    fn from(e: vitrine_core::io::IoError) -> Self {
+        use vitrine_core::io::IoError;
         let code = match &e {
             IoError::Conflict { .. } => ErrorCode::Conflict,
             IoError::Io { .. } | IoError::Serialize(_) => ErrorCode::Io,
@@ -111,9 +111,9 @@ impl From<arrangia_core::io::IoError> for CommandError {
     }
 }
 
-impl From<arrangia_core::templates::TemplateError> for CommandError {
-    fn from(e: arrangia_core::templates::TemplateError) -> Self {
-        use arrangia_core::templates::TemplateError;
+impl From<vitrine_core::templates::TemplateError> for CommandError {
+    fn from(e: vitrine_core::templates::TemplateError) -> Self {
+        use vitrine_core::templates::TemplateError;
         let code = match &e {
             TemplateError::InvalidLang { .. } | TemplateError::DuplicateLang(_) => {
                 ErrorCode::InvalidArgs

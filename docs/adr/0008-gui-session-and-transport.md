@@ -1,6 +1,6 @@
 # 0008 – GUI session, commands and preview transport
 
-- Status: accepted (amended by ADR 0013: the library part moved to `arrangia-app`)
+- Status: accepted (amended by ADR 0013: the library part moved to `vitrine-app`)
 - Date: 2026-11-09
 
 ## Context
@@ -14,7 +14,7 @@ checks in a normal browser.
 
 ### Library + thin Tauri wrappers
 
-`arrangia-gui` is a library (`session`, `commands`, `preview`, `settings`,
+`vitrine-gui` is a library (`session`, `commands`, `preview`, `settings`,
 `watch`, `events`, `dialogs`, `bridge`) plus the Tauri binary. Every
 command is a plain function `fn(&AppState, Args) -> Result<T,
 CommandError>` with serde `Args`/`T`; `commands::dispatch(name, json)` is
@@ -69,7 +69,7 @@ renders at half size for drags.
 
 ### Transport format (measured)
 
-`cargo run -p arrangia-gui --release --example preview_transport`
+`cargo run -p vitrine-gui --release --example preview_transport`
 (Apple Silicon, release, example project, 5 runs averaged):
 
 | image | size | render | raw RGBA | PNG Fast/Up | encode | decode |
@@ -97,7 +97,7 @@ followed by the data. The bridge sends the bare PNG/RGBA with
 
 ### Dev HTTP bridge
 
-`arrangia-devbridge` (feature `devbridge`, `required-features`, so neither
+`vitrine-devbridge` (feature `devbridge`, `required-features`, so neither
 built by default nor bundled) on a minimal blocking HTTP/1.1 server over
 `std::net`: no dependency, no async runtime; one thread per connection
 and one request per connection (`Connection: close`; SSE streams block
@@ -120,8 +120,8 @@ folder.
 
 ### Shared templates
 
-The project templates moved from `crates/cli` to `arrangia_core::templates`
-(additive) so `project_new` and `arrangia new` create identical projects.
+The project templates moved from `crates/cli` to `vitrine_core::templates`
+(additive) so `project_new` and `vitrine new` create identical projects.
 `render::export` got optional progress/cancel hooks (`ExportHooks`) for the
 `export` command's `export-progress` events and `export_cancel`.
 

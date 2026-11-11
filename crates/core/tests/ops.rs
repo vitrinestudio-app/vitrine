@@ -9,13 +9,13 @@
 
 use std::path::Path;
 
-use arrangia_core::Project;
-use arrangia_core::io;
-use arrangia_core::model::{
+use vitrine_core::Project;
+use vitrine_core::io;
+use vitrine_core::model::{
     Aspect, ElementId, ElementPatch, Fill, Lang, PixelSize, Point, Rgba, StringKey, Strip, StripId,
     StyleKind, Target, TargetId, VariantId,
 };
-use arrangia_core::ops::{History, Op, OpError, StripPatch, TargetPatch};
+use vitrine_core::ops::{History, Op, OpError, StripPatch, TargetPatch};
 
 fn sample() -> Project {
     Project::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/sample")).unwrap()
@@ -25,7 +25,7 @@ fn patch(yaml: &str) -> ElementPatch {
     io::from_yaml(yaml).unwrap()
 }
 
-fn text_element(id: &str, page: u32) -> arrangia_core::model::Element {
+fn text_element(id: &str, page: u32) -> vitrine_core::model::Element {
     io::from_yaml(&format!(
         "{{ id: {id}, kind: text, page: {page}, text: x.y, style: headline }}"
     ))
@@ -280,7 +280,7 @@ fn strips_and_references() {
                 count: Some(8),
                 ids: Some(vec!["hero".into(), "planner".into()]),
                 backgrounds: Some(vec![Fill::Color {
-                    color: arrangia_core::model::ColorRef::Named("primary".into()),
+                    color: vitrine_core::model::ColorRef::Named("primary".into()),
                 }]),
             },
         },
@@ -624,7 +624,7 @@ mod prop {
                     elements.push((
                         s.id.clone(),
                         e.id.clone(),
-                        matches!(e.kind, arrangia_core::model::ElementKind::Text(_)),
+                        matches!(e.kind, vitrine_core::model::ElementKind::Text(_)),
                     ));
                 });
             }
@@ -725,7 +725,7 @@ mod prop {
             6 => Op::AddVariant {
                 strip: pick.strip(a)?.id.clone(),
                 id: VariantId::new(&format!("v{}", b % 3)),
-                variant: arrangia_core::model::Variant {
+                variant: vitrine_core::model::Variant {
                     content_scale: Some(0.5 + f64::from(b % 3) / 4.0),
                     ..Default::default()
                 },
@@ -749,7 +749,7 @@ mod prop {
                     ids: (b % 7 == 0).then(|| vec![format!("p{a}"), "second".into()]),
                     backgrounds: (b % 5 == 0).then(|| {
                         vec![Fill::Color {
-                            color: arrangia_core::model::ColorRef::Named("accent".into()),
+                            color: vitrine_core::model::ColorRef::Named("accent".into()),
                         }]
                     }),
                 },
@@ -849,7 +849,7 @@ mod prop {
                 let s = p.strip(strip.as_str())?;
                 let mut groups = Vec::new();
                 s.walk_elements(&mut |e| {
-                    if matches!(e.kind, arrangia_core::model::ElementKind::Group(_)) {
+                    if matches!(e.kind, vitrine_core::model::ElementKind::Group(_)) {
                         groups.push(e.id.clone());
                     }
                 });
@@ -1588,7 +1588,7 @@ fn device_bezel_patch_and_yaml_round_trip() {
         },
     );
     let (_, e) = p.element("hero-phone").unwrap();
-    let arrangia_core::model::ElementKind::Device(d) = &e.kind else {
+    let vitrine_core::model::ElementKind::Device(d) = &e.kind else {
         panic!("device")
     };
     assert_eq!(d.bezel.as_deref(), Some("iPhone 18 Pro"));
@@ -1622,7 +1622,7 @@ fn device_bezel_patch_and_yaml_round_trip() {
 
 #[test]
 fn imported_frames_accept_vendor_colours() {
-    use arrangia_core::model::FrameStyle;
+    use vitrine_core::model::FrameStyle;
     let mut p = sample();
     let strip = p.strips[0].id.clone();
     let phone = ElementId::new("hero-phone");
@@ -1741,15 +1741,15 @@ fn hand_written_override_nulls_are_dropped_and_reported() {
         p.dropped_override_nulls
     );
     assert!(p.dropped_override_nulls[0].contains("langs.en: at"));
-    let report = arrangia_core::validate::validate(
+    let report = vitrine_core::validate::validate(
         &p,
-        &arrangia_core::validate::ValidateOptions::new(&arrangia_core::resolve::NoAssets),
+        &vitrine_core::validate::ValidateOptions::new(&vitrine_core::resolve::NoAssets),
     );
     let infos: Vec<_> = report
-        .with_code(arrangia_core::validate::FindingCode::OverrideNull)
+        .with_code(vitrine_core::validate::FindingCode::OverrideNull)
         .collect();
     assert_eq!(infos.len(), 2);
-    assert_eq!(infos[0].level, arrangia_core::validate::Severity::Info);
+    assert_eq!(infos[0].level, vitrine_core::validate::Severity::Info);
     // Saving writes the file without them and clears the notes.
     let dir = tmp.path().join("p");
     p.revision = 0;

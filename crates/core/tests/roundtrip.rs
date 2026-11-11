@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use arrangia_core::Project;
-use arrangia_core::io::{self, IoError};
-use arrangia_core::model::{ElementKind, Lang, StringKey};
+use vitrine_core::Project;
+use vitrine_core::io::{self, IoError};
+use vitrine_core::model::{ElementKind, Lang, StringKey};
 
 fn sample_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -99,7 +99,7 @@ fn save_detects_conflicting_revision() {
 #[test]
 fn new_project_saves_into_empty_folder() {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = tmp.path().join("new.arrangia");
+    let dir = tmp.path().join("new.vitrine");
     let mut p = Project::new("demo", Lang::new("en"));
     p.strings
         .entry(Lang::new("en"))
@@ -109,7 +109,7 @@ fn new_project_saves_into_empty_folder() {
     assert_eq!(p.revision, 1);
     assert_eq!(
         fs::read_to_string(dir.join("project.yaml")).unwrap(),
-        "format: arrangia/1\nrevision: 1\nname: demo\nlanguages:\n  default: en\n  available: [en]\n"
+        "format: vitrine/1\nrevision: 1\nname: demo\nlanguages:\n  default: en\n  available: [en]\n"
     );
     assert_eq!(
         fs::read_to_string(dir.join("i18n/en.yaml")).unwrap(),
@@ -131,7 +131,7 @@ fn sample_model_content() {
         p.string("de", "hero.title"),
         Some("Plane deine Beete **in Minuten**")
     );
-    let variant = &strip.variants[&arrangia_core::model::VariantId::new("tablet-landscape")];
+    let variant = &strip.variants[&vitrine_core::model::VariantId::new("tablet-landscape")];
     assert_eq!(variant.overrides.len(), 3);
 }
 
@@ -180,7 +180,7 @@ fn load_err(yaml: &str) -> String {
     Project::load(tmp.path()).unwrap_err().to_string()
 }
 
-const HEAD: &str = "format: arrangia/1\nname: x\nlanguages: { default: en, available: [en] }\n";
+const HEAD: &str = "format: vitrine/1\nname: x\nlanguages: { default: en, available: [en] }\n";
 
 #[test]
 fn errors_name_file_line_and_field() {
@@ -204,17 +204,22 @@ fn errors_name_file_line_and_field() {
     ));
     assert!(err.contains("invalid colour `red`"), "{err}");
 
-    let err =
-        load_err("format: arrangia/9\nname: x\nlanguages: { default: en, available: [en] }\n");
+    let err = load_err("format: vitrine/9\nname: x\nlanguages: { default: en, available: [en] }\n");
     assert!(err.contains("unsupported format"), "{err}");
+
+    let err =
+        load_err("format: arrangia/1\nname: x\nlanguages: { default: en, available: [en] }\n");
+    assert!(
+        err.contains("project from Arrangia") && err.contains("`vitrine/1`"),
+        "{err}"
+    );
 
     let err = load_err(&format!(
         "{HEAD}strips:\n  - id: s\n    page: {{ aspect: \"1:2\", count: 1 }}\n    elements:\n      - {{ id: a, kind: text, text: a }}\n      - {{ id: a, kind: text, text: b }}\n"
     ));
     assert!(err.contains("duplicate element id `a`"), "{err}");
 
-    let err =
-        load_err("format: arrangia/1\nname: x\nlanguages: { default: de, available: [en] }\n");
+    let err = load_err("format: vitrine/1\nname: x\nlanguages: { default: de, available: [en] }\n");
     assert!(err.contains("default language `de`"), "{err}");
 }
 

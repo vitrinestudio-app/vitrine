@@ -14,7 +14,7 @@
 //! With [`ExportLayout::Fastlane`] the files go where `fastlane deliver` and
 //! `fastlane supply` read them (`screenshots/<asc-locale>/…`,
 //! `metadata/android/<play-locale>/images/<type>/…`, see
-//! [`arrangia_core::fastlane`]); default folder `<project>/export/fastlane`,
+//! [`vitrine_core::fastlane`]); default folder `<project>/export/fastlane`,
 //! no gallery previews, targets without a deliver/supply slot are left out
 //! with a note, and two targets that would land in one upload set are
 //! reported as conflicts (the later one is not written).
@@ -26,7 +26,7 @@
 //! **Incremental** (§6.3): every file gets a hash of the resolved scene,
 //! the image index, the output format, the mtimes of all assets the scene
 //! references (screenshots, images, project fonts) and the renderer version.
-//! Hashes are kept in `<export>/.arrangia-export.json` ([`manifest`],
+//! Hashes are kept in `<export>/.vitrine-export.json` ([`manifest`],
 //! with target, language, kind and size per file); an existing file with an
 //! unchanged hash is not rendered again. Files of an earlier export of the
 //! same targets × languages (and layout) that this export no longer
@@ -43,15 +43,15 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Instant;
 
-use arrangia_core::Project;
-use arrangia_core::fastlane::{self, Claim, LayoutNote, NoteLevel, Placement};
-use arrangia_core::model::{ImageFormat, TargetKind};
-use arrangia_core::resolve::{
-    Diagnostic, FsAssets, ResolvedFill, ResolvedKind, ResolvedScene, resolve,
-};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tiny_skia::{FillRule, FilterQuality, Pattern, Pixmap, SpreadMode, Stroke, Transform};
+use vitrine_core::Project;
+use vitrine_core::fastlane::{self, Claim, LayoutNote, NoteLevel, Placement};
+use vitrine_core::model::{ImageFormat, TargetKind};
+use vitrine_core::resolve::{
+    Diagnostic, FsAssets, ResolvedFill, ResolvedKind, ResolvedScene, resolve,
+};
 
 use crate::paint::{round_rect_xy, shader_paint, solid};
 use crate::raster::{encode_jpeg, encode_png_rgb_with};
@@ -63,7 +63,7 @@ const FLATTEN_ON: [u8; 3] = [255, 255, 255];
 /// Gallery preview background when the profile has none.
 const GALLERY_BACKGROUND: [u8; 4] = [0xF2, 0xF2, 0xF7, 0xFF];
 /// Name of the incremental-export manifest in the export folder.
-pub const MANIFEST: &str = ".arrangia-export.json";
+pub const MANIFEST: &str = ".vitrine-export.json";
 /// Bump when the renderer's output changes, to invalidate incremental
 /// exports made by an older build.
 pub const RENDER_REVISION: u32 = 3;
@@ -552,7 +552,7 @@ fn fastlane_tasks(
         if rejected.contains(&n) {
             continue;
         }
-        if p.store == arrangia_core::model::StoreKind::Apple {
+        if p.store == vitrine_core::model::StoreKind::Apple {
             deliver_dirs.insert(p.dir.clone());
         }
         tasks.push(Task {
@@ -575,7 +575,7 @@ fn fastlane_tasks(
 /// frameit leftovers make deliver skip every unframed file of the folder.
 fn framed_warnings(out_dir: &Path, deliver_dirs: BTreeSet<String>) -> Vec<LayoutNote> {
     let mut notes = Vec::new();
-    let framed = &arrangia_core::catalog::fastlane().deliver.framed_suffix;
+    let framed = &vitrine_core::catalog::fastlane().deliver.framed_suffix;
     for dir in deliver_dirs {
         let has_framed = std::fs::read_dir(out_dir.join(&dir))
             .into_iter()
@@ -593,7 +593,7 @@ fn framed_warnings(out_dir: &Path, deliver_dirs: BTreeSet<String>) -> Vec<Layout
                 target: String::new(),
                 lang: None,
                 message: format!(
-                    "{dir} holds frameit `*{framed}` files: deliver then uploads only those and skips Arrangia's images; delete them"
+                    "{dir} holds frameit `*{framed}` files: deliver then uploads only those and skips Vitrine Studio's images; delete them"
                 ),
             });
         }

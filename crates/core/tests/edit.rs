@@ -11,17 +11,17 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use arrangia_core::Project;
-use arrangia_core::edit::{
+use vitrine_core::Project;
+use vitrine_core::edit::{
     EditContext, EditError, Editor, Handle, MoveOptions, ResizeSpec, ZOrder,
     default_language_impact, local_to_canvas, unique_id,
 };
-use arrangia_core::geometry::Vec2;
-use arrangia_core::io;
-use arrangia_core::layout::{FontLibrary, TextLayouter};
-use arrangia_core::model::{ElementId, ElementKind, Lang, StripId, VariantId};
-use arrangia_core::ops::Op;
-use arrangia_core::resolve::{ResolveOptions, ResolvedElement, resolve};
+use vitrine_core::geometry::Vec2;
+use vitrine_core::io;
+use vitrine_core::layout::{FontLibrary, TextLayouter};
+use vitrine_core::model::{ElementId, ElementKind, Lang, StripId, VariantId};
+use vitrine_core::ops::Op;
+use vitrine_core::resolve::{ResolveOptions, ResolvedElement, resolve};
 
 fn sample() -> Project {
     Project::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/sample")).unwrap()
@@ -359,8 +359,8 @@ fn rotate_and_pivot() {
 /// (ADR 0004), in resolve, edit intents and with an explicit pivot.
 #[test]
 fn auto_height_text_rotates_around_its_content() {
-    use arrangia_core::layout::{layout_text, span_styles};
-    use arrangia_core::resolve::ResolvedKind;
+    use vitrine_core::layout::{layout_text, span_styles};
+    use vitrine_core::resolve::ResolvedKind;
     let mut p = sample();
     let c = ctx("ios-phone-69");
     let content_centre = |p: &Project| {
@@ -474,7 +474,7 @@ fn order_duplicate_remove() {
     let o = &v.overrides["hero-phone-2"];
     assert_eq!(
         o.at,
-        Some(Some(arrangia_core::model::Point::new(1040.0, 1540.0)))
+        Some(Some(vitrine_core::model::Point::new(1040.0, 1540.0)))
     );
     assert_eq!(unique_id(&p, "hero-phone-2").as_str(), "hero-phone-3");
     assert_eq!(unique_id(&p, "fresh").as_str(), "fresh");
@@ -500,7 +500,7 @@ fn order_duplicate_remove() {
 
 #[test]
 fn patch_writes_base_or_override() {
-    use arrangia_core::model::{ElementPatch, Point};
+    use vitrine_core::model::{ElementPatch, Point};
     let mut p = sample();
     let c = ctx("ios-phone-69");
     let patch = ElementPatch {
@@ -647,7 +647,7 @@ fn reset_overrides() {
     assert!(!v.overrides.contains_key("title-1"));
     // Free function, base context: nothing to reset.
     assert!(
-        arrangia_core::edit::reset_override(
+        vitrine_core::edit::reset_override(
             &p,
             &StripId::new("phone"),
             &VariantId::new("tablet-landscape"),
@@ -848,7 +848,7 @@ fn edit_context_json() {
     assert_eq!(c.variant, Some(Some(VariantId::new("v"))));
     let c: EditContext =
         serde_json::from_str(r#"{"target": "t", "lang": "de", "scope": "lang"}"#).unwrap();
-    assert_eq!(c.scope, arrangia_core::edit::EditScope::Lang);
+    assert_eq!(c.scope, vitrine_core::edit::EditScope::Lang);
 }
 
 #[test]
@@ -858,7 +858,7 @@ fn default_language_impact_lists_lost_sources() {
     p.apply_ops([
         Op::SetString {
             lang: Lang::new("en"),
-            key: arrangia_core::model::StringKey::new("hero.extra"),
+            key: vitrine_core::model::StringKey::new("hero.extra"),
             value: Some("Extra".into()),
         },
         Op::UpdateElement {
@@ -867,7 +867,7 @@ fn default_language_impact_lists_lost_sources() {
         },
     ])
     .unwrap();
-    let catalog = arrangia_core::catalog::catalog();
+    let catalog = vitrine_core::catalog::catalog();
     let files: BTreeSet<String> = [
         "screenshots/en/ios-phone/home.png",
         "screenshots/de/ios-phone/home.png",
@@ -981,7 +981,7 @@ fn overlay_snapshot_grouped_variant() {
 fn overlay_of_the_example_project() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/example");
     let p = Project::load(&dir).unwrap();
-    let assets = arrangia_core::resolve::FsAssets::new(&dir);
+    let assets = vitrine_core::resolve::FsAssets::new(&dir);
     let mut layouter = TextLayouter::new(FontLibrary::bundled());
     for t in &p.targets {
         let ed = Editor::new(
@@ -993,7 +993,7 @@ fn overlay_of_the_example_project() {
         let o = ed.overlay(&mut layouter).unwrap();
         for e in &o.elements {
             // move_point is what move_to places: moving there is a no-op.
-            if e.kind == arrangia_core::model::ElementKindTag::Background {
+            if e.kind == vitrine_core::model::ElementKindTag::Background {
                 continue;
             }
             let ops = ed
@@ -1160,7 +1160,7 @@ mod prop {
             None => String::new(),
         };
         let yaml = format!(
-            "format: arrangia/1\nname: t\nlanguages: {{default: en, available: [en]}}\nstrips:\n- id: s\n  page: {{aspect: \"{}:{}\", count: {}}}\n  elements:\n{elements}{variants}targets:\n- id: t\n  strip: s\n  size: [{}, {}]\n  group: {}\n  gallery: {{preset: play-phone, gap: {}}}\n{}",
+            "format: vitrine/1\nname: t\nlanguages: {{default: en, available: [en]}}\nstrips:\n- id: s\n  page: {{aspect: \"{}:{}\", count: {}}}\n  elements:\n{elements}{variants}targets:\n- id: t\n  strip: s\n  size: [{}, {}]\n  group: {}\n  gallery: {{preset: play-phone, gap: {}}}\n{}",
             c.aspect.0,
             c.aspect.1,
             c.pages,

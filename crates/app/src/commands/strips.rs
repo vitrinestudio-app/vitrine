@@ -5,15 +5,15 @@
 
 use std::collections::BTreeSet;
 
-use arrangia_core::Project;
-use arrangia_core::catalog;
-use arrangia_core::edit::{copy_strip, fresh_element_id, unique_string_key, unique_strip_id};
-use arrangia_core::model::{
-    Aspect, Element, ElementId, Fill, Lang, PixelSize, Strip, StripId, Target, TargetId,
-};
-use arrangia_core::ops::Op;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use vitrine_core::Project;
+use vitrine_core::catalog;
+use vitrine_core::edit::{copy_strip, fresh_element_id, unique_string_key, unique_strip_id};
+use vitrine_core::model::{
+    Aspect, Element, ElementId, Fill, Lang, PixelSize, Strip, StripId, Target, TargetId,
+};
+use vitrine_core::ops::Op;
 
 use super::AppState;
 use super::edit::EditResult;

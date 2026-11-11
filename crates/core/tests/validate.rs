@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use arrangia_core::Project;
-use arrangia_core::validate::{
+use vitrine_core::Project;
+use vitrine_core::validate::{
     FindingCode, Severity, ValidateMode, ValidateOptions, ValidationReport, validate,
 };
 

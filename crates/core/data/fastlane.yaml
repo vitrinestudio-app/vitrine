@@ -1,5 +1,5 @@
 # fastlane folder conventions (snapshot, frameit, deliver, screengrab,
-# supply). Loaded by `arrangia_core::catalog::fastlane` (embedded at build
+# supply). Loaded by `vitrine_core::catalog::fastlane` (embedded at build
 # time). Used by the screenshot import (`--format fastlane`) and the
 # `fastlane` export layout. Research notes:
 # docs/research/2026-11-10-fastlane-conventions.md
@@ -40,7 +40,7 @@
 #     max_per_type      Play Console limit (not enforced by supply)
 #   snapshot      iOS capture: `<locale>/<Device Name>-<screen>.png`
 #   screengrab    Android capture: `<name>_<epoch millis>.png`
-#   frameit       framing tool (replaced by Arrangia)
+#   frameit       framing tool (replaced by Vitrine Studio)
 
 checked: 2026-11-10
 

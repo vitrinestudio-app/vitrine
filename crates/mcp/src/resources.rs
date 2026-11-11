@@ -1,22 +1,22 @@
 //! Read-only resources: the project file, translation files, catalogs and
-//! the documentation topics (`arrangia://docs/<topic>`, the same text as the
+//! the documentation topics (`vitrine://docs/<topic>`, the same text as the
 //! `docs_get` tool).
 
-use arrangia_app::commands::AppState;
-use arrangia_core::io::PROJECT_FILE;
-use arrangia_core::model::Lang;
 use rmcp::ErrorData;
 use rmcp::model::{ReadResourceResult, Resource, ResourceContents, ResourceTemplate};
 use serde_json::Value;
+use vitrine_app::commands::AppState;
+use vitrine_core::io::PROJECT_FILE;
+use vitrine_core::model::Lang;
 
 use crate::server::cmd;
 
-pub const PROJECT_URI: &str = "arrangia://project/project.yaml";
-pub const I18N_PREFIX: &str = "arrangia://project/i18n/";
-pub const DEVICES_URI: &str = "arrangia://catalog/devices";
-pub const TARGETS_URI: &str = "arrangia://catalog/targets";
-pub const OPS_URI: &str = "arrangia://docs/ops";
-pub const DOCS_PREFIX: &str = "arrangia://docs/";
+pub const PROJECT_URI: &str = "vitrine://project/project.yaml";
+pub const I18N_PREFIX: &str = "vitrine://project/i18n/";
+pub const DEVICES_URI: &str = "vitrine://catalog/devices";
+pub const TARGETS_URI: &str = "vitrine://catalog/targets";
+pub const OPS_URI: &str = "vitrine://docs/ops";
+pub const DOCS_PREFIX: &str = "vitrine://docs/";
 
 /// Reference of the ops accepted by `apply_ops`.
 pub const OPS_DOC: &str = include_str!("ops.md");
@@ -97,7 +97,7 @@ fn json_text(v: &Value) -> String {
     serde_json::to_string_pretty(v).unwrap_or_default()
 }
 
-fn mcp_err(e: &arrangia_app::CommandError) -> ErrorData {
+fn mcp_err(e: &vitrine_app::CommandError) -> ErrorData {
     ErrorData::resource_not_found(e.message.clone(), None)
 }
 
@@ -147,9 +147,9 @@ pub fn read(app: &AppState, uri: &str) -> Result<ReadResourceResult, ErrorData> 
 mod tests {
     use std::sync::Arc;
 
-    use arrangia_app::dialogs::NoDialogs;
-    use arrangia_app::events::NullSink;
-    use arrangia_app::settings::AppPaths;
+    use vitrine_app::dialogs::NoDialogs;
+    use vitrine_app::events::NullSink;
+    use vitrine_app::settings::AppPaths;
 
     use super::*;
 
@@ -169,7 +169,7 @@ mod tests {
         assert_eq!(uris.len(), 2 + crate::docs::TOPICS.len());
         assert!(read(&app, PROJECT_URI).is_err());
         let dir = tmp.path().join("p");
-        arrangia_app::testutil::copy_project(&arrangia_app::testutil::example_fixture(), &dir)
+        vitrine_app::testutil::copy_project(&vitrine_app::testutil::example_fixture(), &dir)
             .unwrap();
         app.open_project(&dir).unwrap();
         let uris: Vec<String> = list(&app).into_iter().map(|r| r.uri).collect();
@@ -178,10 +178,10 @@ mod tests {
         let ResourceContents::TextResourceContents { text, .. } = &r.contents[0] else {
             panic!("text expected");
         };
-        assert!(text.contains("format: arrangia/1"));
+        assert!(text.contains("format: vitrine/1"));
         assert!(read(&app, &format!("{I18N_PREFIX}de.yaml")).is_ok());
         assert!(read(&app, &format!("{I18N_PREFIX}../project.yaml")).is_err());
-        assert!(read(&app, "arrangia://nope").is_err());
+        assert!(read(&app, "vitrine://nope").is_err());
         let ResourceContents::TextResourceContents { text, .. } =
             &read(&app, OPS_URI).unwrap().contents[0]
         else {

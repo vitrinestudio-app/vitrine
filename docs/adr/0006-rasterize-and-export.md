@@ -13,7 +13,7 @@ fast_image_resize, png).
 
 ## Decision
 
-### API (`arrangia_render::scene`)
+### API (`vitrine_render::scene`)
 
 - `RenderContext::new(project_root)` holds the asset cache, the font
   library (bundled + `fonts/`) and a pool of `TextLayouter`s. It is
@@ -89,7 +89,7 @@ fast_image_resize, png).
   as `Arc<Pixmap>` behind a `Mutex`, cleared when exceeding 768 MB.
   Asset paths must be relative and must not contain `..`.
 
-### Export (`arrangia_render::export`)
+### Export (`vitrine_render::export`)
 
 - Target × language pairs (target `langs`, else all available languages)
   are resolved and prepared in parallel; then every file (page images,
@@ -105,14 +105,14 @@ fast_image_resize, png).
 - Incremental: per file a hash of the serialized scene, catalog data of
   its devices, mtimes of referenced assets and project fonts, format,
   `RENDER_REVISION` (bump when output changes); stored in
-  `export/.arrangia-export.json`. Unchanged files are skipped.
+  `export/.vitrine-export.json`. Unchanged files are skipped.
 - `ExportReport`: files (size, bytes, render/encode ms, skipped), issues
   (resolve diagnostics, text layout and asset issues, deduplicated per
   target × language), errors, timings.
 
 ## Measurements
 
-Apple M1 Pro, release, sample project (`cargo run -p arrangia-render
+Apple M1 Pro, release, sample project (`cargo run -p vitrine-render
 --release --example sample -- <dir>`):
 
 | | |

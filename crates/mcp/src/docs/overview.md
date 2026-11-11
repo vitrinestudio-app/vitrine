@@ -1,6 +1,6 @@
-# Arrangia overview
+# Vitrine Studio overview
 
-Arrangia designs App Store / Play Store screenshots: one layout, rendered
+Vitrine Studio designs App Store / Play Store screenshots: one layout, rendered
 automatically for every target (store size) and language.
 
 ## Concepts

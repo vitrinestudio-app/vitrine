@@ -1,5 +1,5 @@
 //! Screenshot import from a folder (`core::import`): `import_plan` shows
-//! what would go where (fastlane, Arrangia or flat layout, with per-row
+//! what would go where (fastlane, Vitrine Studio or flat layout, with per-row
 //! corrections and extra mappings), `import_apply` re-plans with the same
 //! arguments and copies the files, optionally saving the effective
 //! mapping to `project.yaml` (`import.fastlane`, one undo step). The
@@ -8,13 +8,13 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use arrangia_core::import::{
+use serde::{Deserialize, Serialize};
+use vitrine_core::import::{
     ApplyReport, ImportPlan, ImportRules, ItemOverride, SourceFormat, apply, plan_files,
     plan_screenshot_import,
 };
-use arrangia_core::model::{ImportMapping, ImportSettings};
-use arrangia_core::ops::Op;
-use serde::{Deserialize, Serialize};
+use vitrine_core::model::{ImportMapping, ImportSettings};
+use vitrine_core::ops::Op;
 
 use super::{AppState, absolute};
 use crate::error::{CmdResult, CommandError};
@@ -99,10 +99,10 @@ fn make_plan(app: &AppState, args: &ImportPlanArgs) -> CmdResult<ImportPlan> {
         (Some(dir), true) => {
             let dir = absolute(dir)?;
             plan_screenshot_import(&project, session.dir(), &dir, &rules).map_err(|e| match e {
-                arrangia_core::import::ImportError::NotADir(_) => {
+                vitrine_core::import::ImportError::NotADir(_) => {
                     CommandError::not_found(e.to_string())
                 }
-                arrangia_core::import::ImportError::Io { .. } => CommandError::io(e.to_string()),
+                vitrine_core::import::ImportError::Io { .. } => CommandError::io(e.to_string()),
             })
         }
         (None, false) => {

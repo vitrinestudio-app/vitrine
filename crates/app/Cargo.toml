@@ -1,6 +1,6 @@
 [package]
-name = "arrangia-app"
-description = "Arrangia application layer: session, commands, preview cache, settings (shared by GUI and MCP)"
+name = "vitrine-app"
+description = "Vitrine Studio application layer: session, commands, preview cache, settings (shared by GUI and MCP)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,9 +9,9 @@ homepage.workspace = true
 publish = false
 
 [dependencies]
-arrangia-core.workspace = true
-arrangia-render.workspace = true
-arrangia-publish.workspace = true
+vitrine-core.workspace = true
+vitrine-render.workspace = true
+vitrine-publish.workspace = true
 # Runtime for the store connection test (store_test.rs); reqwest brings the IO driver.
 tokio = { workspace = true, features = ["rt", "time", "net"] }
 serde.workspace = true

@@ -4,7 +4,7 @@
 
 use std::io::IsTerminal;
 
-use arrangia_core::validate::Severity;
+use vitrine_core::validate::Severity;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Style {

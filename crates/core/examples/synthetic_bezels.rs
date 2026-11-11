@@ -2,9 +2,9 @@
 //! Product Bezels, never vendor artwork) for trying out the frame import:
 //!
 //! ```sh
-//! cargo run -p arrangia-core --example synthetic_bezels -- <dir>          # folder
-//! cargo run -p arrangia-core --example synthetic_bezels -- <file.zip>     # zip
-//! cargo run -p arrangia-core --release --example synthetic_bezels -- --full-size <dir>
+//! cargo run -p vitrine-core --example synthetic_bezels -- <dir>          # folder
+//! cargo run -p vitrine-core --example synthetic_bezels -- <file.zip>     # zip
+//! cargo run -p vitrine-core --release --example synthetic_bezels -- --full-size <dir>
 //! ```
 //!
 //! By default the phone screens are 1/4 of the real size; `--full-size`
@@ -14,7 +14,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use arrangia_core::frame_import::synthetic;
+use vitrine_core::frame_import::synthetic;
 
 fn main() -> ExitCode {
     let mut args: Vec<_> = std::env::args_os().skip(1).collect();

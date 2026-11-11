@@ -1,9 +1,9 @@
-//! # arrangia-app
+//! # vitrine-app
 //!
 //! The transport-agnostic application layer (ADR 0008, ADR 0013): plain
 //! Rust functions with serde arguments and results, shared by the Tauri app
-//! and dev HTTP bridge (`arrangia-gui`) and the MCP server
-//! (`arrangia-mcp`), so all front ends have one behaviour: same session,
+//! and dev HTTP bridge (`vitrine-gui`) and the MCP server
+//! (`vitrine-mcp`), so all front ends have one behaviour: same session,
 //! ops, edit intents, validation, revision checks and atomic saves. No
 //! Tauri dependency.
 //!
@@ -98,7 +98,7 @@ pub struct AppInfo {
 /// Name and version of the app.
 pub fn app_info() -> AppInfo {
     AppInfo {
-        name: "Arrangia",
+        name: "Vitrine Studio",
         version: env!("CARGO_PKG_VERSION"),
     }
 }
@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn app_info_reports_package_version() {
         let info = super::app_info();
-        assert_eq!(info.name, "Arrangia");
+        assert_eq!(info.name, "Vitrine Studio");
         assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
     }
 }

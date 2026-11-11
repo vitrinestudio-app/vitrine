@@ -5,12 +5,12 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use arrangia_publish::{ClientOptions, HttpEvent, PollPolicy, Progress, RetryPolicy};
 use aws_lc_rs::encoding::{AsDer, Pkcs8V1Der};
 use aws_lc_rs::signature::{ECDSA_P256_SHA256_FIXED_SIGNING, EcdsaKeyPair, KeyPair};
 use base64::Engine;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use serde_json::Value;
+use vitrine_publish::{ClientOptions, HttpEvent, PollPolicy, Progress, RetryPolicy};
 use wiremock::{Match, Request};
 
 fn pem(label: &str, der: &[u8]) -> String {

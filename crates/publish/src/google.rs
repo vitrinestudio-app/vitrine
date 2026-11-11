@@ -113,7 +113,7 @@ pub struct Image {
     pub sha256: Option<String>,
 }
 
-/// App details of an edit (`AppDetails`, only what Arrangia shows).
+/// App details of an edit (`AppDetails`, only what Vitrine Studio shows).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppDetails {
@@ -121,7 +121,7 @@ pub struct AppDetails {
     pub default_language: Option<String>,
 }
 
-/// A store listing of one language (`Listing`, only what Arrangia shows).
+/// A store listing of one language (`Listing`, only what Vitrine Studio shows).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Listing {

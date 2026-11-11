@@ -15,7 +15,7 @@ confirmed. Both had to be built so that changing them later is cheap.
 
 ## Decision
 
-Everything lives in `arrangia_app::upload` (it needs rendering,
+Everything lives in `vitrine_app::upload` (it needs rendering,
 validation, settings, the keychain and the store clients; `core` stays
 network-free, `publish` stays a pair of clients):
 
@@ -123,7 +123,7 @@ and follow `upload-progress` events / `upload_status`.
 |---|---|
 | user (GUI button, CLI `--confirm` + prompt / `--yes`) | confirm token |
 | assistant via the GUI-hosted MCP | token + click "Confirm upload" in the app: `upload-confirm-requested {id, token, client, summary, plan, expires_at}` → GUI dialog → `upload_confirm {id, approved}`; the tool call waits up to 5 min, then `not_confirmed` (`reason: timeout`; declined: `denied`); `upload-confirm-resolved {id, outcome}` |
-| assistant via `arrangia mcp --headless` | refused (`forbidden`) unless the app setting `mcp_allow_headless_upload` is on (default off); then the token is enough |
+| assistant via `vitrine mcp --headless` | refused (`forbidden`) unless the app setting `mcp_allow_headless_upload` is on (default off); then the token is enough |
 
 Implementation: the MCP tool `upload_execute {confirm_token}` calls
 `check_mcp_allowed` (headless refusal before anything else),
@@ -147,14 +147,14 @@ not change (they only show `flow`). New endpoint used by the set flow:
 appStoreVersionLocalizations`, attribute `locale`, relationship
 `appStoreVersion`; 201; checked 2026-11-10 against Apple's JSON docs).
 Apple notes that the same locale must exist in the app info
-localizations before submission – not created by Arrangia (App Store
+localizations before submission – not created by Vitrine Studio (App Store
 Connect shows it).
 
 ### Endpoints in tests
 
 `UploadConfig` (on `AppState::upload()`) holds endpoints, client
 options and timings. CLI and dev bridge read
-`ARRANGIA_ASC_BASE_URL`/`ARRANGIA_PLAY_BASE_URL`/`ARRANGIA_PLAY_TOKEN_URL`
+`VITRINE_ASC_BASE_URL`/`VITRINE_PLAY_BASE_URL`/`VITRINE_PLAY_TOKEN_URL`
 (loopback URLs only, like the connection test); the real GUI always
 uses the production endpoints. Tests set the config directly.
 

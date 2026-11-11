@@ -6,17 +6,17 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use arrangia_core::frame_import::{FrameIndex, FrameStore, Package, Rules, import, synthetic};
-use arrangia_core::io::project_from_yaml;
-use arrangia_core::layout::FontLibrary;
-use arrangia_core::model::FrameStyle;
-use arrangia_core::resolve::{DiagnosticCode, FsAssets, ResolvedKind, ResolvedScene, resolve};
-use arrangia_render::raster::save_png_rgb;
-use arrangia_render::scene::{RenderContext, RenderOptions, Rendered};
 use tiny_skia::Pixmap;
+use vitrine_core::frame_import::{FrameIndex, FrameStore, Package, Rules, import, synthetic};
+use vitrine_core::io::project_from_yaml;
+use vitrine_core::layout::FontLibrary;
+use vitrine_core::model::FrameStyle;
+use vitrine_core::resolve::{DiagnosticCode, FsAssets, ResolvedKind, ResolvedScene, resolve};
+use vitrine_render::raster::save_png_rgb;
+use vitrine_render::scene::{RenderContext, RenderOptions, Rendered};
 
 const PROJECT: &str = r##"
-format: arrangia/1
+format: vitrine/1
 name: imported
 languages: {default: en, available: [en]}
 strips:
@@ -65,7 +65,7 @@ fn render(root: &Path, frames: Option<Arc<FrameIndex>>, yaml: &str) -> (Resolved
     let fs = FsAssets::new(root);
     let scene = resolve(&project, "t", "en", &ctx.resolve_options(&fs)).unwrap();
     let r = ctx.rasterize(&scene, 0, &RenderOptions::export());
-    if let Ok(dir) = std::env::var("ARRANGIA_RENDER_DEBUG_DIR") {
+    if let Ok(dir) = std::env::var("VITRINE_RENDER_DEBUG_DIR") {
         let name = if ctx.frames().is_some() {
             "imported.png"
         } else {
@@ -170,7 +170,7 @@ fn missing_frames_fall_back_to_parametric_with_an_info() {
         .iter()
         .find(|d| d.code == DiagnosticCode::ImportedFrameMissing)
         .expect("info");
-    assert_eq!(d.level, arrangia_core::resolve::Level::Info);
+    assert_eq!(d.level, vitrine_core::resolve::Level::Info);
     assert_eq!(r.issues, []);
     // A colour that is not installed: the default (or first) installed
     // colour is drawn, with an info.
@@ -180,7 +180,7 @@ fn missing_frames_fall_back_to_parametric_with_an_info() {
         scene
             .diagnostics
             .iter()
-            .all(|d| d.level == arrangia_core::resolve::Level::Info)
+            .all(|d| d.level == vitrine_core::resolve::Level::Info)
     );
     let d = scene
         .diagnostics
@@ -209,7 +209,7 @@ fn missing_frames_fall_back_to_parametric_with_an_info() {
     assert!(e.size.x > e.size.y);
 }
 
-fn imported(scene: &ResolvedScene) -> &arrangia_core::resolve::ImportedFrame {
+fn imported(scene: &ResolvedScene) -> &vitrine_core::resolve::ImportedFrame {
     let ResolvedKind::Device(dev) = &scene.elements[0].props else {
         panic!()
     };
@@ -225,7 +225,7 @@ fn has_bezel_info(scene: &ResolvedScene) -> bool {
 
 #[test]
 fn bezel_is_chosen_per_target_screenshot_or_pin() {
-    use arrangia_core::frame_import::BezelChoice;
+    use vitrine_core::frame_import::BezelChoice;
     let (dir, index) = setup();
     let root = dir.path().join("project");
     let ix = || Some(index.clone());

@@ -2,13 +2,11 @@
 //! `upload_status`, `upload_log`.
 //!
 //! Uploads are outward-facing (they change the public store listing), so
-//! `upload_execute` goes through `arrangia_app::upload::policy`:
+//! `upload_execute` goes through `vitrine_app::upload::policy`:
 //! GUI-hosted → the user must click "Confirm upload" in the app (the call
 //! waits up to 5 minutes, else `not_confirmed`); headless → refused unless
 //! the app setting `mcp_allow_headless_upload` is on.
 
-use arrangia_app::upload::policy::{self, McpHost};
-use arrangia_core::model::StoreKind;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
@@ -16,10 +14,12 @@ use rmcp::{RoleServer, tool, tool_router};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use vitrine_app::upload::policy::{self, McpHost};
+use vitrine_core::model::StoreKind;
 
 use super::project::NoParams;
 use crate::output::ToolOutput;
-use crate::server::{ArrangiaMcp, Host, cmd};
+use crate::server::{Host, VitrineMcp, cmd};
 
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -89,7 +89,7 @@ fn readiness_lines(p: &Value) -> String {
         })
         .collect();
     format!(
-        "\nBefore uploading, the user has to set this up in the Arrangia app (store keys \
+        "\nBefore uploading, the user has to set this up in the Vitrine Studio app (store keys \
          and the project's store mapping cannot be changed over MCP):\n{}",
         lines.join("\n")
     )
@@ -115,7 +115,7 @@ fn plan_line(p: &Value) -> String {
 }
 
 #[tool_router(router = upload_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "Dry run of a store upload (App Store Connect / Google Play): which store sets (target × language → store locale × display/image type) would be uploaded, replaced or skipped as unchanged, the images in store order with hashes, store-rule problems and preconditions (`remote: true` also reads the store; needs network). Nothing is uploaded. Returns a `confirm_token` for upload_execute. Show the plan to the user before asking for an upload.",
         annotations(read_only_hint = true)
@@ -127,7 +127,7 @@ impl ArrangiaMcp {
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
             if let Some(s) = &p.store {
-                StoreKind::parse(s).map_err(arrangia_app::CommandError::invalid)?;
+                StoreKind::parse(s).map_err(vitrine_app::CommandError::invalid)?;
             }
             let v = cmd(
                 app,
@@ -141,7 +141,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "Upload a planned set of screenshots to the stores. OUTWARD-FACING: this changes the app's public store listing. Only call it when the user explicitly asked for the upload after seeing the plan (upload_plan). The user must additionally confirm in the Arrangia app (a dialog shows the plan; this call waits up to 5 minutes and fails with `not_confirmed` when declined or unanswered). Without the app (headless) uploads are disabled unless the user turned on the app setting `mcp_allow_headless_upload`. Starts the run and returns right away; follow it with upload_status."
+        description = "Upload a planned set of screenshots to the stores. OUTWARD-FACING: this changes the app's public store listing. Only call it when the user explicitly asked for the upload after seeing the plan (upload_plan). The user must additionally confirm in the Vitrine Studio app (a dialog shows the plan; this call waits up to 5 minutes and fails with `not_confirmed` when declined or unanswered). Without the app (headless) uploads are disabled unless the user turned on the app setting `mcp_allow_headless_upload`. Starts the run and returns right away; follow it with upload_status."
     )]
     async fn upload_execute(
         &self,
@@ -154,7 +154,7 @@ impl ArrangiaMcp {
         };
         self.run(&ctx, move |app| {
             policy::check_mcp_allowed(app, host)?;
-            let plan = arrangia_app::commands::upload_verify(app, &p.confirm_token)?;
+            let plan = vitrine_app::commands::upload_verify(app, &p.confirm_token)?;
             policy::authorize_mcp(app, host, &p.confirm_token, &plan)?;
             let v = cmd(
                 app,

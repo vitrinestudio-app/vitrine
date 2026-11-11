@@ -5,8 +5,8 @@
 //! upscaling, store rules, anchor deviation, elements off the pages).
 //!
 //! ```
-//! use arrangia_core::{Project, model::Lang, resolve::NoAssets};
-//! use arrangia_core::validate::{ValidateOptions, validate};
+//! use vitrine_core::{Project, model::Lang, resolve::NoAssets};
+//! use vitrine_core::validate::{ValidateOptions, validate};
 //!
 //! let project = Project::new("demo", Lang::new("en"));
 //! let report = validate(&project, &ValidateOptions::new(&NoAssets));

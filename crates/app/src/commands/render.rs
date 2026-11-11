@@ -3,14 +3,14 @@
 
 use std::sync::Arc;
 
-use arrangia_core::Project;
-use arrangia_core::geometry::{Rect, Viewport};
-use arrangia_core::model::{Lang, StringKey, TargetKind, VariantId};
-use arrangia_core::ops::Op;
-use arrangia_core::resolve::{FsAssets, ResolvedScene, resolve};
-use arrangia_render::export::{gallery, scene_assets};
-use arrangia_render::scene::{CanvasOptions, Quality, RenderOptions, Scale};
 use serde::{Deserialize, Serialize};
+use vitrine_core::Project;
+use vitrine_core::geometry::{Rect, Viewport};
+use vitrine_core::model::{Lang, StringKey, TargetKind, VariantId};
+use vitrine_core::ops::Op;
+use vitrine_core::resolve::{FsAssets, ResolvedScene, resolve};
+use vitrine_render::export::{gallery, scene_assets};
+use vitrine_render::scene::{CanvasOptions, Quality, RenderOptions, Scale};
 
 use super::edit::{Gesture, ViewContext, double_option, preview_project};
 use super::project::check_target;
@@ -66,7 +66,7 @@ pub struct RenderImageArgs {
     pub variant: Option<Option<String>>,
     /// Edit scope of the view (only used by gesture previews).
     #[serde(default)]
-    pub scope: Option<arrangia_core::edit::EditScope>,
+    pub scope: Option<vitrine_core::edit::EditScope>,
     /// Output image index, 0-based (a page, a page group or the banner).
     #[serde(default)]
     pub image: u32,
@@ -101,7 +101,7 @@ pub struct RenderCanvasArgs {
     pub variant: Option<Option<String>>,
     /// Edit scope of the view (only used by gesture previews).
     #[serde(default)]
-    pub scope: Option<arrangia_core::edit::EditScope>,
+    pub scope: Option<vitrine_core::edit::EditScope>,
     /// Only this canvas region (lu; e.g. a gap or a tile). Default: the
     /// whole canvas.
     #[serde(default)]
@@ -136,7 +136,7 @@ pub struct RenderGalleryArgs {
     pub variant: Option<Option<String>>,
     /// Edit scope of the view (only used by gesture previews).
     #[serde(default)]
-    pub scope: Option<arrangia_core::edit::EditScope>,
+    pub scope: Option<vitrine_core::edit::EditScope>,
     /// Image height in px (default 600, never above the target height).
     #[serde(default)]
     pub height: Option<u32>,
@@ -338,7 +338,7 @@ pub struct RenderPreviewEditArgs {
     pub variant: Option<Option<String>>,
     /// Edit scope of the view (only used by gesture previews).
     #[serde(default)]
-    pub scope: Option<arrangia_core::edit::EditScope>,
+    pub scope: Option<vitrine_core::edit::EditScope>,
     /// The gesture in progress (as the matching `edit_*` command takes it,
     /// with `kind`: `move`, `move_by`, `resize`, `rotate`).
     pub edit: Gesture,
@@ -409,7 +409,7 @@ pub struct RenderPreviewStringArgs {
     pub variant: Option<Option<String>>,
     /// Edit scope of the view (only used by gesture previews).
     #[serde(default)]
-    pub scope: Option<arrangia_core::edit::EditScope>,
+    pub scope: Option<vitrine_core::edit::EditScope>,
     /// Translation key and its uncommitted raw markup.
     pub key: String,
     pub value: String,

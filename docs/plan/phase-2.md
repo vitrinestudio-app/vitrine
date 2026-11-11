@@ -6,7 +6,7 @@ designed and exported completely in the GUI.
 Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## Architecture (decided)
-- **Session layer in Rust, transport-agnostic.** `arrangia-gui` gets a library
+- **Session layer in Rust, transport-agnostic.** `vitrine-gui` gets a library
   part (`session`, `commands`) with plain Rust functions taking/returning serde
   types. Tauri commands are thin wrappers. GUI, CLI and MCP keep going through
   the core Operations API.
@@ -14,7 +14,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   ops in core, not in JS – e.g. "move element to canvas point" (→ home page +
   anchor-relative `at`, or a variant override when a variant is active),
   "rotate", "resize", "set home page". MCP reuses them in Phase 4.
-- **Rendering:** previews come from `arrangia-render`, per output image (page
+- **Rendering:** previews come from `vitrine-render`, per output image (page
   or page group) and as canvas tiles, cached and invalidated per op. Pixels
   travel as binary `tauri::ipc::Response` (raw RGBA or PNG, measured), never
   Base64. Overlays (selection, handles, guides, gap hatching) are HTML/SVG.
@@ -179,7 +179,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   blank because the CSP blocked `fetch` of the i18n catalogs
   (`connect-src` without `'self'`); fixed, the app starts without
   panics, opens a project given on the command line
-  (`arrangia-gui <dir>`), renders the example via the binary IPC
+  (`vitrine-gui <dir>`), renders the example via the binary IPC
   transport (window captured with `screencapture -l`).
 
 ## Follow-ups (known gaps, not blocking Phase 2)

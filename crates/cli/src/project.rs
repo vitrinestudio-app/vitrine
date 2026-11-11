@@ -3,15 +3,15 @@
 use std::path::Path;
 
 use anyhow::{Context, bail};
-use arrangia_core::Project;
-use arrangia_core::io::PROJECT_FILE;
-use arrangia_core::layout::FontLibrary;
+use vitrine_core::Project;
+use vitrine_core::io::PROJECT_FILE;
+use vitrine_core::layout::FontLibrary;
 
 /// Loads the project in `dir` with a helpful message if there is none.
 pub fn load(dir: &Path) -> anyhow::Result<Project> {
     if !dir.join(PROJECT_FILE).is_file() {
         bail!(
-            "no {PROJECT_FILE} in `{}` (pass --project <DIR> or create a project with `arrangia new <DIR>`)",
+            "no {PROJECT_FILE} in `{}` (pass --project <DIR> or create a project with `vitrine new <DIR>`)",
             dir.display()
         );
     }
@@ -32,7 +32,7 @@ pub fn fonts(dir: &Path, quiet: bool) -> FontLibrary {
     fonts
 }
 
-pub fn report_font_errors(errors: &[arrangia_core::layout::FontError]) {
+pub fn report_font_errors(errors: &[vitrine_core::layout::FontError]) {
     let style = crate::term::Style::stderr();
     for e in errors {
         eprintln!("{} {e}", style.warn("warning:"));
@@ -60,7 +60,7 @@ pub fn check_targets(project: &Project, targets: &[String]) -> anyhow::Result<()
 /// Checks that every entry in `langs` is a valid language code.
 pub fn check_langs(langs: &[String]) -> anyhow::Result<()> {
     for l in langs {
-        arrangia_core::model::Lang::parse(l)
+        vitrine_core::model::Lang::parse(l)
             .map_err(|e| anyhow::anyhow!("invalid language `{l}`: {e}"))?;
     }
     Ok(())

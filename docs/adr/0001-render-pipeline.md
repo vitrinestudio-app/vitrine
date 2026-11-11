@@ -21,7 +21,7 @@ is built on top of it. The spike renders a hard-coded scene (no YAML):
   spans, auto-fit and `clip: page`.
 
 Code: `crates/render/src/{geometry,paint,blur,frames,raster,text,spike}`,
-driver `cargo run -p arrangia-render --release --example spike`
+driver `cargo run -p vitrine-render --release --example spike`
 (`--engine cosmic|parley`, `--runs N`, `--regen-assets`). Images go to
 `docs/spike/`, generated screenshots to `assets/spike/`. (Phase 1 removed
 the spike scene, composer and driver; the pipeline that replaced them is
@@ -66,7 +66,7 @@ ranges and CSS-like breaking knobs match our markup and future options
 (`word_break`, `text-wrap`); font collection with system fonts switched off;
 shares skrifa with our outline renderer. Cost: larger dependency tree and API
 churn between minor versions (pin and update deliberately). cosmic-text stays
-in `arrangia-render` only for the spike comparison and is removed in Phase 1.
+in `vitrine-render` only for the spike comparison and is removed in Phase 1.
 
 ## Coordinate system, home pages, gaps, grouping (as implemented)
 
@@ -182,7 +182,7 @@ Total ≈ 16 MB. All PNGs are 8-bit RGB without alpha, with sRGB chunk.
 - `canvas-debug_en_gap40.png`, `canvas-debug_en_group2-gap60.png` – canvas view with page boundaries, hatched gaps, page origins.
 - `frames_styles.png` – phone (stylized porcelain/midnight, detailed silver/graphite) and tablet frames.
 - `frames_closeup.png` – island, corner radius and screen mask close-up, stylized vs detailed.
-- `frames_catalog_stylized.png`, `frames_catalog_detailed.png` – Phase 1 contact sheets of all catalog frames (`cargo run -p arrangia-render --release --example frames`).
+- `frames_catalog_stylized.png`, `frames_catalog_detailed.png` – Phase 1 contact sheets of all catalog frames (`cargo run -p vitrine-render --release --example frames`).
 - `text-engines_comparison.png` – the same headlines through cosmic-text and parley (auto-fit, overflow, emergency break).
 
 ## Consequences

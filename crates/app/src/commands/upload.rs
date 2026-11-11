@@ -14,8 +14,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrangia_core::model::StoreKind;
 use serde::{Deserialize, Serialize};
+use vitrine_core::model::StoreKind;
 
 use super::{AppState, NoArgs};
 use crate::error::{CmdResult, CommandError, ErrorCode};
@@ -289,7 +289,7 @@ pub struct RefdataApp {
     pub library_error: Option<String>,
 }
 
-/// How one Arrangia slot resolves against the real ref data.
+/// How one Vitrine Studio slot resolves against the real ref data.
 #[derive(Debug, Clone, Serialize)]
 pub struct RefdataMapping {
     /// Display type (`APP_IPHONE_67`) or creative placement (`header`).
@@ -305,14 +305,14 @@ pub struct RefdataMapping {
     pub asset_library_only: bool,
 }
 
-/// `upload_refdata`: Apple's catalog plus how Arrangia's mapping resolves.
+/// `upload_refdata`: Apple's catalog plus how Vitrine Studio's mapping resolves.
 #[derive(Debug, Clone, Serialize)]
 pub struct RefdataReport {
     pub account: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub app: Option<RefdataApp>,
     /// `GET /v1/appAssetLibraryRefData` as Apple sent it (camelCase).
-    pub ref_data: arrangia_publish::apple::RefData,
+    pub ref_data: vitrine_publish::apple::RefData,
     pub mapping: Vec<RefdataMapping>,
     /// Date `data/asset-library.yaml` was checked.
     pub mapping_checked: String,
@@ -320,8 +320,8 @@ pub struct RefdataReport {
 
 /// Reads App Store Connect's asset library reference data with an Apple
 /// account (read-only GETs: ref data, optionally the app and its library)
-/// and resolves Arrangia's slot mapping against it. For checking the
-/// runtime group ids with a real key (`arrangia upload refdata`, GUI "Show
+/// and resolves Vitrine Studio's slot mapping against it. For checking the
+/// runtime group ids with a real key (`vitrine upload refdata`, GUI "Show
 /// App Store asset types").
 pub fn upload_refdata(app: &AppState, args: UploadRefdataArgs) -> CmdResult<RefdataReport> {
     let project = app.session().ok().map(|s| s.snapshot());
@@ -359,21 +359,21 @@ pub fn upload_refdata(app: &AppState, args: UploadRefdataArgs) -> CmdResult<Refd
     };
     let app_ref = match args.app {
         Some(a) if !a.is_empty() && a.bytes().all(|b| b.is_ascii_digit()) => {
-            Some(arrangia_publish::apple::AppRef::Id(a))
+            Some(vitrine_publish::apple::AppRef::Id(a))
         }
-        Some(a) if !a.is_empty() => Some(arrangia_publish::apple::AppRef::BundleId(a)),
+        Some(a) if !a.is_empty() => Some(vitrine_publish::apple::AppRef::BundleId(a)),
         _ => project.as_ref().and_then(remote::apple_app_ref),
     };
     let (account, secret) = super::account_with_secret(app, &account_id, StoreKind::Apple)?;
     let config = app.upload().config();
-    let options = arrangia_publish::ClientOptions {
+    let options = vitrine_publish::ClientOptions {
         request_timeout: Duration::from_secs(60),
         ..super::interactive_options()
     };
     let (ref_data, app_info) = remote::block_on(async {
         let client = remote::apple_client(&config, &account, &secret, options)?;
         let ref_data = client
-            .ref_data(&arrangia_publish::apple::RefDataFilter::default())
+            .ref_data(&vitrine_publish::apple::RefDataFilter::default())
             .await?;
         let app_info = match &app_ref {
             None => None,
@@ -392,7 +392,7 @@ pub fn upload_refdata(app: &AppState, args: UploadRefdataArgs) -> CmdResult<Refd
                 })
             }
         };
-        Ok::<_, arrangia_publish::Error>((ref_data, app_info))
+        Ok::<_, vitrine_publish::Error>((ref_data, app_info))
     })?
     .map_err(|e| super::store_failure(StoreKind::Apple, &e))?;
     Ok(RefdataReport {
@@ -400,14 +400,14 @@ pub fn upload_refdata(app: &AppState, args: UploadRefdataArgs) -> CmdResult<Refd
         app: app_info,
         mapping: refdata_mapping(&ref_data),
         ref_data,
-        mapping_checked: arrangia_core::catalog::asset_library().checked.clone(),
+        mapping_checked: vitrine_core::catalog::asset_library().checked.clone(),
     })
 }
 
-/// Arrangia's slots resolved against `rd` (all candidate groups).
-fn refdata_mapping(rd: &arrangia_publish::apple::RefData) -> Vec<RefdataMapping> {
-    use arrangia_core::model::{AppleSlot, CreativePlacement};
-    let lib = arrangia_core::catalog::asset_library();
+/// Vitrine Studio's slots resolved against `rd` (all candidate groups).
+fn refdata_mapping(rd: &vitrine_publish::apple::RefData) -> Vec<RefdataMapping> {
+    use vitrine_core::model::{AppleSlot, CreativePlacement};
+    let lib = vitrine_core::catalog::asset_library();
     let mut slots: Vec<(String, AppleSlot)> = lib
         .screenshots
         .keys()

@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 
 use super::project::NoParams;
 use crate::output::ToolOutput;
-use crate::server::{ArrangiaMcp, cmd};
+use crate::server::{VitrineMcp, cmd};
 
 fn stepped(r: &Value, verb: &str) -> ToolOutput {
     let label = if verb == "undid" {
@@ -44,7 +44,7 @@ fn stepped(r: &Value, verb: &str) -> ToolOutput {
 }
 
 #[tool_router(router = history_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "Undo the most recent step of the project history. The history is shared with the GUI user: check history_state first; your own steps start with your client's name (e.g. \"Claude Code: …\")."
     )]

@@ -85,7 +85,7 @@ pub struct RefGroup {
     pub display_class_id: String,
 }
 
-/// `imageSpecs[]` / `videoSpecs[]` (the fields Arrangia reads).
+/// `imageSpecs[]` / `videoSpecs[]` (the fields Vitrine Studio reads).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct RefSpec {
@@ -829,7 +829,7 @@ pub struct LibraryUpload<'a> {
     pub file_name: &'a str,
     /// `APP_SCREENSHOTS_AND_PREVIEWS` or `CREATIVE_ASSETS` (cannot change later).
     pub category: &'a str,
-    /// Shown in App Store Connect; Arrangia stores a content marker in it.
+    /// Shown in App Store Connect; Vitrine Studio stores a content marker in it.
     pub reference_name: Option<&'a str>,
 }
 

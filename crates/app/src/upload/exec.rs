@@ -46,14 +46,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use arrangia_core::model::{AppleUploadFlowSetting, StoreKind};
-use arrangia_publish::apple::{AppRef, Platform};
-use arrangia_publish::credentials::Secret;
-use arrangia_publish::{
-    CancellationToken, ClientOptions, Error, HttpEvent, HttpEventKind, Progress, UploadStep, google,
-};
 use serde::Serialize;
 use serde_json::json;
+use vitrine_core::model::{AppleUploadFlowSetting, StoreKind};
+use vitrine_publish::apple::{AppRef, Platform};
+use vitrine_publish::credentials::Secret;
+use vitrine_publish::{
+    CancellationToken, ClientOptions, Error, HttpEvent, HttpEventKind, Progress, UploadStep, google,
+};
 
 use super::library::AssetLibraryFlow;
 use super::log::UploadLog;
@@ -623,7 +623,7 @@ impl Runner<'_> {
                     };
                     return self.store_failed(sp, &sets, f, Some("no editable App Store version"));
                 }
-                let code = if e.kind() == arrangia_publish::ErrorKind::Auth {
+                let code = if e.kind() == vitrine_publish::ErrorKind::Auth {
                     "credentials"
                 } else {
                     "app_not_reachable"
@@ -744,7 +744,7 @@ impl Runner<'_> {
                 }
                 Err(e) => {
                     let msg = remote::store_message(StoreKind::Apple, &e);
-                    let fatal = e.kind() == arrangia_publish::ErrorKind::Auth;
+                    let fatal = e.kind() == vitrine_publish::ErrorKind::Auth;
                     self.finish_set(row, &set.key, SetRunStatus::Failed, Some(msg.clone()));
                     if fatal {
                         return self.fail_rest(sp, &msg);

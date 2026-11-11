@@ -140,7 +140,7 @@ function nativeSpec(hasProject) {
   return {
     menus: [
       {
-        label: 'Arrangia',
+        label: 'Vitrine Studio',
         items: [
           native('about', 'native.about'),
           sep,

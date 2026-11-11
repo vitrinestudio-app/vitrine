@@ -53,7 +53,7 @@ function suppressContextMenu() {
 suppressContextMenu();
 
 /** View context kept across a UI reload (language switch). */
-const CONTEXT_KEY = 'arrangia.context';
+const CONTEXT_KEY = 'vitrine.context';
 
 let shell = null;
 let startScreen = null;
@@ -155,7 +155,7 @@ function restoreContext() {
   } catch {
     /* not essential */
   }
-  window.addEventListener('arrangia:before-reload', () => {
+  window.addEventListener('vitrine:before-reload', () => {
     const { strip, target, lang, view } = store.get();
     try {
       sessionStorage.setItem(CONTEXT_KEY, JSON.stringify({ strip, target, lang, view }));
@@ -208,5 +208,5 @@ function report(error) {
 }
 
 window.addEventListener('unhandledrejection', (e) => report(e.reason));
-window.addEventListener('arrangia:error', (e) => report(e.detail));
+window.addEventListener('vitrine:error', (e) => report(e.detail));
 start().catch(report);

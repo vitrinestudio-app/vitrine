@@ -1,15 +1,15 @@
-//! `arrangia render`: one preview/debug PNG (an output image, the whole
+//! `vitrine render`: one preview/debug PNG (an output image, the whole
 //! canvas with overlay, or the store gallery preview).
 
 use std::path::PathBuf;
 
 use anyhow::{Context, bail};
-use arrangia_core::model::TargetKind;
-use arrangia_core::resolve::{Frame, FsAssets, Level, ResolvedScene, resolve};
-use arrangia_render::export::gallery;
-use arrangia_render::raster::save_png_rgb;
-use arrangia_render::scene::{CanvasOptions, Quality, RenderIssue, RenderOptions, Scale};
 use clap::Args;
+use vitrine_core::model::TargetKind;
+use vitrine_core::resolve::{Frame, FsAssets, Level, ResolvedScene, resolve};
+use vitrine_render::export::gallery;
+use vitrine_render::raster::save_png_rgb;
+use vitrine_render::scene::{CanvasOptions, Quality, RenderIssue, RenderOptions, Scale};
 
 use crate::{EXIT_OK, Global, project};
 

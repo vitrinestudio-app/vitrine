@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use arrangia_core::frame_import::synthetic;
 use serde_json::{Value, json};
+use vitrine_core::frame_import::synthetic;
 
 use super::*;
 use crate::dialogs::NoDialogs;
@@ -189,7 +189,7 @@ fn colour_swatches_and_remapping(app: &AppState, apple: &Value, imported: &Value
 
 #[test]
 fn dmg_licence_error_has_details() {
-    let e = package_error(arrangia_core::frame_import::attach_error(
+    let e = package_error(vitrine_core::frame_import::attach_error(
         std::path::Path::new("/tmp/Bezel-iPhone-18.dmg"),
         "hdiutil: attach canceled",
     ));

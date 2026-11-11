@@ -1,9 +1,9 @@
 # App Store Connect App Asset Library mapping (ASC API 4.5.1, ADR 0019).
-# Loaded by `arrangia_core::catalog::asset_library` (embedded at build time).
+# Loaded by `vitrine_core::catalog::asset_library` (embedded at build time).
 #
 # Apple's placement *groups* (`IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE`, …) are
 # runtime strings from `GET /v1/appAssetLibraryRefData` and must not be
-# hard-coded. This file only maps Arrangia's store slots to the *enum*
+# hard-coded. This file only maps Vitrine Studio's store slots to the *enum*
 # values Apple documents (placement types, display classes, platforms);
 # the upload resolves the group at runtime:
 #
@@ -12,7 +12,7 @@
 #   ∩ refdata.placementTypes[placement_type].specMappings[].placementGroupId
 #   → several left: the one whose specs accept the image size; else the first
 #
-# `arrangia upload refdata` prints the real catalog (and how these rows
+# `vitrine upload refdata` prints the real catalog (and how these rows
 # resolve) so the mapping can be checked with a real key.
 #
 # Field reference

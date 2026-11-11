@@ -4,11 +4,11 @@
 //! (decode + profile sniffing + conversion), interleaved so machine load
 //! hits both alike.
 //!
-//! `cargo run -p arrangia-render --release --example color_bench`
+//! `cargo run -p vitrine-render --release --example color_bench`
 
 use std::time::Instant;
 
-use arrangia_render::raster::SourceImage;
+use vitrine_render::raster::SourceImage;
 
 const W: u32 = 1320;
 const H: u32 = 2868;

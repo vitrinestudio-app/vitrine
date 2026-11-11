@@ -1,6 +1,6 @@
-# Arrangia – Konzept
+# Vitrine Studio – Konzept
 
-> Website: arrangia.app · Slug/Binary/Crate-Präfix: `arrangia`
+> Website: vitrinestudio.app · Slug/Binary/Crate-Präfix: `vitrine`
 >
 > Open-Source-Desktop-Programm (Freeware) zum Erstellen von App-Store- und Play-Store-Screenshots mit Device-Frames, Texten, Übersetzungen, Panorama-Sets, Store-Upload und MCP-Schnittstelle.
 >
@@ -23,7 +23,7 @@ Ein lokales, schnelles Werkzeug, mit dem man Store-Screenshots einmal gestaltet 
 **Bewusst nicht enthalten (Nicht-Ziele, vorerst)**
 
 - App-Preview-Videos
-- Screenshots aufnehmen (Simulator-/Geräte-Steuerung). Dafür gibt es fastlane snapshot, Xcode-UI-Tests usw.; Arrangia importiert deren Ergebnisse.
+- Screenshots aufnehmen (Simulator-/Geräte-Steuerung). Dafür gibt es fastlane snapshot, Xcode-UI-Tests usw.; Vitrine Studio importiert deren Ergebnisse.
 - 3D-Perspektive à la Rotato – kommt erst als letzter, optionaler Schritt (Phase 7). Normale 2D-Rotation von Geräten und allen anderen Elementen ist dagegen von Anfang an enthalten.
 - Cloud-Sync, Team-Funktionen, Konten
 
@@ -33,7 +33,7 @@ Ein lokales, schnelles Werkzeug, mit dem man Store-Screenshots einmal gestaltet 
 
 Bisherige Tools denken in **Export-Bildern**: Jedes Bild ist ein Container, darauf liegen Gerät und Text. Läuft ein Gerät über zwei Bilder, muss es zweimal angelegt und ausgerichtet werden.
 
-Arrangia dreht das um:
+Vitrine Studio dreht das um:
 
 ```
 Leinwand (Strip) ─ ein durchgehendes Querformat
@@ -79,7 +79,7 @@ Leinwand (Strip) ─ ein durchgehendes Querformat
 ### 3.1 Projektordner
 
 ```
-grove-eco.arrangia/
+grove-eco.vitrine/
 ├── project.yaml              # Leinwände, Elemente, Stile, Ziele, Sprachen
 ├── i18n/
 │   ├── en.yaml               # Texte pro Sprache (Schlüssel → Text)
@@ -195,7 +195,7 @@ Projektweite Tokens, damit Änderungen zentral bleiben:
 ### 3.7 Beispiel `project.yaml`
 
 ```yaml
-format: arrangia/1
+format: vitrine/1
 name: grove.eco
 
 languages:
@@ -327,21 +327,21 @@ Jedes Modell definiert: Außenmaße, Display-Rechteck, Eckradien von Gehäuse un
 
 Dazu kommen importierte Frames als dritte Quelle (4.2).
 
-**Web-Apps** lassen sich auf zwei Arten zeigen: als eigenständiges `browser`-Fenster oder in einem Laptop-/Desktop-Frame mit eingeblendetem Browser-Rahmen (`chrome: browser` am Gerät). Die Browser-Leiste wird von Arrangia gezeichnet; der Screenshot zeigt nur den Seiteninhalt.
+**Web-Apps** lassen sich auf zwei Arten zeigen: als eigenständiges `browser`-Fenster oder in einem Laptop-/Desktop-Frame mit eingeblendetem Browser-Rahmen (`chrome: browser` am Gerät). Die Browser-Leiste wird von Vitrine Studio gezeichnet; der Screenshot zeigt nur den Seiteninhalt.
 
 ### 4.2 Frames: drei Quellen
 
 **Lizenzfrage:** Die Gerätebilder aus den Apple Design Resources (und ähnliche Herstellerbilder) dürfen in eigenen Marketingmaterialien verwendet, aber nicht ohne Weiteres in einem Open-Source-Projekt weiterverteilt werden. Deshalb:
 
 1. **Eingebaute Frames werden parametrisch gerendert** (Vektorpfade aus den Katalogdaten: Gehäuse, Rand, Glanzkante, Tasten, Kamera). Sie erinnern an die echten Geräte, sind aber eigene Grafik, in den Stilen `stylized` und `detailed`. Farbvarianten sind damit trivial (Schwarz, Silber, Titan, frei wählbar).
-2. **Import der Apple Design Resources:** Der Nutzer lädt die Gerätebilder („Product Bezels“) selbst bei Apple herunter und zieht das Archiv oder den entpackten Ordner auf Arrangia (ein DMG wird unter macOS direkt eingebunden, auf anderen Systemen vorher entpackt). Der Importer
+2. **Import der Apple Design Resources:** Der Nutzer lädt die Gerätebilder („Product Bezels“) selbst bei Apple herunter und zieht das Archiv oder den entpackten Ordner auf Vitrine Studio (ein DMG wird unter macOS direkt eingebunden, auf anderen Systemen vorher entpackt). Der Importer
    - erkennt Gerät, Farbe und Ausrichtung anhand der Dateinamen über eine pflegbare Zuordnungstabelle (`core/data/frame-import/apple.yaml`), damit neue Apple-Pakete ohne Code-Änderung unterstützt werden können,
    - ermittelt Display-Rechteck und Eckmaske automatisch (transparente Fläche im Inneren des Frames, per Flood-Fill von der Bildmitte),
    - zeigt nicht zuordenbare Dateien zur manuellen Zuordnung an,
    - legt die Frames **app-weit** ab, nicht im Projekt und nicht im Repository.
 
-   Projekte speichern nur Modell und Quelle (`frame: imported:apple`). Fehlt das Paket auf einem anderen Rechner, verwendet Arrangia den parametrischen Frame und weist in der Validierung darauf hin.
-3. **Eigene Frame-Pakete:** Beliebige PNG- oder SVG-Frames mit einer kleinen `frame.yaml` (Display-Rechteck, Maske/Eckradius, Modell-Zuordnung) in `frames/` des Projekts oder app-weit. Arrangia verteilt keine Herstellerbilder mit.
+   Projekte speichern nur Modell und Quelle (`frame: imported:apple`). Fehlt das Paket auf einem anderen Rechner, verwendet Vitrine Studio den parametrischen Frame und weist in der Validierung darauf hin.
+3. **Eigene Frame-Pakete:** Beliebige PNG- oder SVG-Frames mit einer kleinen `frame.yaml` (Display-Rechteck, Maske/Eckradius, Modell-Zuordnung) in `frames/` des Projekts oder app-weit. Vitrine Studio verteilt keine Herstellerbilder mit.
 
 ### 4.3 Screenshot im Frame
 
@@ -358,7 +358,7 @@ Dazu kommen importierte Frames als dritte Quelle (4.2).
 
 - Die **Standardsprache** wird in der App pro Projekt eingestellt (Projekteinstellungen, jederzeit änderbar). Sie ist der Fallback für Texte und Screenshots.
 - In den App-Einstellungen lässt sich festlegen, welche Standardsprache neue Projekte bekommen.
-- Vor einem Wechsel der Standardsprache zeigt Arrangia an, welche Texte und Screenshots in der neuen Sprache fehlen und damit keinen Fallback mehr hätten.
+- Vor einem Wechsel der Standardsprache zeigt Vitrine Studio an, welche Texte und Screenshots in der neuen Sprache fehlen und damit keinen Fallback mehr hätten.
 
 ### 5.1 Texte
 
@@ -377,7 +377,7 @@ Dazu kommen importierte Frames als dritte Quelle (4.2).
   (Eine Datei direkt im Sprachordner ohne Varianten-Ordner gilt für alle Varianten.)
 - Verwendete Fallbacks werden in der Validierung als Info ausgewiesen („fr nutzt Standard-Screenshot für planner“).
 - **Import** mit Zuordnungsregeln:
-  - Ordnerkonvention von Arrangia (s. o.)
+  - Ordnerkonvention von Vitrine Studio (s. o.)
   - **fastlane snapshot**-Ausgabe (`<lang>/<Gerätename>-<name>.png`) mit konfigurierbarer Zuordnung Gerätename → Variante
   - Drag & Drop in der GUI mit Erkennung über Dateiname und Pixelgröße
 - Ordnerüberwachung: Werden Screenshots neu erzeugt, aktualisiert sich die Vorschau automatisch.
@@ -484,7 +484,7 @@ Kein SDK, direkte REST-Aufrufe mit `reqwest` + rustls; JWT mit `jsonwebtoken`. E
 
 ### 8.1 Betrieb
 
-- `arrangia mcp [--project <pfad>]` startet einen MCP-Server über stdio (Crate `rmcp`, offizielles Rust-SDK).
+- `vitrine mcp [--project <pfad>]` startet einen MCP-Server über stdio (Crate `rmcp`, offizielles Rust-SDK).
 - Einbindung in Claude Desktop / Claude Code über die übliche MCP-Konfiguration; die GUI zeigt den passenden Konfigurationsschnipsel zum Kopieren.
 - Der Server nutzt dieselbe Operations-API wie GUI und CLI, also gelten dieselben Validierungen und es gibt keine Sonderwege.
 
@@ -566,7 +566,7 @@ Resources: `project.yaml`, Übersetzungsdateien, Gerätekatalog (lesend).
 ### 10.1 Cargo-Workspace
 
 ```
-arrangia/
+vitrine/
 ├── rust-toolchain.toml
 ├── Cargo.toml                 # Workspace, gemeinsame Dependencies und Lints
 ├── crates/
@@ -646,7 +646,7 @@ Noch offen (siehe 13). Vorschlag: **MIT OR Apache-2.0** (Rust-Standard, maximal 
 | **3 – Mehrsprachigkeit & Import** | i18n-Dateien, Übersetzungstabelle, Auto-Fit pro Sprache, Screenshot-Varianten, Import (Ordnerkonvention, fastlane), CSV/XLIFF, Sprachraster-Ansicht, Import der Apple Design Resources. | 3 Sprachen × 3 Ziele mit Fallbacks korrekt exportiert, Überläufe gemeldet; Apple-Bezels importiert und verwendet. |
 | **4 – MCP** | MCP-Server mit den Tools aus Abschnitt 8, `render_preview` als Bild. | Claude kann ein Projekt von null anlegen, gestalten, übersetzen und exportieren. |
 | **5 – Store-Upload** | App Store Connect, danach Google Play; Plan/Dry-Run, Keychain, Upload-Protokoll. | Upload in eine Test-App für beide Stores funktioniert inkl. Reihenfolge. |
-| **6 – Feinschliff** | Vorlagen, eigene Frame-Pakete, Farbmanagement P3 → sRGB, Feature Graphic, Installer/Signierung, Website arrangia.app, Doku. | Release 1.0. |
+| **6 – Feinschliff** | Vorlagen, eigene Frame-Pakete, Farbmanagement P3 → sRGB, Feature Graphic, Installer/Signierung, Website vitrinestudio.app, Doku. | Release 1.0. |
 | **7 – 3D (optional)** | Perspektivische Neigung von Geräten (Mesh-Warp), Presets wie „leicht gekippt“. | nach 1.0 |
 
 ---
@@ -655,7 +655,7 @@ Noch offen (siehe 13). Vorschlag: **MIT OR Apache-2.0** (Rust-Standard, maximal 
 
 **Entschieden (9. November 2026)**
 
-- Name: Arrangia, Website arrangia.app (Crates.io-Namen noch prüfen)
+- Name: Vitrine Studio (Kurzform Vitrine, CLI `vitrine`), Website www.vitrinestudio.app, API api.vitrinestudio.app (am 11. November 2026 umbenannt, vorher „Arrangia“; Crates.io-Namen noch prüfen)
 - Rotation von Elementen von Anfang an; 3D-Perspektive optional als letzter Schritt
 - Export als Einzelseiten und als durchgehendes Banner
 - Lücken der Store-Galerie werden beim Seiten-Export berücksichtigt
