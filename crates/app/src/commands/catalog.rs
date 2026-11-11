@@ -127,8 +127,13 @@ pub struct FontsInfo {
     /// Families from the open project's `fonts/` folder.
     pub project: Vec<String>,
     /// System families loaded as last-resort fallback (app setting
-    /// `system_font_fallback`).
+    /// `system_font_fallback`). Only families needed for characters no
+    /// bundled or project font covers, so it is often empty while
+    /// `system_enabled` is true.
     pub system: Vec<String>,
+    /// The app setting `system_font_fallback` as applied to the open
+    /// project (the setting itself without a project).
+    pub system_enabled: bool,
 }
 
 pub fn catalog_devices(_: &AppState, _: NoArgs) -> CmdResult<Vec<DeviceInfo>> {
@@ -217,8 +222,14 @@ pub fn catalog_fonts(app: &AppState, _: NoArgs) -> CmdResult<FontsInfo> {
         .into_iter()
         .map(str::to_owned)
         .collect();
-    let (project, system) = app.session().map_or_else(
-        |_| (Vec::new(), Vec::new()),
+    let (project, system, system_enabled) = app.session().map_or_else(
+        |_| {
+            let on = app
+                .settings_store()
+                .load()
+                .is_ok_and(|s| s.system_font_fallback);
+            (Vec::new(), Vec::new(), on)
+        },
         |s| {
             let ctx = s.render_context();
             let fonts = ctx.fonts();
@@ -229,13 +240,14 @@ pub fn catalog_fonts(app: &AppState, _: NoArgs) -> CmdResult<FontsInfo> {
                 .filter(|f| !bundled.iter().any(|b| b == f) && !system.iter().any(|x| x == f))
                 .map(str::to_owned)
                 .collect();
-            (project, system)
+            (project, system, s.system_font_fallback())
         },
     );
     Ok(FontsInfo {
         bundled,
         project,
         system,
+        system_enabled,
     })
 }
 

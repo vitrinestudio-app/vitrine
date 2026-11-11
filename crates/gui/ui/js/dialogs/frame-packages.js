@@ -89,7 +89,19 @@ export async function openFramePackages({ path } = {}) {
       ),
     );
     const models = source()?.models ?? [];
-    const unmatched = p.unmatched.map((u) => {
+    // Files a `skip` rule of the source excludes on purpose (e.g. marketing
+    // composites): not a failure, shown with the reason and no assignment.
+    const onPurpose = p.unmatched.filter((u) => u.reason);
+    const skippedRows = onPurpose.map((u) =>
+      h(
+        'tr',
+        { class: 'fp-skipped' },
+        h('td', {}, h('span', { class: 'fp-badge' }, t('frames.unmatched.on_purpose'))),
+        h('td', { class: 'fp-file', title: u.file }, u.name),
+        h('td', { colspan: '3', class: 'small fp-notes' }, `${t('frames.unmatched.on_purpose_note')}: ${u.reason}`),
+      ),
+    );
+    const unmatched = p.unmatched.filter((u) => !u.reason).map((u) => {
       const a = current.assign.get(u.name) ?? { model: '', color: '', orientation: 'portrait' };
       const set = (patch) => {
         Object.assign(a, patch);
@@ -128,12 +140,13 @@ export async function openFramePackages({ path } = {}) {
     const summary = t('frames.plan.summary')
       .replace('{package}', p.package)
       .replace('{n}', String(p.items.filter((i) => i.action === 'install' || i.action === 'replace').length))
-      .replace('{u}', String(p.unmatched.length))
+      .replace('{u}', String(p.unmatched.length - onPurpose.length))
       .replace('{s}', String(p.skipped));
     const psd = p.psd ? ` ${t('frames.plan.psd').replace('{n}', String(p.psd))}` : '';
+    const purpose = onPurpose.length ? ` ${t('frames.plan.on_purpose').replace('{n}', String(onPurpose.length))}` : '';
     const licenseFile = p.licenses?.[0]?.split(/[\\/]/).pop();
     planEl.replaceChildren(
-      h('div', { class: 'fp-summary' }, summary + psd),
+      h('div', { class: 'fp-summary' }, summary + psd + purpose),
       licenseFile
         ? h(
             'div',
@@ -150,7 +163,7 @@ export async function openFramePackages({ path } = {}) {
           'table',
           { class: 'fp-table' },
           h('thead', {}, h('tr', {}, ...['frames.col.action', 'frames.col.file', 'frames.col.frame', 'frames.col.screen', 'frames.col.notes'].map((k) => h('th', {}, t(k))))),
-          h('tbody', {}, ...rows, ...unmatched),
+          h('tbody', {}, ...rows, ...unmatched, ...skippedRows),
         ),
       ),
     );

@@ -394,7 +394,8 @@ fn example_project_validates_and_exports() {
 
 /// `frames import` of the synthetic bezel package into a temporary app
 /// folder (never the real one): both iPhone sizes, licence notice,
-/// Photoshop files counted separately, `frames remove --bezel`.
+/// Photoshop files counted separately, `skip` rules reported as skipped on
+/// purpose, `frames remove --bezel`.
 #[test]
 fn frames_import_keeps_all_sizes_and_shows_the_licence() {
     let tmp = tempfile::tempdir().unwrap();
@@ -404,6 +405,8 @@ fn frames_import_keeps_all_sizes_and_shows_the_licence() {
         &vitrine_core::frame_import::synthetic::default_specs(),
     )
     .unwrap();
+    // Skipped on purpose by a `skip` rule (never decoded, content irrelevant).
+    std::fs::write(pkg.join("iPhone Duo - Night Sky - Outer Open.png"), b"png").unwrap();
     let app = tmp.path().join("appdir");
     let run = |args: &[&str]| {
         Command::new(env!("CARGO_BIN_EXE_vitrine"))
@@ -420,6 +423,15 @@ fn frames_import_keeps_all_sizes_and_shows_the_licence() {
     assert!(out.contains("would import 7 frames"), "{out}");
     assert!(out.contains("2 Photoshop file(s) ignored"), "{out}");
     assert!(out.contains("1 other file(s) skipped"), "{out}");
+    assert!(out.contains("1 skipped on purpose"), "{out}");
+    assert!(out.contains("1 unmatched"), "{out}");
+    assert!(
+        out.contains(
+            "skipped  iPhone Duo - Night Sky - Outer Open.png  (on purpose: marketing composite"
+        ),
+        "{out}"
+    );
+    assert!(out.contains("(no rule matched)"), "{out}");
     assert!(
         out.contains("subject to Apple's licence (License.rtf"),
         "{out}"

@@ -417,6 +417,12 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
     return h('div', { class: 'inline' }, input({ type: 'number', value, step, cls: 'num', placeholder: t('project.styles.default'), onchange: (v) => onchange(v) }), h('span', { class: 'muted small' }, unit));
   }
 
+  /** System fallback state: off, on but not needed, or the loaded families. */
+  function systemFontsText() {
+    if (fonts.system.length) return `${t('fonts.system.loaded')}: ${fonts.system.join(', ')}`;
+    return fonts.system_enabled ? t('fonts.system.unneeded') : t('fonts.system.off');
+  }
+
   function fontsPane() {
     const all = [...fonts.bundled, ...fonts.project];
     const settings = styles.fonts ?? {};
@@ -462,7 +468,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
       h('p', { class: 'muted small' }, t('fonts.fallback.hint')),
       ...families.map(familyRow),
       h('div', { class: 'section-title' }, t('fonts.system')),
-      h('p', { class: 'muted small' }, fonts.system.length ? `${t('fonts.system.loaded')}: ${fonts.system.join(', ')}` : t('fonts.system.off')),
+      h('p', { class: 'muted small' }, systemFontsText()),
       h('p', { class: 'muted small' }, t('project.fonts.hint')),
     );
   }
