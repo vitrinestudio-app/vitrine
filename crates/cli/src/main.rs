@@ -6,7 +6,8 @@
 //! (fastlane / Vitrine Studio / flat folders → `screenshots/`), `frames`
 //! (import/list/remove vendor device frames, app-wide) and `mcp` (MCP
 //! server over stdio for AI assistants; `vitrine-mcp`) and `upload`
-//! (store upload: plan → confirm token → execute; `vitrine-app`). The CLI only
+//! (store upload: plan → confirm token → execute; `vitrine-app`) and
+//! `template` (save/list/import/export/remove/insert/new, ADR 0023). The CLI only
 //! formats what `vitrine-core` and `vitrine-render` compute; it never
 //! edits project fields directly.
 //!
@@ -26,6 +27,7 @@ mod new;
 mod project;
 mod render;
 mod strings;
+mod template;
 mod term;
 mod upload;
 mod validate;
@@ -107,6 +109,9 @@ enum Command {
     /// Upload to App Store Connect / Google Play: `plan` (dry run + confirm
     /// token), `execute --confirm <token>`, `log`.
     Upload(upload::UploadArgs),
+    /// Templates: save canvases as a template, list, import, export,
+    /// remove, insert into the project, new project from a template.
+    Template(template::TemplateArgs),
 }
 
 impl Command {
@@ -122,6 +127,7 @@ impl Command {
             Self::Frames(_) => "frames",
             Self::Mcp(_) => "mcp",
             Self::Upload(_) => "upload",
+            Self::Template(_) => "template",
         }
     }
 }
@@ -138,6 +144,7 @@ fn main() -> ExitCode {
         Command::Frames(args) => frames::run(args, &cli.global),
         Command::Mcp(args) => mcp::run(args, &cli.global),
         Command::Upload(args) => upload::run(args, &cli.global),
+        Command::Template(args) => template::run(args, &cli.global),
     };
     match result {
         Ok(code) => ExitCode::from(code),
