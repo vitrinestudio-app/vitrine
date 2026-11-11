@@ -216,13 +216,37 @@ phone down by 100 lu". Tools, resources and the op reference:
 | `crates/gui` | `vitrine-gui` | Tauri 2 desktop app, frontend in plain HTML/CSS/JS |
 | `docs/` | | Concept and architecture decision records (`docs/adr/`) |
 
+## License
+
+Copyright © 2026 Looking4Cache UG (haftungsbeschränkt).
+
+Vitrine Studio is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option)
+any later version (`GPL-3.0-or-later`, see [`LICENSE`](LICENSE)). It is
+distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.
+
+- **Contributions** need a signed contributor licence agreement
+  ([`CLA.md`](CLA.md)): you keep your copyright and grant the project owner
+  a licence that also allows distributing the code under other licences.
+  See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- **Name and logo** (`assets/brand/`, the app icons in `crates/gui/icons/`,
+  `crates/gui/ui/img/logo.svg`) are not covered by the GPL: © Looking4Cache
+  UG (haftungsbeschränkt), all rights reserved. Unmodified copies of Vitrine
+  Studio may carry them; forks must use their own name and logo
+  ([`assets/brand/README.md`](assets/brand/README.md)).
+- **Bundled third-party data** keeps its own licence: the Inter fonts under
+  the SIL Open Font License 1.1 ([`assets/fonts/OFL.txt`](assets/fonts/OFL.txt)),
+  the hyphenation patterns under MIT/BSD/permissive notices
+  ([`assets/hyphenation/LICENSES.md`](assets/hyphenation/LICENSES.md)).
+  Rust dependencies are under permissive licences (MIT, Apache-2.0, BSD,
+  ISC, Zlib, MPL-2.0, Unicode-3.0, …), all compatible with the GPL v3.
+  Decision record: [ADR 0022](docs/adr/0022-licence-gpl-and-cla.md).
+
 ## Open questions
 
-- **License: not yet decided.** Options are MIT OR Apache-2.0 or a copyleft
-  license (MPL-2.0/GPL). Until this is settled there is no LICENSE file, no
-  `license` field in the manifests, and all crates are `publish = false`.
-  The bundled fonts (Inter) are under the SIL Open Font License
-  (`assets/fonts/OFL.txt`).
 - **Gallery gap widths** of the native store apps (iOS App Store on iPhone
   and iPad, Mac App Store, Play Store app) are estimates marked
   `not yet measured` in `crates/core/data/galleries.yaml`; only the store

@@ -104,9 +104,18 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
 - [ ] Release workflow (GitHub Actions on tag): build, sign, notarize,
       checksums, GitHub release; updater (Tauri updater with signed
       manifests) – decide
-- [ ] App icon set, version scheme, licence decision (still open – no
-      LICENSE file yet), third-party licence notices (fonts, hyphenation,
-      crates: `cargo about`/`cargo deny`)
+- [ ] App icon set, version scheme
+- [x] Licence decision: GPL-3.0-or-later + CLA (2026-11-11, ADR 0022;
+      `LICENSE`, `CLA.md` draft, `CONTRIBUTING.md`, manifests, Tauri bundle
+      `publisher`/`copyright`/`license`, CLI help + About panel notice)
+- [ ] Third-party licence notices shipped with every installer (required:
+      MIT/BSD/Apache notices of the crates, `assets/fonts/OFL.txt`,
+      `assets/hyphenation/LICENSES.md`): generate a `THIRD-PARTY-NOTICES`
+      file with `cargo about` at release build time, bundle it as a Tauri
+      resource and link it from the About dialog / `vitrine --help`; add
+      `cargo deny check licenses` (+ `deny.toml` allow-list from ADR 0022)
+      to CI; the release must offer the corresponding source (GitHub tag)
+- [ ] Owner: legal review of `CLA.md`, set up the CLA bot (CONTRIBUTING.md)
 
 ## 6.6 Website vitrinestudio.app (own step)
 - [ ] Static site (generator choice, hosting – open question), landing
