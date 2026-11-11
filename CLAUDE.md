@@ -60,6 +60,8 @@ crates/
   mcp/      vitrine-mcp      MCP server (rmcp 3.9, exact pin) over vitrine-app (ADR 0014);
                               GUI host + stdio proxy (ADR 0015)
   cli/      vitrine-cli      binary `vitrine` (clap)
+  gallery-server/ vitrine-gallery-server  template gallery backend (axum, SQLite,
+                              Docker; binary `vitrine-gallery`, ADR 0023; not in the GUI)
   gui/      vitrine-gui      Tauri 2 app + dev bridge over `app`; frontend in gui/ui/
                               (vanilla ES modules, see gui/ui/README.md)
 assets/fonts/           bundled OFL fonts (Inter 4.1, embedded by core::layout)
@@ -109,9 +111,23 @@ incremental manifest (stale-file cleanup), `index.html` overview, fastlane
 layout (paths/conflicts in `core::fastlane`, conventions in
 `data/fastlane.yaml`); plus `paint`/`blur`/`raster` helpers.
 
-`cli` – `vitrine new|render|export|validate|strings|import|frames` on
-top of `core` + `render` (templates in `core::templates`), plus `vitrine
-mcp` (stdio server from `vitrine-mcp`).
+`cli` – `vitrine new|render|export|validate|strings|import|frames|template` on
+top of `core` + `render`, plus `vitrine mcp` (stdio server from `vitrine-mcp`).
+
+`core::template` (ADR 0023) – template packages `.vitrine-template` (zip:
+`template.yaml` manifest + project subset with one or more canvases, i18n,
+generated placeholder screenshots, assets, OFL fonts + licence files,
+previews): safe reading (`Limits`, paths, no symlinks, kinds by content,
+project validated), `fonts` (OFL check from the name table, licence file
+kept or generated), `placeholder`, `extract` (save canvases), `instantiate`
+(new project; placeholders not copied), `insert` (merge plan: renames via
+ops on a scratch template project, one transaction), `store` (app-wide
+`<app data>/templates/`), `builtin` (`phone`, `minimal` from
+`crates/core/templates/<id>/`). Previews: `vitrine_render::template`
+(parametric frames only). App commands `template_*` (+ image
+`template_preview`), `project_new {template}`. Gallery backend:
+`crates/gallery-server` (reuses core checks + render previews; API
+`docs/gallery/API.md`, deploy `docs/gallery/DEPLOY.md`).
 
 `core::frame_import` (ADR 0012) – Apple Product Bezels imported by the
 user: package (folder/zip/DMG), name rules in
@@ -308,7 +324,10 @@ cargo run -p vitrine-render --release --example screens -- tests/fixtures/exampl
 ```
 
 CLI usage (`--project <DIR>`, default the current folder): `new <dir>
-[--template phone|minimal] [--lang …]`, `validate [--target] [--lang]
+[--template <name|id|file>] [--lang …]`, `template save --name N
+[--canvas ID]… [--tag] [--id] [--version] [--replace] [-o file] | list |
+import <file> [--replace] | export <id> -o <file> | remove <id> | insert
+<template> [--canvas ID]… [--styles rename|use-project] [--dry-run] | new`, `validate [--target] [--lang]
 [--preview] [--strict] [--format json]`, `render [--target] [--lang]
 [--page N | --image N | --canvas | --gallery] [--width|--max-edge|--scale]
 [-o file]`, `export [--target] [--lang] [--out dir] [--layout

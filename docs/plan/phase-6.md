@@ -45,23 +45,23 @@ search-results creatives (banners from a canvas region).
 - [ ] Template / quick action "banner from this canvas" shared with the Apple
       creatives (region + fit), GUI wording
 
-## 6.3 Templates (+ web gallery)
+## 6.3 Templates (+ web gallery) – app side done 2026-11-11, gallery backend skeleton (ADR 0023)
 KONZEPT §9 "Vorlagen": duplicate a canvas, save as template, new project
 from template. User 2026-11-10: templates should be uploadable to the web
 and downloadable from a gallery.
-- [ ] User 2026-11-11: a template may contain **several canvases** (e.g.
+- [x] User 2026-11-11: a template may contain **several canvases** (e.g.
       Phone + Tablet + feature graphic as one coordinated set), each with
       its targets and variants, sharing styles/texts; a single canvas is
       just the smallest case. "New project from template" takes all;
       "insert from template" lets the user pick which canvases.
-- [ ] Template format: a project folder subset (canvas(es), styles, fonts,
+- [x] Template format: a project folder subset (canvas(es), styles, fonts,
       placeholder screenshots) + `template.yaml` (name, author, licence,
       preview images, required fonts, tags); packed as `.vitrine-template`
       (zip); no vendor graphics, fonts only with redistributable licences
-- [ ] Save canvas / project as template (GUI + CLI + MCP), new project from
+- [x] Save canvas / project as template (GUI + CLI + MCP), new project from
       template (built-in + local + downloaded), insert canvas from template
-- [ ] App-wide template store (`<app data>/templates/`), list/remove
-- [ ] Web gallery on vitrinestudio.app (see 6.6): browse, preview, download;
+- [x] App-wide template store (`<app data>/templates/`), list/remove; built-in `phone`/`minimal` are templates of the same format
+- [~] Web gallery on vitrinestudio.app (see 6.6): browse, preview, download;
       upload flow. User 2026-11-10: **own backend** (e.g. `api.vitrinestudio.app`
       on the user's Docker server; user also runs PHP and Node.js
       elsewhere). Stack (user OK 2026-11-10): Rust (axum) in
@@ -72,8 +72,24 @@ and downloadable from a gallery.
       template fixed to **CC0** (user 2026-11-10: no licence choice; attribution/NC make no sense for store screenshots) – uploader confirms own rights + CC0 grant in the upload terms; fonts keep their own licence (OFL only). Licence file per font (user OK 2026-11-10): kept if present; otherwise generated when saving a template – copyright line (name ID 0, plus Reserved Font Name if stated) from the font + the standard OFL 1.1 text – only if the font itself declares OFL (name IDs 13/14); fonts without an OFL declaration are refused ("may not be redistributed / licence unclear"); the server re-checks on upload; size limits, safe zip handling, rate limits, abuse report,
       GDPR/Impressum; downloads without an account; in-app "browse gallery" opens the site or
       fetches an index (network → `publish`-like crate, not core)
-- [ ] Licence/attribution per template; checks on import (size limits, no
+- [x] Licence/attribution per template; checks on import (size limits, no
       executable content, path traversal)
+
+- Done 2026-11-11 (ADR 0023): `core::template` (package, safe import,
+      OFL check + licence generation, placeholders, extract, create
+      project, insert with merge rules, store, built-ins),
+      `render::template` previews, app commands `template_*`, CLI
+      `vitrine template save|list|import|export|remove|insert|new` + `new
+      --template <name|file>`, MCP `template_list|save|insert|import`, GUI
+      (template cards in New project, "Save as template…", canvases dialog
+      "From template"; not yet looked at in the real app).
+- [~] Gallery backend `crates/gallery-server` (axum, SQLite, Docker):
+      list/search/get/download/previews, upload with validation (server
+      regenerates placeholders and previews), abuse reports, moderation
+      queue, rate limits – tested in-process. TODO: GitHub OAuth (stubs,
+      feature `github-oauth`), uploader self-service, deletion of rejected
+      files, the website pages, in-app "browse gallery". Deployment by the
+      owner: `docs/gallery/DEPLOY.md`.
 
 ## 6.4 Own frame packages
 KONZEPT §4.2 (frames, point 3): any PNG or SVG frame plus a small

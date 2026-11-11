@@ -58,7 +58,11 @@ js/dialogs/*.js       targets.js = canvases & targets editor (canvas pane: new /
                       and app settings; stores.js = store accounts (app
                       settings) + store mapping tab (project settings);
                       upload.js = "Upload to stores…" (plan table → confirm →
-                      progress → result/log) + MCP upload confirmation dialog
+                      progress → result/log) + MCP upload confirmation dialog;
+                      templates.js = template picker cards (New project,
+                      insert), "Save as template…", canvases dialog "From
+                      template" (template_* commands, ADR 0023)
+styles/templates.css  template cards, previews, reports
 styles/{dialogs,targets,start,settings}.css   styles of the above
 styles/{textedit,translations,assets}.css      text editor, translations, assets
 styles/assistant.css  indicator, activity popover, toasts, glow, settings section
