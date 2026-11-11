@@ -36,8 +36,11 @@ ignored by Git.
   coral `#ff7a59`. Light and dark mode via `prefers-color-scheme`, plus a
   toggle that stores the choice in `localStorage` (no cookie).
 - Motion: load-in of the hero, scroll reveal (`.reveal`, IntersectionObserver),
-  the animated "continuous canvas" SVG in the hero (`_partials/hero-canvas.html`),
-  card hover depth. Everything is off with `prefers-reduced-motion: reduce`;
+  the animated "continuous canvas" SVG in the hero (`_partials/hero-canvas.html`:
+  six pages with phones, a shared laptop and two tablets on one background,
+  drawn by `_partials/hero-canvas-scene.html`; numbered callouts appear one
+  after another via CSS delays, their texts come from `hero.notes` and move
+  into a list below the canvas on small screens), card hover depth. Everything is off with `prefers-reduced-motion: reduce`;
   without JS all content is visible.
 - Privacy: no third-party requests at all (fonts and images are local), no
   analytics, no cookies.
