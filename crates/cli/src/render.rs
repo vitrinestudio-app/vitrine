@@ -181,7 +181,7 @@ fn image_index(what: &What, frame: &Frame, target: &str) -> anyhow::Result<usize
     if let Some(page) = what.page {
         let p = frame.pages.get(page as usize - 1).with_context(|| {
             format!(
-                "page {page} is out of range (the strip has {} pages)",
+                "page {page} is out of range (the canvas has {} pages)",
                 frame.pages.len()
             )
         })?;

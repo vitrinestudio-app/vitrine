@@ -12,10 +12,10 @@ use std::path::Path;
 use vitrine_core::Project;
 use vitrine_core::io;
 use vitrine_core::model::{
-    Aspect, ElementId, ElementPatch, Fill, Lang, PixelSize, Point, Rgba, StringKey, Strip, StripId,
-    StyleKind, Target, TargetId, VariantId,
+    Aspect, Canvas, CanvasId, ElementId, ElementPatch, Fill, Lang, PixelSize, Point, Rgba,
+    StringKey, StyleKind, Target, TargetId, VariantId,
 };
-use vitrine_core::ops::{History, Op, OpError, StripPatch, TargetPatch};
+use vitrine_core::ops::{CanvasPatch, History, Op, OpError, TargetPatch};
 
 fn sample() -> Project {
     Project::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/sample")).unwrap()
@@ -122,7 +122,7 @@ fn add_remove_element_restores_overrides() {
         })
         .unwrap();
     assert!(p.element("title-1").is_none());
-    let variant = &p.strips[0].variants[&VariantId::new("tablet-landscape")];
+    let variant = &p.canvases[0].variants[&VariantId::new("tablet-landscape")];
     assert!(!variant.overrides.contains_key("title-1"));
     let Op::AddElement {
         index, overrides, ..
@@ -149,7 +149,7 @@ fn add_element_checks_ids_and_parent() {
     let mut p = sample();
     let err = p
         .apply(Op::AddElement {
-            strip: StripId::new("phone"),
+            canvas: CanvasId::new("phone"),
             parent: None,
             index: None,
             element: text_element("hero-phone", 0),
@@ -165,7 +165,7 @@ fn add_element_checks_ids_and_parent() {
     );
     let err = p
         .apply(Op::AddElement {
-            strip: StripId::new("phone"),
+            canvas: CanvasId::new("phone"),
             parent: Some(ElementId::new("title-1")),
             index: None,
             element: text_element("new", 0),
@@ -178,7 +178,7 @@ fn add_element_checks_ids_and_parent() {
     apply_and_undo(
         &mut p,
         Op::AddElement {
-            strip: StripId::new("phone"),
+            canvas: CanvasId::new("phone"),
             parent: Some(ElementId::new("badge-group")),
             index: Some(0),
             element: text_element("badge-text", 2),
@@ -199,7 +199,7 @@ fn move_element() {
             index: 3,
         },
     );
-    assert_eq!(p.strips[0].elements[3].id.as_str(), "hero-phone");
+    assert_eq!(p.canvases[0].elements[3].id.as_str(), "hero-phone");
     assert_eq!(
         inv,
         Op::MoveElement {
@@ -247,24 +247,24 @@ fn strings() {
 }
 
 #[test]
-fn strips_and_references() {
+fn canvases_and_references() {
     let mut p = sample();
     let err = p
-        .apply(Op::RemoveStrip {
-            id: StripId::new("phone"),
+        .apply(Op::RemoveCanvas {
+            id: CanvasId::new("phone"),
         })
         .unwrap_err();
     assert!(matches!(err, OpError::StillReferenced { .. }), "{err}");
     apply_and_undo(
         &mut p,
-        Op::RemoveStrip {
-            id: StripId::new("web"),
+        Op::RemoveCanvas {
+            id: CanvasId::new("web"),
         },
     );
     let err = p
-        .apply(Op::UpdateStrip {
-            id: StripId::new("phone"),
-            patch: StripPatch {
+        .apply(Op::UpdateCanvas {
+            id: CanvasId::new("phone"),
+            patch: CanvasPatch {
                 count: Some(4),
                 ..Default::default()
             },
@@ -273,9 +273,9 @@ fn strips_and_references() {
     assert!(err.to_string().contains("out of range"), "{err}");
     apply_and_undo(
         &mut p,
-        Op::UpdateStrip {
-            id: StripId::new("phone"),
-            patch: StripPatch {
+        Op::UpdateCanvas {
+            id: CanvasId::new("phone"),
+            patch: CanvasPatch {
                 aspect: Some(Aspect::new(1290, 2796)),
                 count: Some(8),
                 ids: Some(vec!["hero".into(), "planner".into()]),
@@ -285,19 +285,19 @@ fn strips_and_references() {
             },
         },
     );
-    let mut s = Strip::new(StripId::new("tablet"), Aspect::new(4, 3), 3);
+    let mut s = Canvas::new(CanvasId::new("tablet"), Aspect::new(4, 3), 3);
     s.elements.push(text_element("tablet-title", 2));
     apply_and_undo(
         &mut p,
-        Op::AddStrip {
-            strip: s.clone(),
+        Op::AddCanvas {
+            canvas: s.clone(),
             index: Some(0),
         },
     );
     s.elements[0] = text_element("hero-phone", 0);
     assert!(matches!(
-        p.apply(Op::AddStrip {
-            strip: s,
+        p.apply(Op::AddCanvas {
+            canvas: s,
             index: None
         }),
         Err(OpError::DuplicateId { .. })
@@ -307,11 +307,11 @@ fn strips_and_references() {
 #[test]
 fn variants() {
     let mut p = sample();
-    let strip = StripId::new("phone");
+    let canvas = CanvasId::new("phone");
     let tl = VariantId::new("tablet-landscape");
     let err = p
         .apply(Op::RemoveVariant {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             id: tl.clone(),
         })
         .unwrap_err();
@@ -319,7 +319,7 @@ fn variants() {
     apply_and_undo(
         &mut p,
         Op::SetVariantOverride {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             variant: tl.clone(),
             element: ElementId::new("hero-phone"),
             patch: Some(patch("{ width: 600 }")),
@@ -328,7 +328,7 @@ fn variants() {
     apply_and_undo(
         &mut p,
         Op::SetVariantOverride {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             variant: tl.clone(),
             element: ElementId::new("hero-phone"),
             patch: None,
@@ -336,7 +336,7 @@ fn variants() {
     );
     let err = p
         .apply(Op::SetVariantOverride {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             variant: tl.clone(),
             element: ElementId::new("title-1"),
             patch: Some(patch("{ screenshot: home }")),
@@ -346,14 +346,14 @@ fn variants() {
     apply_and_undo(
         &mut p,
         Op::SetVariantContentScale {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             variant: tl.clone(),
             content_scale: Some(0.5),
         },
     );
     assert!(
         p.apply(Op::SetVariantContentScale {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             variant: tl.clone(),
             content_scale: Some(0.0),
         })
@@ -362,7 +362,7 @@ fn variants() {
     apply_and_undo(
         &mut p,
         Op::AddVariant {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             id: VariantId::new("short"),
             variant: io::from_yaml("{ overrides: { title-1: { anchor_y: center } } }").unwrap(),
         },
@@ -370,7 +370,7 @@ fn variants() {
     apply_and_undo(
         &mut p,
         Op::RemoveVariant {
-            strip,
+            canvas,
             id: VariantId::new("short"),
         },
     );
@@ -381,7 +381,7 @@ fn targets() {
     let mut p = sample();
     let mut t = Target::new(
         TargetId::new("mac"),
-        StripId::new("web"),
+        CanvasId::new("web"),
         PixelSize::new(2880, 1800),
     );
     apply_and_undo(
@@ -553,8 +553,8 @@ fn history_undo_redo() {
     assert!(
         h.apply(
             &mut p,
-            vec![Op::RemoveStrip {
-                id: StripId::new("nope")
+            vec![Op::RemoveCanvas {
+                id: CanvasId::new("nope")
             }]
         )
         .is_err()
@@ -583,7 +583,7 @@ fn ops_as_json() {
     );
 
     let op: Op = serde_json::from_str(
-        r#"{"op":"add_element","strip":"phone","element":{"id":"t2","kind":"text","page":1,"text":"hero.sub","box":{"top":100}}}"#,
+        r#"{"op":"add_element","canvas":"phone","element":{"id":"t2","kind":"text","page":1,"text":"hero.sub","box":{"top":100}}}"#,
     )
     .unwrap();
     let mut p = sample();
@@ -596,7 +596,7 @@ fn ops_as_json() {
         .to_string();
     assert!(err.contains("unknown field `x`"), "{err}");
     let err = serde_json::from_str::<Op>(
-        r#"{"op":"add_element","strip":"phone","element":{"id":"t2","kind":"text","text":"a","model":"x"}}"#,
+        r#"{"op":"add_element","canvas":"phone","element":{"id":"t2","kind":"text","text":"a","model":"x"}}"#,
     )
     .unwrap_err()
     .to_string();
@@ -613,13 +613,13 @@ mod prop {
     /// Everything an op generator can pick from.
     struct Pick<'a> {
         p: &'a Project,
-        elements: Vec<(StripId, ElementId, bool)>,
+        elements: Vec<(CanvasId, ElementId, bool)>,
     }
 
     impl<'a> Pick<'a> {
         fn new(p: &'a Project) -> Self {
             let mut elements = Vec::new();
-            for s in &p.strips {
+            for s in &p.canvases {
                 s.walk_elements(&mut |e| {
                     elements.push((
                         s.id.clone(),
@@ -631,12 +631,13 @@ mod prop {
             Self { p, elements }
         }
 
-        fn element(&self, n: u32) -> Option<&(StripId, ElementId, bool)> {
+        fn element(&self, n: u32) -> Option<&(CanvasId, ElementId, bool)> {
             (!self.elements.is_empty()).then(|| &self.elements[n as usize % self.elements.len()])
         }
 
-        fn strip(&self, n: u32) -> Option<&Strip> {
-            (!self.p.strips.is_empty()).then(|| &self.p.strips[n as usize % self.p.strips.len()])
+        fn canvas(&self, n: u32) -> Option<&Canvas> {
+            (!self.p.canvases.is_empty())
+                .then(|| &self.p.canvases[n as usize % self.p.canvases.len()])
         }
 
         fn target(&self, n: u32) -> Option<&Target> {
@@ -673,7 +674,7 @@ mod prop {
                 }
             }
             1 => {
-                let s = pick.strip(a)?;
+                let s = pick.canvas(a)?;
                 let id = format!("gen-{a}-{b}");
                 let element = if b % 2 == 0 {
                     text_element(&id, page)
@@ -684,7 +685,7 @@ mod prop {
                     .unwrap()
                 };
                 Op::AddElement {
-                    strip: s.id.clone(),
+                    canvas: s.id.clone(),
                     parent: None,
                     index: Some(b as usize % (s.elements.len() + 1)),
                     element,
@@ -707,14 +708,14 @@ mod prop {
                 value: (b % 4 != 0).then(|| format!("text {x}")),
             },
             5 => {
-                let (strip, id, _) = pick.element(a)?;
-                let s = p.strip(strip.as_str())?;
+                let (canvas, id, _) = pick.element(a)?;
+                let s = p.canvas(canvas.as_str())?;
                 let variant = s
                     .variants
                     .keys()
                     .nth(b as usize % s.variants.len().max(1))?;
                 Op::SetVariantOverride {
-                    strip: strip.clone(),
+                    canvas: canvas.clone(),
                     variant: variant.clone(),
                     element: id.clone(),
                     patch: (b % 3 != 0).then(|| {
@@ -723,7 +724,7 @@ mod prop {
                 }
             }
             6 => Op::AddVariant {
-                strip: pick.strip(a)?.id.clone(),
+                canvas: pick.canvas(a)?.id.clone(),
                 id: VariantId::new(&format!("v{}", b % 3)),
                 variant: vitrine_core::model::Variant {
                     content_scale: Some(0.5 + f64::from(b % 3) / 4.0),
@@ -731,9 +732,9 @@ mod prop {
                 },
             },
             7 => {
-                let s = pick.strip(a)?;
+                let s = pick.canvas(a)?;
                 Op::RemoveVariant {
-                    strip: s.id.clone(),
+                    canvas: s.id.clone(),
                     id: s
                         .variants
                         .keys()
@@ -741,9 +742,9 @@ mod prop {
                         .clone(),
                 }
             }
-            8 => Op::UpdateStrip {
-                id: pick.strip(a)?.id.clone(),
-                patch: StripPatch {
+            8 => Op::UpdateCanvas {
+                id: pick.canvas(a)?.id.clone(),
+                patch: CanvasPatch {
                     aspect: (b % 2 == 0).then(|| Aspect::new(1 + a % 30, 1 + b % 40)),
                     count: (b % 3 == 0).then_some(1 + b % 9),
                     ids: (b % 7 == 0).then(|| vec![format!("p{a}"), "second".into()]),
@@ -755,19 +756,19 @@ mod prop {
                 },
             },
             9 => {
-                let mut s = Strip::new(
-                    StripId::new(&format!("s{}", b % 4)),
+                let mut s = Canvas::new(
+                    CanvasId::new(&format!("s{}", b % 4)),
                     Aspect::new(16, 9),
                     1 + b % 3,
                 );
                 s.elements.push(text_element(&format!("st-{a}"), 0));
-                Op::AddStrip {
-                    strip: s,
-                    index: Some(a as usize % (p.strips.len() + 1)),
+                Op::AddCanvas {
+                    canvas: s,
+                    index: Some(a as usize % (p.canvases.len() + 1)),
                 }
             }
-            10 => Op::RemoveStrip {
-                id: pick.strip(a)?.id.clone(),
+            10 => Op::RemoveCanvas {
+                id: pick.canvas(a)?.id.clone(),
             },
             11 => {
                 let t = pick.target(a)?;
@@ -783,7 +784,7 @@ mod prop {
                 }
             }
             12 => {
-                let s = pick.strip(b)?;
+                let s = pick.canvas(b)?;
                 Op::AddTarget {
                     target: Target::new(
                         TargetId::new(&format!("t{}", a % 4)),
@@ -824,18 +825,18 @@ mod prop {
                     to,
                 }
             }
-            17 => Op::RenameStrip {
-                from: pick.strip(a)?.id.clone(),
-                to: StripId::new(["phone", "web", "renamed", "other"][b as usize % 4]),
+            17 => Op::RenameCanvas {
+                from: pick.canvas(a)?.id.clone(),
+                to: CanvasId::new(["phone", "web", "renamed", "other"][b as usize % 4]),
             },
             18 => Op::RenameTarget {
                 from: pick.target(a)?.id.clone(),
                 to: TargetId::new(["android-phone", "t-renamed", "t2"][b as usize % 3]),
             },
             19 => {
-                let s = pick.strip(a)?;
+                let s = pick.canvas(a)?;
                 Op::RenameVariant {
-                    strip: s.id.clone(),
+                    canvas: s.id.clone(),
                     from: s
                         .variants
                         .keys()
@@ -845,8 +846,8 @@ mod prop {
                 }
             }
             20 => {
-                let (strip, id, _) = pick.element(a)?;
-                let s = p.strip(strip.as_str())?;
+                let (canvas, id, _) = pick.element(a)?;
+                let s = p.canvas(canvas.as_str())?;
                 let mut groups = Vec::new();
                 s.walk_elements(&mut |e| {
                     if matches!(e.kind, vitrine_core::model::ElementKind::Group(_)) {
@@ -865,7 +866,7 @@ mod prop {
                 }
             }
             21 => {
-                let s = pick.strip(a)?;
+                let s = pick.canvas(a)?;
                 let (vid, v) = s
                     .variants
                     .iter()
@@ -881,7 +882,7 @@ mod prop {
                     fields.get(b as usize % fields.len().max(1))?
                 };
                 Op::ResetOverrideField {
-                    strip: s.id.clone(),
+                    canvas: s.id.clone(),
                     variant: vid.clone(),
                     element: eid.clone(),
                     field: field.to_owned(),
@@ -1100,7 +1101,7 @@ fn rename_element_moves_overrides() {
         },
     );
     assert!(p.element("hero-phone").is_none());
-    let v = &p.strips[0].variants[&VariantId::new("tablet-landscape")];
+    let v = &p.canvases[0].variants[&VariantId::new("tablet-landscape")];
     assert!(v.overrides.contains_key("phone"));
     assert!(!v.overrides.contains_key("hero-phone"));
     // Inside a group: membership is kept.
@@ -1123,19 +1124,19 @@ fn rename_element_moves_overrides() {
 }
 
 #[test]
-fn rename_strip_target_variant_update_references() {
+fn rename_canvas_target_variant_update_references() {
     let mut p = sample();
     apply_and_undo(
         &mut p,
-        Op::RenameStrip {
-            from: StripId::new("phone"),
-            to: StripId::new("handset"),
+        Op::RenameCanvas {
+            from: CanvasId::new("phone"),
+            to: CanvasId::new("handset"),
         },
     );
     assert_eq!(
         p.targets
             .iter()
-            .filter(|t| t.strip.as_str() == "handset")
+            .filter(|t| t.canvas.as_str() == "handset")
             .count(),
         4
     );
@@ -1156,7 +1157,7 @@ fn rename_strip_target_variant_update_references() {
     apply_and_undo(
         &mut p,
         Op::RenameVariant {
-            strip: StripId::new("handset"),
+            canvas: CanvasId::new("handset"),
             from: VariantId::new("tablet-landscape"),
             to: VariantId::new("tablet"),
         },
@@ -1186,7 +1187,7 @@ fn move_element_into_and_out_of_group() {
             index: None,
         },
     );
-    assert_eq!(p.strips[0].elements.last().unwrap().id.as_str(), "badge");
+    assert_eq!(p.canvases[0].elements.last().unwrap().id.as_str(), "badge");
     // Reorder within the same list.
     apply_and_undo(
         &mut p,
@@ -1216,38 +1217,38 @@ fn move_element_into_and_out_of_group() {
 #[test]
 fn reset_one_override_field() {
     let mut p = sample();
-    let strip = StripId::new("phone");
+    let canvas = CanvasId::new("phone");
     let variant = VariantId::new("tablet-landscape");
     apply_and_undo(
         &mut p,
         Op::ResetOverrideField {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             variant: variant.clone(),
             element: ElementId::new("hero-phone"),
             field: "rotation".into(),
         },
     );
-    let o = &p.strips[0].variants[&variant].overrides["hero-phone"];
+    let o = &p.canvases[0].variants[&variant].overrides["hero-phone"];
     assert_eq!(o.fields(), vec!["at"]);
     // Last field → the override disappears.
     apply_and_undo(
         &mut p,
         Op::ResetOverrideField {
-            strip: strip.clone(),
+            canvas: canvas.clone(),
             variant: variant.clone(),
             element: ElementId::new("sub-1"),
             field: "visible".into(),
         },
     );
     assert!(
-        !p.strips[0].variants[&variant]
+        !p.canvases[0].variants[&variant]
             .overrides
             .contains_key("sub-1")
     );
     for (field, msg) in [("width", "does not set `width`"), ("wdith", "unknown")] {
         let err = p
             .apply(Op::ResetOverrideField {
-                strip: strip.clone(),
+                canvas: canvas.clone(),
                 variant: variant.clone(),
                 element: ElementId::new("hero-phone"),
                 field: field.into(),
@@ -1328,7 +1329,7 @@ fn languages_default_add_remove() {
 fn rename_string_key_everywhere() {
     let mut p = sample();
     p.apply(Op::SetVariantOverride {
-        strip: StripId::new("phone"),
+        canvas: CanvasId::new("phone"),
         variant: VariantId::new("tablet-landscape"),
         element: ElementId::new("sub-1"),
         patch: Some(patch("{ text: hero.title }")),
@@ -1347,7 +1348,7 @@ fn rename_string_key_everywhere() {
     );
     assert!(p.string("en", "hero.title").is_none());
     assert!(!p.string_key_in_use("hero.title"));
-    let o = &p.strips[0].variants[&VariantId::new("tablet-landscape")].overrides["sub-1"];
+    let o = &p.canvases[0].variants[&VariantId::new("tablet-landscape")].overrides["sub-1"];
     assert_eq!(o.text, Some(Some(StringKey::new("hero.headline"))));
     for (from, to, msg) in [
         ("hero.sub", "hero.headline", "already exists"),
@@ -1496,7 +1497,7 @@ fn rename_style_updates_every_reference() {
     let mut p = sample();
     // Use the colour from a variant override and a language override too.
     p.apply(Op::SetVariantOverride {
-        strip: StripId::new("phone"),
+        canvas: CanvasId::new("phone"),
         variant: VariantId::new("tablet-landscape"),
         element: ElementId::new("sub-1"),
         patch: Some(patch("{ visible: false, color: \"@accent\" }")),
@@ -1624,7 +1625,7 @@ fn device_bezel_patch_and_yaml_round_trip() {
 fn imported_frames_accept_vendor_colours() {
     use vitrine_core::model::FrameStyle;
     let mut p = sample();
-    let strip = p.strips[0].id.clone();
+    let canvas = p.canvases[0].id.clone();
     let phone = ElementId::new("hero-phone");
     let update = |yaml: &str| Op::UpdateElement {
         id: phone.clone(),
@@ -1671,7 +1672,7 @@ fn imported_frames_accept_vendor_colours() {
     // A variant override with an imported frame and its colour.
     let mut q = sample();
     let set = |yaml: &str| Op::SetVariantOverride {
-        strip: strip.clone(),
+        canvas: canvas.clone(),
         variant: VariantId::new("tablet-landscape"),
         element: phone.clone(),
         patch: Some(patch(yaml)),
@@ -1702,13 +1703,13 @@ fn overrides_never_store_null() {
     let (_, e) = p.element("title-1").unwrap();
     assert!(!e.text_props().unwrap().langs.contains_key(&lang));
     let set = Op::SetVariantOverride {
-        strip: StripId::new("phone"),
+        canvas: CanvasId::new("phone"),
         variant: VariantId::new("tablet-landscape"),
         element: ElementId::new("hero-phone"),
         patch: Some(patch("{ rotation: null, width: 500 }")),
     };
     apply_and_undo(&mut p, set);
-    let o = &p.strips[0].variants[&VariantId::new("tablet-landscape")].overrides
+    let o = &p.canvases[0].variants[&VariantId::new("tablet-landscape")].overrides
         [&ElementId::new("hero-phone")];
     assert_eq!(o.fields(), ["width"]);
     assert!(!p.to_yaml().unwrap().contains("null"));

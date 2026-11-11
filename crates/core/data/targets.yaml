@@ -37,8 +37,8 @@
 #     safe_area    {top, right, bottom, left} insets in % of the image;
 #                  absent = not published (validation then has nothing to
 #                  check; set it on the project target once measured)
-#     region, fit  banner presets: default region of the strip and fit
-#                  (page ranges are clamped to the strip)
+#     region, fit  banner presets: default region of the canvas and fit
+#                  (page ranges are clamped to the canvas)
 #     gallery      default gallery profile (galleries.yaml)
 #     device       default device model (devices.yaml); screenshots = default
 #                  screenshot variant key
@@ -628,7 +628,7 @@ presets:
 
   # ------------------------------------------------------- App Store creative assets
   # Product page header and search results assets (iOS / iPadOS 27+):
-  # optional, one image per localization, rendered from a region of a strip
+  # optional, one image per localization, rendered from a region of a canvas
   # like any banner. Upload only through the App Asset Library (AAL).
   # Safe area: NOT PUBLISHED as numbers; Apple defines it only in its design
   # templates (AC2). `safe_area` stays unset until measured from the
@@ -648,7 +648,7 @@ presets:
     requirement: optional
     status: verified
     note: >-
-      Whole strip by default (cover, centred, top kept); pick a page range or
+      Whole canvas by default (cover, centred, top kept); pick a page range or
       a free rectangle as the region. Safe area not published (see above).
     sources: [AC1, AC2, AAL]
 

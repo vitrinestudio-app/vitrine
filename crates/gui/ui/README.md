@@ -19,7 +19,7 @@ styles/base.css       design tokens (CSS variables), light/dark themes, base
 styles/controls.css   buttons, pickers, segmented control, tabs, lists, badges
 styles/shell.css      app grid
 styles/canvas.css     canvas view, SVG overlay classes, pages/gallery views
-styles/inspector.css  inspector rows, form controls, fill editor, strip settings
+styles/inspector.css  inspector rows, form controls, fill editor, canvas settings
 styles/layers.css     layers tree
 i18n/{en,de}.json     UI strings (flat key → string; keep both in sync)
 js/main.js            entry: theme, i18n, load project, shell, shortcuts
@@ -43,7 +43,7 @@ js/views/textedit.js  inline text editor of the canvas (double-click)
 js/panels/*.js        sidebar/inspector panels (see below); importer.js =
                       asset import dialog + drag & drop routing
 js/panels/fields.js   form controls: scrub numbers, colours, selects, fill editor
-js/panels/strip-settings.js  strip settings (inspector with no selection)
+js/panels/canvas-settings.js  canvas settings (inspector with no selection)
 js/menu.js            app menu (top-bar button), its macOS menu-bar mirror
                       (`menu_set`, see below), ⌘N/⌘O/⌘E/⌘, shortcuts
 js/add-menu.js        top-bar "Add" menu → `element_add` on the visible page
@@ -59,7 +59,7 @@ js/assistant.js       AI assistants over MCP (ADR 0015): status, top-bar indicat
                       trigger, projects opened by an assistant
 js/dialogs/modal.js   <dialog> helper (openModal, choiceDialog, confirmDialog,
                       promptDialog) + form controls (row, input, select…)
-js/dialogs/*.js       targets.js = strips & targets editor (strip pane: new /
+js/dialogs/*.js       targets.js = canvases & targets editor (canvas pane: new /
                       rename / duplicate / remove, variants; target add and
                       form), variants.js = "New variant" dialog + remove
                       confirmation, validation popover, export, project
@@ -81,7 +81,7 @@ builds the ops (e.g. `target_patch`, `styles_patch`) and then
 
 ## Conventions
 
-- **State** lives in `store` (`js/store.js`): `summary`, `strip`,
+- **State** lives in `store` (`js/store.js`): `summary`, `canvas`,
   `target`, `lang`, `variant` (`undefined` = target's own, `null` = base,
   string = that variant), `view`, `selection` (ids), `hover`, `zoom`,
   `panX`, `panY`, `overlay`, `history`, `validation`, `sidebarTab`.
@@ -95,7 +95,7 @@ builds the ops (e.g. `target_patch`, `styles_patch`) and then
   touched, select })`. It updates history, overlay and summary, emits
   `invalidate` (rects in lu or `all`) so views re-render only what
   changed, and schedules validation. Never patch `summary`/`overlay` by
-  hand. Switching target/lang/variant/strip: `editor.setContext(patch)`
+  hand. Switching target/lang/variant/canvas: `editor.setContext(patch)`
   (emits `reset`).
 - **Views** (`js/views/*.js`) export `mountX(root)` returning at least
   `{ unmount() }`; they listen to `editor.on('invalidate' | 'reset')`.
@@ -119,11 +119,11 @@ builds the ops (e.g. `target_patch`, `styles_patch`) and then
 - **Theme**: only CSS variables from `styles/base.css`; define new
   colours there for both themes (light default, dark via
   `prefers-color-scheme` or `data-theme`).
-- **Top-bar pickers** (strip, target, language, variant) end with a
+- **Top-bar pickers** (canvas, target, language, variant) end with a
   "+ …" entry (value `__add__`) that opens the place where that thing is
-  created (`addStrip`/`addTarget`/`addLanguage`/`addVariant` actions
+  created (`addCanvas`/`addTarget`/`addLanguage`/`addVariant` actions
   passed from `main.js` to `mountShell`); keep the four consistent.
-- **Strips/targets/variants** removed or renamed (also by undo/redo):
+- **Canvases/targets/variants** removed or renamed (also by undo/redo):
   `editor.apply` re-validates the view context (`validContext` in
   `editor.js`) before fetching the overlay, so dialogs need not fix it.
 - **Strings**: every visible string via `t('key')`; add keys to both
@@ -163,7 +163,7 @@ Rows take the YAML field name so overridden fields are marked and get a
 reset button. Controls from `panels/fields.js` commit on Enter/blur
 (arrow keys and label scrubbing for numbers) and carry a `data-key`, so a
 re-render after an edit keeps focus and unsaved typing. With nothing
-selected it shows the strip settings. Layers (`panels/layers.js`)
+selected it shows the canvas settings. Layers (`panels/layers.js`)
 reorders with `api.arrange` (HTML5 drag & drop) and renames with
 `api.rename`. The home-page lock is the model field `lock_page` (written
 with `elementPatch`; core keeps the page on drags). `store.langScope`

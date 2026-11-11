@@ -1,10 +1,10 @@
-// Strips & targets editor (task 2.9): the project's strips (canvases) with
+// Canvases & targets editor (task 2.9): the project's canvases with
 // their targets, adding targets from catalog presets (grouped by
-// store/platform), a form for every target field, and strip management
-// (new strip – empty, starter layout or copy –, rename, duplicate, remove,
+// store/platform), a form for every target field, and canvas management
+// (new canvas – empty, starter layout or copy –, rename, duplicate, remove,
 // variants). Changes go through `target_patch` / `target_add_from_preset` /
-// `target_remove` / `strip_add` / `strip_rename` / `strip_remove` /
-// `strip_variant` (ops are built in Rust) and `editor.apply`. Store-rule
+// `target_remove` / `canvas_add` / `canvas_rename` / `canvas_remove` /
+// `canvas_variant` (ops are built in Rust) and `editor.apply`. Store-rule
 // hints come from validation findings of the target.
 
 import { api } from '../api.js';
@@ -50,9 +50,9 @@ function slotFromKey(key) {
 }
 
 /**
- * Opens the strips & targets editor. `focus` = target id to select first;
+ * Opens the canvases & targets editor. `focus` = target id to select first;
  * `opts.mode`: `edit` (target form, default), `add` (add a target to
- * `opts.strip`), `strip` (strip `opts.strip`) or `new-strip` (create one).
+ * `opts.canvas`), `canvas` (canvas `opts.canvas`) or `new-canvas` (create one).
  */
 export async function openTargets(focus, opts = {}) {
   const cat = await loadCatalogs();
@@ -61,10 +61,10 @@ export async function openTargets(focus, opts = {}) {
   const pane = h('div', { class: 'tg-pane' });
   let selected = focus ?? store.get().target;
   let mode = opts.mode ?? 'edit';
-  /** Strip shown in `strip` mode, preselected in `add` mode. */
-  let selectedStrip = opts.strip ?? store.get().strip;
-  /** State of the `new-strip` form (`source`: empty | starter | copy). */
-  let newStrip = { source: 'starter', from: store.get().strip };
+  /** Canvas shown in `canvas` mode, preselected in `add` mode. */
+  let selectedCanvas = opts.canvas ?? store.get().canvas;
+  /** State of the `new-canvas` form (`source`: empty | starter | copy). */
+  let newCanvas = { source: 'starter', from: store.get().canvas };
 
   const m = openModal({
     title: t('targets.title'),
@@ -89,7 +89,7 @@ export async function openTargets(focus, opts = {}) {
     err.show(null);
     const st = store.get();
     if (removed && st.target === removed) {
-      const other = st.summary.targets.find((x) => x.strip === st.strip && x.id !== removed);
+      const other = st.summary.targets.find((x) => x.canvas === st.canvas && x.id !== removed);
       store.set({ target: other?.id ?? null, variant: undefined });
     } else if (newId && st.target === selected) {
       store.set({ target: newId });
@@ -99,7 +99,7 @@ export async function openTargets(focus, opts = {}) {
     if (removed) selected = store.get().summary.targets[0]?.id ?? null;
     if (!store.get().target) {
       const s2 = store.get();
-      const first = s2.summary.targets.find((x) => x.strip === s2.strip);
+      const first = s2.summary.targets.find((x) => x.canvas === s2.canvas);
       if (first) await editor.setContext({ target: first.id });
     }
     renderList();
@@ -110,8 +110,8 @@ export async function openTargets(focus, opts = {}) {
   function renderList() {
     const s = store.get().summary;
     if (!s) return;
-    const groups = s.strips.map((strip) => {
-      const items = s.targets.filter((x) => x.strip === strip.id);
+    const groups = s.canvases.map((canvas) => {
+      const items = s.targets.filter((x) => x.canvas === canvas.id);
       return h(
         'div',
         { class: 'tg-group' },
@@ -119,19 +119,19 @@ export async function openTargets(focus, opts = {}) {
           'button',
           {
             type: 'button',
-            class: 'tg-strip-head',
-            title: t('strips.open'),
-            'aria-selected': String(mode === 'strip' && strip.id === selectedStrip),
+            class: 'tg-canvas-head',
+            title: t('canvases.open'),
+            'aria-selected': String(mode === 'canvas' && canvas.id === selectedCanvas),
             onclick: () => {
-              selectedStrip = strip.id;
-              mode = 'strip';
+              selectedCanvas = canvas.id;
+              mode = 'canvas';
               renderList();
               renderPane();
             },
           },
-          icon('strips'),
-          h('span', { class: 'grow mono' }, strip.id),
-          h('span', { class: 'muted small' }, `${strip.page.count} ${t('panel.strips.pages')}${strip.variants.length ? ` · ${strip.variants.length} ${t('strips.variants.short')}` : ''}`),
+          icon('canvases'),
+          h('span', { class: 'grow mono' }, canvas.id),
+          h('span', { class: 'muted small' }, `${canvas.page.count} ${t('panel.canvases.pages')}${canvas.variants.length ? ` · ${canvas.variants.length} ${t('canvases.variants.short')}` : ''}`),
         ),
         h(
           'ul',
@@ -166,7 +166,7 @@ export async function openTargets(focus, opts = {}) {
           type: 'button',
           onclick: () => {
             mode = m;
-            if (m === 'new-strip') newStrip = { source: 'starter', from: store.get().strip };
+            if (m === 'new-canvas') newCanvas = { source: 'starter', from: store.get().canvas };
             renderList();
             renderPane();
           },
@@ -174,13 +174,13 @@ export async function openTargets(focus, opts = {}) {
         icon('plus'),
         label,
       );
-    list.replaceChildren(h('div', { class: 'tg-list-head' }, headBtn('new-strip', t('strips.add')), headBtn('add', t('targets.add'))), ...groups);
+    list.replaceChildren(h('div', { class: 'tg-list-head' }, headBtn('new-canvas', t('canvases.add')), headBtn('add', t('targets.add'))), ...groups);
   }
 
   // ----- add from preset ------------------------------------------------------
   function renderAdd() {
     const s = store.get().summary;
-    let strip = s.strips.some((x) => x.id === selectedStrip) ? selectedStrip : store.get().strip ?? s.strips[0]?.id;
+    let canvas = s.canvases.some((x) => x.id === selectedCanvas) ? selectedCanvas : store.get().canvas ?? s.canvases[0]?.id;
     let filter = '';
     const results = h('div', { class: 'tg-presets' });
     const STORES = { apple: 'App Store', google: 'Google Play', none: t('targets.store.none') };
@@ -227,7 +227,7 @@ export async function openTargets(focus, opts = {}) {
                         type: 'button',
                         title: `${t('targets.add.size')} (${t(`targets.orientation.${o}`)})`,
                         onclick: async () => {
-                          const r = await commit(() => api.targetAddFromPreset(p.id, strip, { size }));
+                          const r = await commit(() => api.targetAddFromPreset(p.id, canvas, { size }));
                           if (r?.created?.[0]) {
                             selected = r.created[0];
                             mode = 'edit';
@@ -253,7 +253,7 @@ export async function openTargets(focus, opts = {}) {
       h(
         'div',
         { class: 'tg-add-bar' },
-        row(t('targets.strip'), select({ options: s.strips.map((x) => x.id), value: strip, onchange: (v) => (strip = v) })),
+        row(t('targets.canvas'), select({ options: s.canvases.map((x) => x.id), value: canvas, onchange: (v) => (canvas = v) })),
         input({
           placeholder: t('targets.add.filter'),
           cls: 'tg-filter',
@@ -267,9 +267,9 @@ export async function openTargets(focus, opts = {}) {
     );
   }
 
-  // ----- strips -----------------------------------------------------------------
-  /** Runs a strip change (the view context is kept valid by `editor.apply`). */
-  async function stripCommit(call) {
+  // ----- canvases -----------------------------------------------------------------
+  /** Runs a canvas change (the view context is kept valid by `editor.apply`). */
+  async function canvasCommit(call) {
     let result;
     try {
       result = await call();
@@ -300,9 +300,9 @@ export async function openTargets(focus, opts = {}) {
     return out;
   }
 
-  function renderNewStrip() {
+  function renderNewCanvas() {
     const s = store.get().summary;
-    const st = newStrip;
+    const st = newCanvas;
     const formats = formatOptions();
     // Default format: the current target's preset and size, else the first one.
     const cur = s.targets.find((x) => x.id === store.get().target);
@@ -326,35 +326,35 @@ export async function openTargets(focus, opts = {}) {
       const copy = st.source === 'copy';
       const rows = [
         row(
-          t('strips.new.start'),
+          t('canvases.new.start'),
           segmented({
-            options: ['empty', 'starter', 'copy'].map((v) => ({ value: v, label: t(`strips.new.start.${v}`) })),
+            options: ['empty', 'starter', 'copy'].map((v) => ({ value: v, label: t(`canvases.new.start.${v}`) })),
             value: st.source,
             onchange: (v) => {
               st.source = v;
               draw();
             },
           }),
-          t(`strips.new.start.${st.source}.hint`),
+          t(`canvases.new.start.${st.source}.hint`),
         ),
-        row(t('strips.id'), input({ value: st.id ?? '', placeholder: copy ? `${st.from}-2` : 'canvas', cls: 'mono', oninput: (v) => (st.id = v.trim()) }), t('strips.id.hint')),
+        row(t('canvases.id'), input({ value: st.id ?? '', placeholder: copy ? `${st.from}-2` : 'canvas', cls: 'mono', oninput: (v) => (st.id = v.trim()) }), t('canvases.id.hint')),
       ];
       if (copy) {
         rows.push(
-          row(t('strips.new.from'), select({ options: s.strips.map((x) => x.id), value: st.from, onchange: (v) => (st.from = v) })),
-          row('', checkbox({ label: t('strips.new.copy_targets'), checked: st.copyTargets, onchange: (v) => (st.copyTargets = v) })),
-          row('', checkbox({ label: t('strips.new.copy_strings'), checked: st.copyStrings, onchange: (v) => (st.copyStrings = v) }), t('strips.new.copy_strings.hint')),
+          row(t('canvases.new.from'), select({ options: s.canvases.map((x) => x.id), value: st.from, onchange: (v) => (st.from = v) })),
+          row('', checkbox({ label: t('canvases.new.copy_targets'), checked: st.copyTargets, onchange: (v) => (st.copyTargets = v) })),
+          row('', checkbox({ label: t('canvases.new.copy_strings'), checked: st.copyStrings, onchange: (v) => (st.copyStrings = v) }), t('canvases.new.copy_strings.hint')),
         );
       } else {
         const f = parse();
         rows.push(
           row(
-            t('strips.new.format'),
+            t('canvases.new.format'),
             h(
               'div',
               { class: 'stack' },
               select({
-                options: [...formats, { value: 'custom', label: t('strips.new.format.custom') }],
+                options: [...formats, { value: 'custom', label: t('canvases.new.format.custom') }],
                 value: st.format,
                 onchange: (v) => {
                   st.format = v;
@@ -364,10 +364,10 @@ export async function openTargets(focus, opts = {}) {
               }),
               st.format === 'custom' ? input({ value: st.aspect ?? '', placeholder: '1320:2868', cls: 'mono', oninput: (v) => (st.aspect = v.replace(/\s/g, '')) }) : null,
             ),
-            t('strips.new.format.hint'),
+            t('canvases.new.format.hint'),
           ),
-          row(t('strip.count'), input({ type: 'number', value: st.count ?? (portrait() ? 3 : 1), min: 1, max: 99, cls: 'num', oninput: (v) => (st.count = v) })),
-          f ? row('', checkbox({ label: `${t('strips.new.add_target')} (${f.preset}, ${sizeLabel(f.size)})`, checked: st.addTarget, onchange: (v) => (st.addTarget = v) }), t('strips.new.add_target.hint')) : null,
+          row(t('canvas.count'), input({ type: 'number', value: st.count ?? (portrait() ? 3 : 1), min: 1, max: 99, cls: 'num', oninput: (v) => (st.count = v) })),
+          f ? row('', checkbox({ label: `${t('canvases.new.add_target')} (${f.preset}, ${sizeLabel(f.size)})`, checked: st.addTarget, onchange: (v) => (st.addTarget = v) }), t('canvases.new.add_target.hint')) : null,
         );
       }
       body.replaceChildren(...rows);
@@ -385,67 +385,67 @@ export async function openTargets(focus, opts = {}) {
           args.aspect = `${f.size[0]}:${f.size[1]}`;
           if (st.addTarget) Object.assign(args, { target_preset: f.preset, target_size: f.size });
         } else {
-          if (!/^\d+:\d+$/.test(st.aspect ?? '')) return err.show(new Error(t('strip.aspect.invalid')));
+          if (!/^\d+:\d+$/.test(st.aspect ?? '')) return err.show(new Error(t('canvas.aspect.invalid')));
           args.aspect = st.aspect;
         }
         args.count = st.count ?? (portrait() ? 3 : 1);
       }
-      const r = await stripCommit(() => api.stripAdd(args));
+      const r = await canvasCommit(() => api.canvasAdd(args));
       if (!r) return;
-      await editor.setContext({ strip: r.strip });
-      selectedStrip = r.strip;
-      newStrip = { source: 'starter', from: r.strip };
-      mode = 'strip';
+      await editor.setContext({ canvas: r.canvas });
+      selectedCanvas = r.canvas;
+      newCanvas = { source: 'starter', from: r.canvas };
+      mode = 'canvas';
       await refresh();
     };
     pane.replaceChildren(
-      h('h3', { class: 'tg-title' }, t('strips.new.title')),
+      h('h3', { class: 'tg-title' }, t('canvases.new.title')),
       body,
-      h('div', { class: 'tg-actions' }, h('button', { class: 'btn btn-primary', type: 'button', onclick: create }, icon('plus'), t('strips.new.create'))),
+      h('div', { class: 'tg-actions' }, h('button', { class: 'btn btn-primary', type: 'button', onclick: create }, icon('plus'), t('canvases.new.create'))),
     );
   }
 
-  async function renderStrip() {
+  async function renderCanvas() {
     const s = store.get().summary;
-    if (!s.strips.some((x) => x.id === selectedStrip)) selectedStrip = store.get().strip ?? s.strips[0]?.id;
-    const id = selectedStrip;
+    if (!s.canvases.some((x) => x.id === selectedCanvas)) selectedCanvas = store.get().canvas ?? s.canvases[0]?.id;
+    const id = selectedCanvas;
     let info;
     try {
-      info = await api.stripGet(id);
+      info = await api.canvasGet(id);
     } catch (e) {
       err.show(e);
       return;
     }
-    if (id !== selectedStrip || mode !== 'strip') return;
-    const elements = s.strips.find((x) => x.id === id)?.elements.length ?? 0;
+    if (id !== selectedCanvas || mode !== 'canvas') return;
+    const elements = s.canvases.find((x) => x.id === id)?.elements.length ?? 0;
     const showInEditor = async (variant) => {
-      await editor.setContext({ strip: id });
+      await editor.setContext({ canvas: id });
       if (variant !== undefined) await editor.setContext({ variant });
       m.close();
     };
     const remove = async () => {
       const details = [
-        `${elements} ${t('strips.remove.elements')}`,
-        ...(info.variants.length ? [`${info.variants.length} ${t('strips.variants.short')}`] : []),
-        ...info.targets.map((x) => `${t('strips.remove.target')}: ${x}`),
+        `${elements} ${t('canvases.remove.elements')}`,
+        ...(info.variants.length ? [`${info.variants.length} ${t('canvases.variants.short')}`] : []),
+        ...info.targets.map((x) => `${t('canvases.remove.target')}: ${x}`),
       ];
-      if (!(await confirmDialog({ title: t('strips.remove'), message: `${t('strips.remove.confirm')} „${id}“?`, details, confirm: t('strips.remove'), danger: true }))) return;
-      if (await stripCommit(() => api.stripRemove(id))) {
-        selectedStrip = store.get().strip;
+      if (!(await confirmDialog({ title: t('canvases.remove'), message: `${t('canvases.remove.confirm')} „${id}“?`, details, confirm: t('canvases.remove'), danger: true }))) return;
+      if (await canvasCommit(() => api.canvasRemove(id))) {
+        selectedCanvas = store.get().canvas;
         await refresh();
       }
     };
     const rename = async (to) => {
       if (!to || to === id) return;
-      const wasCurrent = store.get().strip === id;
+      const wasCurrent = store.get().canvas === id;
       const target = store.get().target;
-      if (await stripCommit(() => api.stripRename(id, to))) {
-        if (wasCurrent) await editor.setContext({ strip: to, target });
-        selectedStrip = to;
+      if (await canvasCommit(() => api.canvasRename(id, to))) {
+        if (wasCurrent) await editor.setContext({ canvas: to, target });
+        selectedCanvas = to;
         await refresh();
       }
     };
-    const variant = (change) => stripCommit(() => api.stripVariant(id, change)).then((r) => r && refresh());
+    const variant = (change) => canvasCommit(() => api.canvasVariant(id, change)).then((r) => r && refresh());
     const variants = info.variants.map((v) =>
       h(
         'div',
@@ -453,15 +453,15 @@ export async function openTargets(focus, opts = {}) {
         h(
           'div',
           { class: 'inline' },
-          input({ value: v.id, cls: 'mono', title: t('strip.variant.rename'), onchange: (x) => x.trim() && x.trim() !== v.id && variant({ action: 'rename', id: v.id, to: x.trim() }) }),
-          h('span', { class: 'muted small' }, t('strip.variant.scale')),
+          input({ value: v.id, cls: 'mono', title: t('canvas.variant.rename'), onchange: (x) => x.trim() && x.trim() !== v.id && variant({ action: 'rename', id: v.id, to: x.trim() }) }),
+          h('span', { class: 'muted small' }, t('canvas.variant.scale')),
           input({ type: 'number', value: v.content_scale ?? '', placeholder: '1', min: 0.05, max: 4, step: 0.05, cls: 'num', onchange: (x) => variant({ action: 'scale', id: v.id, content_scale: x }) }),
           h('span', { class: 'spacer' }),
-          h('button', { class: 'btn btn-small', type: 'button', title: t('strips.variant.show.hint'), disabled: !info.targets.length, onclick: () => showInEditor(v.id) }, t('strips.variant.show')),
-          h('button', { class: 'btn btn-small', type: 'button', onclick: async () => (await openNewVariant({ strip: id, from: v.id })) && refresh() }, t('strips.duplicate')),
-          h('button', { class: 'icon-btn', type: 'button', title: t('strip.variant.remove'), onclick: async () => (await removeVariant(id, v)) && refresh() }, icon('trash')),
+          h('button', { class: 'btn btn-small', type: 'button', title: t('canvases.variant.show.hint'), disabled: !info.targets.length, onclick: () => showInEditor(v.id) }, t('canvases.variant.show')),
+          h('button', { class: 'btn btn-small', type: 'button', onclick: async () => (await openNewVariant({ canvas: id, from: v.id })) && refresh() }, t('canvases.duplicate')),
+          h('button', { class: 'icon-btn', type: 'button', title: t('canvas.variant.remove'), onclick: async () => (await removeVariant(id, v)) && refresh() }, icon('trash')),
         ),
-        h('div', { class: 'muted small' }, `${v.overrides.length} ${t('strip.variant.overrides')} · ${v.targets.length ? `${t('strips.variant.shown_by')} ${v.targets.join(', ')}` : t('strips.variant.unused')}`),
+        h('div', { class: 'muted small' }, `${v.overrides.length} ${t('canvas.variant.overrides')} · ${v.targets.length ? `${t('canvases.variant.shown_by')} ${v.targets.join(', ')}` : t('canvases.variant.unused')}`),
       ),
     );
     const targetItems = info.targets.length
@@ -484,17 +484,17 @@ export async function openTargets(focus, opts = {}) {
             ),
           ),
         )
-      : h('p', { class: 'hint hint-warn' }, icon('warning'), t('strips.targets.none'));
+      : h('p', { class: 'hint hint-warn' }, icon('warning'), t('canvases.targets.none'));
     const addTarget = () => {
       mode = 'add';
       refresh();
     };
     const duplicate = () => {
-      newStrip = { source: 'copy', from: id };
-      mode = 'new-strip';
+      newCanvas = { source: 'copy', from: id };
+      mode = 'new-canvas';
       refresh();
     };
-    const last = s.strips.length <= 1;
+    const last = s.canvases.length <= 1;
     pane.replaceChildren(
       h(
         'div',
@@ -502,26 +502,26 @@ export async function openTargets(focus, opts = {}) {
         h(
           'div',
           { class: 'tg-form-head' },
-          h('h3', { class: 'tg-title' }, `${t('targets.strip')} ${id}`),
+          h('h3', { class: 'tg-title' }, `${t('targets.canvas')} ${id}`),
           h('span', { class: 'spacer' }),
-          h('button', { class: 'btn btn-small', type: 'button', disabled: !info.targets.length, onclick: () => showInEditor() }, t('strips.show')),
-          h('button', { class: 'btn btn-small', type: 'button', onclick: duplicate }, t('strips.duplicate')),
-          h('button', { class: 'btn btn-small', type: 'button', disabled: last, title: last ? t('strips.remove.last') : '', onclick: remove }, t('strips.remove')),
+          h('button', { class: 'btn btn-small', type: 'button', disabled: !info.targets.length, onclick: () => showInEditor() }, t('canvases.show')),
+          h('button', { class: 'btn btn-small', type: 'button', onclick: duplicate }, t('canvases.duplicate')),
+          h('button', { class: 'btn btn-small', type: 'button', disabled: last, title: last ? t('canvases.remove.last') : '', onclick: remove }, t('canvases.remove')),
         ),
         h(
           'div',
           { class: 'form' },
-          row(t('strips.id'), input({ value: id, cls: 'mono', onchange: (v) => rename(v.trim()) }), t('strips.rename.hint')),
-          row(t('strip.pages'), h('span', {}, `${info.count} × ${info.aspect}`), t('strips.pages.hint')),
-          row(t('strips.targets'), h('div', { class: 'stack' }, targetItems, h('div', {}, h('button', { class: 'btn btn-small', type: 'button', onclick: addTarget }, icon('plus'), t('targets.add'))))),
+          row(t('canvases.id'), input({ value: id, cls: 'mono', onchange: (v) => rename(v.trim()) }), t('canvases.rename.hint')),
+          row(t('canvas.pages'), h('span', {}, `${info.count} × ${info.aspect}`), t('canvases.pages.hint')),
+          row(t('canvases.targets'), h('div', { class: 'stack' }, targetItems, h('div', {}, h('button', { class: 'btn btn-small', type: 'button', onclick: addTarget }, icon('plus'), t('targets.add'))))),
           row(
-            t('strip.variants'),
+            t('canvas.variants'),
             h(
               'div',
               { class: 'stack' },
               h('p', { class: 'muted small' }, t('variant.hint')),
               ...variants,
-              h('div', {}, h('button', { class: 'btn btn-small', type: 'button', onclick: async () => (await openNewVariant({ strip: id })) && refresh() }, icon('plus'), t('variant.new'))),
+              h('div', {}, h('button', { class: 'btn btn-small', type: 'button', onclick: async () => (await openNewVariant({ canvas: id })) && refresh() }, icon('plus'), t('variant.new'))),
             ),
           ),
         ),
@@ -533,8 +533,8 @@ export async function openTargets(focus, opts = {}) {
   // ----- edit form ------------------------------------------------------------
   async function renderPane() {
     if (mode === 'add') return renderAdd();
-    if (mode === 'new-strip') return renderNewStrip();
-    if (mode === 'strip') return renderStrip();
+    if (mode === 'new-canvas') return renderNewCanvas();
+    if (mode === 'canvas') return renderCanvas();
     if (!selected || !store.get().summary.targets.some((x) => x.id === selected)) {
       selected = store.get().summary.targets[0]?.id ?? null;
     }
@@ -790,7 +790,7 @@ export async function openTargets(focus, opts = {}) {
             onchange: (v) => patch(v === 'banner' ? { kind: v, group: null, gallery: null, screenshot_only: false } : { kind: v, region: null, fit: null, gaps: null }),
           }),
         ),
-        row(t('targets.strip'), select({ options: s.strips.map((x) => x.id), value: tg.strip, onchange: (v) => patch({ strip: v, variant: null }) })),
+        row(t('targets.canvas'), select({ options: s.canvases.map((x) => x.id), value: tg.canvas, onchange: (v) => patch({ canvas: v, variant: null }) })),
         row(t('targets.size'), sizeCtl),
         banner ? null : row(t('targets.group'), input({ type: 'number', value: tg.group ?? 1, min: 1, max: 6, cls: 'num', onchange: (v) => v >= 1 && patch({ group: v === 1 ? null : v }) }), t('targets.group.hint')),
         row(
@@ -800,7 +800,7 @@ export async function openTargets(focus, opts = {}) {
             value: tg.variant ?? '',
             onchange: async (v) => {
               if (v !== NEW_VARIANT) return patch({ variant: v || null });
-              await openNewVariant({ strip: tg.strip, targets: [id], from: tg.variant ?? '' });
+              await openNewVariant({ canvas: tg.canvas, targets: [id], from: tg.variant ?? '' });
               renderList();
               await renderPane();
             },

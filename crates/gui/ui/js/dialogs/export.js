@@ -155,10 +155,10 @@ export function openExport() {
       }),
     );
     const rows = [];
-    for (const strip of s.strips) {
-      const targets = s.targets.filter((tg) => tg.strip === strip.id);
+    for (const canvas of s.canvases) {
+      const targets = s.targets.filter((tg) => tg.canvas === canvas.id);
       if (!targets.length) continue;
-      rows.push(h('tr', { class: 'ex-strip' }, h('td', { colspan: String(langs.length + 1) }, `${t('targets.strip')}: ${strip.id}`)));
+      rows.push(h('tr', { class: 'ex-canvas' }, h('td', { colspan: String(langs.length + 1) }, `${t('targets.canvas')}: ${canvas.id}`)));
       for (const tg of targets) {
         const rowKeys = tg.langs.map((l) => `${tg.id}|${l}`);
         rows.push(

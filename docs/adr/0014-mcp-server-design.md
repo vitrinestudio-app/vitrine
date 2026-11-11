@@ -78,7 +78,7 @@ a protocol error the client might hide.
 ### Tool design
 
 - Edit context: `target` (default: the first target showing the
-  element's strip), `scope` `base` (default) | `variant` | `lang`,
+  element's canvas), `scope` `base` (default) | `variant` | `lang`,
   `variant`, `lang`. MCP edits default to the base elements; the GUI's
   default (the target's own variant) would silently write variant
   overrides when the first target is the iPad set.
@@ -90,7 +90,7 @@ a protocol error the client might hide.
   defaults) in `vitrine-app` so one call builds a finished element in one
   undo step (the GUI does not send them).
 - Batch tools build ops and use `apply_ops`: `strings_set` (only changed
-  values, one step), `strip_add`, `string_key_rename`.
+  values, one step), `canvas_add`, `string_key_rename`.
 - `styles_update` merges text/span/shadow entries field by field.
 - `render_preview` (view image | canvas | gallery, `max_edge` default
   1200) returns the PNG plus size, image count and the errors/warnings of
@@ -147,10 +147,10 @@ Desktop → `vitrine mcp` proxy). Changes:
   order on a scratch copy, applied as one transaction. `apply_ops` already
   accepted the override ops; they are now documented and named in the
   tool description (`update_element` always writes the base).
-- **Ids across strips.** Multi-element edit commands plan each element on
-  the view's target when it shows the element's strip, else on the first
+- **Ids across canvases.** Multi-element edit commands plan each element on
+  the view's target when it shows the element's canvas, else on the first
   target showing it (`commands::edit::ctx_for`); a named variant must
-  exist in that strip. `element_rotate` takes `ids`.
+  exist in that canvas. `element_rotate` takes `ids`.
 - **Docs reachable without resources.** Resources did work through the
   proxy (capabilities advertised, `resources/*` forwarded; test
   `proxy_forwards_resources_and_docs`), but Claude Desktop exposes MCP

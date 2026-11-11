@@ -8,13 +8,13 @@
 //   view – the variant's override (decided in core). Overridden fields
 //   are marked and resettable.
 // - Several elements: the common fields opacity, rotation, z, visibility.
-// - Nothing selected: the strip settings (panels/strip-settings.js).
+// - Nothing selected: the canvas settings (panels/canvas-settings.js).
 //
 // Re-rendered after every edit (overlay refresh); focus and unsaved
 // typing are kept by `data-key`.
 
 import { h, icon } from '../dom.js';
-import { currentStrip, effectiveVariant } from '../store.js';
+import { currentCanvas, effectiveVariant } from '../store.js';
 import {
   checkInput,
   colorInput,
@@ -25,7 +25,7 @@ import {
   selectInput,
   textInput,
 } from './fields.js';
-import { renderStripSettings } from './strip-settings.js';
+import { renderCanvasSettings } from './canvas-settings.js';
 
 const KIND_ICON = { device: 'device', text: 'text', image: 'image', shape: 'shape', group: 'group', background: 'background' };
 const BUILTIN_SHADOWS = ['soft', 'hard', 'none'];
@@ -192,8 +192,8 @@ export function mount(el, ctx) {
     }
     try {
       if (!sel.length) {
-        title.textContent = t('strip.title');
-        const nodes = await renderStripSettings(ctx, { section, row, cache, palette });
+        title.textContent = t('canvas.title');
+        const nodes = await renderCanvasSettings(ctx, { section, row, cache, palette });
         if (my === seq) swap(nodes);
         return;
       }
@@ -278,9 +278,9 @@ export function mount(el, ctx) {
     // ----- layout -----
     const layout = [];
     if (kind !== 'group') {
-      const strip = currentStrip(st);
+      const canvas = currentCanvas(st);
       const locked = !!e.lock_page;
-      const pages = (strip?.page.ids ?? []).map((pid, i) => ({ value: String(i), label: `${i + 1} · ${pid}` }));
+      const pages = (canvas?.page.ids ?? []).map((pid, i) => ({ value: String(i), label: `${i + 1} · ${pid}` }));
       const lock = h(
         'button',
         {
@@ -383,7 +383,7 @@ export function mount(el, ctx) {
     }
     rows.push(row(t('inspector.visible'), checkInput({ key: 'visible', checked: e.visible !== false, label: t('inspector.visible.on'), onChange: (v) => set({ visible: v ? null : false }) }), { field: 'visible', info }));
 
-    // visible_in: chips per target of the strip and per language (none = all).
+    // visible_in: chips per target of the canvas and per language (none = all).
     const vi = e.visible_in ?? {};
     const toggleIn = (dim, value, all) => {
       const cur = vi[dim]?.length ? [...vi[dim]] : [];
@@ -403,7 +403,7 @@ export function mount(el, ctx) {
           return h('button', { type: 'button', class: `toggle-chip${on ? ' on' : ''}`, 'aria-pressed': String(on), title: v, onclick: () => toggleIn(dim, v, all) }, v);
         }),
       );
-    const targets = st.summary.targets.filter((x) => x.strip === st.strip).map((x) => x.id);
+    const targets = st.summary.targets.filter((x) => x.canvas === st.canvas).map((x) => x.id);
     rows.push(row(t('inspector.visible_in.targets'), chips('targets', targets), { field: 'visible_in', info, wide: true }));
     rows.push(row(t('inspector.visible_in.langs'), chips('langs', st.summary.languages.available), { field: 'visible_in', info, wide: true }));
     return rows;
@@ -836,7 +836,7 @@ export function mount(el, ctx) {
   // ----- subscriptions --------------------------------------------------------------------
 
   const unsubs = [
-    store.select((s) => [s.selection, s.overlay, s.variant, s.lang, s.target, s.strip, s.summary], () => refresh()),
+    store.select((s) => [s.selection, s.overlay, s.variant, s.lang, s.target, s.canvas, s.summary], () => refresh()),
     editor.on('reset', () => cache.invalidate()),
     // Full invalidations (asset imports, external edits): asset lists and
     // translation keys may have changed.

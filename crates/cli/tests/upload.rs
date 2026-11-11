@@ -14,7 +14,7 @@ name: "CLI upload"
 languages:
   default: en
   available: [en, de]
-strips:
+canvases:
 - id: main
   page: {aspect: 1320:2868, count: 2, ids: [one, two]}
   backgrounds:
@@ -32,7 +32,7 @@ strips:
     box: {top: 160, left: 80, right: 80}
 targets:
 - id: play
-  strip: main
+  canvas: main
   size: [1080, 2160]
   gallery: play-phone
   store: {google: {image_type: phoneScreenshots}}

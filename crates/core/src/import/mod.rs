@@ -1400,11 +1400,11 @@ fn learned_mapping(ctx: &Ctx<'_>, items: &[PlannedFile]) -> ImportMapping {
     m
 }
 
-/// Screenshot keys used by the device elements of each strip (base
+/// Screenshot keys used by the device elements of each canvas (base
 /// elements).
 fn used_keys(project: &Project) -> BTreeMap<String, BTreeSet<String>> {
     let mut out: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    for s in &project.strips {
+    for s in &project.canvases {
         let keys = out.entry(s.id.to_string()).or_default();
         s.walk_elements(&mut |e| {
             if let ElementKind::Device(d) = &e.kind
@@ -1446,11 +1446,11 @@ fn missing_after(
         planned: &planned,
     };
     let used = used_keys(project);
-    // variant → keys of the strips its targets show.
+    // variant → keys of the canvases its targets show.
     let mut by_variant: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for t in &project.targets {
         if let Some(v) = &t.screenshots
-            && let Some(keys) = used.get(t.strip.as_str())
+            && let Some(keys) = used.get(t.canvas.as_str())
         {
             by_variant
                 .entry(v.clone())

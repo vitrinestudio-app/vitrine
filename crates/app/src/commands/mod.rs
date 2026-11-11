@@ -21,6 +21,7 @@ mod catalog;
 #[macro_use]
 mod edit;
 mod add;
+mod canvases;
 mod exchange;
 mod export;
 mod frames;
@@ -33,7 +34,6 @@ mod render;
 mod screenshot_import;
 mod stores;
 mod strings;
-mod strips;
 mod system;
 mod targets;
 mod texts;
@@ -49,6 +49,7 @@ use serde_json::Value;
 
 pub use add::*;
 pub use assets::*;
+pub use canvases::*;
 pub use catalog::*;
 pub use edit::*;
 pub use exchange::*;
@@ -63,7 +64,6 @@ pub use render::*;
 pub use screenshot_import::*;
 pub use stores::*;
 pub use strings::*;
-pub use strips::*;
 pub use system::*;
 pub use targets::*;
 pub use texts::*;
@@ -391,7 +391,7 @@ command_table! {
         edit_reorder, edit_duplicate, edit_remove, edit_group, edit_ungroup,
         edit_reset_override, element_reset_override,
         element_get, element_patch, edit_rename, edit_arrange, element_add,
-        strip_get, strip_patch, strip_variant, strip_add, strip_rename, strip_remove,
+        canvas_get, canvas_patch, canvas_variant, canvas_add, canvas_rename, canvas_remove,
         validate, export, export_cancel,
         strings_get, strings_missing,
         assets_list, assets_import, assets_remove,

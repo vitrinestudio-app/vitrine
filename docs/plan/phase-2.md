@@ -51,7 +51,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       assets list/import/remove (copy into project, screenshot variants),
       catalog (devices, targets, galleries, fonts), settings
       (overlay data and `edit_*` intents follow with 2.1/2.4)
-- [x] Preview cache keyed by (strip, target, lang, image, scale, scene hash);
+- [x] Preview cache keyed by (canvas, target, lang, image, scale, scene hash);
       invalidate on op/external change; drag mode = low-res renders
 - [x] App settings (YAML in the platform config dir): default language for
       new projects, frame style default, UI language, recent projects
@@ -66,8 +66,8 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Documented in CLAUDE.md; never part of the release bundle
 
 ## 2.4 App shell + canvas view
-- [x] Layout per §9.1: top bar (project, strip, target, language, variant,
-      validation badge), left (strips, layers, assets, translations), centre
+- [x] Layout per §9.1: top bar (project, canvas, target, language, variant,
+      validation badge), left (canvases, layers, assets, translations), centre
       canvas, right inspector, bottom view switch (canvas | pages | store
       gallery | all languages grid)
 - [x] Canvas: zoom/pan (wheel, trackpad pinch, space-drag, fit), preview
@@ -96,12 +96,12 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       orientation, screenshot key, fit, shadow, chrome/url; text: key, style,
       box/margins, align, fit, max lines; image; shape; background stops)
 - [x] Layers list with drag reorder, visibility, groups
-- [x] Strip settings (page aspect, count, page ids, backgrounds), variants
+- [x] Canvas settings (page aspect, count, page ids, backgrounds), variants
 - Core: auto-height texts rotate around their laid-out content (ADR 0004
   amended; `ResolveOptions::text`). Commands `element_get`,
   `element_patch` (base vs override decided in core, optional strings in
-  the same step), `edit_rename`, `edit_arrange`, `strip_get`,
-  `strip_patch`, `strip_variant`. Open: the page lock is UI state only
+  the same step), `edit_rename`, `edit_arrange`, `canvas_get`,
+  `canvas_patch`, `canvas_variant`. Open: the page lock is UI state only
   (not saved); new keys get the text in the current language only.
 
 ## 2.7 Texts + translations
@@ -123,7 +123,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] Assets panel: screenshots per language/variant, images, fonts;
       drag & drop import (detect variant by pixel size), placeholders listed
   Done: `panels/assets.js` (thumbnails via `asset_thumbnail`, usage from
-  `assets_list.screenshot_keys`/`asset_usage`, missing keys per strip ×
+  `assets_list.screenshot_keys`/`asset_usage`, missing keys per canvas ×
   target variant with import, remove with confirmation), import dialog
   `panels/importer.js` (`assets_probe`: detected variant and candidates,
   overridable; kind, language, key, replace), drops onto the panel or a

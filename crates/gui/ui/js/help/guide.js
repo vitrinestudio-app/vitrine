@@ -49,8 +49,8 @@ export function openGuide({ onClose } = {}) {
     'div',
     { class: 'guide-formula' },
     card('guide-canvas', 'canvas', 'guide.canvas', 'guide.canvas.text', [
-      ['guide.place.topbar', 'top.strip'],
-      ['guide.place.sidebar', 'panel.strips'],
+      ['guide.place.topbar', 'top.canvas'],
+      ['guide.place.sidebar', 'panel.canvases'],
       ['guide.place.menu', 'project.menu.targets'],
       ['guide.place.inspector', 'guide.inspector.nothing'],
     ]),

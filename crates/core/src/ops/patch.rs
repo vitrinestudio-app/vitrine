@@ -1,4 +1,4 @@
-//! Patch types for strips and targets. Element patches are
+//! Patch types for canvases and targets. Element patches are
 //! [`crate::model::ElementPatch`].
 //!
 //! Every field is `Option<FieldType>`: `None` = unchanged. For fields that
@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::fmt::double_option;
 use crate::model::{
-    Aspect, BannerFit, Fill, GalleryRef, Gaps, ImageFormat, Lang, PixelSize, Region, SafeArea,
-    StoreSlot, Strip, StripId, Target, TargetKind, VariantId,
+    Aspect, BannerFit, Canvas, CanvasId, Fill, GalleryRef, Gaps, ImageFormat, Lang, PixelSize,
+    Region, SafeArea, StoreSlot, Target, TargetKind, VariantId,
 };
 
 /// Swap patch values into the target and record the old values in `inv`.
@@ -28,10 +28,10 @@ macro_rules! swap_fields {
     };
 }
 
-/// Partial update of a strip's page geometry and backgrounds.
+/// Partial update of a canvas's page geometry and backgrounds.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct StripPatch {
+pub struct CanvasPatch {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aspect: Option<Aspect>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -43,10 +43,10 @@ pub struct StripPatch {
     pub backgrounds: Option<Vec<Fill>>,
 }
 
-impl StripPatch {
-    /// Apply to a strip, return the inverse patch.
-    pub(crate) fn apply(&self, s: &mut Strip) -> StripPatch {
-        let mut inv = StripPatch::default();
+impl CanvasPatch {
+    /// Apply to a canvas, return the inverse patch.
+    pub(crate) fn apply(&self, s: &mut Canvas) -> CanvasPatch {
+        let mut inv = CanvasPatch::default();
         if let Some(a) = self.aspect {
             inv.aspect = Some(std::mem::replace(&mut s.page.aspect, a));
         }
@@ -70,7 +70,7 @@ pub struct TargetPatch {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<TargetKind>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub strip: Option<StripId>,
+    pub canvas: Option<CanvasId>,
     #[serde(
         default,
         deserialize_with = "double_option",
@@ -156,7 +156,7 @@ impl TargetPatch {
     pub(crate) fn apply(&self, t: &mut Target) -> TargetPatch {
         let mut inv = TargetPatch::default();
         swap_fields!(self, t, inv;
-            kind, strip, variant, group, size, screenshots, gallery, device_map,
+            kind, canvas, variant, group, size, screenshots, gallery, device_map,
             region, fit, gaps, format, quality, langs, store, screenshot_only, safe_area);
         inv
     }

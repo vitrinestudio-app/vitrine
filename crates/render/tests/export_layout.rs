@@ -13,33 +13,33 @@ const PROJECT: &str = r##"
 format: vitrine/1
 name: Layout <Test>
 languages: {default: en, available: [en, de]}
-strips:
+canvases:
 - id: s
   page: {aspect: 1320:2868, count: 2, ids: [hero, plan]}
   backgrounds: ["#336699"]
 targets:
 - id: phone
-  strip: s
+  canvas: s
   size: [1320, 2868]
   store: {apple: {display_type: APP_IPHONE_67}}
 - id: phone-old
-  strip: s
+  canvas: s
   size: [1290, 2796]
   store: {apple: {display_type: APP_IPHONE_67}}
   langs: [en]
 - id: play
-  strip: s
+  canvas: s
   size: [1080, 2160]
   store: {google: {image_type: phoneScreenshots}}
 - id: fg
   kind: banner
-  strip: s
+  canvas: s
   size: [1024, 500]
   format: jpeg
   store: {google: {image_type: featureGraphic}}
   langs: [en]
 - id: web
-  strip: s
+  canvas: s
   size: [660, 1434]
   langs: [en]
 "##;
@@ -145,7 +145,7 @@ fn reexport_removes_stale_files_and_index_lists_all_targets() {
     assert!(!html.contains("_gallery.png"));
 
     // One page fewer: the old page 2 is removed, other targets stay.
-    p.strips[0].page.count = 1;
+    p.canvases[0].page.count = 1;
     let third = export(&p, &ctx, &opts(&["web"]));
     assert!(third.errors.is_empty(), "{:?}", third.errors);
     assert_eq!(third.removed, ["web/en/02_plan.png"]);

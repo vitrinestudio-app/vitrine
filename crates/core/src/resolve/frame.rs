@@ -4,24 +4,24 @@ use super::Diags;
 use super::scene::{DiagnosticCode, Frame, GalleryInfo, OutputImage, PageFrame};
 use crate::catalog::Catalog;
 use crate::geometry::{CanvasLayout, Rect, Vec2, Viewport};
-use crate::model::{BannerFit, Gaps, PixelSize, Region, Strip, Target, TargetKind};
+use crate::model::{BannerFit, Canvas, Gaps, PixelSize, Region, Target, TargetKind};
 
 /// Focus of `fit: cover` banners: horizontally centred, top kept (the
 /// headlines live there; excess height is cropped from the bottom).
 pub const BANNER_COVER_FOCUS: Vec2 = Vec2::new(0.5, 0.0);
 
-pub(super) fn frame(target: &Target, strip: &Strip, catalog: &Catalog, d: &mut Diags) -> Frame {
-    let count = strip.page.count;
-    let reference = strip.page.aspect.page_height();
+pub(super) fn frame(target: &Target, canvas: &Canvas, catalog: &Catalog, d: &mut Diags) -> Frame {
+    let count = canvas.page.count;
+    let reference = canvas.page.aspect.page_height();
     match target.kind {
-        TargetKind::Pages => pages_frame(target, strip, catalog, count, reference, d),
-        TargetKind::Banner => banner_frame(target, strip, catalog, count, reference, d),
+        TargetKind::Pages => pages_frame(target, canvas, catalog, count, reference, d),
+        TargetKind::Banner => banner_frame(target, canvas, catalog, count, reference, d),
     }
 }
 
 fn pages_frame(
     target: &Target,
-    strip: &Strip,
+    canvas: &Canvas,
     catalog: &Catalog,
     count: u32,
     reference: f64,
@@ -60,7 +60,7 @@ fn pages_frame(
     let pages = (0..count)
         .map(|p| PageFrame {
             index: p,
-            id: strip.page.page_id(p),
+            id: canvas.page.page_id(p),
             rect: layout.page_rect(i64::from(p)),
             image: Some(p / group),
             column: p % group,
@@ -80,17 +80,17 @@ fn pages_frame(
 
 fn banner_frame(
     target: &Target,
-    strip: &Strip,
+    canvas: &Canvas,
     catalog: &Catalog,
     count: u32,
     reference: f64,
     d: &mut Diags,
 ) -> Frame {
-    // Gap of the store gallery for pages in the strip's own aspect.
+    // Gap of the store gallery for pages in the canvas's own aspect.
     let gallery = match target.gaps.unwrap_or(Gaps::None) {
         Gaps::None => None,
         Gaps::AsStore => {
-            let page_px = PixelSize::new(strip.page.aspect.w, strip.page.aspect.h);
+            let page_px = PixelSize::new(canvas.page.aspect.w, canvas.page.aspect.h);
             let g = gallery(target, catalog, page_px, 1, d);
             if g.is_none() {
                 d.warn(
@@ -110,7 +110,7 @@ fn banner_frame(
             if b > last {
                 d.warn(
                     DiagnosticCode::RegionOutOfRange,
-                    format!("region pages [{a}, {b}] exceed the strip ({count} pages)"),
+                    format!("region pages [{a}, {b}] exceed the canvas ({count} pages)"),
                 );
             }
             let (a, b) = (a.min(last), b.min(last));
@@ -127,7 +127,7 @@ fn banner_frame(
                 d.warn(
                     DiagnosticCode::RegionOutOfRange,
                     format!(
-                        "region page {} is outside the strip ({count} pages)",
+                        "region page {} is outside the canvas ({count} pages)",
                         r.page
                     ),
                 );
@@ -163,7 +163,7 @@ fn banner_frame(
     let pages = (0..count)
         .map(|p| PageFrame {
             index: p,
-            id: strip.page.page_id(p),
+            id: canvas.page.page_id(p),
             rect: layout.page_rect(i64::from(p)),
             image: None,
             column: 0,

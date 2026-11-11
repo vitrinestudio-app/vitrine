@@ -45,7 +45,7 @@ fn apply_saves_with_new_revision_and_reports_changes() {
     assert_eq!(r.revision, rev + 1);
     assert_eq!(disk_revision(s.dir()).unwrap(), Some(rev + 1));
     assert_eq!(r.changes.elements, ["band"]);
-    assert_eq!(r.changes.strips, ["phone"]);
+    assert_eq!(r.changes.canvases, ["phone"]);
     assert_eq!(
         r.changes.strings,
         [StringRef {

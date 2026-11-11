@@ -24,7 +24,7 @@ failed: …`.
   the whole override (fields left out are no longer overridden).
 
 ## Elements
-- `{"op": "add_element", "strip": "phone", "element": {"id": "badge", "kind": "shape", "page": 0, "at": {"x": 820, "y": 300}, "width": 200, "height": 80, "shape": "rect", "radius": 40, "fill": "@accent"}, "parent"?: "group-id", "index"?: 0}`
+- `{"op": "add_element", "canvas": "phone", "element": {"id": "badge", "kind": "shape", "page": 0, "at": {"x": 820, "y": 300}, "width": 200, "height": 80, "shape": "rect", "radius": 40, "fill": "@accent"}, "parent"?: "group-id", "index"?: 0}`
   (`index`: position in the list, 0 = bottom; default top)
 - `{"op": "update_element", "id": "title", "patch": {"font_size": 80, "align": "left"}}`
 - `{"op": "remove_element", "id": "badge"}`
@@ -42,7 +42,7 @@ Element kinds and their fields:
   `stroke`, `glow`, `shadow`, `hyphenate`, `langs: {de: {…patch…}}`
 - image: `asset`, `width`, `height`, `fit`, `shadow`
 - shape: `shape` (rect|ellipse|line), `width`, `height`, `radius`, `fill`, `stroke`, `shadow`
-- background: `fill` (a per-page background; canvas backgrounds are strip `backgrounds`)
+- background: `fill` (a per-page background; canvas backgrounds are canvas `backgrounds`)
 - group: `children: [elements]`
 - common: `page`, `at`, `rotation` (degrees, clockwise), `pivot`, `anchor_y`,
   `opacity`, `z`, `clip` (none|page), `visible`, `visible_in: {targets, langs}`, `lock_page`
@@ -51,12 +51,12 @@ Element kinds and their fields:
 `update_element` always changes the base element (all targets and
 languages). Per format or language use these ops (or element_update with
 `scope`, which merges into the existing override):
-- `{"op": "add_variant", "strip": "phone", "id": "tablet-landscape", "variant": {"content_scale": 0.75}}`
-- `{"op": "remove_variant", "strip": "phone", "id": "tablet-landscape"}`
-- `{"op": "rename_variant", "strip": "phone", "from": "a", "to": "b"}`
-- `{"op": "set_variant_content_scale", "strip": "phone", "variant": "tablet-landscape", "content_scale": 0.8 | null}`
-- `{"op": "set_variant_override", "strip": "phone", "variant": "tablet-landscape", "element": "phone-plan", "patch": {"width": 520} | null}`
-- `{"op": "reset_override_field", "strip": "phone", "variant": "tablet-landscape", "element": "phone-plan", "field": "width"}`
+- `{"op": "add_variant", "canvas": "phone", "id": "tablet-landscape", "variant": {"content_scale": 0.75}}`
+- `{"op": "remove_variant", "canvas": "phone", "id": "tablet-landscape"}`
+- `{"op": "rename_variant", "canvas": "phone", "from": "a", "to": "b"}`
+- `{"op": "set_variant_content_scale", "canvas": "phone", "variant": "tablet-landscape", "content_scale": 0.8 | null}`
+- `{"op": "set_variant_override", "canvas": "phone", "variant": "tablet-landscape", "element": "phone-plan", "patch": {"width": 520} | null}`
+- `{"op": "reset_override_field", "canvas": "phone", "variant": "tablet-landscape", "element": "phone-plan", "field": "width"}`
 - `{"op": "set_lang_override", "element": "title", "lang": "de", "patch": {"box": {"top": 170, "left": 40, "right": 40}} | null}`
   (only at, width, height, anchor_y, style, box, align, valign, fit, color, font_size, stroke, glow, shadow, hyphenate)
 - `{"op": "reset_lang_override_field", "element": "title", "lang": "de", "field": "box"}`
@@ -70,13 +70,13 @@ Several languages in one step:
 ]}
 ```
 
-## Strips
-- `{"op": "add_strip", "strip": {"id": "tablet", "page": {"aspect": "2064:2752", "count": 3, "ids"?: ["a", "b", "c"]}, "backgrounds"?: [fill, …]}, "index"?: n}`
-- `{"op": "update_strip", "id": "phone", "patch": {"aspect"?: "1320:2868", "count"?: 5, "ids"?: [...], "backgrounds"?: [...]}}`
-- `{"op": "remove_strip", "id": "tablet"}`, `{"op": "rename_strip", "from": "a", "to": "b"}`
+## Canvases
+- `{"op": "add_canvas", "canvas": {"id": "tablet", "page": {"aspect": "2064:2752", "count": 3, "ids"?: ["a", "b", "c"]}, "backgrounds"?: [fill, …]}, "index"?: n}`
+- `{"op": "update_canvas", "id": "phone", "patch": {"aspect"?: "1320:2868", "count"?: 5, "ids"?: [...], "backgrounds"?: [...]}}`
+- `{"op": "remove_canvas", "id": "tablet"}`, `{"op": "rename_canvas", "from": "a", "to": "b"}`
 
 ## Targets
-- `{"op": "add_target", "target": {"id": "ipad", "kind": "pages", "strip": "phone", "size": [2064, 2752], "group"?: 2, "variant"?: "tablet-landscape", "screenshots"?: "ipad-13", "gallery"?: {"preset": "appstore-ipad"}, "langs"?: ["en"], "store"?: {…}}}`
+- `{"op": "add_target", "target": {"id": "ipad", "kind": "pages", "canvas": "phone", "size": [2064, 2752], "group"?: 2, "variant"?: "tablet-landscape", "screenshots"?: "ipad-13", "gallery"?: {"preset": "appstore-ipad"}, "langs"?: ["en"], "store"?: {…}}}`
   (easier: the target_add tool with a catalog preset)
 - `{"op": "update_target", "id": "ipad", "patch": {"group": 2, "variant": null, …}}`
 - `{"op": "remove_target", "id": "ipad"}`, `{"op": "rename_target", "from": "a", "to": "b"}`

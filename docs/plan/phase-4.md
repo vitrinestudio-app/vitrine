@@ -32,7 +32,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   - Live collaboration aids: changes by Claude are labelled in the undo
     history ("Claude: move title-plan") and briefly highlighted on the canvas;
     an activity list; `selection_get` tool so the user can select elements in
-    the GUI and say "make this bigger"; `view_get` (current strip/target/
+    the GUI and say "make this bigger"; `view_get` (current canvas/target/
     language/variant) so Claude works on what the user is looking at.
 - **Tool results:** structured JSON (`structuredContent` + short text);
   `render_preview` returns an image content block (PNG) so Claude sees the
@@ -60,7 +60,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       headless now, `discover_gui` + feature `http` (`http::service`) are the
       seams for 4.3b)
 - [x] Project handling: `project_open`, `project_create` (templates),
-      `project_summary` (compact: strips, pages, elements, languages, targets,
+      `project_summary` (compact: canvases, pages, elements, languages, targets,
       revision)
 - [x] Resources: `project.yaml`, `i18n/<lang>.yaml`, device catalog, target
       presets (read-only)
@@ -68,7 +68,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 ## 4.3 Tools (KONZEPT §8.2 + what Phases 1–3 added)
 - [x] Catalog: `catalog_devices`, `catalog_targets`, `catalog_fonts`,
       `catalog_galleries`
-- [x] Strips/targets: `strip_add`, `strip_update`, `target_add` (from preset),
+- [x] Canvases/targets: `canvas_add`, `canvas_update`, `target_add` (from preset),
       `target_update`, `target_remove`
 - [x] Elements: `element_add`, `element_update` (patch; base/variant/language
       scope), `element_remove`, `element_list`, `element_move`/`resize`/
@@ -118,7 +118,7 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
         fixes (ADR 0014/0009 amendments): override reset (`null` removes
         the field, no `null` stored, `element_reset_override`), batch
         updates in one undo step (`element_update.updates`, override ops
-        documented for `apply_ops`), ids across strips, `docs_get {topic}`
+        documented for `apply_ops`), ids across canvases, `docs_get {topic}`
         (resources are user-attached in Claude Desktop), `assets_import`
         mapping list + kind alias `image`
   - [ ] re-run the scenario with the fixes; judge the rendered result

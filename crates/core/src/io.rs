@@ -70,9 +70,33 @@ pub fn from_yaml<T: serde::de::DeserializeOwned>(yaml: &str) -> Result<T, String
     serde_saphyr::from_str_with_options(yaml, opts).map_err(|e| e.to_string())
 }
 
+/// Parse `project.yaml` content into the model, explaining keys of older
+/// format revisions instead of serde's "unknown field".
+fn parse_project(yaml: &str) -> Result<Project, String> {
+    from_yaml(yaml).map_err(|e| old_keys_hint(yaml).unwrap_or(e))
+}
+
+/// The canvas was called "strip" before 2026-11-11 (`strips:`, target
+/// `strip:`); no migration, just say what to change.
+fn old_keys_hint(yaml: &str) -> Option<String> {
+    let top_level = |key: &str| yaml.lines().any(|l| l.starts_with(key));
+    if !top_level("strips:") {
+        return None;
+    }
+    let mut hint = "`strips:` was renamed to `canvases:` – in project.yaml rename the key \
+                    `strips:` to `canvases:` and `strip:` to `canvas:` in every target"
+        .to_owned();
+    if top_level("format: arrangia/") {
+        hint.push_str(", and change `format:` to `");
+        hint.push_str(crate::PROJECT_FORMAT);
+        hint.push('`');
+    }
+    Some(hint)
+}
+
 /// Parse `project.yaml` content (without strings) and check its structure.
 pub fn project_from_yaml(yaml: &str) -> Result<Project, String> {
-    let mut project: Project = from_yaml(yaml)?;
+    let mut project: Project = parse_project(yaml)?;
     project.check_structure()?;
     project.dropped_override_nulls = project.drop_override_nulls();
     Ok(project)
@@ -135,7 +159,7 @@ impl Project {
         let dir = dir.as_ref();
         let path = dir.join(PROJECT_FILE);
         let text = fs::read_to_string(&path).map_err(io_err(&path))?;
-        let mut project: Project = from_yaml(&text).map_err(|message| IoError::Parse {
+        let mut project: Project = parse_project(&text).map_err(|message| IoError::Parse {
             path: path.clone(),
             message,
         })?;

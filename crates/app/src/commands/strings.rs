@@ -27,7 +27,7 @@ pub struct StringsTable {
     pub keys: Vec<String>,
     /// lang → key → text.
     pub strings: BTreeMap<String, BTreeMap<String, String>>,
-    /// Key → text elements using it (base elements, all strips).
+    /// Key → text elements using it (base elements, all canvases).
     pub used_by: BTreeMap<String, Vec<String>>,
 }
 
@@ -49,7 +49,7 @@ pub struct MissingString {
 /// Keys used by text elements → element ids.
 fn used_keys(p: &Project) -> BTreeMap<String, Vec<String>> {
     let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for s in &p.strips {
+    for s in &p.canvases {
         s.walk_elements(&mut |e| {
             if let ElementKind::Text(t) = &e.kind {
                 out.entry(t.text.to_string())

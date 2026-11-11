@@ -42,7 +42,7 @@ pub struct RecentRemoveArgs {
     pub path: PathBuf,
 }
 
-/// Page spec of a strip.
+/// Page spec of a canvas.
 #[derive(Debug, Clone, Serialize)]
 pub struct PageSummary {
     /// `w:h`.
@@ -71,7 +71,7 @@ pub struct ElementSummary {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct StripSummary {
+pub struct CanvasSummary {
     pub id: String,
     pub page: PageSummary,
     pub variants: Vec<String>,
@@ -82,7 +82,7 @@ pub struct StripSummary {
 pub struct TargetSummary {
     pub id: String,
     pub kind: vitrine_core::model::TargetKind,
-    pub strip: String,
+    pub canvas: String,
     /// `[w, h]` px.
     pub size: [u32; 2],
     /// Pages per output image.
@@ -123,7 +123,7 @@ pub struct ProjectSummary {
     pub name: String,
     pub revision: u64,
     pub languages: LanguagesSummary,
-    pub strips: Vec<StripSummary>,
+    pub canvases: Vec<CanvasSummary>,
     pub targets: Vec<TargetSummary>,
     pub styles: StylesSummary,
 }
@@ -202,13 +202,13 @@ pub fn summarize(p: &Project, dir: PathBuf) -> ProjectSummary {
                 .map(|(a, b)| (a.to_string(), b.to_string()))
                 .collect(),
         },
-        strips: p
-            .strips
+        canvases: p
+            .canvases
             .iter()
             .map(|s| {
                 let mut elements = Vec::new();
                 walk(p, &s.elements, None, &mut elements);
-                StripSummary {
+                CanvasSummary {
                     id: s.id.to_string(),
                     page: PageSummary {
                         aspect: s.page.aspect.to_string(),
@@ -230,7 +230,7 @@ pub fn summarize(p: &Project, dir: PathBuf) -> ProjectSummary {
             .map(|t| TargetSummary {
                 id: t.id.to_string(),
                 kind: t.kind,
-                strip: t.strip.to_string(),
+                canvas: t.canvas.to_string(),
                 size: [t.size.w, t.size.h],
                 group: t.group_size(),
                 variant: t.variant.as_ref().map(ToString::to_string),

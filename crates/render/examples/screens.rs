@@ -1685,7 +1685,7 @@ fn screen_calendar(ui: &mut Ui<'_>, p: Platform, lang: Lang) {
     );
     ui.dot(x + w - 22.0, y0 + 40.0, 21.0, hex("#E7F5E4"));
     ui.icon("bell", x + w - 22.0, y0 + 40.0, 18.0, hex(GREEN));
-    // week strip
+    // week canvas
     let days = if lang == Lang::De {
         ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
     } else {

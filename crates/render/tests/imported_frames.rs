@@ -19,7 +19,7 @@ const PROJECT: &str = r##"
 format: vitrine/1
 name: imported
 languages: {default: en, available: [en]}
-strips:
+canvases:
 - id: s
   page: {aspect: 1000:2000, count: 1}
   backgrounds: ["#FFFFFF"]
@@ -36,7 +36,7 @@ strips:
     shadow: soft
 targets:
 - id: t
-  strip: s
+  canvas: s
   size: [500, 1000]
 "##;
 

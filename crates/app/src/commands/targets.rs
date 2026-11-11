@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 use vitrine_core::catalog;
 use vitrine_core::model::{
-    GalleryRef, Orientation, PixelSize, Region, StripId, Target, TargetId, TargetKind,
+    CanvasId, GalleryRef, Orientation, PixelSize, Region, Target, TargetId, TargetKind,
 };
 use vitrine_core::ops::{Op, TargetPatch};
 
@@ -26,9 +26,9 @@ pub struct TargetIdArgs {
 #[derive(Debug, Clone, Serialize)]
 pub struct TargetModel {
     pub target: Target,
-    /// Page count of the target's strip (for banner page ranges).
+    /// Page count of the target's canvas (for banner page ranges).
     pub pages: u32,
-    /// Variants of the target's strip.
+    /// Variants of the target's canvas.
     pub variants: Vec<String>,
 }
 
@@ -38,11 +38,11 @@ pub fn target_get(app: &AppState, args: TargetIdArgs) -> CmdResult<TargetModel> 
         let t = p
             .target(&args.id)
             .ok_or_else(|| CommandError::not_found(format!("unknown target `{}`", args.id)))?;
-        let strip = p.strip(t.strip.as_str());
+        let canvas = p.canvas(t.canvas.as_str());
         Ok(TargetModel {
             target: t.clone(),
-            pages: strip.map_or(0, |s| s.page.count),
-            variants: strip
+            pages: canvas.map_or(0, |s| s.page.count),
+            variants: canvas
                 .map(|s| s.variants.keys().map(ToString::to_string).collect())
                 .unwrap_or_default(),
         })
@@ -54,8 +54,8 @@ pub fn target_get(app: &AppState, args: TargetIdArgs) -> CmdResult<TargetModel> 
 pub struct TargetAddArgs {
     /// Catalog preset id (`catalog_targets`).
     pub preset: String,
-    /// Strip the target shows.
-    pub strip: String,
+    /// Canvas the target shows.
+    pub canvas: String,
     /// Target id (default: the preset id, made unique).
     #[serde(default)]
     pub id: Option<String>,
@@ -85,7 +85,7 @@ pub(super) fn unique_target_id(
 }
 
 /// A target from a catalog preset (size, kind, gallery profile, screenshot
-/// variant and store slot of the preset) showing `strip` with
+/// variant and store slot of the preset) showing `canvas` with
 /// `page_count` pages; the id defaults to the preset id made unique
 /// against the project and `taken`.
 pub(super) fn preset_target(
@@ -111,7 +111,7 @@ pub(super) fn preset_target(
         .ok_or_else(|| CommandError::invalid(format!("preset `{}` has no size", preset.id)))?;
     let mut target = Target::new(
         TargetId::parse(&id).map_err(CommandError::invalid)?,
-        StripId::parse(&args.strip).map_err(CommandError::invalid)?,
+        CanvasId::parse(&args.canvas).map_err(CommandError::invalid)?,
         size,
     );
     target.kind = preset.kind;
@@ -123,7 +123,7 @@ pub(super) fn preset_target(
     if target.kind == TargetKind::Banner {
         target.gallery = None;
         target.fit = preset.fit;
-        // Page ranges are clamped to the strip (a 2-page strip gets [0, 1]).
+        // Page ranges are clamped to the canvas (a 2-page canvas gets [0, 1]).
         let last = page_count.saturating_sub(1);
         target.region = preset.region.map(|r| match r {
             Region::Pages([a, b]) => Region::Pages([a.min(last), b.min(last)]),
@@ -137,10 +137,10 @@ pub(super) fn preset_target(
 pub fn target_add_from_preset(app: &AppState, args: TargetAddArgs) -> CmdResult<EditResult> {
     let session = app.session()?;
     let project = session.snapshot();
-    let strip = project
-        .strip(&args.strip)
-        .ok_or_else(|| CommandError::not_found(format!("unknown strip `{}`", args.strip)))?;
-    let target = preset_target(&project, &args, strip.page.count, &BTreeSet::new())?;
+    let canvas = project
+        .canvas(&args.canvas)
+        .ok_or_else(|| CommandError::not_found(format!("unknown canvas `{}`", args.canvas)))?;
+    let target = preset_target(&project, &args, canvas.page.count, &BTreeSet::new())?;
     let id = target.id.to_string();
     let result = session.apply_ops(
         vec![Op::AddTarget {
@@ -248,7 +248,7 @@ pub(super) mod tests {
         let r = call(
             &app,
             "target_add_from_preset",
-            json!({"preset": "ios-iphone-69", "strip": "phone"}),
+            json!({"preset": "ios-iphone-69", "canvas": "phone"}),
         );
         // `ios-iphone-69` exists in the example: the id is made unique.
         assert_eq!(r["created"], json!(["ios-iphone-69-2"]));
@@ -262,7 +262,7 @@ pub(super) mod tests {
         let r = call(
             &app,
             "target_add_from_preset",
-            json!({"preset": "ios-iphone-69", "strip": "phone", "id": "land", "orientation": "landscape"}),
+            json!({"preset": "ios-iphone-69", "canvas": "phone", "id": "land", "orientation": "landscape"}),
         );
         assert_eq!(r["created"], json!(["land"]));
         let t = call(&app, "target_get", json!({"id": "land"}));
@@ -303,7 +303,7 @@ pub(super) mod tests {
             dispatch(
                 &app,
                 "target_add_from_preset",
-                json!({"preset": "nope", "strip": "phone"})
+                json!({"preset": "nope", "canvas": "phone"})
             )
             .is_err()
         );
@@ -315,7 +315,7 @@ pub(super) mod tests {
         call(
             &app,
             "target_add_from_preset",
-            json!({"preset": "ios-creative-universal", "strip": "phone"}),
+            json!({"preset": "ios-creative-universal", "canvas": "phone"}),
         );
         let t = call(&app, "target_get", json!({"id": "ios-creative-universal"}));
         assert_eq!(t["target"]["kind"], "banner");
@@ -326,7 +326,7 @@ pub(super) mod tests {
         call(
             &app,
             "target_add_from_preset",
-            json!({"preset": "watch-ultra", "strip": "phone"}),
+            json!({"preset": "watch-ultra", "canvas": "phone"}),
         );
         let t = call(&app, "target_get", json!({"id": "watch-ultra"}));
         assert_eq!(t["target"]["screenshot_only"], true);
@@ -363,7 +363,7 @@ pub(super) mod tests {
         let r = call(
             &app,
             "target_add_from_preset",
-            json!({"preset": banner["id"], "strip": "web"}),
+            json!({"preset": banner["id"], "canvas": "web"}),
         );
         let id = r["created"][0].as_str().unwrap();
         let t = call(&app, "target_get", json!({"id": id}));

@@ -1,4 +1,4 @@
-//! Small value types shared by elements, strips and targets.
+//! Small value types shared by elements, canvases and targets.
 //!
 //! Units are lu (a page is [`crate::PAGE_WIDTH_LU`] lu wide), y points down,
 //! rotations are degrees with positive = clockwise (ADR 0001).

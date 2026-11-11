@@ -88,10 +88,10 @@ async function showProject() {
       assistant: createAssistantIndicator({ openSettings: appActions.appSettings }),
       help: helpButton(),
       // "+ Add…" entries of the top-bar pickers: open the place where that thing is created.
-      addStrip: () => openTargets(null, { mode: 'new-strip' }).catch(report),
-      addTarget: () => openTargets(null, { mode: 'add', strip: store.get().strip }).catch(report),
+      addCanvas: () => openTargets(null, { mode: 'new-canvas' }).catch(report),
+      addTarget: () => openTargets(null, { mode: 'add', canvas: store.get().canvas }).catch(report),
       addLanguage: () => openProjectSettings('languages', { focusAdd: true }),
-      addVariant: () => openNewVariant({ strip: store.get().strip, targets: [], switchTo: true }).catch(report),
+      addVariant: () => openNewVariant({ canvas: store.get().canvas, targets: [], switchTo: true }).catch(report),
     });
     bindShortcuts({
       ...actions,
@@ -118,13 +118,13 @@ async function closeProject() {
 
 /** The backend has no project any more (closed here or by an assistant). */
 async function projectClosed() {
-  store.set({ summary: null, overlay: null, strip: null, target: null, variant: undefined, selection: [], hover: null, validation: null });
+  store.set({ summary: null, overlay: null, canvas: null, target: null, variant: undefined, selection: [], hover: null, validation: null });
   await showProject();
 }
 
 /** A project was opened (start screen, menu, or by an assistant over MCP). */
 async function projectOpened() {
-  store.set({ selection: [], hover: null, variant: undefined, strip: null, target: null, lang: null, validation: null });
+  store.set({ selection: [], hover: null, variant: undefined, canvas: null, target: null, lang: null, validation: null });
   await showProject();
 }
 
@@ -141,12 +141,12 @@ function syncView() {
     timer = null;
     const st = store.get();
     if (!st.summary) return;
-    const view = { strip: st.strip, target: st.target, lang: st.lang, selection: st.selection };
+    const view = { canvas: st.canvas, target: st.target, lang: st.lang, selection: st.selection };
     if (st.variant !== undefined) view.variant = st.variant;
     api.viewSet(view).catch((e) => console.warn('view_set', e));
   };
   store.select(
-    (st) => [st.summary, st.strip, st.target, st.lang, st.variant, st.selection],
+    (st) => [st.summary, st.canvas, st.target, st.lang, st.variant, st.selection],
     () => {
       clearTimeout(timer);
       timer = setTimeout(push, VIEW_SYNC_MS);
@@ -163,9 +163,9 @@ function restoreContext() {
     /* not essential */
   }
   window.addEventListener('vitrine:before-reload', () => {
-    const { strip, target, lang, view } = store.get();
+    const { canvas, target, lang, view } = store.get();
     try {
-      sessionStorage.setItem(CONTEXT_KEY, JSON.stringify({ strip, target, lang, view }));
+      sessionStorage.setItem(CONTEXT_KEY, JSON.stringify({ canvas, target, lang, view }));
     } catch {
       /* not essential */
     }

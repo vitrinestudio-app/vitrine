@@ -7,7 +7,7 @@ use std::fmt;
 
 use super::fmt::string_serde;
 
-/// Is `s` a valid identifier (strip, element, target, variant, style name …)?
+/// Is `s` a valid identifier (canvas, element, target, variant, style name …)?
 pub fn is_valid_id(s: &str) -> bool {
     let mut chars = s.chars();
     matches!(chars.next(), Some(c) if c.is_ascii_alphanumeric())
@@ -66,9 +66,9 @@ macro_rules! id_type {
 }
 
 id_type!(
-    /// Id of a strip (canvas).
-    StripId,
-    "strip id"
+    /// Id of a canvas.
+    CanvasId,
+    "canvas id"
 );
 id_type!(
     /// Id of an element; unique across the whole project.
@@ -81,7 +81,7 @@ id_type!(
     "target id"
 );
 id_type!(
-    /// Name of a variant of a strip.
+    /// Name of a variant of a canvas.
     VariantId,
     "variant id"
 );
@@ -143,7 +143,7 @@ mod tests {
         assert!(!is_valid_id("-x"));
         assert!(!is_valid_id("a b"));
         assert!(!is_valid_id("@x"));
-        assert!(StripId::parse("a/b").is_err());
+        assert!(CanvasId::parse("a/b").is_err());
     }
 
     #[test]
