@@ -6,7 +6,7 @@ members = ["crates/*"]
 version = "0.0.0"
 edition = "2024"
 rust-version = "1.99"
-repository = "https://github.com/Looking4Cache/arrangia"
+repository = "https://github.com/vitrinestudio-app/vitrine"
 homepage = "https://www.vitrinestudio.app"
 # GPL-3.0-or-later with a contributor licence agreement (ADR 0022, LICENSE, CLA.md).
 license = "GPL-3.0-or-later"
