@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "installer" (ADR 0026, docs/dev/releasing.md).
+  Paste into SignPath with the slug set in the repository variable
+  SIGNPATH_ARTIFACT_CONFIG_INSTALLER.
+
+  Input: the workflow artifact `windows-unsigned-installer` (a ZIP made by
+  actions/upload-artifact) with the NSIS setup built from the already signed
+  binaries. SignPath cannot look inside NSIS installers, which is why the
+  binaries are signed in a first request (binaries.xml).
+
+  Draft, written from the SignPath docs (2026-11-11): check it in SignPath's
+  editor.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="*-setup.exe" product-name="Vitrine Studio">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

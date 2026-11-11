@@ -1,0 +1,415 @@
+# Release builds of Vitrine Studio (ADR 0026, owner steps: docs/dev/releasing.md).
+#
+# - Tag `v*` (e.g. v0.1.0, must equal the workspace version): builds macOS
+#   (universal .app/.dmg), Windows x64 (NSIS installer) and Linux x86_64
+#   (AppImage, deb, rpm) plus standalone CLI archives, signs what the
+#   secrets allow, and creates a DRAFT GitHub release with checksums,
+#   licences and the updater manifest `latest.json`. The owner reviews and
+#   publishes the draft by hand.
+# - workflow_dispatch: the same builds as workflow artifacts only (no
+#   release). Unsigned unless the `sign` input is ticked (then the signing
+#   secrets are used, e.g. to test notarization before the first tag).
+#
+# Every signing step is optional: without secrets (forks, first runs) the
+# builds succeed unsigned and say so in the artifacts and release notes.
+#
+# Secrets (repository → Settings → Secrets and variables → Actions):
+#   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#   APPLE_API_ISSUER, APPLE_API_KEY, APPLE_API_KEY_P8,
+#   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD,
+#   SIGNPATH_API_TOKEN
+# Variables (same page, "Variables"): SIGNPATH_ORGANIZATION_ID,
+#   SIGNPATH_PROJECT_SLUG, SIGNPATH_POLICY_SLUG,
+#   SIGNPATH_ARTIFACT_CONFIG_BINARIES, SIGNPATH_ARTIFACT_CONFIG_INSTALLER
+#   (Windows signing switches on when SIGNPATH_ORGANIZATION_ID is set).
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: "Use the signing secrets (macOS Developer ID + notarization, updater key, SignPath)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  # Pinned tool versions (prebuilt binaries, checked against SHA-256 below).
+  TAURI_CLI_VERSION: "2.12.4"
+  CARGO_ABOUT_VERSION: "0.9.3"
+  # Smaller binaries in the bundles (symbols are not needed by users).
+  CARGO_PROFILE_RELEASE_STRIP: "true"
+  # Same minimum as bundle.macOS.minimumSystemVersion (also for the CLI).
+  MACOSX_DEPLOYMENT_TARGET: "11.0"
+  # Signing only for tags or when asked for in a manual run.
+  SIGN: ${{ github.event_name == 'push' || inputs.sign }}
+
+jobs:
+  prepare:
+    name: Version + licence files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Version (workspace) and tag
+        id: version
+        run: |
+          version="$(python3 -c "import tomllib; print(tomllib.load(open('Cargo.toml','rb'))['workspace']['package']['version'])")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+              echo "::error::tag $GITHUB_REF_NAME does not match the workspace version $version (Cargo.toml)"
+              exit 1
+            fi
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Vitrine Studio $version ($GITHUB_REF_TYPE $GITHUB_REF_NAME)"
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install
+
+      - name: Install cargo-about
+        run: |
+          url="https://github.com/EmbarkStudios/cargo-about/releases/download/${CARGO_ABOUT_VERSION}/cargo-about-${CARGO_ABOUT_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl -sSfL --retry 3 -o cargo-about.tgz "$url"
+          echo "3ad1e94ea1e63d69d1961f4fb15ccbbe9575d906111f96d2cb4dce6df48f71b4  cargo-about.tgz" | sha256sum -c -
+          tar xzf cargo-about.tgz --strip-components=1 -C "$HOME/.cargo/bin" "cargo-about-${CARGO_ABOUT_VERSION}-x86_64-unknown-linux-musl/cargo-about"
+          rm cargo-about.tgz
+          cargo about --version
+
+      - name: Licence files (third-party notices, fonts, hyphenation)
+        run: scripts/release/third-party-notices.sh dist/licenses
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: licenses
+          path: dist/licenses
+          if-no-files-found: error
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos
+            os: macos-latest
+            target: universal-apple-darwin
+            rust-targets: aarch64-apple-darwin x86_64-apple-darwin
+            bundles: app,dmg
+          - platform: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            rust-targets: x86_64-pc-windows-msvc
+            bundles: nsis
+          - platform: linux
+            # Oldest supported glibc with WebKitGTK 4.1 (Tauri's AppImage advice).
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            rust-targets: x86_64-unknown-linux-gnu
+            bundles: appimage,deb,rpm
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Tauri system dependencies (Linux)
+        if: runner.os == 'Linux'
+        timeout-minutes: 15
+        run: |
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends \
+            build-essential pkg-config file patchelf xdg-utils \
+            libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev \
+            libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install
+          for t in ${{ matrix.rust-targets }}; do rustup target add "$t"; done
+          rustup show active-toolchain
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+
+      - name: Install Tauri CLI ${{ env.TAURI_CLI_VERSION }}
+        run: |
+          base="https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v${TAURI_CLI_VERSION}"
+          mkdir -p "$RUNNER_TEMP/tauri-cli"
+          cd "$RUNNER_TEMP/tauri-cli"
+          case "$RUNNER_OS" in
+            macOS)   f=cargo-tauri-aarch64-apple-darwin.zip;      sum=f71a34ada728ca2d1a51c28d6d21639e1e080898ec69ec8d49c5da3b7e8bc1be ;;
+            Windows) f=cargo-tauri-x86_64-pc-windows-msvc.zip;    sum=3e8687fb184bd7f10ebd8642f7715f79f4a605c0694c142a21507e8a24dc0f8b ;;
+            Linux)   f=cargo-tauri-x86_64-unknown-linux-gnu.tgz;  sum=820ae3c7580ca637cad15f65638960ee2a96e5a491e224691c86d6f25e6c9e8a ;;
+          esac
+          curl -sSfL --retry 3 -o "$f" "$base/$f"
+          echo "$sum  $f" | sha256sum -c - 2>/dev/null || echo "$sum  $f" | shasum -a 256 -c -
+          case "$f" in
+            *.tgz) tar xzf "$f" ;;
+            *) if [ "$RUNNER_OS" = "Windows" ]; then 7z x -y -bso0 "$f"; else unzip -q "$f"; fi ;;
+          esac
+          cp cargo-tauri* "$HOME/.cargo/bin/"
+          cargo tauri --version
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: licenses
+          path: crates/gui/bundle/licenses
+
+      - name: Build the CLI sidecar (vitrine)
+        run: scripts/release/build-cli-sidecar.sh ${{ matrix.target }}
+
+      # Which signing material is there? Secrets never reach `if:` directly,
+      # and empty values must not be exported (Tauri would try to use them).
+      - name: Detect signing material
+        id: secrets
+        env:
+          HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+          HAS_APPLE_API: ${{ secrets.APPLE_API_KEY_P8 != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_ISSUER != '' }}
+          HAS_UPDATER: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+          HAS_SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
+        run: |
+          on() { [ "$SIGN" = "true" ] && [ "$1" = "true" ] && echo true || echo false; }
+          {
+            echo "apple_cert=$(on "$HAS_APPLE_CERT")"
+            echo "apple_api=$(on "$HAS_APPLE_API")"
+            echo "updater=$(on "$HAS_UPDATER")"
+            echo "signpath=$(on "$HAS_SIGNPATH")"
+          } | tee -a "$GITHUB_OUTPUT"
+
+      - name: Build and bundle (macOS, Linux, Windows without SignPath)
+        if: matrix.platform != 'windows' || steps.secrets.outputs.signpath != 'true'
+        env:
+          S_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          S_APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          S_APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          S_APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          S_APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          S_APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          S_TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          S_TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          configs=(--config tauri.bundle.conf.json)
+          if [ "${{ steps.secrets.outputs.updater }}" = "true" ]; then
+            export TAURI_SIGNING_PRIVATE_KEY="$S_TAURI_SIGNING_PRIVATE_KEY"
+            export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$S_TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+            configs+=(--config tauri.updater.conf.json)
+          fi
+          if [ "${{ steps.secrets.outputs.apple_cert }}" = "true" ]; then
+            export APPLE_CERTIFICATE="$S_APPLE_CERTIFICATE"
+            export APPLE_CERTIFICATE_PASSWORD="$S_APPLE_CERTIFICATE_PASSWORD"
+            [ -n "$S_APPLE_SIGNING_IDENTITY" ] && export APPLE_SIGNING_IDENTITY="$S_APPLE_SIGNING_IDENTITY"
+          fi
+          if [ "${{ steps.secrets.outputs.apple_cert }}" = "true" ] && [ "${{ steps.secrets.outputs.apple_api }}" = "true" ]; then
+            # Tauri wants the App Store Connect API key as a file.
+            umask 077
+            printf '%s\n' "$S_APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+            export APPLE_API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+            export APPLE_API_KEY="$S_APPLE_API_KEY"
+            export APPLE_API_ISSUER="$S_APPLE_API_ISSUER"
+          fi
+          cd crates/gui
+          cargo tauri build --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} "${configs[@]}"
+          rm -f "$RUNNER_TEMP/AuthKey.p8"
+
+      # ---- Windows with SignPath (switched on by the SIGNPATH_* variables) ----
+      # SignPath signs only artifacts uploaded by this workflow run and cannot
+      # look inside an NSIS installer, so: build the exe, sign exe + CLI,
+      # bundle the installer from the signed files, sign the installer, then
+      # re-create the updater signature for the final installer.
+      - name: "SignPath: build the binaries"
+        if: matrix.platform == 'windows' && steps.secrets.outputs.signpath == 'true'
+        run: |
+          cd crates/gui
+          cargo tauri build --ci --target ${{ matrix.target }} --no-bundle --config tauri.bundle.conf.json
+          # What `tauri bundle` would patch into the exe for an NSIS install
+          # (the updater reads it); done before signing.
+          python - <<'PY'
+          import pathlib
+          exe = pathlib.Path("../../target/x86_64-pc-windows-msvc/release/vitrine-gui.exe")
+          data = exe.read_bytes()
+          old, new = b"__TAURI_BUNDLE_TYPE_VAR_UNK", b"__TAURI_BUNDLE_TYPE_VAR_NSS"
+          assert data.count(old) == 1, "bundle type marker not found exactly once"
+          exe.write_bytes(data.replace(old, new))
+          PY
+          mkdir -p "$RUNNER_TEMP/unsigned-bin"
+          cp ../../target/x86_64-pc-windows-msvc/release/vitrine-gui.exe "$RUNNER_TEMP/unsigned-bin/"
+          cp binaries/vitrine-x86_64-pc-windows-msvc.exe "$RUNNER_TEMP/unsigned-bin/vitrine.exe"
+
+      - name: "SignPath: upload the binaries"
+        id: unsigned-bin
+        if: matrix.platform == 'windows' && steps.secrets.outputs.signpath == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-unsigned-binaries
+          path: ${{ runner.temp }}/unsigned-bin
+          if-no-files-found: error
+
+      - name: "SignPath: sign the binaries"
+        if: matrix.platform == 'windows' && steps.secrets.outputs.signpath == 'true'
+        uses: SignPath/github-action-submit-signing-request@v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIG_BINARIES }}
+          github-artifact-id: ${{ steps.unsigned-bin.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: ${{ runner.temp }}/signed-bin
+
+      - name: "SignPath: bundle the installer from the signed binaries"
+        if: matrix.platform == 'windows' && steps.secrets.outputs.signpath == 'true'
+        run: |
+          cp "$RUNNER_TEMP/signed-bin/vitrine-gui.exe" target/x86_64-pc-windows-msvc/release/vitrine-gui.exe
+          cp "$RUNNER_TEMP/signed-bin/vitrine.exe" crates/gui/binaries/vitrine-x86_64-pc-windows-msvc.exe
+          cp "$RUNNER_TEMP/signed-bin/vitrine.exe" target/x86_64-pc-windows-msvc/release/vitrine.exe
+          cd crates/gui
+          cargo tauri bundle --ci --target ${{ matrix.target }} --bundles nsis --no-binary-patching --no-sign --config tauri.bundle.conf.json
+          mkdir -p "$RUNNER_TEMP/unsigned-installer"
+          cp ../../target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe "$RUNNER_TEMP/unsigned-installer/"
+
+      - name: "SignPath: upload the installer"
+        id: unsigned-installer
+        if: matrix.platform == 'windows' && steps.secrets.outputs.signpath == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-unsigned-installer
+          path: ${{ runner.temp }}/unsigned-installer
+          if-no-files-found: error
+
+      - name: "SignPath: sign the installer"
+        if: matrix.platform == 'windows' && steps.secrets.outputs.signpath == 'true'
+        uses: SignPath/github-action-submit-signing-request@v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIG_INSTALLER }}
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: ${{ runner.temp }}/signed-installer
+
+      - name: "SignPath: updater signature of the signed installer"
+        if: matrix.platform == 'windows' && steps.secrets.outputs.signpath == 'true'
+        env:
+          S_TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          S_TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          nsis=target/x86_64-pc-windows-msvc/release/bundle/nsis
+          rm -f "$nsis"/*-setup.exe "$nsis"/*-setup.exe.sig
+          cp "$RUNNER_TEMP"/signed-installer/*-setup.exe "$nsis/"
+          if [ "${{ steps.secrets.outputs.updater }}" = "true" ]; then
+            export TAURI_SIGNING_PRIVATE_KEY="$S_TAURI_SIGNING_PRIVATE_KEY"
+            export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$S_TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+            for f in "$nsis"/*-setup.exe; do cargo tauri signer sign --app-version "$VERSION" "$f"; done
+          fi
+
+      - name: Collect release files
+        run: |
+          scripts/release/collect-artifacts.sh ${{ matrix.platform }} "$VERSION" dist
+          case "${{ matrix.platform }}" in
+            macos)
+              if [ "${{ steps.secrets.outputs.apple_cert }}" != "true" ]; then s="macOS: unsigned (ad-hoc), not notarized"
+              elif [ "${{ steps.secrets.outputs.apple_api }}" = "true" ]; then s="macOS: signed with Developer ID, notarized and stapled"
+              else s="macOS: signed with Developer ID, not notarized"; fi ;;
+            windows)
+              if [ "${{ steps.secrets.outputs.signpath }}" = "true" ]; then s="Windows: installer and executables signed (SignPath Foundation certificate)"
+              else s="Windows: unsigned (SmartScreen warns on first start)"; fi ;;
+            linux) s="Linux: packages unsigned; verify with SHA256SUMS.txt" ;;
+          esac
+          if [ "${{ steps.secrets.outputs.updater }}" = "true" ]; then u="updater signature present"; else u="no updater signature (in-app update not offered for this build)"; fi
+          echo "$s; $u" > "dist/signing-${{ matrix.platform }}.txt"
+          cat "dist/signing-${{ matrix.platform }}.txt"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vitrine-studio-${{ matrix.platform }}
+          path: dist
+          if-no-files-found: error
+
+  publish:
+    name: Draft release
+    needs: [prepare, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: vitrine-studio-*
+          path: dist
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: licenses
+          path: licenses
+
+      - name: latest.json, checksums, release notes
+        run: |
+          cp licenses/THIRD-PARTY-NOTICES.html dist/
+          python3 scripts/release/assemble.py --dist dist --version "$VERSION" --tag "$TAG" --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload the release preview (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-preview
+          path: |
+            dist/latest.json
+            dist/SHA256SUMS.txt
+            dist/RELEASE_NOTES.md
+          if-no-files-found: warn
+
+      - name: Create or update the draft release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files=()
+          for f in dist/*; do
+            case "$(basename "$f")" in signing-*|RELEASE_NOTES.md) ;; *) files+=("$f") ;; esac
+          done
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # Re-run: replace the files, keep the (possibly edited) notes.
+            gh release upload "$TAG" --clobber "${files[@]}"
+          else
+            gh release create "$TAG" --draft --verify-tag \
+              --title "Vitrine Studio $VERSION" \
+              --notes-file dist/RELEASE_NOTES.md \
+              "${files[@]}"
+          fi
+          echo "Draft release $TAG ready: review the notes, then publish it on GitHub."
