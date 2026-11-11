@@ -49,7 +49,12 @@ search-results creatives (banners from a strip region).
 KONZEPT §9 "Vorlagen": duplicate a canvas, save as template, new project
 from template. User 2026-11-10: templates should be uploadable to the web
 and downloadable from a gallery.
-- [ ] Template format: a project folder subset (strip(s), styles, fonts,
+- [ ] User 2026-11-11: a template may contain **several canvases** (e.g.
+      Phone + Tablet + feature graphic as one coordinated set), each with
+      its targets and variants, sharing styles/texts; a single canvas is
+      just the smallest case. "New project from template" takes all;
+      "insert from template" lets the user pick which canvases.
+- [ ] Template format: a project folder subset (canvas(es), styles, fonts,
       placeholder screenshots) + `template.yaml` (name, author, licence,
       preview images, required fonts, tags); packed as `.vitrine-template`
       (zip); no vendor graphics, fonts only with redistributable licences
