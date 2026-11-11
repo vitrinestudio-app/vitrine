@@ -271,6 +271,15 @@ fn validate_strings_catalog() {
             .iter()
             .any(|f| f == "Inter")
     );
+    assert_eq!(fonts["bundled"].as_array().unwrap().len(), 11);
+    let info = fonts["bundled_info"].as_array().unwrap();
+    let montserrat = info.iter().find(|f| f["family"] == "Montserrat").unwrap();
+    assert_eq!(montserrat["category"], "sans_serif");
+    assert_eq!(montserrat["weights"], json!([100, 900]));
+    assert_eq!(montserrat["italic"], true);
+    let caveat = info.iter().find(|f| f["family"] == "Caveat").unwrap();
+    assert_eq!(caveat["category"], "handwriting");
+    assert_eq!(caveat["italic"], false);
 }
 
 /// Regression: the project settings showed "Not used" while the app

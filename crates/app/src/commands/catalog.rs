@@ -6,7 +6,7 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 use vitrine_core::catalog;
-use vitrine_core::layout::FontLibrary;
+use vitrine_core::layout::bundled::{self, FontCategory};
 use vitrine_core::model::{
     BannerFit, Fold, Orientation, PixelSize, Region, SafeArea, StoreSlot, TargetKind,
 };
@@ -122,8 +122,11 @@ pub struct GalleryInfo {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FontsInfo {
-    /// Bundled families (always available).
+    /// Bundled families (always available), Inter first, then grouped by
+    /// category (sans serif, serif, display, handwriting, monospace).
     pub bundled: Vec<String>,
+    /// Details of every bundled family, in the order of `bundled`.
+    pub bundled_info: Vec<BundledFontInfo>,
     /// Families from the open project's `fonts/` folder.
     pub project: Vec<String>,
     /// System families loaded as last-resort fallback (app setting
@@ -134,6 +137,39 @@ pub struct FontsInfo {
     /// The app setting `system_font_fallback` as applied to the open
     /// project (the setting itself without a project).
     pub system_enabled: bool,
+}
+
+/// A bundled font family (`vitrine_core::layout::bundled`).
+#[derive(Debug, Clone, Serialize)]
+pub struct BundledFontInfo {
+    pub family: String,
+    pub category: FontCategory,
+    /// Lightest and heaviest weight (variable fonts: any weight between).
+    pub weights: [u16; 2],
+    /// Has a real italic (otherwise italic is slanted synthetically).
+    pub italic: bool,
+    /// Licence file below `assets/fonts/` (SIL OFL 1.1).
+    pub license: String,
+}
+
+/// The bundled families with their weights and styles.
+pub fn bundled_fonts() -> Vec<BundledFontInfo> {
+    bundled::FAMILIES
+        .iter()
+        .map(|fam| {
+            let files: Vec<_> = bundled::files_of(fam.family).collect();
+            BundledFontInfo {
+                family: fam.family.to_owned(),
+                category: fam.category,
+                weights: [
+                    files.iter().map(|f| f.weights.0).min().unwrap_or(400),
+                    files.iter().map(|f| f.weights.1).max().unwrap_or(400),
+                ],
+                italic: files.iter().any(|f| f.italic),
+                license: fam.license.to_owned(),
+            }
+        })
+        .collect()
 }
 
 pub fn catalog_devices(_: &AppState, _: NoArgs) -> CmdResult<Vec<DeviceInfo>> {
@@ -217,11 +253,8 @@ pub fn catalog_galleries(_: &AppState, _: NoArgs) -> CmdResult<Vec<GalleryInfo>>
 }
 
 pub fn catalog_fonts(app: &AppState, _: NoArgs) -> CmdResult<FontsInfo> {
-    let bundled: Vec<String> = FontLibrary::bundled()
-        .families()
-        .into_iter()
-        .map(str::to_owned)
-        .collect();
+    let bundled_info = bundled_fonts();
+    let bundled: Vec<String> = bundled_info.iter().map(|f| f.family.clone()).collect();
     let (project, system, system_enabled) = app.session().map_or_else(
         |_| {
             let on = app
@@ -245,6 +278,7 @@ pub fn catalog_fonts(app: &AppState, _: NoArgs) -> CmdResult<FontsInfo> {
     );
     Ok(FontsInfo {
         bundled,
+        bundled_info,
         project,
         system,
         system_enabled,

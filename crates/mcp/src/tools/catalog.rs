@@ -152,7 +152,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Font families usable in text styles: bundled (always available, e.g. Inter, Inter Display), from the project's fonts/ folder, and system fallbacks (`system`: families loaded for characters no other font covers; `system_enabled`: the app setting).",
+        description = "Font families usable in text styles: bundled (always available, no files needed: Inter, Inter Display, Montserrat, Nunito, Oswald – sans serif; Playfair Display, Lora – serif; Bebas Neue – all-caps display; Caveat, Dancing Script – handwriting; JetBrains Mono – monospace; `bundled_info` gives category, weight range (variable fonts: any weight in it) and whether a real italic exists), from the project's fonts/ folder, and system fallbacks (`system`: families loaded for characters no other font covers; `system_enabled`: the app setting).",
         annotations(read_only_hint = true)
     )]
     async fn catalog_fonts(

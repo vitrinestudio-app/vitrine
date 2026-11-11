@@ -4,7 +4,8 @@
 //! `export` (all files of targets × languages), `validate`, `strings
 //! export|import` (translation exchange), `import screenshots`
 //! (fastlane / Vitrine Studio / flat folders → `screenshots/`), `frames`
-//! (import/list/remove vendor device frames, app-wide) and `mcp` (MCP
+//! (import/list/remove vendor device frames, app-wide), `fonts` (bundled
+//! and project font families) and `mcp` (MCP
 //! server over stdio for AI assistants; `vitrine-mcp`) and `upload`
 //! (store upload: plan → confirm token → execute; `vitrine-app`) and
 //! `template` (save/list/import/export/remove/insert/new, ADR 0023). The CLI only
@@ -20,6 +21,7 @@
 //! | 2 | the command could not run: usage error (clap), project not loadable, IO error |
 
 mod export;
+mod fonts;
 mod frames;
 mod import;
 mod mcp;
@@ -104,6 +106,8 @@ enum Command {
     Import(import::ImportCommand),
     /// Import, list and remove device frames (Apple Product Bezels, own frame packs).
     Frames(frames::FramesArgs),
+    /// List the font families text styles can use (bundled and the project's fonts/ folder).
+    Fonts(fonts::FontsArgs),
     /// Run the MCP server over stdio (for Claude Code / Claude Desktop).
     Mcp(mcp::McpArgs),
     /// Upload to App Store Connect / Google Play: `plan` (dry run + confirm
@@ -125,6 +129,7 @@ impl Command {
             Self::Strings(_) => "strings",
             Self::Import(_) => "import",
             Self::Frames(_) => "frames",
+            Self::Fonts(_) => "fonts",
             Self::Mcp(_) => "mcp",
             Self::Upload(_) => "upload",
             Self::Template(_) => "template",
@@ -142,6 +147,7 @@ fn main() -> ExitCode {
         Command::Strings(args) => strings::run(args, &cli.global),
         Command::Import(cmd) => import::run(cmd, &cli.global),
         Command::Frames(args) => frames::run(args, &cli.global),
+        Command::Fonts(args) => fonts::run(args, &cli.global),
         Command::Mcp(args) => mcp::run(args, &cli.global),
         Command::Upload(args) => upload::run(args, &cli.global),
         Command::Template(args) => template::run(args, &cli.global),
