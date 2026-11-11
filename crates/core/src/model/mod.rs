@@ -193,6 +193,15 @@ impl Project {
     /// so a hand-edited project with a dangling reference still loads.
     pub fn check_structure(&self) -> Result<(), String> {
         if self.format != crate::PROJECT_FORMAT {
+            // The product was called Arrangia before 2026-11-11; no
+            // migration, just say what to change.
+            if self.format.starts_with("arrangia/") {
+                return Err(format!(
+                    "project from Arrangia (format `{}`) – change `format:` in project.yaml to `{}`",
+                    self.format,
+                    crate::PROJECT_FORMAT
+                ));
+            }
             return Err(format!(
                 "unsupported format `{}` (expected `{}`)",
                 self.format,

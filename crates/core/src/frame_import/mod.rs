@@ -46,8 +46,8 @@ use crate::model::{Orientation, PixelSize};
 pub const FRAMES_DIR: &str = "frames";
 
 /// Environment variable overriding the app folder (GUI and CLI): app data
-/// then lives in `$ARRANGIA_APP_DIR/data`, settings in `…/config`.
-pub const APP_DIR_ENV: &str = "ARRANGIA_APP_DIR";
+/// then lives in `$VITRINE_APP_DIR/data`, settings in `…/config`.
+pub const APP_DIR_ENV: &str = "VITRINE_APP_DIR";
 
 /// Screen aspect tolerance against the catalog (KONZEPT §4.3: ~2 %).
 pub const ASPECT_TOLERANCE: f64 = 0.02;

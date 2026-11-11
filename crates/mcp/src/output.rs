@@ -2,11 +2,11 @@
 //! image content blocks, and [`CommandError`]s as tool errors
 //! (`isError: true`) the model can read and recover from.
 
-use arrangia_app::{CommandError, ErrorCode};
 use base64::Engine;
 use rmcp::model::{CallToolResult, ContentBlock};
 use serde::Serialize;
 use serde_json::{Value, json};
+use vitrine_app::{CommandError, ErrorCode};
 
 /// What a tool hands back before it becomes a [`CallToolResult`].
 #[derive(Debug, Clone, Default)]

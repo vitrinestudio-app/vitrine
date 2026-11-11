@@ -10,7 +10,7 @@ use serde_json::{Map, Value, json};
 
 use crate::output::ToolOutput;
 use crate::params::{edit_line, edit_summary};
-use crate::server::{ArrangiaMcp, cmd};
+use crate::server::{VitrineMcp, cmd};
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -182,8 +182,8 @@ pub struct LanguageParams {
 }
 
 /// `"1290x2796"` → `[1290, 2796]`.
-pub fn parse_size(s: &str) -> Result<Value, arrangia_app::CommandError> {
-    let bad = || arrangia_app::CommandError::invalid(format!("size `{s}` is not `WxH`"));
+pub fn parse_size(s: &str) -> Result<Value, vitrine_app::CommandError> {
+    let bad = || vitrine_app::CommandError::invalid(format!("size `{s}` is not `WxH`"));
     let (w, h) = s.split_once(['x', 'X', '×']).ok_or_else(bad)?;
     let w: u32 = w.trim().parse().map_err(|_| bad())?;
     let h: u32 = h.trim().parse().map_err(|_| bad())?;
@@ -196,7 +196,7 @@ fn edited(r: &Value) -> ToolOutput {
 }
 
 #[tool_router(router = structure_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "Add a strip (canvas) with N pages of one aspect, empty or with a starter layout (`start: \"starter\"`: headline + device per page), optionally with a first target from a catalog preset (one undo step). Example: {\"id\": \"tablet\", \"target_preset\": \"ios-ipad-13\", \"start\": \"starter\"} or {\"id\": \"tablet\", \"aspect\": \"2064:2752\", \"count\": 3, \"backgrounds\": [\"#0B3324\"]}. Without `target_preset` add a target showing it (target_add) before adding elements."
     )]
@@ -328,7 +328,7 @@ impl ArrangiaMcp {
                 VariantAction::Remove => json!({ "action": "remove", "id": p.id }),
                 VariantAction::Rename => json!({
                     "action": "rename", "id": p.id,
-                    "to": p.to.ok_or_else(|| arrangia_app::CommandError::invalid("`rename` needs `to`"))?,
+                    "to": p.to.ok_or_else(|| vitrine_app::CommandError::invalid("`rename` needs `to`"))?,
                 }),
                 VariantAction::Scale => {
                     json!({ "action": "scale", "id": p.id, "content_scale": p.content_scale })

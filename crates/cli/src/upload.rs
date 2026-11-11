@@ -1,23 +1,23 @@
-//! `arrangia upload plan|execute|log`: store upload from the command line
-//! (Phase 5.5, ADR 0018) over `arrangia_app::upload` – the same plan,
+//! `vitrine upload plan|execute|log`: store upload from the command line
+//! (Phase 5.5, ADR 0018) over `vitrine_app::upload` – the same plan,
 //! confirm token, executor and log as the GUI and MCP.
 //!
 //! Credentials come from the store account referenced in `project.yaml`
 //! (`store.<store>.account`): its public facts from the app settings
-//! (`--app-dir`, `$ARRANGIA_APP_DIR` or the platform folder), the key from
-//! the system keychain (`ARRANGIA_KEYRING=mock` = in-memory, tests).
+//! (`--app-dir`, `$VITRINE_APP_DIR` or the platform folder), the key from
+//! the system keychain (`VITRINE_KEYRING=mock` = in-memory, tests).
 
 use std::io::{BufRead, IsTerminal, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Context, anyhow, bail};
-use arrangia_app::dialogs::NoDialogs;
-use arrangia_app::events::EventSink;
-use arrangia_app::settings::AppPaths;
-use arrangia_app::{AppState, CommandError, Reply};
 use clap::{Args, Subcommand, ValueEnum};
 use serde_json::{Value, json};
+use vitrine_app::dialogs::NoDialogs;
+use vitrine_app::events::EventSink;
+use vitrine_app::settings::AppPaths;
+use vitrine_app::{AppState, CommandError, Reply};
 
 use crate::term::Style;
 use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global, project};
@@ -25,7 +25,7 @@ use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global, project};
 #[derive(Debug, Args)]
 pub struct UploadArgs {
     /// App data folder (settings with the store accounts). Default:
-    /// `$ARRANGIA_APP_DIR` or the platform folder.
+    /// `$VITRINE_APP_DIR` or the platform folder.
     #[arg(long, value_name = "DIR", global = true)]
     pub app_dir: Option<PathBuf>,
     #[command(subcommand)]
@@ -76,7 +76,7 @@ pub enum UploadCommand {
     },
     /// App Store Connect asset types (read-only): the App Asset Library
     /// reference data – placement types, groups, display classes, image
-    /// specs – and how Arrangia's slots resolve against it (ADR 0019).
+    /// specs – and how Vitrine Studio's slots resolve against it (ADR 0019).
     Refdata {
         /// Apple account id (default: the project's, else the only one).
         #[arg(long, value_name = "ID")]
@@ -111,7 +111,7 @@ struct Progress {
 
 impl EventSink for Progress {
     fn emit(&self, event: &str, p: Value) {
-        if self.quiet || event != arrangia_app::upload::UPLOAD_PROGRESS {
+        if self.quiet || event != vitrine_app::upload::UPLOAD_PROGRESS {
             return;
         }
         let style = Style::stderr();
@@ -208,7 +208,7 @@ fn cmd_error(e: CommandError) -> anyhow::Error {
 }
 
 fn call(app: &AppState, name: &str, args: Value) -> anyhow::Result<Value> {
-    match arrangia_app::dispatch(app, name, args).map_err(cmd_error)? {
+    match vitrine_app::dispatch(app, name, args).map_err(cmd_error)? {
         Reply::Json(v) => Ok(v),
         Reply::Image(_) => bail!("unexpected image"),
     }
@@ -265,7 +265,7 @@ pub fn run(args: &UploadArgs, global: &Global) -> anyhow::Result<u8> {
             changes_not_sent_for_review,
             format,
         } => {
-            let plan = arrangia_app::commands::upload_verify(&app, token).map_err(cmd_error)?;
+            let plan = vitrine_app::commands::upload_verify(&app, token).map_err(cmd_error)?;
             if !yes {
                 confirm(&plan)?;
             }
@@ -453,7 +453,7 @@ fn format_refdata(r: &Value, style: Style) -> String {
     let _ = writeln!(
         out,
         "\n{} {}",
-        style.bold("Arrangia slots"),
+        style.bold("Vitrine Studio slots"),
         style.dim(&format!(
             "(data/asset-library.yaml, checked {})",
             r["mapping_checked"].as_str().unwrap_or_default()
@@ -481,7 +481,7 @@ fn format_refdata(r: &Value, style: Style) -> String {
     out
 }
 
-fn confirm(plan: &arrangia_app::upload::UploadPlan) -> anyhow::Result<()> {
+fn confirm(plan: &vitrine_app::upload::UploadPlan) -> anyhow::Result<()> {
     let stdin = std::io::stdin();
     if !stdin.is_terminal() {
         bail!("not a terminal: pass --yes to upload without asking");
@@ -631,7 +631,7 @@ fn print_plan(plan: &Value, global: &Global) {
         println!("Nothing to upload.");
     } else {
         println!("Confirm token: {token} (valid 30 min, for this project state)");
-        println!("Upload with:   arrangia upload execute --confirm {token}");
+        println!("Upload with:   vitrine upload execute --confirm {token}");
     }
 }
 
@@ -679,7 +679,7 @@ fn print_run(run: &Value) {
     }
     if run["images_processing"].as_u64().unwrap_or(0) > 0 {
         println!(
-            "Apple is still processing some images. Check later with `arrangia upload plan --remote` (they are not uploaded again)."
+            "Apple is still processing some images. Check later with `vitrine upload plan --remote` (they are not uploaded again)."
         );
     }
     if status != "completed" {

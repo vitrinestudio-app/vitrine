@@ -1,6 +1,6 @@
 //! Device models for the parametric frames (`data/devices.yaml`, KONZEPT §4.1).
 //!
-//! Data only; drawing is done in `arrangia-render`.
+//! Data only; drawing is done in `vitrine-render`.
 
 use std::collections::BTreeMap;
 

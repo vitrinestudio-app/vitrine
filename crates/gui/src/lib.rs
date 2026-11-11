@@ -1,9 +1,9 @@
-//! # arrangia-gui (library part)
+//! # vitrine-gui (library part)
 //!
 //! The Tauri desktop app (`src/main.rs`, thin `#[tauri::command]` wrappers)
-//! and the dev HTTP bridge (`arrangia-devbridge`, feature `devbridge`) on
-//! top of the shared application layer `arrangia-app` (ADR 0008, ADR 0013).
-//! The modules of `arrangia-app` are re-exported, so `arrangia_gui::commands`
+//! and the dev HTTP bridge (`vitrine-devbridge`, feature `devbridge`) on
+//! top of the shared application layer `vitrine-app` (ADR 0008, ADR 0013).
+//! The modules of `vitrine-app` are re-exported, so `vitrine_gui::commands`
 //! etc. keep working.
 //!
 //! ```text
@@ -13,7 +13,7 @@
 #[cfg(feature = "devbridge")]
 pub mod bridge;
 
-pub use arrangia_app::{
+pub use vitrine_app::{
     Actor, AppInfo, AppState, CommandError, ErrorCode, EventSink, Reply, Session, ViewState,
     app_info, commands, dialogs, dispatch, dispatch_as, error, events, preview, session, settings,
     store_test, stores, testutil, upload, view, watch,

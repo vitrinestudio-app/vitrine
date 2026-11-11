@@ -4,7 +4,7 @@
 //!
 //! Source layouts ([`SourceFormat`]):
 //!
-//! - **Arrangia convention**: `<lang>/<variant>/<key>.png` and
+//! - **Vitrine Studio convention**: `<lang>/<variant>/<key>.png` and
 //!   `<lang>/<key>.png` (optionally below a `screenshots/` folder).
 //! - **fastlane snapshot**: `<locale>/<Device Name>-<screen>.png`;
 //!   `screenshots.html` and frameit's `*_framed.png` are skipped. Locale →
@@ -68,7 +68,7 @@ pub enum SourceFormat {
     /// Detect from the files (fastlane names, language folders, else flat).
     #[default]
     Auto,
-    Arrangia,
+    Vitrine,
     Fastlane,
     Flat,
 }
@@ -77,7 +77,7 @@ impl SourceFormat {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Auto => "auto",
-            Self::Arrangia => "arrangia",
+            Self::Vitrine => "vitrine",
             Self::Fastlane => "fastlane",
             Self::Flat => "flat",
         }
@@ -95,12 +95,12 @@ impl FromStr for SourceFormat {
     fn from_str(s: &str) -> Result<Self, String> {
         Ok(match s {
             "auto" => Self::Auto,
-            "arrangia" => Self::Arrangia,
+            "vitrine" => Self::Vitrine,
             "fastlane" => Self::Fastlane,
             "flat" => Self::Flat,
             _ => {
                 return Err(format!(
-                    "unknown import format `{s}` (auto, arrangia, fastlane, flat)"
+                    "unknown import format `{s}` (auto, vitrine, fastlane, flat)"
                 ));
             }
         })
@@ -737,7 +737,7 @@ fn plan_sources(
             .ok()
             .and_then(|s| Some((u32::try_from(s.width).ok()?, u32::try_from(s.height).ok()?)));
         let det = match format {
-            SourceFormat::Arrangia => detect_arrangia(&ctx, &src, &stem, size),
+            SourceFormat::Vitrine => detect_vitrine(&ctx, &src, &stem, size),
             SourceFormat::Fastlane => match &route {
                 Route::Screengrab { locale, kind } => {
                     Ok(detect_screengrab(&ctx, locale, kind, &stem, size))
@@ -934,7 +934,7 @@ fn finish(
 /// Auto-detects the layout.
 fn detect_format(ctx: &Ctx<'_>, sources: &[Source]) -> SourceFormat {
     let mut fastlane = 0usize;
-    let mut arrangia = 0usize;
+    let mut vitrine = 0usize;
     let fl = catalog::fastlane();
     for s in sources {
         if s.parts.len() == 1
@@ -962,19 +962,19 @@ fn detect_format(ctx: &Ctx<'_>, sources: &[Source]) -> SourceFormat {
             && ctx.lang(&s.parts[0]).is_some()
             && slugify(&stem) == stem
         {
-            arrangia += 1;
+            vitrine += 1;
         }
     }
-    if fastlane > 0 && fastlane >= arrangia {
+    if fastlane > 0 && fastlane >= vitrine {
         SourceFormat::Fastlane
-    } else if arrangia > 0 {
-        SourceFormat::Arrangia
+    } else if vitrine > 0 {
+        SourceFormat::Vitrine
     } else {
         SourceFormat::Flat
     }
 }
 
-fn detect_arrangia(
+fn detect_vitrine(
     ctx: &Ctx<'_>,
     src: &Source,
     stem: &str,

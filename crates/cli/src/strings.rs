@@ -1,17 +1,17 @@
-//! `arrangia strings export|import`: translation exchange with CSV and
+//! `vitrine strings export|import`: translation exchange with CSV and
 //! XLIFF 1.2/2.0 (`core::exchange`).
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, bail};
-use arrangia_core::exchange::{
+use clap::{Args, Subcommand, ValueEnum};
+use vitrine_core::exchange::{
     self, ChangeKind, Delimiter, EmptyCells, ExportOptions, ImportInput, ImportOptions, ImportPlan,
     MarkupMode,
 };
-use arrangia_core::resolve::FsAssets;
-use arrangia_core::validate::{Severity, ValidateMode, ValidateOptions};
-use clap::{Args, Subcommand, ValueEnum};
+use vitrine_core::resolve::FsAssets;
+use vitrine_core::validate::{Severity, ValidateMode, ValidateOptions};
 
 use crate::term::{Style, plural};
 use crate::{EXIT_OK, EXIT_PROBLEMS, Global, project};
@@ -88,7 +88,7 @@ pub struct ExportArgs {
     /// CSV: write a UTF-8 byte order mark (Excel).
     #[arg(long)]
     pub bom: bool,
-    /// XLIFF: keep Arrangia markup (`**bold**`, `[accent]…[/]`) as text
+    /// XLIFF: keep Vitrine Studio markup (`**bold**`, `[accent]…[/]`) as text
     /// instead of inline elements.
     #[arg(long)]
     pub plain_markup: bool,

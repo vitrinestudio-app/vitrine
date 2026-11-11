@@ -4,12 +4,12 @@
 
 use std::fmt::Debug;
 
-use arrangia_core::catalog;
-use arrangia_core::layout::FontLibrary;
-use arrangia_core::model::{
+use serde::Serialize;
+use vitrine_core::catalog;
+use vitrine_core::layout::FontLibrary;
+use vitrine_core::model::{
     BannerFit, Fold, Orientation, PixelSize, Region, SafeArea, StoreSlot, TargetKind,
 };
-use serde::Serialize;
 
 use super::{AppState, NoArgs};
 use crate::error::CmdResult;

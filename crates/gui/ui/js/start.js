@@ -247,7 +247,7 @@ export async function bindFolderDrop() {
     try {
       await opened(await api.projectOpen(path));
     } catch (e) {
-      window.dispatchEvent(new CustomEvent('arrangia:error', { detail: e }));
+      window.dispatchEvent(new CustomEvent('vitrine:error', { detail: e }));
     }
   });
 }

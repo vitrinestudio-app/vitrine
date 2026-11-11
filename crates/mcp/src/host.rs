@@ -1,6 +1,6 @@
 //! The GUI-hosted MCP endpoint (feature `http`, ADR 0015).
 //!
-//! [`McpHost`] serves [`crate::http::service`] for an [`ArrangiaMcp`] over
+//! [`McpHost`] serves [`crate::http::service`] for an [`VitrineMcp`] over
 //! the GUI's live [`AppState`] (`Host::Gui`) on `127.0.0.1` with hyper, on
 //! its own small tokio runtime (works next to Tauri's runtime and in the
 //! dev bridge, which has none). Every request must pass
@@ -13,7 +13,7 @@
 //!   start), compared in constant time.
 //!
 //! Routes: `/mcp` (MCP Streamable HTTP), `/health` (`{name, version,
-//! pid}`, used by `arrangia mcp` to tell a live GUI from a stale discovery
+//! pid}`, used by `vitrine mcp` to tell a live GUI from a stale discovery
 //! file). The discovery file ([`crate::discovery`]) is written on start
 //! and removed on stop. The host registers itself as the app's
 //! [`McpControl`], so the setting "Allow AI assistants to connect via MCP" switches it
@@ -24,9 +24,6 @@ use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use arrangia_app::commands::AppState;
-use arrangia_app::mcp::{McpControl, now_ms};
-use arrangia_app::{CommandError, error::CmdResult};
 use base64::Engine as _;
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full, combinators::BoxBody};
@@ -37,10 +34,13 @@ use hyper_util::rt::TokioIo;
 use rmcp::transport::StreamableHttpServerConfig;
 use tokio_util::sync::CancellationToken;
 use tower_service::Service as _;
+use vitrine_app::commands::AppState;
+use vitrine_app::mcp::{McpControl, now_ms};
+use vitrine_app::{CommandError, error::CmdResult};
 
 use crate::discovery::{self, Discovery};
 use crate::progress::ProgressRelay;
-use crate::server::{ArrangiaMcp, Host};
+use crate::server::{Host, VitrineMcp};
 
 /// Path of the MCP endpoint.
 pub const MCP_PATH: &str = "/mcp";
@@ -122,7 +122,7 @@ impl McpHost {
             s.enabled = enabled;
         });
         if enabled && let Err(e) = host.start() {
-            eprintln!("arrangia: MCP endpoint not started: {e}");
+            eprintln!("vitrine: MCP endpoint not started: {e}");
         }
         host
     }
@@ -209,12 +209,12 @@ impl McpHost {
         listener.set_nonblocking(true).map_err(|e| e.to_string())?;
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
-            .thread_name("arrangia-mcp")
+            .thread_name("vitrine-mcp")
             .enable_all()
             .build()
             .map_err(|e| format!("cannot start the async runtime: {e}"))?;
         let cancel = CancellationToken::new();
-        let server = ArrangiaMcp::new(self.app.clone(), self.relay.clone(), Host::Gui);
+        let server = VitrineMcp::new(self.app.clone(), self.relay.clone(), Host::Gui);
         let config = StreamableHttpServerConfig::default()
             .with_cancellation_token(cancel.child_token())
             .with_sse_keep_alive(Some(std::time::Duration::from_secs(15)));
@@ -307,7 +307,7 @@ impl McpHost {
             .shutdown_timeout(std::time::Duration::from_millis(500));
         self.app.set_mcp_token(None);
         self.app
-            .update_mcp_status(arrangia_app::mcp::McpStatus::stopped);
+            .update_mcp_status(vitrine_app::mcp::McpStatus::stopped);
     }
 }
 
@@ -377,7 +377,7 @@ impl Gate {
             );
             r.headers_mut().insert(
                 WWW_AUTHENTICATE,
-                hyper::header::HeaderValue::from_static("Bearer realm=\"arrangia\""),
+                hyper::header::HeaderValue::from_static("Bearer realm=\"vitrine\""),
             );
             return Some(r);
         }

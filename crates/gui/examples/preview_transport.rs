@@ -2,16 +2,16 @@
 //! compression levels, for output images of the example project.
 //!
 //! ```sh
-//! cargo run -p arrangia-gui --release --example preview_transport
+//! cargo run -p vitrine-gui --release --example preview_transport
 //! ```
 
 use std::time::Instant;
 
-use arrangia_core::Project;
-use arrangia_core::resolve::{FsAssets, ResolveOptions, resolve};
-use arrangia_gui::preview::straight_rgba;
-use arrangia_gui::testutil::example_fixture;
-use arrangia_render::scene::{Quality, RenderContext, RenderOptions, Scale};
+use vitrine_core::Project;
+use vitrine_core::resolve::{FsAssets, ResolveOptions, resolve};
+use vitrine_gui::preview::straight_rgba;
+use vitrine_gui::testutil::example_fixture;
+use vitrine_render::scene::{Quality, RenderContext, RenderOptions, Scale};
 
 const RUNS: u32 = 5;
 

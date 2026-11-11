@@ -9,15 +9,15 @@
 
 use std::collections::BTreeMap;
 
-use arrangia_core::Project;
-use arrangia_core::model::{
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use vitrine_core::Project;
+use vitrine_core::model::{
     Aspect, ElementId, ElementKindTag, ElementPatch, Fill, Lang, StringKey, Strip, Variant,
     VariantId,
 };
-use arrangia_core::ops::{Op, StripPatch, TargetPatch};
-use arrangia_core::resolve::{lang_chain, lookup_text};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use vitrine_core::ops::{Op, StripPatch, TargetPatch};
+use vitrine_core::resolve::{lang_chain, lookup_text};
 
 use super::AppState;
 use super::edit::{EditResult, Plan, ViewContext, ctx_for, double_option, edit, with_editor};
@@ -84,7 +84,7 @@ pub struct ElementInfo {
     pub text: Option<ElementText>,
 }
 
-fn element_json(e: &arrangia_core::model::Element) -> CmdResult<Value> {
+fn element_json(e: &vitrine_core::model::Element) -> CmdResult<Value> {
     let mut v = serde_json::to_value(e).map_err(|e| CommandError::internal(e.to_string()))?;
     if let Value::Object(m) = &mut v {
         m.remove("children");
@@ -101,12 +101,12 @@ pub fn element_get(app: &AppState, args: ElementGetArgs) -> CmdResult<ElementInf
         with_editor(&session, &project, &ctx, |ed| {
             // Checks that the element exists in the view's strip.
             ed.kind(&args.id)
-                .ok_or_else(|| arrangia_core::edit::EditError::UnknownElement(args.id.clone()))?;
+                .ok_or_else(|| vitrine_core::edit::EditError::UnknownElement(args.id.clone()))?;
             if project
                 .element(&args.id)
                 .is_none_or(|(s, _)| s.id != ed.strip().id)
             {
-                return Err(arrangia_core::edit::EditError::WrongStrip {
+                return Err(vitrine_core::edit::EditError::WrongStrip {
                     element: args.id.clone(),
                     strip: ed.strip().id.to_string(),
                 });
@@ -138,7 +138,7 @@ pub fn element_get(app: &AppState, args: ElementGetArgs) -> CmdResult<ElementInf
         _ => effective,
     };
     let text = match &effective.kind {
-        arrangia_core::model::ElementKind::Text(t) => {
+        vitrine_core::model::ElementKind::Text(t) => {
             let key = t.text.as_str();
             let value = project.string(&lang, key).map(str::to_owned);
             let (fallback, fallback_lang) = if value.is_none() {
@@ -242,7 +242,7 @@ pub struct PatchUpdate {
     #[serde(default, deserialize_with = "double_option")]
     pub variant: Option<Option<String>>,
     #[serde(default)]
-    pub scope: Option<arrangia_core::edit::EditScope>,
+    pub scope: Option<vitrine_core::edit::EditScope>,
 }
 
 fn string_ops(project: &Project, edits: &[StringEdit]) -> CmdResult<Vec<Op>> {
@@ -637,7 +637,7 @@ pub struct StripVariantArgs {
 /// `content_scale` replaced when given) and making `targets` show it.
 fn variant_add_ops(
     project: &Project,
-    strip: &arrangia_core::model::StripId,
+    strip: &vitrine_core::model::StripId,
     id: &str,
     content_scale: Option<f64>,
     from: Option<&str>,

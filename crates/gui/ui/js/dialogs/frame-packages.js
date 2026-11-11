@@ -46,7 +46,7 @@ export async function openFramePackages({ path } = {}) {
     }
   }
 
-  // A DMG with a licence agreement (SLA): Arrangia never accepts it for the
+  // A DMG with a licence agreement (SLA): Vitrine Studio never accepts it for the
   // user. Explain how to mount it in Finder and offer the folder picker.
   function showLicenseGuidance(details) {
     planEl.replaceChildren(

@@ -31,10 +31,10 @@ pub mod palette;
 mod screen;
 pub mod shapes;
 
-use arrangia_core::geometry::{Rect, Vec2};
-use arrangia_core::model::{FitMode, FrameStyle, Orientation};
-use arrangia_core::resolve::{DeviceColor, ResolvedDevice};
 use tiny_skia::{FillRule, Paint, Path, Pixmap, PixmapMut, Stroke, Transform};
+use vitrine_core::geometry::{Rect, Vec2};
+use vitrine_core::model::{FitMode, FrameStyle, Orientation};
+use vitrine_core::resolve::{DeviceColor, ResolvedDevice};
 
 use layout::{Kind, Layout};
 use palette::Palette;
@@ -139,12 +139,12 @@ pub fn catalog_device(
     style: FrameStyle,
     color: Option<&str>,
 ) -> Option<ResolvedDevice> {
-    let catalog = arrangia_core::catalog::catalog();
+    let catalog = vitrine_core::catalog::catalog();
     let device = catalog.device(model)?.clone();
     let name = color.or(device.default_color.as_deref());
     let (color, palette) = match name {
         Some(c) if c.starts_with('#') => (
-            arrangia_core::model::Rgba::parse(c).map_or(DeviceColor::None, DeviceColor::Custom),
+            vitrine_core::model::Rgba::parse(c).map_or(DeviceColor::None, DeviceColor::Custom),
             None,
         ),
         Some(c) => (

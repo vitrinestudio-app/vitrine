@@ -1,7 +1,7 @@
-//! `arrangia mcp`: the stdio entry point MCP clients start themselves
+//! `vitrine mcp`: the stdio entry point MCP clients start themselves
 //! (ADR 0014, ADR 0015).
 //!
-//! 1. A running Arrangia GUI ([`discover_gui`]: discovery file in the app
+//! 1. A running Vitrine Studio GUI ([`discover_gui`]: discovery file in the app
 //!    data folder, health check) → forward stdio to its in-app endpoint
 //!    ([`crate::proxy`], feature `proxy`), so the assistant edits the session the
 //!    user sees.
@@ -17,27 +17,27 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use arrangia_app::commands::AppState;
-use arrangia_app::dialogs::NoDialogs;
-use arrangia_app::settings::{AppPaths, SettingsStore};
 use rmcp::ServiceExt;
+use vitrine_app::commands::AppState;
+use vitrine_app::dialogs::NoDialogs;
+use vitrine_app::settings::{AppPaths, SettingsStore};
 
 use crate::discovery::{self, Discovery};
 use crate::progress::ProgressRelay;
-use crate::server::{ArrangiaMcp, Host};
+use crate::server::{Host, VitrineMcp};
 
-/// Overrides the GUI binary that `arrangia mcp` starts (tests, dev).
-pub const GUI_ENV: &str = "ARRANGIA_GUI";
-/// How long `arrangia mcp` waits for a GUI it started.
+/// Overrides the GUI binary that `vitrine mcp` starts (tests, dev).
+pub const GUI_ENV: &str = "VITRINE_GUI";
+/// How long `vitrine mcp` waits for a GUI it started.
 pub const GUI_START_TIMEOUT: Duration = Duration::from_secs(20);
 
-/// Options of `arrangia mcp`.
+/// Options of `vitrine mcp`.
 #[derive(Debug, Clone, Default)]
 pub struct StdioOptions {
     /// Project to open at start (headless; passed to a GUI it starts).
     pub project: Option<PathBuf>,
     /// App data folder (settings, recent projects, installed frames,
-    /// discovery file); default `$ARRANGIA_APP_DIR` or the platform folder.
+    /// discovery file); default `$VITRINE_APP_DIR` or the platform folder.
     pub app_dir: Option<PathBuf>,
     /// Never connect to (or start) a GUI.
     pub headless: bool,
@@ -52,29 +52,29 @@ pub fn discover_gui(paths: &AppPaths) -> Option<GuiEndpoint> {
     discovery::find(paths)
 }
 
-/// App folders for `app_dir` (default: `$ARRANGIA_APP_DIR` or the
+/// App folders for `app_dir` (default: `$VITRINE_APP_DIR` or the
 /// platform folders).
 pub fn app_paths(app_dir: Option<&Path>) -> AppPaths {
     match app_dir {
         Some(dir) => AppPaths::in_dir(dir),
         None => AppPaths::platform()
-            .unwrap_or_else(|| AppPaths::in_dir(&std::env::temp_dir().join("arrangia"))),
+            .unwrap_or_else(|| AppPaths::in_dir(&std::env::temp_dir().join("vitrine"))),
     }
 }
 
 /// A headless server: own app state (file watcher on), `project` opened.
-pub fn headless_server(paths: AppPaths, project: Option<&Path>) -> Result<ArrangiaMcp, String> {
+pub fn headless_server(paths: AppPaths, project: Option<&Path>) -> Result<VitrineMcp, String> {
     let relay = Arc::new(ProgressRelay::default());
     let app = Arc::new(AppState::new(paths, relay.clone(), Arc::new(NoDialogs)));
     if let Some(dir) = project {
         app.open_project(dir)
             .map_err(|e| format!("cannot open `{}`: {}", dir.display(), e.message))?;
     }
-    Ok(ArrangiaMcp::new(app, Some(relay), Host::Headless))
+    Ok(VitrineMcp::new(app, Some(relay), Host::Headless))
 }
 
 /// The command that starts the GUI: [`GUI_ENV`]; a macOS app bundle
-/// around the running CLI (`open -a <bundle>`); else `arrangia-gui` next
+/// around the running CLI (`open -a <bundle>`); else `vitrine-gui` next
 /// to the CLI binary (dev builds, Windows/Linux installs).
 pub fn gui_command(project: Option<&Path>) -> Option<std::process::Command> {
     let with_project = |mut c: std::process::Command| {
@@ -89,7 +89,7 @@ pub fn gui_command(project: Option<&Path>) -> Option<std::process::Command> {
     let exe = std::env::current_exe().ok()?;
     #[cfg(target_os = "macos")]
     {
-        // …/Arrangia.app/Contents/MacOS/arrangia
+        // …/Vitrine Studio.app/Contents/MacOS/vitrine
         let bundle = exe.ancestors().nth(3).filter(|b| {
             b.extension().is_some_and(|e| e == "app")
                 && exe.parent().is_some_and(|d| d.ends_with("Contents/MacOS"))
@@ -105,7 +105,7 @@ pub fn gui_command(project: Option<&Path>) -> Option<std::process::Command> {
     }
     let gui = exe
         .parent()?
-        .join(format!("arrangia-gui{}", std::env::consts::EXE_SUFFIX));
+        .join(format!("vitrine-gui{}", std::env::consts::EXE_SUFFIX));
     gui.is_file()
         .then(|| with_project(std::process::Command::new(gui)))
 }
@@ -118,12 +118,13 @@ pub fn launch_gui(
     project: Option<&Path>,
     timeout: Duration,
 ) -> Result<GuiEndpoint, String> {
-    let mut cmd = gui_command(project).ok_or("no Arrangia GUI binary found next to the CLI")?;
+    let mut cmd =
+        gui_command(project).ok_or("no Vitrine Studio GUI binary found next to the CLI")?;
     cmd.stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
     if let Some(dir) = app_dir {
-        cmd.env(arrangia_core::frame_import::APP_DIR_ENV, dir);
+        cmd.env(vitrine_core::frame_import::APP_DIR_ENV, dir);
     }
     // Its own process group: the GUI outlives this proxy.
     #[cfg(unix)]
@@ -149,7 +150,7 @@ pub fn launch_gui(
     ))
 }
 
-/// Runs `arrangia mcp` until the client closes stdin.
+/// Runs `vitrine mcp` until the client closes stdin.
 pub fn run(opts: &StdioOptions) -> Result<(), String> {
     let paths = app_paths(opts.app_dir.as_deref());
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -182,7 +183,7 @@ fn find_or_start_gui(paths: &AppPaths, opts: &StdioOptions) -> Option<GuiEndpoin
     }
     if let Some(gui) = discover_gui(paths) {
         eprintln!(
-            "arrangia mcp: connected to the running Arrangia app ({})",
+            "vitrine mcp: connected to the running Vitrine Studio app ({})",
             gui.url
         );
         return Some(gui);
@@ -191,7 +192,7 @@ fn find_or_start_gui(paths: &AppPaths, opts: &StdioOptions) -> Option<GuiEndpoin
         .load()
         .map_or(true, |s| s.mcp_autostart_gui);
     if !autostart {
-        eprintln!("arrangia mcp: no running Arrangia app; working headless");
+        eprintln!("vitrine mcp: no running Vitrine Studio app; working headless");
         return None;
     }
     match launch_gui(
@@ -201,11 +202,11 @@ fn find_or_start_gui(paths: &AppPaths, opts: &StdioOptions) -> Option<GuiEndpoin
         GUI_START_TIMEOUT,
     ) {
         Ok(gui) => {
-            eprintln!("arrangia mcp: started the Arrangia app ({})", gui.url);
+            eprintln!("vitrine mcp: started the Vitrine Studio app ({})", gui.url);
             Some(gui)
         }
         Err(e) => {
-            eprintln!("arrangia mcp: {e}; working headless");
+            eprintln!("vitrine mcp: {e}; working headless");
             None
         }
     }

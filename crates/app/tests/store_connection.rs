@@ -3,17 +3,17 @@
 
 use std::sync::Arc;
 
-use arrangia_app::dialogs::NoDialogs;
-use arrangia_app::events::RecordingSink;
-use arrangia_app::settings::AppPaths;
-use arrangia_app::store_test::StoreClientTester;
-use arrangia_app::{AppState, CommandError, ErrorCode, Reply, dispatch};
-use arrangia_publish::credentials::SecretStore;
-use arrangia_publish::{ClientOptions, RetryPolicy};
 use aws_lc_rs::encoding::{AsDer, Pkcs8V1Der};
 use aws_lc_rs::signature::{ECDSA_P256_SHA256_FIXED_SIGNING, EcdsaKeyPair};
 use base64::Engine as _;
 use serde_json::{Value, json};
+use vitrine_app::dialogs::NoDialogs;
+use vitrine_app::events::RecordingSink;
+use vitrine_app::settings::AppPaths;
+use vitrine_app::store_test::StoreClientTester;
+use vitrine_app::{AppState, CommandError, ErrorCode, Reply, dispatch};
+use vitrine_publish::credentials::SecretStore;
+use vitrine_publish::{ClientOptions, RetryPolicy};
 use wiremock::matchers::{header_exists, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 

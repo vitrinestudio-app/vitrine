@@ -1,6 +1,6 @@
 [package]
-name = "arrangia-render"
-description = "Arrangia renderer: rasterization, device frames, text rendering, export encoding"
+name = "vitrine-render"
+description = "Vitrine Studio renderer: rasterization, device frames, text rendering, export encoding"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ publish = false
 workspace = true
 
 [dependencies]
-arrangia-core.workspace = true
+vitrine-core.workspace = true
 tiny-skia.workspace = true
 image.workspace = true
 fast_image_resize.workspace = true

@@ -14,7 +14,7 @@ use crate::mcp::McpStatus;
 /// Ways to connect Claude Code.
 #[derive(Debug, Clone, Serialize)]
 pub struct ClaudeCodeCommands {
-    /// `claude mcp add arrangia -- <cli> mcp` (stdio proxy; always works,
+    /// `claude mcp add vitrine-studio -- <cli> mcp` (stdio proxy; always works,
     /// recommended).
     pub stdio: String,
     /// `claude mcp add --transport http …` with this run's port and token
@@ -46,7 +46,7 @@ pub struct McpStatusReply {
     /// Bearer token of the running endpoint.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
-    /// The `arrangia` CLI that stdio clients (Claude Desktop, Claude Code,
+    /// The `vitrine` CLI that stdio clients (Claude Desktop, Claude Code,
     /// others) start.
     pub cli_path: PathBuf,
     pub cli_exists: bool,
@@ -78,10 +78,10 @@ pub fn mcp_status(app: &AppState, _: NoArgs) -> CmdResult<McpStatusReply> {
             .filter(|_| status.url.is_some())
             .map(|t| format!("Authorization: Bearer {t}")),
     };
-    let stdio = format!("claude mcp add arrangia -- {}", generic.stdio);
+    let stdio = format!("claude mcp add vitrine-studio -- {}", generic.stdio);
     let http = match (&status.url, &token) {
         (Some(url), Some(token)) => Some(format!(
-            "claude mcp add --transport http arrangia {url} --header \"Authorization: Bearer {token}\""
+            "claude mcp add --transport http vitrine-studio {url} --header \"Authorization: Bearer {token}\""
         )),
         _ => None,
     };
@@ -131,7 +131,7 @@ pub struct ClaudeDesktopInstallArgs {
     pub confirm: bool,
 }
 
-/// Writes the `mcpServers.arrangia` entry (backup first; needs `confirm`).
+/// Writes the `mcpServers.vitrine-studio` entry (backup first; needs `confirm`).
 pub fn claude_desktop_install(
     app: &AppState,
     args: ClaudeDesktopInstallArgs,
@@ -170,7 +170,7 @@ mod tests {
         assert!(
             s.claude_code
                 .stdio
-                .starts_with("claude mcp add arrangia -- ")
+                .starts_with("claude mcp add vitrine-studio -- ")
         );
         assert!(s.claude_code.stdio.ends_with(" mcp"));
 
@@ -193,7 +193,7 @@ mod tests {
         assert_eq!(
             s.claude_code.http.as_deref(),
             Some(
-                "claude mcp add --transport http arrangia http://127.0.0.1:4100/mcp --header \"Authorization: Bearer tok\""
+                "claude mcp add --transport http vitrine-studio http://127.0.0.1:4100/mcp --header \"Authorization: Bearer tok\""
             )
         );
 
@@ -213,10 +213,10 @@ mod tests {
 
     #[test]
     fn shell_quoting() {
-        assert_eq!(shell_quote("/usr/bin/arrangia"), "/usr/bin/arrangia");
+        assert_eq!(shell_quote("/usr/bin/vitrine"), "/usr/bin/vitrine");
         assert_eq!(
-            shell_quote("/Users/me/My Apps/arrangia"),
-            "'/Users/me/My Apps/arrangia'"
+            shell_quote("/Users/me/My Apps/vitrine"),
+            "'/Users/me/My Apps/vitrine'"
         );
         assert_eq!(shell_quote("it's"), r"'it'\''s'");
     }

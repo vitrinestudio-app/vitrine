@@ -5,13 +5,13 @@ mod common;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use arrangia_publish::apple::{AppRef, Client, Config, Platform, md5_hex};
-use arrangia_publish::{
-    ClientOptions, Error, ErrorKind, HttpEventKind, UploadStep, ignore_progress,
-};
 use common::{BearerJwt, ProgressLog, ec_key, fast_options, recorder, validation};
 use jsonwebtoken::{Algorithm, DecodingKey};
 use serde_json::{Value, json};
+use vitrine_publish::apple::{AppRef, Client, Config, Platform, md5_hex};
+use vitrine_publish::{
+    ClientOptions, Error, ErrorKind, HttpEventKind, UploadStep, ignore_progress,
+};
 use wiremock::matchers::{
     body_bytes, body_json, body_partial_json, header, method, path, query_param,
 };
@@ -580,7 +580,7 @@ async fn no_editable_version_is_a_conflict() {
     );
     assert!(!err.to_string().contains("READY_FOR_DISTRIBUTION"), "{err}");
     assert_eq!(err.details().len(), 3);
-    let info = arrangia_publish::apple::no_editable_version(&err).unwrap();
+    let info = vitrine_publish::apple::no_editable_version(&err).unwrap();
     assert_eq!(info.platform, "IOS");
     assert_eq!(
         info.latest,
@@ -757,7 +757,7 @@ async fn foreign_pagination_links_are_not_followed() {
 fn options_are_shareable() {
     // Observer closures must be Send + Sync (executor runs on tokio).
     let opts = ClientOptions {
-        observer: Some(Arc::new(|_: &arrangia_publish::HttpEvent| {})),
+        observer: Some(Arc::new(|_: &vitrine_publish::HttpEvent| {})),
         ..ClientOptions::default()
     };
     let _ = format!("{opts:?}");

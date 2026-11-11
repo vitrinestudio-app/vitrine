@@ -1,11 +1,11 @@
-//! `arrangia new`: a project folder (KONZEPT §3.1) from a built-in template.
+//! `vitrine new`: a project folder (KONZEPT §3.1) from a built-in template.
 
 use std::path::PathBuf;
 
 use anyhow::Context;
-use arrangia_core::model::Lang;
-use arrangia_core::templates::{self, create_project, default_name, parse_langs};
 use clap::{Args, ValueEnum};
+use vitrine_core::model::Lang;
+use vitrine_core::templates::{self, create_project, default_name, parse_langs};
 
 use crate::{EXIT_OK, Global};
 
@@ -25,7 +25,7 @@ pub struct NewArgs {
     pub langs: Vec<String>,
 }
 
-/// Command line names of the built-in templates (`arrangia_core::templates`).
+/// Command line names of the built-in templates (`vitrine_core::templates`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Template {
     /// Three phone pages with gradient, headlines and devices; targets
@@ -80,9 +80,9 @@ pub fn run(args: &NewArgs, global: &Global) -> anyhow::Result<u8> {
             langs[0],
         );
         let p = dir.display();
-        println!("  arrangia validate --project {p}");
-        println!("  arrangia render --project {p} --canvas");
-        println!("  arrangia export --project {p}");
+        println!("  vitrine validate --project {p}");
+        println!("  vitrine render --project {p} --canvas");
+        println!("  vitrine export --project {p}");
     }
     Ok(EXIT_OK)
 }

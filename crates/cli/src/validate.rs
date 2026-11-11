@@ -1,12 +1,12 @@
-//! `arrangia validate`: the `core::validate` report, grouped by target and
+//! `vitrine validate`: the `core::validate` report, grouped by target and
 //! language (text) or as JSON.
 
-use arrangia_core::resolve::FsAssets;
-use arrangia_core::validate::{
-    Finding, Severity, ValidateMode, ValidateOptions, ValidationReport, validate,
-};
 use clap::Args;
 use serde::Serialize;
+use vitrine_core::resolve::FsAssets;
+use vitrine_core::validate::{
+    Finding, Severity, ValidateMode, ValidateOptions, ValidationReport, validate,
+};
 
 use crate::term::{Style, plural};
 use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global, project};

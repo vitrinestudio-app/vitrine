@@ -3,10 +3,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arrangia_core::Project;
-use arrangia_core::model::ElementKind;
-use arrangia_core::resolve::{lang_chain, lookup_text};
 use serde::{Deserialize, Serialize};
+use vitrine_core::Project;
+use vitrine_core::model::ElementKind;
+use vitrine_core::resolve::{lang_chain, lookup_text};
 
 use super::{AppState, NoArgs};
 use crate::error::{CmdResult, CommandError};

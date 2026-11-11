@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use arrangia_core::Project;
-use arrangia_core::io::disk_revision;
-use arrangia_core::ops::Op;
 use serde_json::Value;
+use vitrine_core::Project;
+use vitrine_core::io::disk_revision;
+use vitrine_core::ops::Op;
 
 use super::*;
 use crate::events::RecordingSink;

@@ -1,5 +1,5 @@
-# Arrangia target presets (KONZEPT §6.4): store screenshot sizes, store slots
-# and store rules. Loaded by `arrangia_core::catalog` (embedded at build time).
+# Vitrine Studio target presets (KONZEPT §6.4): store screenshot sizes, store slots
+# and store rules. Loaded by `vitrine_core::catalog` (embedded at build time).
 #
 # All values checked on 2026-11-09 against the sources below. Map store
 # screenshot sets by PIXEL SIZE, not by the API enum name: Apple kept the old

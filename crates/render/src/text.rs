@@ -1,17 +1,17 @@
 //! Text rasterisation: the glyph runs of a [`TextLayout`] computed by
-//! `arrangia_core::layout` are turned into vector paths from their font
+//! `vitrine_core::layout` are turned into vector paths from their font
 //! outlines (via `skrifa`) and filled like any other shape.
 //!
 //! Layout is in **lu** and unhinted, so rotation and scaling (lu → px) are
 //! just the transform passed to [`draw_text`]; no glyph cache is needed.
 
-use arrangia_core::layout::{FontLibrary, GlyphRun, ResolvedGlow, TextEffects, TextLayout};
-use arrangia_core::model::{StrokeJoin, StrokePosition};
 use skrifa::instance::{LocationRef, Size};
 use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::raw::types::F2Dot14;
 use skrifa::{FontRef, GlyphId, MetadataProvider};
 use tiny_skia::{FillRule, LineJoin, Mask, Path, PathBuilder, Pixmap, Stroke, Transform};
+use vitrine_core::layout::{FontLibrary, GlyphRun, ResolvedGlow, TextEffects, TextLayout};
+use vitrine_core::model::{StrokeJoin, StrokePosition};
 
 use crate::blur::{ShadowPx, draw_blurred};
 use crate::paint::{Rgba, solid};
@@ -124,7 +124,7 @@ impl TextPaths {
     }
 }
 
-fn rgba(c: arrangia_core::model::Rgba) -> Rgba {
+fn rgba(c: vitrine_core::model::Rgba) -> Rgba {
     [c.r, c.g, c.b, c.a]
 }
 
@@ -407,7 +407,7 @@ pub fn draw_layout(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arrangia_core::layout::{ResolvedTextStyle, TextInput, TextLayouter};
+    use vitrine_core::layout::{ResolvedTextStyle, TextInput, TextLayouter};
 
     fn ink(pm: &Pixmap) -> usize {
         pm.data()
@@ -455,8 +455,8 @@ mod tests {
         let mut spans = std::collections::BTreeMap::new();
         spans.insert(
             "hl".to_owned(),
-            arrangia_core::layout::ResolvedSpanStyle {
-                background: Some(arrangia_core::model::Rgba::rgb(255, 0, 0)),
+            vitrine_core::layout::ResolvedSpanStyle {
+                background: Some(vitrine_core::model::Rgba::rgb(255, 0, 0)),
                 ..Default::default()
             },
         );

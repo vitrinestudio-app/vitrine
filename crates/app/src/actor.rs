@@ -131,7 +131,7 @@ mod tests {
             client_display_name("cursor-vscode", Some("Cursor")),
             "Cursor"
         );
-        assert_eq!(client_display_name("arrangia-test", None), "Arrangia Test");
+        assert_eq!(client_display_name("vitrine-test", None), "Vitrine Test");
         assert_eq!(
             client_display_name("my_client app", Some(" ")),
             "My Client App"

@@ -17,19 +17,19 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use arrangia_app::dialogs::NoDialogs;
-use arrangia_app::events::RecordingSink;
-use arrangia_app::settings::AppPaths;
-use arrangia_app::upload::policy::{self, McpHost};
-use arrangia_app::upload::{UploadConfig, UploadPlan};
-use arrangia_app::{Actor, AppState, CommandError, ErrorCode, Reply, dispatch, dispatch_as};
-use arrangia_publish::credentials::SecretStore;
-use arrangia_publish::{ClientOptions, PollPolicy, RetryPolicy};
 use aws_lc_rs::encoding::{AsDer, Pkcs8V1Der};
 use aws_lc_rs::signature::{ECDSA_P256_SHA256_FIXED_SIGNING, EcdsaKeyPair};
 use base64::Engine as _;
 use serde_json::{Value, json};
 use sha2::Digest as _;
+use vitrine_app::dialogs::NoDialogs;
+use vitrine_app::events::RecordingSink;
+use vitrine_app::settings::AppPaths;
+use vitrine_app::upload::policy::{self, McpHost};
+use vitrine_app::upload::{UploadConfig, UploadPlan};
+use vitrine_app::{Actor, AppState, CommandError, ErrorCode, Reply, dispatch, dispatch_as};
+use vitrine_publish::credentials::SecretStore;
+use vitrine_publish::{ClientOptions, PollPolicy, RetryPolicy};
 use wiremock::matchers::any;
 use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
 
@@ -859,7 +859,7 @@ impl Respond for FakePlay {
 
 // ----- setup --------------------------------------------------------------------------
 
-const PROJECT: &str = r##"format: arrangia/1
+const PROJECT: &str = r##"format: vitrine/1
 revision: 0
 name: "Upload test"
 languages:
@@ -1289,7 +1289,7 @@ async fn cancel_stops_the_run() {
         "running"
     );
     assert_eq!(call(&e.app, "upload_cancel", json!({}))["cancelled"], true);
-    let run = arrangia_app::commands::upload_wait(&e.app, Some(Duration::from_secs(10))).unwrap();
+    let run = vitrine_app::commands::upload_wait(&e.app, Some(Duration::from_secs(10))).unwrap();
     let run = serde_json::to_value(run).unwrap();
     assert_eq!(run["status"], "cancelled", "{run:#}");
     assert!(
@@ -1424,7 +1424,7 @@ fn bot() -> Actor {
 }
 
 fn verified(app: &AppState, token: &Value) -> UploadPlan {
-    arrangia_app::commands::upload_verify(app, token.as_str().unwrap()).unwrap()
+    vitrine_app::commands::upload_verify(app, token.as_str().unwrap()).unwrap()
 }
 
 /// Answers the next confirmation request like the GUI dialog would.
@@ -1770,7 +1770,7 @@ async fn cancel_works_while_apple_is_processing() {
     }
     let t0 = std::time::Instant::now();
     assert_eq!(call(&e.app, "upload_cancel", json!({}))["cancelled"], true);
-    let run = arrangia_app::commands::upload_wait(&e.app, Some(Duration::from_secs(10))).unwrap();
+    let run = vitrine_app::commands::upload_wait(&e.app, Some(Duration::from_secs(10))).unwrap();
     // Well below the 60 s budget (slow CI runners need the headroom).
     assert!(
         t0.elapsed() < Duration::from_secs(20),
@@ -1835,7 +1835,7 @@ async fn replan_keeps_images_already_in_the_store() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn stale_running_run_is_interrupted() {
     let e = env().await;
-    let log = arrangia_app::upload::log::UploadLog::open(&e.dir).unwrap();
+    let log = vitrine_app::upload::log::UploadLog::open(&e.dir).unwrap();
     let old = log.start_run("upl_x", 1_000).unwrap();
     log.start_set(old, "apple", "1", "de-DE", "S", "iphone", "de", &[], 1_000)
         .unwrap();
@@ -1936,7 +1936,7 @@ async fn no_editable_version_is_reported_once() {
 // ----- App Asset Library (ADR 0019) ---------------------------------------------------
 
 /// iPhone 6.9", iPhone Duo (outer display) and a product page header; Apple only.
-const LIB_PROJECT: &str = r##"format: arrangia/1
+const LIB_PROJECT: &str = r##"format: vitrine/1
 revision: 0
 name: "Library test"
 languages:
@@ -2127,7 +2127,7 @@ async fn asset_library_reuses_assets_and_deletes_old_ones() {
     assert_eq!(asc.placed("en-US", group), refs);
     assert_eq!(library_uploads(&asc), 1, "image 1 came from the library");
     assert!(asc.images.contains_key(&reused));
-    // Old placements are gone; the old Arrangia asset is deleted after its
+    // Old placements are gone; the old Vitrine Studio asset is deleted after its
     // placement, the hand-made one stays in the library.
     assert!(!asc.images.contains_key(&old));
     assert!(asc.images.contains_key(&manual));

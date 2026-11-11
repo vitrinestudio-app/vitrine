@@ -5,11 +5,11 @@
 use std::io::Write;
 use std::path::Path as FsPath;
 
-use arrangia_core::colorspace::{ToSrgb, sniff_bytes};
 use fast_image_resize::images::Image;
 use fast_image_resize::{FilterType, PixelType, ResizeAlg, ResizeOptions, Resizer};
 use image::DynamicImage;
 use tiny_skia::{IntSize, Pixmap};
+use vitrine_core::colorspace::{ToSrgb, sniff_bytes};
 
 /// A decoded raster image: straight RGBA8 in sRGB.
 #[derive(Debug, Clone)]
@@ -27,7 +27,7 @@ impl SourceImage {
 
     /// Decodes PNG/JPEG bytes to straight RGBA8 and converts embedded
     /// colour profiles (Display P3 …) to sRGB once
-    /// (`arrangia_core::colorspace`). Untagged and sRGB images are not
+    /// (`vitrine_core::colorspace`). Untagged and sRGB images are not
     /// touched; unusable profiles are ignored (validation reports them).
     pub fn decode(bytes: &[u8]) -> anyhow::Result<Self> {
         let img = image::ImageReader::new(std::io::Cursor::new(bytes))

@@ -3,15 +3,15 @@
 //! the pivot); opacity and clipping go through an offscreen layer covering
 //! only the element's pixel bounds.
 
-use arrangia_core::geometry::{Rect, Vec2, Viewport};
-use arrangia_core::model::{FitMode, ImageFillMode, Rgba, ShapeKind, StrokeJoin};
-use arrangia_core::resolve::{
-    ImportedFrame, ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedKind,
-    ResolvedShadowLayer, ResolvedShape, ResolvedStop, TextEffects,
-};
 use tiny_skia::{
     FillRule, FilterQuality, Mask, Path, PathBuilder, Pattern, Pixmap, PixmapPaint, Shader,
     SpreadMode, Stroke, Transform,
+};
+use vitrine_core::geometry::{Rect, Vec2, Viewport};
+use vitrine_core::model::{FitMode, ImageFillMode, Rgba, ShapeKind, StrokeJoin};
+use vitrine_core::resolve::{
+    ImportedFrame, ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedKind,
+    ResolvedShadowLayer, ResolvedShape, ResolvedStop, TextEffects,
 };
 
 use super::assets::Resample;

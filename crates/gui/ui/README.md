@@ -1,8 +1,8 @@
-# Arrangia UI (web view)
+# Vitrine Studio UI (web view)
 
 Vanilla ES modules, no framework, no npm, no build step. The same files
 run in the Tauri window and, via the dev bridge, in a normal browser
-(`cargo run -p arrangia-gui --features devbridge --bin arrangia-devbridge --
+(`cargo run -p vitrine-gui --features devbridge --bin vitrine-devbridge --
 --project tests/fixtures/example --copy`). Debug query parameters:
 `?theme=dark|light` (force a theme), `?lang=en|de` (UI language).
 Right-click shows no web-view menu except in text fields and on selected

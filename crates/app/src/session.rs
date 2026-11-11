@@ -24,14 +24,14 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock, Weak};
 
-use arrangia_core::Project;
-use arrangia_core::io::PROJECT_FILE;
-use arrangia_core::layout::FontLibrary;
-use arrangia_core::model::Element;
-use arrangia_core::ops::{History, Op};
-use arrangia_render::scene::RenderContext;
 use serde::Serialize;
 use serde_json::json;
+use vitrine_core::Project;
+use vitrine_core::io::PROJECT_FILE;
+use vitrine_core::layout::FontLibrary;
+use vitrine_core::model::Element;
+use vitrine_core::ops::{History, Op};
+use vitrine_render::scene::RenderContext;
 
 pub use crate::actor::Actor;
 use crate::error::{CmdResult, CommandError, ErrorCode};
@@ -39,7 +39,7 @@ use crate::events::{EventSink, PROJECT_CHANGED, PROJECT_EDITED, PROJECT_ERROR};
 use crate::preview::PreviewCache;
 use crate::view::ViewState;
 use crate::watch::{self, FsChange, Watcher};
-use arrangia_core::frame_import::FrameIndex;
+use vitrine_core::frame_import::FrameIndex;
 
 /// A translation that changed.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]

@@ -15,15 +15,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use arrangia_core::Project;
-use arrangia_core::edit::{
+use serde::{Deserialize, Deserializer, Serialize};
+use vitrine_core::Project;
+use vitrine_core::edit::{
     EditContext, EditError, EditScope, Editor, Handle, MoveOptions, Overlay, ResizeSpec, ZOrder,
 };
-use arrangia_core::geometry::Vec2;
-use arrangia_core::model::{ElementId, VariantId};
-use arrangia_core::ops::Op;
-use arrangia_core::resolve::FsAssets;
-use serde::{Deserialize, Deserializer, Serialize};
+use vitrine_core::geometry::Vec2;
+use vitrine_core::model::{ElementId, VariantId};
+use vitrine_core::ops::Op;
+use vitrine_core::resolve::FsAssets;
 
 use super::project::check_target;
 use super::{AppState, NoArgs, lang_or_default};
@@ -110,7 +110,7 @@ macro_rules! view_args {
             #[serde(default, deserialize_with = "double_option")]
             pub variant: Option<Option<String>>,
             #[serde(default)]
-            pub scope: Option<arrangia_core::edit::EditScope>,
+            pub scope: Option<vitrine_core::edit::EditScope>,
             $($body)*
         }
 
@@ -276,7 +276,7 @@ fn plan_each(
 
 /// Parent of every element of the project (by id).
 fn parents(project: &Project) -> BTreeMap<String, String> {
-    fn walk(list: &[arrangia_core::model::Element], out: &mut BTreeMap<String, String>) {
+    fn walk(list: &[vitrine_core::model::Element], out: &mut BTreeMap<String, String>) {
         for e in list {
             for c in e.children() {
                 out.insert(c.id.to_string(), e.id.to_string());
@@ -811,7 +811,7 @@ pub struct ElementResetOverrideArgs {
 fn default_variant(
     project: &Project,
     target: Option<&str>,
-    strip: &arrangia_core::model::Strip,
+    strip: &vitrine_core::model::Strip,
 ) -> CmdResult<VariantId> {
     let t = target
         .and_then(|t| project.target(t))
@@ -831,7 +831,7 @@ pub fn element_reset_override(
     app: &AppState,
     mut args: ElementResetOverrideArgs,
 ) -> CmdResult<EditResult> {
-    use arrangia_core::model::{ElementPatch, Lang};
+    use vitrine_core::model::{ElementPatch, Lang};
 
     // Duplicates would reset a field twice.
     if let Some(fields) = &mut args.fields {
@@ -900,7 +900,7 @@ pub fn element_reset_override(
 fn reset_lang_ops(
     p: &Project,
     id: &str,
-    lang: &arrangia_core::model::Lang,
+    lang: &vitrine_core::model::Lang,
     fields: Option<&[String]>,
 ) -> CmdResult<Vec<Op>> {
     let (_, e) = p
@@ -959,7 +959,7 @@ fn reset_variant_ops(p: &Project, id: &str, args: &ElementResetOverrideArgs) -> 
     };
     let mut ops = Vec::new();
     for f in fields {
-        ops.extend(arrangia_core::edit::reset_override(
+        ops.extend(vitrine_core::edit::reset_override(
             p, &strip.id, &v, &e.id, f,
         )?);
     }

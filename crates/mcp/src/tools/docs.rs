@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::output::ToolOutput;
-use crate::server::ArrangiaMcp;
+use crate::server::VitrineMcp;
 
 /// A documentation topic.
 #[derive(Debug, Clone, Copy, Deserialize, serde::Serialize, JsonSchema)]
@@ -54,7 +54,7 @@ pub struct DocsGetParams {
 }
 
 #[tool_router(router = docs_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
         description = "Reference documentation as markdown. Topics: overview (concepts, workflow), elements (every element kind with all fields, types, defaults and allowed values, fill shapes incl. image fit/focus), ops (every apply_ops op incl. override ops, examples), project (project.yaml structure), markup (text markup, auto-fit, hyphenation), targets (presets, sizes, gallery gaps, group), scopes (base/variant/language overrides, resetting). Call it before guessing field names. Example: {\"topic\": \"elements\"}.",
         annotations(read_only_hint = true)

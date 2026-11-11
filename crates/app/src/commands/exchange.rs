@@ -4,12 +4,12 @@
 
 use std::path::PathBuf;
 
-use arrangia_core::exchange::{
+use serde::{Deserialize, Serialize};
+use vitrine_core::exchange::{
     self, ExportFile, ExportOptions, Format, ImportInput, ImportOptions, ImportPlan,
 };
-use arrangia_core::resolve::FsAssets;
-use arrangia_core::validate::{ValidateMode, ValidateOptions};
-use serde::{Deserialize, Serialize};
+use vitrine_core::resolve::FsAssets;
+use vitrine_core::validate::{ValidateMode, ValidateOptions};
 
 use super::AppState;
 use crate::dialogs::FileFilter;

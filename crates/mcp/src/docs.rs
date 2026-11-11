@@ -1,8 +1,8 @@
 //! Reference documentation for the model, served by the `docs_get` tool
-//! (and as resources `arrangia://docs/<topic>`).
+//! (and as resources `vitrine://docs/<topic>`).
 //!
 //! Some MCP clients (Claude Desktop) only let the *user* attach resources,
-//! so the assistant cannot read `arrangia://docs/ops` by itself; a tool
+//! so the assistant cannot read `vitrine://docs/ops` by itself; a tool
 //! can always be called. The element field reference is generated from the
 //! model's field lists (`ElementKindTag::fields`, [`COMMON_FIELDS`],
 //! [`LANG_OVERRIDE_FIELDS`]) plus a description table that a test keeps
@@ -10,7 +10,7 @@
 
 use std::fmt::Write as _;
 
-use arrangia_core::model::{COMMON_FIELDS, ElementKindTag, ElementPatch, LANG_OVERRIDE_FIELDS};
+use vitrine_core::model::{COMMON_FIELDS, ElementKindTag, ElementPatch, LANG_OVERRIDE_FIELDS};
 
 /// Topics of `docs_get`, with a one-line summary each.
 pub const TOPICS: [(&str, &str); 7] = [

@@ -215,7 +215,7 @@ impl Http {
     pub fn new(opts: ClientOptions) -> Result<Self> {
         let client = reqwest::Client::builder()
             .timeout(opts.request_timeout)
-            .user_agent(concat!("Arrangia/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("VitrineStudio/", env!("CARGO_PKG_VERSION")))
             .build()
             .map_err(|e| Error::Transport {
                 status: None,

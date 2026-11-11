@@ -20,7 +20,7 @@ export function reloadInLanguage(lang) {
     if (lang) url.searchParams.set('lang', lang);
     else url.searchParams.delete('lang');
   }
-  window.dispatchEvent(new Event('arrangia:before-reload'));
+  window.dispatchEvent(new Event('vitrine:before-reload'));
   location.replace(url.toString());
 }
 
@@ -251,7 +251,7 @@ export async function openClaudeDesktop() {
     !plan.cli_exists ? h('div', { class: 'form-hint warn' }, t('mcp.settings.cli_missing').replace('{path}', plan.cli_path)) : null,
     h('div', { class: 'section-title' }, t(plan.preview ? 'claude.desktop.after' : 'claude.desktop.entry')),
     // The whole file as it will be written (other entries unchanged).
-    h('pre', { class: 'claude-json mono small selectable' }, plan.preview ?? JSON.stringify({ mcpServers: { arrangia: plan.entry } }, null, 2)),
+    h('pre', { class: 'claude-json mono small selectable' }, plan.preview ?? JSON.stringify({ mcpServers: { vitrine: plan.entry } }, null, 2)),
     plan.current && plan.state === 'different' ? h('div', { class: 'form-hint' }, `${t('claude.desktop.current')}: ${JSON.stringify(plan.current)}`) : null,
     plan.config_exists && plan.state !== 'same' ? h('div', { class: 'form-hint' }, t('claude.desktop.backup')) : null,
   );

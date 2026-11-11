@@ -1,14 +1,14 @@
-//! `arrangia upload plan|execute|log` without network: the local plan, the
+//! `vitrine upload plan|execute|log` without network: the local plan, the
 //! token checks and the log. Uploads themselves are tested end to end in
 //! `crates/app/tests/upload.rs` (wiremock); the CLI process cannot see a
-//! key imported elsewhere (`ARRANGIA_KEYRING=mock` is per process).
+//! key imported elsewhere (`VITRINE_KEYRING=mock` is per process).
 
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
 use serde_json::Value;
 
-const PROJECT: &str = r##"format: arrangia/1
+const PROJECT: &str = r##"format: vitrine/1
 revision: 0
 name: "CLI upload"
 languages:
@@ -48,15 +48,15 @@ const SETTINGS: &str = "store_accounts:
 ";
 
 fn run(dir: &Path, app: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_arrangia"))
+    Command::new(env!("CARGO_BIN_EXE_vitrine"))
         .arg("--project")
         .arg(dir)
         .arg("upload")
         .arg("--app-dir")
         .arg(app)
         .args(args)
-        .env("ARRANGIA_KEYRING", "mock")
-        .env_remove("ARRANGIA_APP_DIR")
+        .env("VITRINE_KEYRING", "mock")
+        .env_remove("VITRINE_APP_DIR")
         .stdin(Stdio::null())
         .output()
         .unwrap()
@@ -94,7 +94,7 @@ fn plan_execute_checks_and_log() {
     assert!(stdout.contains("Google Play"), "{stdout}");
     assert!(stdout.contains("de-DE"), "{stdout}");
     assert!(
-        stdout.contains("arrangia upload execute --confirm upl_"),
+        stdout.contains("vitrine upload execute --confirm upl_"),
         "{stdout}"
     );
 
@@ -165,7 +165,7 @@ fn refdata_needs_an_apple_account_and_its_key() {
         "{}",
         text(&out.stderr)
     );
-    let out = Command::new(env!("CARGO_BIN_EXE_arrangia"))
+    let out = Command::new(env!("CARGO_BIN_EXE_vitrine"))
         .args(["upload", "refdata", "--help"])
         .output()
         .unwrap();

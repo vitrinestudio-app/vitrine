@@ -1,4 +1,4 @@
-//! Shared MCP test client: drives `arrangia mcp` over stdio with
+//! Shared MCP test client: drives `vitrine mcp` over stdio with
 //! newline-delimited JSON-RPC, like MCP clients (Claude Code, Claude Desktop, …) do.
 
 #![allow(dead_code, clippy::needless_pass_by_value)]
@@ -26,29 +26,29 @@ pub struct Client {
 
 impl Client {
     pub fn start(args: &[&str], app_dir: &Path, cwd: &Path) -> Client {
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_arrangia"));
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_vitrine"));
         cmd.args(args).current_dir(cwd);
-        Self::spawn(cmd, app_dir, "arrangia-test")
+        Self::spawn(cmd, app_dir, "vitrine-test")
     }
 
-    /// Starts `cmd` (an `arrangia mcp` invocation) and initialises as
-    /// `client_name`. Never starts a real GUI: `ARRANGIA_GUI` points to a
+    /// Starts `cmd` (a `vitrine mcp` invocation) and initialises as
+    /// `client_name`. Never starts a real GUI: `VITRINE_GUI` points to a
     /// missing file unless the caller set it; store secrets use the in-memory
-    /// keychain (`ARRANGIA_KEYRING=mock`).
+    /// keychain (`VITRINE_KEYRING=mock`).
     pub fn spawn(mut cmd: Command, app_dir: &Path, client_name: &str) -> Client {
-        if !cmd.get_envs().any(|(k, _)| k == "ARRANGIA_GUI") {
-            cmd.env("ARRANGIA_GUI", app_dir.join("no-gui-in-tests"));
+        if !cmd.get_envs().any(|(k, _)| k == "VITRINE_GUI") {
+            cmd.env("VITRINE_GUI", app_dir.join("no-gui-in-tests"));
         }
         let mut child = cmd
-            .env("ARRANGIA_APP_DIR", app_dir)
+            .env("VITRINE_APP_DIR", app_dir)
             // Store secrets: in-memory keychain, never the real one.
-            .env("ARRANGIA_KEYRING", "mock")
+            .env("VITRINE_KEYRING", "mock")
             .env("NO_COLOR", "1")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
-            .expect("start arrangia mcp");
+            .expect("start vitrine mcp");
         let stdin = child.stdin.take().expect("stdin");
         let stdout = child.stdout.take().expect("stdout");
         let (tx, rx) = channel();
@@ -80,7 +80,7 @@ impl Client {
                 "clientInfo": {"name": client_name, "version": "1.0"},
             }),
         );
-        assert_eq!(init["serverInfo"]["name"], "arrangia", "{init}");
+        assert_eq!(init["serverInfo"]["name"], "vitrine-studio", "{init}");
         assert!(
             init["instructions"]
                 .as_str()
@@ -96,7 +96,7 @@ impl Client {
     /// Closes stdin (the client goes away) and waits for the exit.
     pub fn close(&mut self) -> std::process::ExitStatus {
         self.stdin = None;
-        self.child.wait().expect("wait for arrangia mcp")
+        self.child.wait().expect("wait for vitrine mcp")
     }
 
     pub fn send(&mut self, msg: &Value) {

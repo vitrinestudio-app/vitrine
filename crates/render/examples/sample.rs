@@ -3,7 +3,7 @@
 //! export, with timings.
 //!
 //! ```sh
-//! cargo run -p arrangia-render --release --example sample -- <out-dir> [--runs N]
+//! cargo run -p vitrine-render --release --example sample -- <out-dir> [--runs N]
 //! ```
 //!
 //! The sample project is copied to `<out-dir>/project` and given
@@ -18,11 +18,11 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use arrangia_core::Project;
-use arrangia_core::resolve::{FsAssets, ResolveOptions, resolve};
-use arrangia_render::export::{ExportOptions, export};
-use arrangia_render::raster::{encode_png_rgb_with, save_png_rgb};
-use arrangia_render::scene::{CanvasOptions, RenderContext, RenderOptions};
+use vitrine_core::Project;
+use vitrine_core::resolve::{FsAssets, ResolveOptions, resolve};
+use vitrine_render::export::{ExportOptions, export};
+use vitrine_render::raster::{encode_png_rgb_with, save_png_rgb};
+use vitrine_render::scene::{CanvasOptions, RenderContext, RenderOptions};
 
 /// Extra strip and targets appended to the copied sample project.
 const DEVICES_STRIP: &str = r##"- id: devices
@@ -312,9 +312,9 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn serde_issue(s: &arrangia_render::export::IssueSource) -> String {
+fn serde_issue(s: &vitrine_render::export::IssueSource) -> String {
     match s {
-        arrangia_render::export::IssueSource::Resolve(d) => format!("[resolve] {}", d.message),
-        arrangia_render::export::IssueSource::Render(r) => format!("[render] {r}"),
+        vitrine_render::export::IssueSource::Resolve(d) => format!("[resolve] {}", d.message),
+        vitrine_render::export::IssueSource::Render(r) => format!("[render] {r}"),
     }
 }

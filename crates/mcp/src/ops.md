@@ -1,10 +1,10 @@
-# Arrangia ops (apply_ops)
+# Vitrine Studio ops (apply_ops)
 
 `apply_ops {ops: [...], label?}` applies all ops atomically as one undo step:
 either every op succeeds or nothing changes. Each op is a JSON object with an
 `"op"` tag. Field values use the YAML names of `project.yaml` (docs_get
 {topic: "project"} and {topic: "elements"}; the resource
-`arrangia://project/project.yaml` has real examples). Prefer the specific
+`vitrine://project/project.yaml` has real examples). Prefer the specific
 tools (element_update, strings_set …); use ops for multi-part changes that
 must be one step. A failing op names its index: `op 2 of the transaction
 failed: …`.

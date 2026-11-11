@@ -1,4 +1,4 @@
-//! End-to-end tests of `arrangia mcp` (Phase 4.4): the binary runs as a
+//! End-to-end tests of `vitrine mcp` (Phase 4.4): the binary runs as a
 //! subprocess and is driven over stdio with newline-delimited JSON-RPC,
 //! like MCP clients (Claude Code, Claude Desktop, …) do.
 
@@ -107,7 +107,7 @@ fn mcp_session_creates_designs_translates_and_exports() {
     );
     assert_eq!(r["created"], json!(["phone-2"]));
     assert!(
-        r["step"].as_str().unwrap().starts_with("Arrangia Test: "),
+        r["step"].as_str().unwrap().starts_with("Vitrine Test: "),
         "{r}"
     );
     let r = c.call(
@@ -133,7 +133,7 @@ fn mcp_session_creates_designs_translates_and_exports() {
         "strings_set",
         json!({"lang": "de", "values": {"promo.title": "Schneller **planen**", "home.title": "Deine App auf einen Blick"}}),
     );
-    assert_eq!(r["step"], "Arrangia Test: Set 2 de strings");
+    assert_eq!(r["step"], "Vitrine Test: Set 2 de strings");
     let missing = c.call("strings_missing", json!({"lang": "de"}));
     assert_eq!(missing["missing"], json!([]));
 
@@ -156,7 +156,7 @@ fn mcp_session_creates_designs_translates_and_exports() {
     assert_eq!(info["width"], w);
     assert_eq!(info["height"], h);
     assert_eq!(info["images"], 1);
-    if let Ok(out) = std::env::var("ARRANGIA_MCP_PREVIEW_OUT") {
+    if let Ok(out) = std::env::var("VITRINE_MCP_PREVIEW_OUT") {
         std::fs::write(out, &png).unwrap();
     }
     let gallery = c.call_raw("render_preview", json!({"view": "canvas"}));
@@ -214,11 +214,11 @@ fn mcp_session_creates_designs_translates_and_exports() {
     assert_ne!(undo.len(), 0);
     assert!(
         undo.iter()
-            .all(|l| l.as_str().unwrap().starts_with("Arrangia Test: ")),
+            .all(|l| l.as_str().unwrap().starts_with("Vitrine Test: ")),
         "{h}"
     );
     let r = c.call("history_undo", json!({}));
-    assert_eq!(r["step"], "Arrangia Test: Set 2 de strings");
+    assert_eq!(r["step"], "Vitrine Test: Set 2 de strings");
     let de = c.call(
         "strings_get",
         json!({"lang": "de", "keys": ["promo.title"]}),
@@ -246,13 +246,10 @@ fn mcp_session_creates_designs_translates_and_exports() {
         .iter()
         .map(|r| r["uri"].as_str().unwrap())
         .collect();
-    assert!(
-        uris.contains(&"arrangia://project/i18n/de.yaml"),
-        "{uris:?}"
-    );
+    assert!(uris.contains(&"vitrine://project/i18n/de.yaml"), "{uris:?}");
     let r = c.request(
         "resources/read",
-        json!({"uri": "arrangia://project/project.yaml"}),
+        json!({"uri": "vitrine://project/project.yaml"}),
     );
     assert!(
         r["contents"][0]["text"]
@@ -410,7 +407,7 @@ fn mcp_overrides_batches_docs_and_asset_mapping() {
         ]}),
     );
     assert_eq!(
-        r["step"], "Arrangia Test: Edit font_size of title-plan",
+        r["step"], "Vitrine Test: Edit font_size of title-plan",
         "{r}"
     );
     let de = c.call("element_get", json!({"id": "title-plan", "lang": "de"}));

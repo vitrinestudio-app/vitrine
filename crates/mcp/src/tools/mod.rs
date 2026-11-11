@@ -1,6 +1,6 @@
 //! Tool routers by area. Each module adds `#[tool]` methods to
-//! [`crate::ArrangiaMcp`] through its own `#[tool_router]` (combined in
-//! `ArrangiaMcp::new`).
+//! [`crate::VitrineMcp`] through its own `#[tool_router]` (combined in
+//! `VitrineMcp::new`).
 
 pub mod assets;
 pub mod catalog;

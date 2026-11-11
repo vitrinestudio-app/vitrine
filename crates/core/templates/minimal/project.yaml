@@ -1,8 +1,8 @@
-# Minimal Arrangia project: one page with a headline and a device for the
+# Minimal Vitrine Studio project: one page with a headline and a device for the
 # iPhone 6.9" App Store set (docs/KONZEPT.md §3). Put the screenshot in
 # screenshots/<lang>/ios-phone/home.png or screenshots/<lang>/home.png;
 # a missing screenshot is drawn as a placeholder.
-format: arrangia/1
+format: vitrine/1
 revision: 0
 name: __NAME__
 languages:

@@ -28,7 +28,7 @@ use crate::error::{CmdResult, CommandError, ErrorCode};
 pub enum McpHost {
     /// The GUI hosts the server: the user confirms in the GUI.
     Gui,
-    /// `arrangia mcp --headless`: nobody can click.
+    /// `vitrine mcp --headless`: nobody can click.
     Headless,
 }
 
@@ -52,9 +52,9 @@ pub fn requirement(actor: &Actor, host: Option<McpHost>, allow_headless: bool) -
         Some(McpHost::Gui) => Requirement::GuiConfirmation,
         Some(McpHost::Headless) if allow_headless => Requirement::Token,
         Some(McpHost::Headless) | None => Requirement::Refused(
-            "uploads by an AI assistant without the Arrangia app are disabled (app setting \
-             `mcp_allow_headless_upload`); open the project in the Arrangia app, or let the \
-             user run `arrangia upload execute`"
+            "uploads by an AI assistant without the Vitrine Studio app are disabled (app setting \
+             `mcp_allow_headless_upload`); open the project in the Vitrine Studio app, or let the \
+             user run `vitrine upload execute`"
                 .into(),
         ),
     }
@@ -230,13 +230,13 @@ pub fn authorize_mcp(
                 }
                 Outcome::Denied => Err(CommandError::new(
                     ErrorCode::NotConfirmed,
-                    "the user declined the upload in the Arrangia app",
+                    "the user declined the upload in the Vitrine Studio app",
                 )
                 .with_details(json!({ "reason": "denied" }))),
                 Outcome::Timeout => Err(CommandError::new(
                     ErrorCode::NotConfirmed,
                     format!(
-                        "the upload was not confirmed in the Arrangia app within {} s",
+                        "the upload was not confirmed in the Vitrine Studio app within {} s",
                         config.confirm_timeout.as_secs()
                     ),
                 )

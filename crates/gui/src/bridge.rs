@@ -1,4 +1,4 @@
-//! Dev HTTP bridge (feature `devbridge`, binary `arrangia-devbridge`): the
+//! Dev HTTP bridge (feature `devbridge`, binary `vitrine-devbridge`): the
 //! unchanged UI in a normal browser, for automated and visual checks
 //! (docs/adr/0008). Never part of the release bundle.
 //!

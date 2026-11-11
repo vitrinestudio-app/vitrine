@@ -1,4 +1,4 @@
-//! `arrangia import screenshots` end to end: a fastlane-style folder made
+//! `vitrine import screenshots` end to end: a fastlane-style folder made
 //! from the example project's screenshots, imported into a copy of the
 //! example project without screenshots.
 
@@ -8,14 +8,14 @@ use std::process::{Command, Output};
 
 use serde_json::Value;
 
-fn arrangia_in(project: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_arrangia"))
+fn vitrine_in(project: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_vitrine"))
         .arg("--project")
         .arg(project)
         .args(args)
         .env("NO_COLOR", "1")
         .output()
-        .expect("run arrangia")
+        .expect("run vitrine")
 }
 
 fn out(o: &Output) -> String {
@@ -94,7 +94,7 @@ fn imports_fastlane_output() {
     let src_s = src.to_str().unwrap();
 
     // Dry run: JSON plan, one unresolved device → exit 1, nothing copied.
-    let o = arrangia_in(
+    let o = vitrine_in(
         &project,
         &[
             "import",
@@ -132,7 +132,7 @@ fn imports_fastlane_output() {
 
     // Text plan with a device map for the unknown device: exit 0, copied,
     // mapping saved.
-    let o = arrangia_in(
+    let o = vitrine_in(
         &project,
         &[
             "import",
@@ -163,16 +163,16 @@ fn imports_fastlane_output() {
     assert!(yaml.contains("de-DE: de"), "{yaml}");
 
     // Again, with the saved mapping: everything unchanged.
-    let o = arrangia_in(&project, &["import", "screenshots", src_s]);
+    let o = vitrine_in(&project, &["import", "screenshots", src_s]);
     assert_eq!(o.status.code(), Some(0), "{}", out(&o));
     assert!(out(&o).contains("8 unchanged"), "{}", out(&o));
     assert!(out(&o).contains("copied 0 files"), "{}", out(&o));
 
     // Missing source folder: exit 2.
-    let o = arrangia_in(&project, &["import", "screenshots", "/nonexistent/shots"]);
+    let o = vitrine_in(&project, &["import", "screenshots", "/nonexistent/shots"]);
     assert_eq!(o.status.code(), Some(2), "{}", out(&o));
     // Bad mapping syntax: exit 2.
-    let o = arrangia_in(
+    let o = vitrine_in(
         &project,
         &["import", "screenshots", src_s, "--device-map", "nope"],
     );

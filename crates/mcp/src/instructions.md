@@ -1,4 +1,4 @@
-Arrangia designs App Store / Play Store screenshots: one layout, rendered for every target (store size) and language.
+Vitrine Studio designs App Store / Play Store screenshots: one layout, rendered for every target (store size) and language.
 
 Concepts
 - Project = folder (project.yaml + i18n/<lang>.yaml + screenshots/ + assets/). Every change is saved at once and is one undo step.
@@ -33,6 +33,6 @@ Workflow
 - Translating: strings_missing {lang} → strings_set {lang, values: {key: text}} (keep the markup) → render_preview with that lang.
 - Mistakes: history_undo (history_state shows the labels; your steps start with your client's name, e.g. "Claude Code:"). The user may edit in the GUI at the same time: re-read project_summary when an id is unknown.
 
-- Store upload (outward-facing): only when the user asks for it. upload_plan (dry run, shows what would change; remote: true reads the store) → show the plan → upload_execute {confirm_token}: the user must confirm in the Arrangia app (headless: disabled unless the user enabled it) → upload_status until it ends. Never retry a declined upload on your own. A set `uploaded_processing` is fine (Apple still processing; upload_plan with remote: true later confirms it and never uploads those images again). "No editable App Store version": the user must create a new version in App Store Connect first.
+- Store upload (outward-facing): only when the user asks for it. upload_plan (dry run, shows what would change; remote: true reads the store) → show the plan → upload_execute {confirm_token}: the user must confirm in the Vitrine Studio app (headless: disabled unless the user enabled it) → upload_status until it ends. Never retry a declined upload on your own. A set `uploaded_processing` is fine (Apple still processing; upload_plan with remote: true later confirms it and never uploads those images again). "No editable App Store version": the user must create a new version in App Store Connect first.
 
 Safety: only upload_plan with remote: true and upload_execute use the network (the stores, with the user's keys from the keychain; you never see key material); other tools only write inside the project folder and to paths you pass explicitly (export folder, strings_export path).

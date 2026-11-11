@@ -10,8 +10,8 @@
 //!
 //! Secrets are stored in the system keychain (macOS Keychain, Windows
 //! Credential Manager, Secret Service on Linux) through `keyring`, service
-//! `app.arrangia` (override: `ARRANGIA_KEYRING_SERVICE`), user
-//! `<account id>/<apple|google>`. `ARRANGIA_KEYRING=mock` switches to an
+//! `app.vitrinestudio` (override: `VITRINE_KEYRING_SERVICE`), user
+//! `<account id>/<apple|google>`. `VITRINE_KEYRING=mock` switches to an
 //! in-memory store shared by the process (tests, dev bridge) so nothing
 //! touches a real keychain.
 //!
@@ -21,17 +21,17 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
-use arrangia_core::model::StoreKind;
 use base64::Engine as _;
 use keyring_core::{CredentialStore, Entry};
+use vitrine_core::model::StoreKind;
 
 /// Default keychain service name.
-pub const DEFAULT_SERVICE: &str = "app.arrangia";
+pub const DEFAULT_SERVICE: &str = "app.vitrinestudio";
 /// Environment variable overriding the keychain service name (tests).
-pub const SERVICE_ENV: &str = "ARRANGIA_KEYRING_SERVICE";
+pub const SERVICE_ENV: &str = "VITRINE_KEYRING_SERVICE";
 /// Environment variable choosing the backend: `mock` = in-memory store of
 /// this process (tests, dev bridge); anything else = the system keychain.
-pub const BACKEND_ENV: &str = "ARRANGIA_KEYRING";
+pub const BACKEND_ENV: &str = "VITRINE_KEYRING";
 /// Largest key file accepted (both formats are a few KB).
 pub const MAX_KEY_FILE: u64 = 64 * 1024;
 
@@ -238,7 +238,7 @@ pub enum Backend {
     Mock,
 }
 
-/// One in-memory store per process for `ARRANGIA_KEYRING=mock`.
+/// One in-memory store per process for `VITRINE_KEYRING=mock`.
 static PROCESS_MOCK: LazyLock<Arc<CredentialStore>> = LazyLock::new(new_mock);
 
 fn new_mock() -> Arc<CredentialStore> {
@@ -275,9 +275,9 @@ fn keychain_error(e: &keyring_core::Error) -> CredentialError {
 }
 
 impl SecretStore {
-    /// The store selected by the environment: `ARRANGIA_KEYRING=mock` →
+    /// The store selected by the environment: `VITRINE_KEYRING=mock` →
     /// the process-wide in-memory store, else the system keychain; service
-    /// from `ARRANGIA_KEYRING_SERVICE` or [`DEFAULT_SERVICE`].
+    /// from `VITRINE_KEYRING_SERVICE` or [`DEFAULT_SERVICE`].
     pub fn from_env() -> Result<Self, CredentialError> {
         let service = std::env::var(SERVICE_ENV)
             .ok()

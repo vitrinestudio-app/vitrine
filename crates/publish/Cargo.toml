@@ -1,6 +1,6 @@
 [package]
-name = "arrangia-publish"
-description = "Arrangia store publishing: App Store Connect, Google Play, keychain access"
+name = "vitrine-publish"
+description = "Vitrine Studio store publishing: App Store Connect, Google Play, keychain access"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ publish = false
 workspace = true
 
 [dependencies]
-arrangia-core.workspace = true
+vitrine-core.workspace = true
 keyring.workspace = true
 keyring-core.workspace = true
 base64.workspace = true

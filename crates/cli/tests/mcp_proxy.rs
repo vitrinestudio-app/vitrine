@@ -1,8 +1,8 @@
-//! `arrangia mcp` as a proxy to the GUI's in-app endpoint (ADR 0015).
+//! `vitrine mcp` as a proxy to the GUI's in-app endpoint (ADR 0015).
 //!
 //! The test process plays the GUI: it hosts the MCP endpoint
-//! (`arrangia_mcp::host::McpHost`) over its own `AppState` with the
-//! discovery file in a temp app folder, then drives `arrangia mcp` (no
+//! (`vitrine_mcp::host::McpHost`) over its own `AppState` with the
+//! discovery file in a temp app folder, then drives `vitrine mcp` (no
 //! `--headless`) over stdio. Edits must land in the hosted session, named
 //! after the stdio client.
 
@@ -15,15 +15,15 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use arrangia_app::commands::AppState;
-use arrangia_app::dialogs::NoDialogs;
-use arrangia_app::events::{PROJECT_EDITED, PROJECT_OPENED, RecordingSink};
-use arrangia_app::settings::AppPaths;
-use arrangia_mcp::ProgressRelay;
-use arrangia_mcp::host::{HostOptions, McpHost};
 use base64::Engine;
 use common::{Client, path_str, png_size};
 use serde_json::json;
+use vitrine_app::commands::AppState;
+use vitrine_app::dialogs::NoDialogs;
+use vitrine_app::events::{PROJECT_EDITED, PROJECT_OPENED, RecordingSink};
+use vitrine_app::settings::AppPaths;
+use vitrine_mcp::ProgressRelay;
+use vitrine_mcp::host::{HostOptions, McpHost};
 
 /// A "GUI": app state with events recorded, endpoint hosted.
 struct Gui {
@@ -61,7 +61,7 @@ fn wait_until(what: &str, mut f: impl FnMut() -> bool) {
 }
 
 fn proxy_client(app_dir: &Path, cwd: &Path, name: &str, envs: &[(&str, &Path)]) -> Client {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_arrangia"));
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_vitrine"));
     cmd.args(["mcp", "--app-dir", path_str(app_dir)])
         .current_dir(cwd);
     for (k, v) in envs {
@@ -74,7 +74,7 @@ fn proxy_client(app_dir: &Path, cwd: &Path, name: &str, envs: &[(&str, &Path)]) 
 fn proxy_forwards_to_the_hosted_session() {
     let tmp = tempfile::tempdir().unwrap();
     let app_dir = tmp.path().join("appdata");
-    let discovery = arrangia_mcp::discovery::path(&AppPaths::in_dir(&app_dir));
+    let discovery = vitrine_mcp::discovery::path(&AppPaths::in_dir(&app_dir));
     let gui = start_gui(&app_dir, Some(discovery.clone()));
     assert!(discovery.is_file());
 
@@ -99,7 +99,7 @@ fn proxy_forwards_to_the_hosted_session() {
 
     // The user looks at German: omitted languages default to it.
     let target = s["targets"][0]["id"].as_str().unwrap().to_owned();
-    session.set_view(arrangia_app::ViewState {
+    session.set_view(vitrine_app::ViewState {
         target: Some(target.clone()),
         lang: Some("de".into()),
         ..Default::default()
@@ -159,14 +159,14 @@ fn proxy_forwards_to_the_hosted_session() {
 }
 
 /// Resources and the docs tool work through the proxy (feedback: the
-/// assistant in Claude Desktop could not read `arrangia://docs/ops`).
+/// assistant in Claude Desktop could not read `vitrine://docs/ops`).
 #[test]
 fn proxy_forwards_resources_and_docs() {
     let tmp = tempfile::tempdir().unwrap();
     let app_dir = tmp.path().join("appdata");
-    let discovery = arrangia_mcp::discovery::path(&AppPaths::in_dir(&app_dir));
+    let discovery = vitrine_mcp::discovery::path(&AppPaths::in_dir(&app_dir));
     let dir = tmp.path().join("p");
-    arrangia_app::testutil::copy_project(&arrangia_app::testutil::example_fixture(), &dir).unwrap();
+    vitrine_app::testutil::copy_project(&vitrine_app::testutil::example_fixture(), &dir).unwrap();
     let gui = start_gui(&app_dir, Some(discovery));
     gui.app.open_project(&dir).unwrap();
     let mut c = proxy_client(&app_dir, tmp.path(), "claude-ai", &[]);
@@ -178,16 +178,16 @@ fn proxy_forwards_resources_and_docs() {
         .filter_map(|r| r["uri"].as_str())
         .collect();
     for uri in [
-        "arrangia://project/project.yaml",
-        "arrangia://project/i18n/de.yaml",
-        "arrangia://docs/ops",
-        "arrangia://docs/elements",
+        "vitrine://project/project.yaml",
+        "vitrine://project/i18n/de.yaml",
+        "vitrine://docs/ops",
+        "vitrine://docs/elements",
     ] {
         assert!(uris.contains(&uri), "{uri} in {uris:?}");
     }
     let templates = c.request("resources/templates/list", json!({}));
     assert_eq!(templates["resourceTemplates"].as_array().unwrap().len(), 1);
-    let ops = c.request("resources/read", json!({"uri": "arrangia://docs/ops"}));
+    let ops = c.request("resources/read", json!({"uri": "vitrine://docs/ops"}));
     assert!(
         ops["contents"][0]["text"]
             .as_str()
@@ -196,13 +196,13 @@ fn proxy_forwards_resources_and_docs() {
     );
     let project = c.request(
         "resources/read",
-        json!({"uri": "arrangia://project/project.yaml"}),
+        json!({"uri": "vitrine://project/project.yaml"}),
     );
     assert!(
         project["contents"][0]["text"]
             .as_str()
             .unwrap()
-            .contains("format: arrangia/1")
+            .contains("format: vitrine/1")
     );
     // The same docs as a tool (clients that do not let the model read
     // resources).
@@ -220,9 +220,9 @@ fn proxy_forwards_resources_and_docs() {
 fn proxy_survives_a_gui_restart() {
     let tmp = tempfile::tempdir().unwrap();
     let app_dir = tmp.path().join("appdata");
-    let discovery = arrangia_mcp::discovery::path(&AppPaths::in_dir(&app_dir));
+    let discovery = vitrine_mcp::discovery::path(&AppPaths::in_dir(&app_dir));
     let dir = tmp.path().join("p");
-    arrangia_app::testutil::copy_project(&arrangia_app::testutil::example_fixture(), &dir).unwrap();
+    vitrine_app::testutil::copy_project(&vitrine_app::testutil::example_fixture(), &dir).unwrap();
     let gui = start_gui(&app_dir, Some(discovery.clone()));
     gui.app.open_project(&dir).unwrap();
     let mut c = proxy_client(&app_dir, tmp.path(), "claude-code", &[]);
@@ -242,7 +242,7 @@ fn proxy_starts_the_gui_when_none_runs() {
     let tmp = tempfile::tempdir().unwrap();
     let app_dir = tmp.path().join("appdata");
     let paths = AppPaths::in_dir(&app_dir);
-    let discovery = arrangia_mcp::discovery::path(&paths);
+    let discovery = vitrine_mcp::discovery::path(&paths);
     // The real endpoint, but its discovery file is held back: the fake
     // GUI binary "starts" by putting it in place.
     let staged = tmp.path().join("staged-mcp.json");
@@ -253,7 +253,7 @@ fn proxy_starts_the_gui_when_none_runs() {
     std::fs::write(
         &fake,
         format!(
-            "#!/bin/sh\necho \"$@\" > '{}'\nsleep 1\ncp '{}' \"$ARRANGIA_APP_DIR/data/mcp.json\"\n",
+            "#!/bin/sh\necho \"$@\" > '{}'\nsleep 1\ncp '{}' \"$VITRINE_APP_DIR/data/mcp.json\"\n",
             launched.display(),
             staged.display()
         ),
@@ -261,11 +261,11 @@ fn proxy_starts_the_gui_when_none_runs() {
     .unwrap();
     std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
     let project = tmp.path().join("p");
-    arrangia_app::testutil::copy_project(&arrangia_app::testutil::example_fixture(), &project)
+    vitrine_app::testutil::copy_project(&vitrine_app::testutil::example_fixture(), &project)
         .unwrap();
     gui.app.open_project(&project).unwrap();
 
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_arrangia"));
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_vitrine"));
     cmd.args([
         "--project",
         path_str(&project),
@@ -274,7 +274,7 @@ fn proxy_starts_the_gui_when_none_runs() {
         path_str(&app_dir),
     ])
     .current_dir(tmp.path())
-    .env("ARRANGIA_GUI", &fake);
+    .env("VITRINE_GUI", &fake);
     let mut c = Client::spawn(cmd, &app_dir, "claude-ai");
     let args = std::fs::read_to_string(&launched).unwrap();
     assert!(args.trim().ends_with("/p"), "GUI got the project: {args}");
@@ -285,11 +285,11 @@ fn proxy_starts_the_gui_when_none_runs() {
 
     // Autostart off: headless right away.
     std::fs::remove_file(&discovery).ok();
-    arrangia_app::settings::SettingsStore::new(paths.settings_file())
+    vitrine_app::settings::SettingsStore::new(paths.settings_file())
         .update(&json!({"mcp_autostart_gui": false}))
         .unwrap();
     std::fs::remove_file(&launched).unwrap();
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_arrangia"));
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_vitrine"));
     cmd.args([
         "--project",
         path_str(&project),
@@ -298,7 +298,7 @@ fn proxy_starts_the_gui_when_none_runs() {
         path_str(&app_dir),
     ])
     .current_dir(tmp.path())
-    .env("ARRANGIA_GUI", &fake);
+    .env("VITRINE_GUI", &fake);
     let mut c = Client::spawn(cmd, &app_dir, "claude-ai");
     assert_eq!(c.call("view_get", json!({}))["host"], "headless");
     assert!(!launched.exists(), "no GUI started");
@@ -360,7 +360,7 @@ fn endpoint_refuses_missing_tokens_foreign_hosts_and_origins() {
     // Health: with the token only.
     let (code, body) = http(port, &format!("GET /health HTTP/1.1{host}{auth}"), "");
     assert_eq!(code, 200);
-    assert!(body.contains("\"arrangia\""), "{body}");
+    assert!(body.contains("\"vitrine-studio\""), "{body}");
     assert_eq!(
         http(port, &format!("GET /health HTTP/1.1{host}"), "").0,
         401
@@ -376,12 +376,12 @@ fn endpoint_refuses_missing_tokens_foreign_hosts_and_origins() {
     assert!(body.contains("\"serverInfo\""), "{body}");
 
     // Switched off in the settings: stops listening.
-    arrangia_app::dispatch(&gui.app, "mcp_set_enabled", json!({"enabled": false})).unwrap();
+    vitrine_app::dispatch(&gui.app, "mcp_set_enabled", json!({"enabled": false})).unwrap();
     assert!(gui.host.addr().is_none());
     assert!(std::net::TcpStream::connect(("127.0.0.1", port)).is_err());
     assert!(!gui.app.mcp_status().running);
     assert!(gui.app.mcp_token().is_none());
-    arrangia_app::dispatch(&gui.app, "mcp_set_enabled", json!({"enabled": true})).unwrap();
+    vitrine_app::dispatch(&gui.app, "mcp_set_enabled", json!({"enabled": true})).unwrap();
     assert!(gui.app.mcp_status().running);
     assert_ne!(gui.host.token().unwrap(), token, "new token per start");
     gui.host.stop();

@@ -11,12 +11,12 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::SystemTime;
 
-use arrangia_core::Project;
-use arrangia_core::model::{ElementKind, Fill, Lang};
-use arrangia_core::resolve::{SCREENSHOT_EXTENSIONS, lang_chain, lookup_screenshot};
-use arrangia_render::raster::{Filter, SourceImage};
-use arrangia_render::scene::Resample;
 use serde::{Deserialize, Serialize};
+use vitrine_core::Project;
+use vitrine_core::model::{ElementKind, Fill, Lang};
+use vitrine_core::resolve::{SCREENSHOT_EXTENSIONS, lang_chain, lookup_screenshot};
+use vitrine_render::raster::{Filter, SourceImage};
+use vitrine_render::scene::Resample;
 
 use super::{AppState, NoArgs};
 use crate::error::{CmdResult, CommandError, ErrorCode};
@@ -177,13 +177,13 @@ pub struct AssetsRemoveArgs {
 
 /// Sanitized file-name stem: lowercase ASCII letters, digits, `-`, `_`.
 pub fn sanitize(name: &str) -> String {
-    arrangia_core::import::slugify(name)
+    vitrine_core::import::slugify(name)
 }
 
 /// Screenshot variants (device catalog) whose typical sizes include
 /// `w × h` in either orientation, in catalog order.
 pub fn variants_for_size(w: u32, h: u32) -> Vec<String> {
-    arrangia_core::import::variants_for_size(w, h)
+    vitrine_core::import::variants_for_size(w, h)
 }
 
 fn dims(path: &Path) -> Option<(u32, u32)> {
@@ -703,7 +703,7 @@ pub fn assets_upload(app: &AppState, args: AssetsUploadArgs) -> CmdResult<Vec<Im
         .filter(|n| !n.starts_with('.'))
         .ok_or_else(|| CommandError::invalid(format!("invalid file name `{}`", args.name)))?;
     let dir = std::env::temp_dir().join(format!(
-        "arrangia-upload-{}-{}",
+        "vitrine-upload-{}-{}",
         std::process::id(),
         SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)

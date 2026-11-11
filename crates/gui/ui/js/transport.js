@@ -1,5 +1,5 @@
 // Transport shim: the same `invoke`/`listen` API on top of Tauri IPC (in the
-// app) or the dev HTTP bridge (`arrangia-devbridge`, in a normal browser).
+// app) or the dev HTTP bridge (`vitrine-devbridge`, in a normal browser).
 // Commands take one JSON object of arguments; image commands resolve to a
 // preview `{ width, height, format, originX, originY, scale, data }` where
 // `data` is an ArrayBuffer holding PNG or raw RGBA (straight alpha).

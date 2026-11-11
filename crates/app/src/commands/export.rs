@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use arrangia_core::resolve::FsAssets;
-use arrangia_core::validate::{Severity, ValidateMode, ValidateOptions, ValidationReport};
-use arrangia_render::export::{ExportHooks, ExportLayout, ExportOptions, ExportReport};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use vitrine_core::resolve::FsAssets;
+use vitrine_core::validate::{Severity, ValidateMode, ValidateOptions, ValidationReport};
+use vitrine_render::export::{ExportHooks, ExportLayout, ExportOptions, ExportReport};
 
 use super::project::check_target;
 use super::{AppState, NoArgs};
@@ -57,7 +57,7 @@ pub fn validate(app: &AppState, args: ValidateArgs) -> CmdResult<ValidateResult>
     } else {
         ValidateMode::Export
     };
-    let report = arrangia_core::validate::validate(&project, &opts);
+    let report = vitrine_core::validate::validate(&project, &opts);
     Ok(ValidateResult {
         errors: report.count(Severity::Error),
         warnings: report.count(Severity::Warn),
@@ -132,7 +132,7 @@ pub fn export(app: &AppState, args: ExportArgs) -> CmdResult<ExportReport> {
     let _running = Running(app);
     let events = app.events().clone();
     let progress = Arc::new(
-        move |file: &arrangia_render::export::ExportedFile, done, total| {
+        move |file: &vitrine_render::export::ExportedFile, done, total| {
             events.emit(
                 EXPORT_PROGRESS,
                 json!({ "file": file, "done": done, "total": total }),
@@ -140,7 +140,7 @@ pub fn export(app: &AppState, args: ExportArgs) -> CmdResult<ExportReport> {
         },
     );
     let ctx = session.render_context();
-    let report = arrangia_render::export::export(
+    let report = vitrine_render::export::export(
         &project,
         &ctx,
         &ExportOptions {

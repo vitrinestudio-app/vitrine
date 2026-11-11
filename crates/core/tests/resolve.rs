@@ -5,8 +5,8 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use arrangia_core::Project;
-use arrangia_core::resolve::{
+use vitrine_core::Project;
+use vitrine_core::resolve::{
     DiagnosticCode, Level, ResolveError, ResolveOptions, ResolvedKind, ResolvedScene,
     ScreenshotSource, resolve,
 };
@@ -235,7 +235,7 @@ fn android_target_maps_devices_and_adapts_anchors() {
     assert_eq!(shot.source, ScreenshotSource::FallbackVariant);
     // play-phone: gap override 30 in profile lu.
     let g = s.frame.gallery.as_ref().unwrap();
-    let profile = arrangia_core::catalog::gallery("play-phone").unwrap();
+    let profile = vitrine_core::catalog::gallery("play-phone").unwrap();
     let expected = profile.gap_on_canvas(30.0, p.target("android-phone").unwrap().size, 1);
     assert!(close(g.gap, expected));
 }
@@ -250,9 +250,9 @@ fn missing_screenshot_is_a_placeholder() {
     // The web strip is not used by this target; check with a web target.
     let mut p = p;
     let mut t = p.targets[0].clone();
-    t.id = arrangia_core::model::TargetId::new("web");
-    t.strip = arrangia_core::model::StripId::new("web");
-    t.size = arrangia_core::model::PixelSize::new(2880, 1800);
+    t.id = vitrine_core::model::TargetId::new("web");
+    t.strip = vitrine_core::model::StripId::new("web");
+    t.size = vitrine_core::model::PixelSize::new(2880, 1800);
     t.screenshots = None;
     t.gallery = None;
     t.store = None;
@@ -298,9 +298,9 @@ fn errors() {
 fn free_aspect_device_follows_the_screenshot() {
     let mut p = sample();
     let mut t = p.targets[0].clone();
-    t.id = arrangia_core::model::TargetId::new("web");
-    t.strip = arrangia_core::model::StripId::new("web");
-    t.size = arrangia_core::model::PixelSize::new(2880, 1800);
+    t.id = vitrine_core::model::TargetId::new("web");
+    t.strip = vitrine_core::model::StripId::new("web");
+    t.size = vitrine_core::model::PixelSize::new(2880, 1800);
     t.screenshots = None;
     t.gallery = None;
     t.store = None;
@@ -317,7 +317,7 @@ fn free_aspect_device_follows_the_screenshot() {
     let shot = dev.screenshot.as_ref().unwrap();
     assert_eq!(
         shot.size.unwrap(),
-        arrangia_core::model::PixelSize::new(1440, 1080)
+        vitrine_core::model::PixelSize::new(1440, 1080)
     );
     // Display 1440 x 1080, chrome 88 above it: body 1440 x 1168.
     assert!(close(dev.device.display.h, 1080.0));

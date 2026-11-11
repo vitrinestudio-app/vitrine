@@ -10,7 +10,7 @@ use crate::resolve::NoAssets;
 /// (extra target fields in `target`), languages en (default) + de.
 fn project(elements: &str, target: &str) -> Project {
     let yaml = format!(
-        "format: arrangia/1
+        "format: vitrine/1
 revision: 1
 name: t
 languages:

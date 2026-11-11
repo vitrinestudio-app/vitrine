@@ -18,25 +18,25 @@
 //!    ones created (also for assets still processing – Apple allows it,
 //!    the placement starts `ASSET_PROCESSING`), the group is ordered with
 //!    an ordering request and verified (`sort=placementGroupPosition`).
-//! 4. **Old assets**: images of deleted placements that Arrangia uploaded
+//! 4. **Old assets**: images of deleted placements that Vitrine Studio uploaded
 //!    (content marker) are deleted afterwards – placements first, then the
 //!    asset; `STATE_ERROR.ASSET_HAS_PLACEMENTS` means another localization
 //!    still uses it and is fine.
 //!
-//! **Content marker.** Library images carry no checksum. Arrangia sets
+//! **Content marker.** Library images carry no checksum. Vitrine Studio sets
 //! `referenceName` to `<file stem> [<first 12 hex of the SHA-256>]` and
 //! matches on that marker plus the file size.
 
 use std::sync::Mutex;
 use std::time::Instant;
 
-use arrangia_core::catalog::asset_library;
-use arrangia_core::model::{AppleSlot, CreativePlacement};
-use arrangia_publish::apple::{
+use serde::Serialize;
+use vitrine_core::catalog::asset_library;
+use vitrine_core::model::{AppleSlot, CreativePlacement};
+use vitrine_publish::apple::{
     self, AppRef, LibraryImage, LibraryUpload, Platform, RefData, RefDataFilter,
 };
-use arrangia_publish::{ApiErrorDetail, Error, ProgressFn, Result};
-use serde::Serialize;
+use vitrine_publish::{ApiErrorDetail, Error, ProgressFn, Result};
 
 use super::PlanImage;
 use super::remote::{
@@ -150,7 +150,7 @@ pub(crate) fn resolve(
         let groups = rd.groups_for(t, sp.display_class.as_deref(), &sp.platforms);
         if groups.is_empty() {
             return Err(format!(
-                "App Store Connect's asset types list no {t} group for {} ({}) – see `arrangia upload refdata`",
+                "App Store Connect's asset types list no {t} group for {} ({}) – see `vitrine upload refdata`",
                 sp.display_class.as_deref().unwrap_or("any display class"),
                 sp.platforms.join(", ")
             ));
@@ -213,7 +213,7 @@ pub(crate) fn same_content(li: &LibraryImage, img: &PlanImage) -> bool {
         && li.file_size.is_none_or(|s| s == img.bytes)
 }
 
-/// Uploaded by Arrangia (its reference name ends with a content marker).
+/// Uploaded by Vitrine Studio (its reference name ends with a content marker).
 fn has_marker(li: &LibraryImage) -> bool {
     li.reference_name.as_deref().is_some_and(|r| {
         r.strip_suffix(']')
@@ -442,7 +442,7 @@ impl AppleUploadFlow for AssetLibraryFlow {
                 continue;
             }
             hooks.file_started(i);
-            let progress = |p: &arrangia_publish::Progress| hooks.progress(i, p);
+            let progress = |p: &vitrine_publish::Progress| hooks.progress(i, p);
             let progress: ProgressFn<'_> = &progress;
             let reference = reference_name(&f.image);
             let img = client
@@ -628,7 +628,7 @@ impl AppleUploadFlow for AssetLibraryFlow {
             first_ids.get_or_insert(order);
         }
 
-        // 5. Old assets Arrangia uploaded: placements are gone, now the asset
+        // 5. Old assets Vitrine Studio uploaded: placements are gone, now the asset
         //    (still used by another localization = Apple refuses, fine).
         let old: Vec<&LibraryImage> = stale_images.iter().filter(|i| has_marker(i)).collect();
         if !old.is_empty() {

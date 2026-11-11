@@ -2,7 +2,7 @@
 source: crates/core/tests/roundtrip.rs
 expression: p.to_yaml().unwrap()
 ---
-format: arrangia/1
+format: vitrine/1
 revision: 7
 name: grove.eco
 languages:

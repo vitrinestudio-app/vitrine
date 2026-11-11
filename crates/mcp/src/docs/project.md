@@ -1,11 +1,11 @@
 # project.yaml structure
 
-The whole project file (read it with resource `arrangia://project/project.yaml`
+The whole project file (read it with resource `vitrine://project/project.yaml`
 when your client offers resources). Tools edit it for you; this is the map.
 Unknown fields are errors everywhere.
 
 ```yaml
-format: arrangia/1        # always
+format: vitrine/1        # always
 revision: 12              # bumped on every save (optimistic locking)
 name: Fernwood
 languages:

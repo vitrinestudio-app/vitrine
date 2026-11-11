@@ -1,6 +1,6 @@
-//! # arrangia-core
+//! # vitrine-core
 //!
-//! The heart of Arrangia: the project model and everything that works on it
+//! The heart of Vitrine Studio: the project model and everything that works on it
 //! without touching pixels or the network.
 //!
 //! Responsibilities (see `docs/KONZEPT.md`, sections 3 and 10):
@@ -34,7 +34,7 @@
 //! validate/   findings per target × language (references, texts, screenshots, store rules)
 //! catalog/    devices, targets, gallery profiles (from data/*.yaml)
 //! colorspace  image colour profiles → sRGB (moxcms, ADR 0021)
-//! templates   built-in project templates (`arrangia new`, GUI)
+//! templates   built-in project templates (`vitrine new`, GUI)
 //! ```
 
 pub mod catalog;
@@ -63,12 +63,12 @@ pub use model::Project;
 pub const PAGE_WIDTH_LU: f64 = 1000.0;
 
 /// Identifier written as `format:` at the top of every `project.yaml`.
-pub const PROJECT_FORMAT: &str = "arrangia/1";
+pub const PROJECT_FORMAT: &str = "vitrine/1";
 
 /// Height of a page in lu for a given aspect ratio (`width : height`).
 ///
 /// ```
-/// let h = arrangia_core::page_height_lu(1320.0, 2868.0);
+/// let h = vitrine_core::page_height_lu(1320.0, 2868.0);
 /// assert!((h - 2172.727).abs() < 0.001);
 /// ```
 pub fn page_height_lu(aspect_width: f64, aspect_height: f64) -> f64 {
@@ -86,6 +86,6 @@ mod tests {
 
     #[test]
     fn format_identifier_is_versioned() {
-        assert!(PROJECT_FORMAT.starts_with("arrangia/"));
+        assert!(PROJECT_FORMAT.starts_with("vitrine/"));
     }
 }

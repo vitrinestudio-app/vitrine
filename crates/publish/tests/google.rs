@@ -4,15 +4,15 @@ mod common;
 
 use std::time::Duration;
 
-use arrangia_publish::google::{Client, Config, ImageType};
-use arrangia_publish::{ClientOptions, Error, ErrorKind, UploadStep, ignore_progress};
 use common::{ProgressLog, fast_options, form_field, recorder, rsa_key, validation, verify};
 use jsonwebtoken::{Algorithm, DecodingKey};
 use serde_json::{Value, json};
+use vitrine_publish::google::{Client, Config, ImageType};
+use vitrine_publish::{ClientOptions, Error, ErrorKind, UploadStep, ignore_progress};
 use wiremock::matchers::{body_bytes, header, method, path, query_param, query_param_is_missing};
 use wiremock::{Match, Mock, MockServer, Request, ResponseTemplate};
 
-const EMAIL: &str = "arrangia-test@example-project.iam.gserviceaccount.com";
+const EMAIL: &str = "vitrine-test@example-project.iam.gserviceaccount.com";
 const PKG: &str = "com.example.app";
 const API: &str = "/androidpublisher/v3/applications/com.example.app";
 const UPLOAD: &str = "/upload/androidpublisher/v3/applications/com.example.app";
@@ -385,7 +385,7 @@ async fn validation_error_carries_detail() {
 #[tokio::test]
 async fn local_checks_before_upload() {
     let f = fixture(fast_options()).await;
-    let too_big = vec![0u8; arrangia_publish::google::MAX_IMAGE_BYTES + 1];
+    let too_big = vec![0u8; vitrine_publish::google::MAX_IMAGE_BYTES + 1];
     let err = f
         .client
         .upload_image(

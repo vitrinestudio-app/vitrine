@@ -15,11 +15,11 @@
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use arrangia_core::model::{ApplePlatform, AppleUploadFlowSetting, Project, StoreKind};
-use arrangia_publish::apple::{self, AppRef, AppStoreVersion, DeliveryState, Platform};
-use arrangia_publish::credentials::Secret;
-use arrangia_publish::{ClientOptions, Error, PollPolicy, ProgressFn, Result, google};
 use serde::{Deserialize, Serialize};
+use vitrine_core::model::{ApplePlatform, AppleUploadFlowSetting, Project, StoreKind};
+use vitrine_publish::apple::{self, AppRef, AppStoreVersion, DeliveryState, Platform};
+use vitrine_publish::credentials::Secret;
+use vitrine_publish::{ClientOptions, Error, PollPolicy, ProgressFn, Result, google};
 
 use super::library::AssetLibraryFlow;
 use super::{PlanImage, UploadConfig};
@@ -193,7 +193,7 @@ pub(crate) trait SetHooks: Sync {
     /// A file starts (Apple: the reservation is requested).
     fn file_started(&self, index: usize);
     /// Progress of the current file (reserve/transfer/commit).
-    fn progress(&self, index: usize, p: &arrangia_publish::Progress);
+    fn progress(&self, index: usize, p: &vitrine_publish::Progress);
     /// Apple: the file is committed; Apple processes it now.
     fn file_uploaded(&self, _index: usize, _store_id: &str) {}
     /// Apple: the store already holds this file (same checksum), it is kept.
@@ -459,7 +459,7 @@ impl AppleUploadFlow for ScreenshotSetFlow {
                 continue;
             }
             hooks.file_started(i);
-            let progress = |p: &arrangia_publish::Progress| hooks.progress(i, p);
+            let progress = |p: &vitrine_publish::Progress| hooks.progress(i, p);
             let progress: ProgressFn<'_> = &progress;
             let shot = client
                 .upload_screenshot_committed(&set.id, &f.image.file_name, f.bytes.clone(), progress)
@@ -471,7 +471,7 @@ impl AppleUploadFlow for ScreenshotSetFlow {
         // 3. Poll all of them together, up to the budget.
         let started = Instant::now();
         let mut interval = opts.poll.initial_interval;
-        let mut failures: Vec<(usize, String, Vec<arrangia_publish::ApiErrorDetail>)> = Vec::new();
+        let mut failures: Vec<(usize, String, Vec<vitrine_publish::ApiErrorDetail>)> = Vec::new();
         let cancel = client.options().cancel.clone();
         while !pending.is_empty() {
             let mut still = Vec::new();

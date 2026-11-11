@@ -3,12 +3,12 @@
 
 use std::path::Path;
 
-use arrangia_core::Project;
-use arrangia_core::io;
-use arrangia_core::model::{ApplePlatform, AppleStore, Lang, StoreKind, StoreSettings};
-use arrangia_core::ops::Op;
-use arrangia_core::resolve::NoAssets;
-use arrangia_core::validate::{FindingCode, ValidateOptions, ValidationReport, validate};
+use vitrine_core::Project;
+use vitrine_core::io;
+use vitrine_core::model::{ApplePlatform, AppleStore, Lang, StoreKind, StoreSettings};
+use vitrine_core::ops::Op;
+use vitrine_core::resolve::NoAssets;
+use vitrine_core::validate::{FindingCode, ValidateOptions, ValidationReport, validate};
 
 fn sample() -> Project {
     Project::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/sample")).unwrap()
@@ -164,7 +164,7 @@ fn validation_locales_and_slots() {
     let mut p = sample();
     p.store = store("apple: {}");
     let mut t = p.target("ios-phone-69").unwrap().clone();
-    t.id = arrangia_core::model::TargetId::new("ios-phone-69-b");
+    t.id = vitrine_core::model::TargetId::new("ios-phone-69-b");
     t.langs = Some(vec![Lang::new("de")]);
     p.targets.push(t);
     let r = report(&p);

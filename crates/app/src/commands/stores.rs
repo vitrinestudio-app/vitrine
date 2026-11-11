@@ -11,18 +11,18 @@
 //! - `project_store_get`, `project_store_patch` (one `set_store` op);
 //! - `store_config_get`: read-only overview for MCP (no secrets).
 //!
-//! Key files are read here, validated by `arrangia_publish::credentials`
+//! Key files are read here, validated by `vitrine_publish::credentials`
 //! and go straight to the keychain; their content never reaches a result,
 //! an error message or the settings file.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use arrangia_core::catalog::{self, LocaleSource, StoreLocale};
-use arrangia_core::model::{AppleStore, GoogleStore, Project, StoreKind, StoreSettings};
-use arrangia_core::ops::Op;
-use arrangia_publish::credentials::{self, Backend, CredentialError, Secret};
 use serde::{Deserialize, Serialize};
+use vitrine_core::catalog::{self, LocaleSource, StoreLocale};
+use vitrine_core::model::{AppleStore, GoogleStore, Project, StoreKind, StoreSettings};
+use vitrine_core::ops::Op;
+use vitrine_publish::credentials::{self, Backend, CredentialError, Secret};
 
 use super::edit::double_option;
 use super::{AppState, NoArgs};
@@ -279,11 +279,11 @@ pub fn store_account_test(app: &AppState, args: StoreAccountIdArgs) -> CmdResult
 
 /// Client options of the interactive store calls (short timeout, one retry;
 /// like the connection test).
-pub(crate) fn interactive_options() -> arrangia_publish::ClientOptions {
+pub(crate) fn interactive_options() -> vitrine_publish::ClientOptions {
     crate::store_test::StoreClientTester::default().options
 }
 
-pub(crate) fn store_failure(store: StoreKind, e: &arrangia_publish::Error) -> CommandError {
+pub(crate) fn store_failure(store: StoreKind, e: &vitrine_publish::Error) -> CommandError {
     let e = crate::store_test::map_error(store, e);
     CommandError::new(ErrorCode::Io, e.message)
         .with_details(serde_json::json!({ "reason": e.reason }))
@@ -323,7 +323,7 @@ pub struct StoreAppsListArgs {
 pub struct StoreAppsList {
     pub account: String,
     /// Sorted by name; `id` is the numeric Apple ID.
-    pub apps: Vec<arrangia_publish::apple::AppSummary>,
+    pub apps: Vec<vitrine_publish::apple::AppSummary>,
     /// Answered from this session's cache (no network).
     pub cached: bool,
 }

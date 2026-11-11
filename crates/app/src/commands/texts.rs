@@ -5,9 +5,9 @@
 //! via `apply_ops`; live previews of uncommitted strings come from
 //! `render_preview_string`.
 
-use arrangia_core::markup::{self, MarkupDiagnostic};
-use arrangia_core::resolve::{ResolvedElement, ResolvedKind};
 use serde::{Deserialize, Serialize};
+use vitrine_core::markup::{self, MarkupDiagnostic};
+use vitrine_core::resolve::{ResolvedElement, ResolvedKind};
 
 use super::edit::double_option;
 use super::render::scene;
@@ -26,7 +26,7 @@ pub struct ElementInfoArgs {
     pub variant: Option<Option<String>>,
     /// Edit scope of the view (only used by gesture previews).
     #[serde(default)]
-    pub scope: Option<arrangia_core::edit::EditScope>,
+    pub scope: Option<vitrine_core::edit::EditScope>,
     pub id: String,
 }
 

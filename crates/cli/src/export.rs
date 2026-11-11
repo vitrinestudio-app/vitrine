@@ -1,12 +1,12 @@
-//! `arrangia export`: all files of targets × languages, with a summary
+//! `vitrine export`: all files of targets × languages, with a summary
 //! table and the issues found while resolving and rendering.
 
 use std::path::PathBuf;
 
-use arrangia_core::fastlane::NoteLevel;
-use arrangia_core::resolve::Level;
-use arrangia_render::export::{ExportLayout, ExportOptions, ExportReport, IssueSource, export};
 use clap::Args;
+use vitrine_core::fastlane::NoteLevel;
+use vitrine_core::resolve::Level;
+use vitrine_render::export::{ExportLayout, ExportOptions, ExportReport, IssueSource, export};
 
 use crate::term::{Style, plural};
 use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global, project};

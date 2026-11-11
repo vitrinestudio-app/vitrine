@@ -53,7 +53,7 @@ fn io_err(path: &Path) -> impl FnOnce(std::io::Error) -> IoError + '_ {
     }
 }
 
-/// Serialize a value as canonical Arrangia YAML.
+/// Serialize a value as canonical Vitrine Studio YAML.
 pub fn to_yaml<T: Serialize>(value: &T) -> Result<String, IoError> {
     let opts = serde_saphyr::ser_options! {
         yaml_12: true,
@@ -63,7 +63,7 @@ pub fn to_yaml<T: Serialize>(value: &T) -> Result<String, IoError> {
     serde_saphyr::to_string_with_options(value, opts).map_err(|e| IoError::Serialize(e.to_string()))
 }
 
-/// Parse Arrangia YAML into a value (YAML 1.2 core schema: only
+/// Parse Vitrine Studio YAML into a value (YAML 1.2 core schema: only
 /// `true`/`false` are booleans, so `y`, `no`, `on` stay strings).
 pub fn from_yaml<T: serde::de::DeserializeOwned>(yaml: &str) -> Result<T, String> {
     let opts = serde_saphyr::options! { strict_booleans: true };

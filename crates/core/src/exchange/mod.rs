@@ -16,7 +16,7 @@
 //! Inline markup in XLIFF ([`MarkupMode::Inline`], default): bold, italic
 //! and `[span]…[/]` become `<pc>` (2.0) / `<g>` (1.2), line breaks and soft
 //! hyphens `<ph>` / `<x/>`, so CAT tools protect them; the round trip is
-//! lossless. [`MarkupMode::Plain`] keeps the Arrangia markup as text.
+//! lossless. [`MarkupMode::Plain`] keeps the Vitrine Studio markup as text.
 //! CSV always holds the markup as text.
 
 mod context;
@@ -86,7 +86,7 @@ pub enum MarkupMode {
     /// Inline elements (`<pc>`/`<ph>`, `<g>`/`<x/>`).
     #[default]
     Inline,
-    /// Arrangia markup as plain text (`**…**`, `[accent]…[/]`).
+    /// Vitrine Studio markup as plain text (`**…**`, `[accent]…[/]`).
     Plain,
 }
 

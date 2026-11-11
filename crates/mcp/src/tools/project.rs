@@ -3,9 +3,6 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use arrangia_app::CommandError;
-use arrangia_app::commands::AppState;
-use arrangia_core::model::ElementKind;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
@@ -13,9 +10,12 @@ use rmcp::{RoleServer, tool, tool_router};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use vitrine_app::CommandError;
+use vitrine_app::commands::AppState;
+use vitrine_core::model::ElementKind;
 
 use crate::output::ToolOutput;
-use crate::server::{ArrangiaMcp, Host, cmd};
+use crate::server::{Host, VitrineMcp, cmd};
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -171,9 +171,9 @@ fn summary_line(v: &Value) -> String {
 }
 
 #[tool_router(router = project_tools, vis = "pub(crate)")]
-impl ArrangiaMcp {
+impl VitrineMcp {
     #[tool(
-        description = "Open an Arrangia project folder (closes the current one) and return its compact summary (strips, pages, elements, targets, languages, styles). Example: {\"dir\": \"/Users/me/Screens/MyApp\"}."
+        description = "Open a Vitrine Studio project folder (closes the current one) and return its compact summary (strips, pages, elements, targets, languages, styles). Example: {\"dir\": \"/Users/me/Screens/MyApp\"}."
     )]
     async fn project_open(
         &self,
@@ -228,7 +228,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "What the user is looking at in the Arrangia GUI: strip, target, language, variant and selected element ids. Use it when the user says \"this page\", \"here\" or \"the selected text\". Headless (no GUI) the view is empty unless a GUI pushed one.",
+        description = "What the user is looking at in the Vitrine Studio GUI: strip, target, language, variant and selected element ids. Use it when the user says \"this page\", \"here\" or \"the selected text\". Headless (no GUI) the view is empty unless a GUI pushed one.",
         annotations(read_only_hint = true)
     )]
     async fn view_get(
@@ -253,7 +253,7 @@ impl ArrangiaMcp {
     }
 
     #[tool(
-        description = "The elements selected in the Arrangia GUI, each with its inspector data (base fields, overrides, effective values, text). Use it for requests like \"make this bigger\". Empty when nothing is selected or no GUI is connected.",
+        description = "The elements selected in the Vitrine Studio GUI, each with its inspector data (base fields, overrides, effective values, text). Use it for requests like \"make this bigger\". Empty when nothing is selected or no GUI is connected.",
         annotations(read_only_hint = true)
     )]
     async fn selection_get(

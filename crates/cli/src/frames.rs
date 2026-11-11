@@ -1,18 +1,18 @@
-//! `arrangia frames import|list|remove`: the app-wide store of imported
+//! `vitrine frames import|list|remove`: the app-wide store of imported
 //! vendor frames (Apple Product Bezels, KONZEPT §4.2, ADR 0012). The store
-//! lives in the app data folder (same as the GUI; `ARRANGIA_APP_DIR`
+//! lives in the app data folder (same as the GUI; `VITRINE_APP_DIR`
 //! overrides it), never in a project.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, bail};
-use arrangia_core::frame_import::{
+use clap::{Args, Subcommand};
+use vitrine_core::frame_import::{
     APP_DIR_ENV, Action, FRAMES_DIR, FrameIndex, FrameStore, ImportPlan, Package, RemoveFilter,
     Rules, import, orientation_name,
 };
-use arrangia_core::model::Orientation;
-use clap::{Args, Subcommand};
+use vitrine_core::model::Orientation;
 
 use crate::term::{Style, plural};
 use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global};
@@ -76,20 +76,20 @@ pub struct RemoveArgs {
     pub all: bool,
 }
 
-/// The app data folder (as the GUI's): `$ARRANGIA_APP_DIR/data` or the
+/// The app data folder (as the GUI's): `$VITRINE_APP_DIR/data` or the
 /// platform data folder.
 pub fn app_data_dir() -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os(APP_DIR_ENV).filter(|v| !v.is_empty()) {
         return Some(PathBuf::from(dir).join("data"));
     }
-    directories::ProjectDirs::from("app", "Arrangia", "Arrangia").map(|d| d.data_dir().to_owned())
+    directories::ProjectDirs::from("app", "", "vitrinestudio").map(|d| d.data_dir().to_owned())
 }
 
 /// The frame store root.
 pub fn frames_root() -> anyhow::Result<PathBuf> {
     app_data_dir()
         .map(|d| d.join(FRAMES_DIR))
-        .context("no app data folder (no home folder?); set ARRANGIA_APP_DIR")
+        .context("no app data folder (no home folder?); set VITRINE_APP_DIR")
 }
 
 /// Installed frames for rendering and validation (`None` if none).
@@ -103,10 +103,10 @@ pub fn installed() -> Option<Arc<FrameIndex>> {
 pub fn render_context(
     root: &Path,
 ) -> (
-    arrangia_render::scene::RenderContext,
-    Option<arrangia_core::layout::FontDirReport>,
+    vitrine_render::scene::RenderContext,
+    Option<vitrine_core::layout::FontDirReport>,
 ) {
-    let (ctx, fonts) = arrangia_render::scene::RenderContext::new(root);
+    let (ctx, fonts) = vitrine_render::scene::RenderContext::new(root);
     (ctx.with_frames(installed()), fonts)
 }
 

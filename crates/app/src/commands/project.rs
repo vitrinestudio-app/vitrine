@@ -3,11 +3,11 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use arrangia_core::Project;
-use arrangia_core::model::{Element, ElementKind, FrameStyle, Strings};
-use arrangia_core::ops::Op;
-use arrangia_core::templates::{Template, create_project, default_name, parse_langs};
 use serde::{Deserialize, Serialize};
+use vitrine_core::Project;
+use vitrine_core::model::{Element, ElementKind, FrameStyle, Strings};
+use vitrine_core::ops::Op;
+use vitrine_core::templates::{Template, create_project, default_name, parse_langs};
 
 use super::{AppState, NoArgs, absolute};
 use crate::error::{CmdResult, CommandError};
@@ -81,7 +81,7 @@ pub struct StripSummary {
 #[derive(Debug, Clone, Serialize)]
 pub struct TargetSummary {
     pub id: String,
-    pub kind: arrangia_core::model::TargetKind,
+    pub kind: vitrine_core::model::TargetKind,
     pub strip: String,
     /// `[w, h]` px.
     pub size: [u32; 2],
@@ -214,7 +214,7 @@ pub fn summarize(p: &Project, dir: PathBuf) -> ProjectSummary {
                         aspect: s.page.aspect.to_string(),
                         count: s.page.count,
                         ids: (0..s.page.count).map(|i| s.page.page_id(i)).collect(),
-                        height_lu: arrangia_core::page_height_lu(
+                        height_lu: vitrine_core::page_height_lu(
                             f64::from(s.page.aspect.w),
                             f64::from(s.page.aspect.h),
                         ),

@@ -1,7 +1,7 @@
 //! Page → canvas geometry: home pages, gaps, page grouping, vertical
 //! anchors and viewports (KONZEPT §3.2–3.4, ADR 0001, ADR 0004).
 //!
-//! Ported from the Phase 0 spike (`arrangia-render/src/geometry.rs`), free
+//! Ported from the Phase 0 spike (`vitrine-render/src/geometry.rs`), free
 //! of any rendering dependency so that `core::resolve`, validation, the GUI
 //! overlays and the renderer share one implementation.
 //!

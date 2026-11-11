@@ -7,11 +7,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrangia_gui::bridge::{BridgeServer, SseHub, serve};
-use arrangia_gui::commands::AppState;
-use arrangia_gui::dialogs::NoDialogs;
-use arrangia_gui::settings::AppPaths;
-use arrangia_gui::testutil::{copy_project, example_fixture};
+use vitrine_gui::bridge::{BridgeServer, SseHub, serve};
+use vitrine_gui::commands::AppState;
+use vitrine_gui::dialogs::NoDialogs;
+use vitrine_gui::settings::AppPaths;
+use vitrine_gui::testutil::{copy_project, example_fixture};
 
 struct Reply {
     status: u16,

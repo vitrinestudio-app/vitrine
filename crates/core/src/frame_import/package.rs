@@ -41,7 +41,7 @@ enum Source {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PackageError {
     /// The disk image has a software licence agreement (SLA) that macOS
-    /// shows before mounting. Arrangia never accepts it on the user's
+    /// shows before mounting. Vitrine Studio never accepts it on the user's
     /// behalf: the user opens the image in Finder, accepts, and imports
     /// the mounted volume.
     LicenseAgreement {
@@ -324,7 +324,7 @@ impl Package {
             });
         }
         let mount = std::env::temp_dir().join(format!(
-            "arrangia-dmg-{}-{}",
+            "vitrine-dmg-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use arrangia_publish::credentials::{SecretStore, sample_p8_for_tests};
 use serde_json::{Value, json};
+use vitrine_publish::credentials::{SecretStore, sample_p8_for_tests};
 
 use super::*;
 use crate::dialogs::NoDialogs;
@@ -58,7 +58,7 @@ fn import_list_test_and_remove_accounts() {
 
     let list = call(app, "store_accounts_list", json!({}));
     assert_eq!(list["accounts"], json!([]));
-    assert_eq!(list["keychain"]["service"], "app.arrangia");
+    assert_eq!(list["keychain"]["service"], "app.vitrinestudio");
     assert_eq!(list["keychain"]["backend"], "mock");
 
     // Apple: key id from the file name, issuer id required.
@@ -112,7 +112,7 @@ fn import_list_test_and_remove_accounts() {
     let secrets = app.secret_store().unwrap();
     assert_eq!(
         secrets
-            .get("apple-my-team", arrangia_core::model::StoreKind::Apple)
+            .get("apple-my-team", vitrine_core::model::StoreKind::Apple)
             .unwrap()
             .expose(),
         sample_p8_for_tests()
@@ -135,7 +135,7 @@ fn import_list_test_and_remove_accounts() {
     call(app, "store_account_remove", json!({"id": "apple-my-team"}));
     assert!(
         secrets
-            .get("apple-my-team", arrangia_core::model::StoreKind::Apple)
+            .get("apple-my-team", vitrine_core::model::StoreKind::Apple)
             .is_err()
     );
     let e = fail(app, "store_account_test", json!({"id": "apple-my-team"}));
@@ -155,7 +155,7 @@ impl ConnectionTester for FakeTester {
     fn test(
         &self,
         account: &StoreAccount,
-        _: &arrangia_publish::credentials::Secret,
+        _: &vitrine_publish::credentials::Secret,
     ) -> Result<ConnectionInfo, ConnectionError> {
         Ok(ConnectionInfo {
             summary: format!("hello {}", account.label),

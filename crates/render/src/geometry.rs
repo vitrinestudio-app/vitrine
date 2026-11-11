@@ -1,7 +1,7 @@
-//! Canvas geometry lives in `arrangia_core::geometry` (ADR 0004); this
+//! Canvas geometry lives in `vitrine_core::geometry` (ADR 0004); this
 //! module re-exports it and adds the tiny-skia transform of a viewport.
 
-pub use arrangia_core::geometry::{CanvasLayout, Rect, Vec2, Viewport};
+pub use vitrine_core::geometry::{CanvasLayout, Rect, Vec2, Viewport};
 
 /// Canvas lu → pixel transform of a viewport.
 pub fn view_transform(v: &Viewport) -> tiny_skia::Transform {

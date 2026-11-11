@@ -10,7 +10,7 @@ use crate::ops::Op;
 /// Phone strip (keys home, planner, garden-plan) with an iPhone and an
 /// iPad target; languages en (default) + de.
 fn project() -> Project {
-    let yaml = "format: arrangia/1
+    let yaml = "format: vitrine/1
 revision: 1
 name: t
 languages:
@@ -292,7 +292,7 @@ fn overrides_fix_rows() {
 }
 
 #[test]
-fn arrangia_convention() {
+fn vitrine_convention() {
     let d = dirs();
     let s = &d.source;
     png(&s.join("de/ios-phone/home.png"), 1206, 2622, "a");
@@ -303,7 +303,7 @@ fn arrangia_convention() {
     fs::write(s.join("en/notes.txt"), "x").unwrap();
     let p = project();
     let plan = plan(&d, &p, &ImportRules::default());
-    assert_eq!(plan.format, SourceFormat::Arrangia);
+    assert_eq!(plan.format, SourceFormat::Vitrine);
     assert_eq!(
         item(&plan, "de/ios-phone/home.png").dest.as_deref(),
         Some("screenshots/de/ios-phone/home.png")
@@ -364,7 +364,7 @@ fn project_screenshots_folder_as_source() {
         "x",
     );
     let plan = plan(&d, &project(), &ImportRules::default());
-    assert_eq!(plan.format, SourceFormat::Arrangia);
+    assert_eq!(plan.format, SourceFormat::Vitrine);
     assert_eq!(
         plan.items[0].dest.as_deref(),
         Some("screenshots/en/ios-phone/home.png")

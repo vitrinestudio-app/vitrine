@@ -1,19 +1,19 @@
-//! `arrangia import screenshots <dir>`: plan (and apply) a screenshot
-//! import with `core::import` (Arrangia folders, fastlane snapshot output,
+//! `vitrine import screenshots <dir>`: plan (and apply) a screenshot
+//! import with `core::import` (Vitrine Studio folders, fastlane snapshot output,
 //! flat folders). Prints the plan grouped by language × variant.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use anyhow::{Context, bail};
-use arrangia_core::import::{
+use clap::{Args, Subcommand, ValueEnum};
+use serde::Serialize;
+use vitrine_core::import::{
     Action, ApplyReport, Confidence, ImportPlan, ImportRules, MissingStatus, PlannedFile,
     SourceFormat, apply, plan_screenshot_import,
 };
-use arrangia_core::model::{ImportSettings, Lang};
-use arrangia_core::ops::Op;
-use clap::{Args, Subcommand, ValueEnum};
-use serde::Serialize;
+use vitrine_core::model::{ImportSettings, Lang};
+use vitrine_core::ops::Op;
 
 use crate::term::{Style, plural};
 use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global, project};
@@ -28,7 +28,7 @@ pub enum ImportCommand {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum SourceArg {
     Auto,
-    Arrangia,
+    Vitrine,
     Fastlane,
     Flat,
 }
@@ -37,7 +37,7 @@ impl From<SourceArg> for SourceFormat {
     fn from(f: SourceArg) -> Self {
         match f {
             SourceArg::Auto => Self::Auto,
-            SourceArg::Arrangia => Self::Arrangia,
+            SourceArg::Vitrine => Self::Vitrine,
             SourceArg::Fastlane => Self::Fastlane,
             SourceArg::Flat => Self::Flat,
         }
@@ -46,7 +46,7 @@ impl From<SourceArg> for SourceFormat {
 
 #[derive(Debug, Args)]
 pub struct ScreenshotsArgs {
-    /// Source folder (fastlane `screenshots/`, an Arrangia `screenshots/`
+    /// Source folder (fastlane `screenshots/`, a Vitrine Studio `screenshots/`
     /// tree or a folder of files).
     pub dir: PathBuf,
     /// Source layout.

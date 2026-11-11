@@ -1,4 +1,4 @@
-//! "Add to Claude Desktop": the `mcpServers.arrangia` entry in Claude
+//! "Add to Claude Desktop": the `mcpServers.vitrine-studio` entry in Claude
 //! Desktop's `claude_desktop_config.json` (ADR 0015).
 //!
 //! | platform | file |
@@ -8,7 +8,7 @@
 //! | Linux | `~/.config/Claude/claude_desktop_config.json` |
 //!
 //! The entry starts the CLI's stdio proxy: `{"command": "<abs path to
-//! arrangia>", "args": ["mcp"]}`. [`plan`] shows what would be written;
+//! vitrine>", "args": ["mcp"]}`. [`plan`] shows what would be written;
 //! [`install`] writes it only when the caller confirms (the GUI asks the
 //! user), merging into the existing JSON in its key order, after a backup
 //! `claude_desktop_config.json.bak-<UTC timestamp>`. Tests and the dev
@@ -25,11 +25,11 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::error::{CmdResult, CommandError};
 
 /// Overrides the path of Claude Desktop's config file (tests, dev).
-pub const CONFIG_ENV: &str = "ARRANGIA_CLAUDE_DESKTOP_CONFIG";
-/// Overrides the path of the `arrangia` CLI binary written into configs.
-pub const CLI_ENV: &str = "ARRANGIA_CLI";
+pub const CONFIG_ENV: &str = "VITRINE_CLAUDE_DESKTOP_CONFIG";
+/// Overrides the path of the `vitrine` CLI binary written into configs.
+pub const CLI_ENV: &str = "VITRINE_CLI";
 /// Name of the server entry.
-pub const SERVER_KEY: &str = "arrangia";
+pub const SERVER_KEY: &str = "vitrine-studio";
 
 /// Claude Desktop's config file on this platform (`None` without a home
 /// folder). [`CONFIG_ENV`] wins.
@@ -47,18 +47,18 @@ pub fn default_config_path() -> Option<PathBuf> {
     )
 }
 
-/// The `arrangia` CLI binary: [`CLI_ENV`], else `arrangia` next to the
-/// running executable (dev builds: `target/<profile>/arrangia` next to
-/// `arrangia-gui`).
+/// The `vitrine` CLI binary: [`CLI_ENV`], else `vitrine` next to the
+/// running executable (dev builds: `target/<profile>/vitrine` next to
+/// `vitrine-gui`).
 ///
 /// TODO(Phase 6): bundled builds ship the CLI inside the app bundle
-/// (macOS `Arrangia.app/Contents/MacOS/arrangia`, Windows/Linux next to
+/// (macOS `Vitrine Studio.app/Contents/MacOS/vitrine`, Windows/Linux next to
 /// the GUI binary); check the path once bundling exists.
 pub fn cli_path() -> PathBuf {
     if let Some(p) = std::env::var_os(CLI_ENV).filter(|v| !v.is_empty()) {
         return PathBuf::from(p);
     }
-    let name = format!("arrangia{}", std::env::consts::EXE_SUFFIX);
+    let name = format!("vitrine{}", std::env::consts::EXE_SUFFIX);
     std::env::current_exe()
         .ok()
         .and_then(|exe| exe.parent().map(|d| d.join(&name)))
@@ -74,7 +74,7 @@ pub fn entry_for(cli: &Path) -> serde_json::Value {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EntryState {
-    /// No `mcpServers.arrangia` (or no file).
+    /// No `mcpServers.vitrine-studio` (or no file).
     Missing,
     /// Present and identical.
     Same,
@@ -90,7 +90,7 @@ pub struct Plan {
     pub config_path: PathBuf,
     pub config_exists: bool,
     pub state: EntryState,
-    /// The current `mcpServers.arrangia` entry.
+    /// The current `mcpServers.vitrine-studio` entry.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current: Option<serde_json::Value>,
     /// The entry that will be written.
@@ -195,7 +195,7 @@ pub fn install(config: &Path, cli: &Path, confirmed: bool) -> CmdResult<Installe
         std::fs::create_dir_all(dir)
             .map_err(|e| CommandError::io(format!("{}: {e}", dir.display())))?;
     }
-    arrangia_core::io::write_atomic(config, preview.as_bytes())?;
+    vitrine_core::io::write_atomic(config, preview.as_bytes())?;
     Ok(Installed {
         written: true,
         config_path: config.to_owned(),
@@ -203,7 +203,7 @@ pub fn install(config: &Path, cli: &Path, confirmed: bool) -> CmdResult<Installe
     })
 }
 
-/// Merges `entry` as `mcpServers.arrangia` into the JSON `text` (empty =
+/// Merges `entry` as `mcpServers.vitrine-studio` into the JSON `text` (empty =
 /// a new file). Returns the previous state, the current entry and the new
 /// text (2-space indent, key order kept).
 fn merge(
@@ -404,7 +404,7 @@ mod tests {
         let config = tmp.path().join("Claude").join("claude_desktop_config.json");
         std::fs::create_dir_all(config.parent().unwrap()).unwrap();
         std::fs::write(&config, EXISTING).unwrap();
-        let cli = tmp.path().join("bin").join("arrangia");
+        let cli = tmp.path().join("bin").join("vitrine");
 
         // No write without confirmation.
         assert!(install(&config, &cli, false).is_err());
@@ -431,11 +431,11 @@ mod tests {
         assert_eq!(v["mcpServers"]["zeta"]["env"]["B"], "1");
         assert_eq!(v["mcpServers"]["alpha"]["args"][1], "alpha");
         assert_eq!(v["afterwards"][1], 2.5);
-        assert_eq!(v["mcpServers"]["arrangia"], entry_for(&cli));
+        assert_eq!(v["mcpServers"]["vitrine-studio"], entry_for(&cli));
         // Key order of the original file is kept, the new entry is last.
         let pos = |s: &str| text.find(s).unwrap();
         assert!(pos("globalShortcut") < pos("mcpServers") && pos("mcpServers") < pos("afterwards"));
-        assert!(pos("\"zeta\"") < pos("\"alpha\"") && pos("\"alpha\"") < pos("\"arrangia\""));
+        assert!(pos("\"zeta\"") < pos("\"alpha\"") && pos("\"alpha\"") < pos("\"vitrine-studio\""));
         assert!(pos("\"B\"") < pos("\"A\""));
         assert!(
             pos("\"command\": \"/") < pos("\"args\": [\n        \"mcp\""),
@@ -448,14 +448,14 @@ mod tests {
         assert!(!again.written && again.backup.is_none());
 
         // The CLI moved: detected as different and replaced in place.
-        let moved = tmp.path().join("other").join("arrangia");
+        let moved = tmp.path().join("other").join("vitrine");
         let p = plan(&config, &moved);
         assert_eq!(p.state, EntryState::Different);
         assert_eq!(p.current.unwrap(), entry_for(&cli));
         install(&config, &moved, true).unwrap();
         let v: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&config).unwrap()).unwrap();
-        assert_eq!(v["mcpServers"]["arrangia"], entry_for(&moved));
+        assert_eq!(v["mcpServers"]["vitrine-studio"], entry_for(&moved));
         assert_eq!(v["mcpServers"].as_object().unwrap().len(), 3);
     }
 
@@ -463,14 +463,14 @@ mod tests {
     fn new_file_and_broken_files() {
         let tmp = tempfile::tempdir().unwrap();
         let config = tmp.path().join("new").join("claude_desktop_config.json");
-        let cli = Path::new("/opt/arrangia/arrangia");
+        let cli = Path::new("/opt/vitrine/vitrine");
         let done = install(&config, cli, true).unwrap();
         assert!(done.written && done.backup.is_none());
         let v: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&config).unwrap()).unwrap();
         assert_eq!(
             v,
-            serde_json::json!({"mcpServers": {"arrangia": entry_for(cli)}})
+            serde_json::json!({"mcpServers": {"vitrine-studio": entry_for(cli)}})
         );
 
         for broken in ["{ nope", "[1, 2]", r#"{"mcpServers": 3}"#] {

@@ -1,18 +1,18 @@
-//! `arrangia strings export|import` on a copy of the example project.
+//! `vitrine strings export|import` on a copy of the example project.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use serde_json::Value;
 
-fn arrangia(project: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_arrangia"))
+fn vitrine(project: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_vitrine"))
         .arg("--project")
         .arg(project)
         .args(args)
         .env("NO_COLOR", "1")
         .output()
-        .expect("run arrangia")
+        .expect("run vitrine")
 }
 
 fn stdout(o: &Output) -> String {
@@ -60,7 +60,7 @@ fn export_then_import_changes_nothing() {
     for format in ["csv", "xliff12", "xliff20"] {
         let dir = out.join(format);
         std::fs::create_dir_all(&dir).unwrap();
-        let o = arrangia(
+        let o = vitrine(
             &project,
             &[
                 "strings",
@@ -78,7 +78,7 @@ fn export_then_import_changes_nothing() {
     let csv = out.join("csv/Fernwood-translations.csv");
     let x12 = out.join("xliff12/Fernwood-de.xlf");
     let x20 = out.join("xliff20/Fernwood-de.xlf");
-    let o = arrangia(
+    let o = vitrine(
         &project,
         &["strings", "import", s(&csv), s(&x12), s(&x20), "--json"],
     );
@@ -103,7 +103,7 @@ fn import_applies_and_reports_overflow() {
     .unwrap();
     let before = std::fs::read_to_string(project.join("i18n/de.yaml")).unwrap();
 
-    let o = arrangia(&project, &["strings", "import", s(&csv), "--dry-run"]);
+    let o = vitrine(&project, &["strings", "import", s(&csv), "--dry-run"]);
     let out = stdout(&o);
     assert_eq!(code(&o), 1, "new overflow → exit 1\n{out}");
     assert!(out.contains("lang de: 0 new, 2 changed"), "{out}");
@@ -115,7 +115,7 @@ fn import_applies_and_reports_overflow() {
         before
     );
 
-    let o = arrangia(
+    let o = vitrine(
         &project,
         &["strings", "import", s(&csv), "--no-layout-check"],
     );
@@ -125,7 +125,7 @@ fn import_applies_and_reports_overflow() {
     assert!(de.contains("plan.sub: Beete und Aufgaben"), "{de}");
 
     // Second run: nothing left to do.
-    let o = arrangia(
+    let o = vitrine(
         &project,
         &["strings", "import", s(&csv), "--no-layout-check"],
     );
@@ -137,7 +137,7 @@ fn xliff_per_language_names_and_errors() {
     let tmp = tempfile::tempdir().unwrap();
     let project = example_copy(&tmp);
     let target = tmp.path().join("t/strings.xlf");
-    let o = arrangia(
+    let o = vitrine(
         &project,
         &[
             "strings",
@@ -171,10 +171,10 @@ fn xliff_per_language_names_and_errors() {
     }
     assert!(!target.exists());
 
-    let o = arrangia(&project, &["strings", "export", "--lang", "xx"]);
+    let o = vitrine(&project, &["strings", "export", "--lang", "xx"]);
     assert_eq!(code(&o), 2);
     let bad = tmp.path().join("bad.xlf");
     std::fs::write(&bad, "<xliff version=\"2.0\"><file").unwrap();
-    let o = arrangia(&project, &["strings", "import", s(&bad)]);
+    let o = vitrine(&project, &["strings", "import", s(&bad)]);
     assert_eq!(code(&o), 2, "{}", stdout(&o));
 }

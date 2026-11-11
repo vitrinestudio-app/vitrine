@@ -20,12 +20,12 @@ use std::collections::{BTreeSet, HashMap};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use arrangia_core::geometry::Viewport;
-use arrangia_core::resolve::{ResolvedKind, ResolvedScene};
-use arrangia_render::export::scene_assets;
-use arrangia_render::scene::RenderContext;
 use serde::{Deserialize, Serialize};
 use tiny_skia::Pixmap;
+use vitrine_core::geometry::Viewport;
+use vitrine_core::resolve::{ResolvedKind, ResolvedScene};
+use vitrine_render::export::scene_assets;
+use vitrine_render::scene::RenderContext;
 
 use crate::error::{CmdResult, CommandError};
 

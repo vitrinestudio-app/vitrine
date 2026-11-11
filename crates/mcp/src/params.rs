@@ -1,12 +1,12 @@
 //! Shared argument pieces of the tools and their mapping onto the view
-//! context of `arrangia_app` edit commands.
+//! context of `vitrine_app` edit commands.
 
-use arrangia_app::CommandError;
-use arrangia_app::commands::AppState;
-use arrangia_core::Project;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
+use vitrine_app::CommandError;
+use vitrine_app::commands::AppState;
+use vitrine_core::Project;
 
 /// Where an edit goes.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, JsonSchema)]
@@ -83,21 +83,21 @@ pub struct EditCtx {
 thread_local! {
     /// The GUI's view while a tool of a GUI-hosted server runs (see
     /// [`with_gui_view`]).
-    static GUI_VIEW: std::cell::RefCell<Option<arrangia_app::ViewState>> =
+    static GUI_VIEW: std::cell::RefCell<Option<vitrine_app::ViewState>> =
         const { std::cell::RefCell::new(None) };
 }
 
 /// Runs `f` with `view` as the GUI's view: tools of a GUI-hosted server
 /// default to the target and language the user looks at when the caller
 /// omits them (ADR 0015). Headless servers never set it.
-pub fn with_gui_view<R>(view: Option<arrangia_app::ViewState>, f: impl FnOnce() -> R) -> R {
+pub fn with_gui_view<R>(view: Option<vitrine_app::ViewState>, f: impl FnOnce() -> R) -> R {
     let prev = GUI_VIEW.with(|v| std::mem::replace(&mut *v.borrow_mut(), view));
     let _restore = RestoreView(prev);
     f()
 }
 
 /// Puts the previous GUI view back (also on panic).
-struct RestoreView(Option<arrangia_app::ViewState>);
+struct RestoreView(Option<vitrine_app::ViewState>);
 
 impl Drop for RestoreView {
     fn drop(&mut self) {

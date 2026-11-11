@@ -1,6 +1,6 @@
 [package]
-name = "arrangia-core"
-description = "Arrangia core: project model, YAML IO, operations API, resolution, layout, validation, catalogs"
+name = "vitrine-core"
+description = "Vitrine Studio core: project model, YAML IO, operations API, resolution, layout, validation, catalogs"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

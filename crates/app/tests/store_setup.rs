@@ -5,17 +5,17 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrangia_app::dialogs::NoDialogs;
-use arrangia_app::events::RecordingSink;
-use arrangia_app::settings::AppPaths;
-use arrangia_app::upload::UploadConfig;
-use arrangia_app::{AppState, CommandError, Reply, dispatch};
-use arrangia_publish::credentials::SecretStore;
-use arrangia_publish::{ClientOptions, RetryPolicy};
 use aws_lc_rs::encoding::{AsDer, Pkcs8V1Der};
 use aws_lc_rs::signature::{ECDSA_P256_SHA256_FIXED_SIGNING, EcdsaKeyPair};
 use base64::Engine as _;
 use serde_json::{Value, json};
+use vitrine_app::dialogs::NoDialogs;
+use vitrine_app::events::RecordingSink;
+use vitrine_app::settings::AppPaths;
+use vitrine_app::upload::UploadConfig;
+use vitrine_app::{AppState, CommandError, Reply, dispatch};
+use vitrine_publish::credentials::SecretStore;
+use vitrine_publish::{ClientOptions, RetryPolicy};
 use wiremock::matchers::{method, path, query_param, query_param_is_missing};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -170,7 +170,7 @@ async fn apple_app_picker_pages_caches_and_refreshes() {
 
     // A Google account cannot list Apple apps.
     let err = fail(&e.app, "store_apps_list", json!({"account": "google-play"}));
-    assert_eq!(err.code, arrangia_app::ErrorCode::InvalidArgs);
+    assert_eq!(err.code, vitrine_app::ErrorCode::InvalidArgs);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -184,7 +184,7 @@ async fn apple_app_picker_maps_errors_like_the_connection_test() {
         .mount(&e.server)
         .await;
     let err = fail(&e.app, "store_apps_list", json!({"account": "apple-team"}));
-    assert_eq!(err.code, arrangia_app::ErrorCode::Io);
+    assert_eq!(err.code, vitrine_app::ErrorCode::Io);
     assert_eq!(reason(&err), "key_rejected");
     // Nothing was cached.
     let err = fail(&e.app, "store_apps_list", json!({"account": "apple-team"}));

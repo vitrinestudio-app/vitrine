@@ -19,17 +19,17 @@ mod overlay;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use arrangia_core::frame_import::FrameIndex;
+use vitrine_core::frame_import::FrameIndex;
 
-use arrangia_core::geometry::Viewport;
-use arrangia_core::layout::{
+use serde::Serialize;
+use tiny_skia::Pixmap;
+use vitrine_core::geometry::Viewport;
+use vitrine_core::layout::{
     self, FontDirReport, FontLibrary, LayoutReport, PlacedText, TextDiagnostic, TextLayout,
     TextLayouter,
 };
-use arrangia_core::model::ElementId;
-use arrangia_core::resolve::{ResolvedKind, ResolvedScene};
-use serde::Serialize;
-use tiny_skia::Pixmap;
+use vitrine_core::model::ElementId;
+use vitrine_core::resolve::{ResolvedKind, ResolvedScene};
 
 pub use assets::{AssetCache, AssetError, Decoded, Resample};
 
@@ -305,9 +305,9 @@ impl RenderContext {
     /// rendered lines.
     pub fn resolve_options<'a>(
         &'a self,
-        assets: &'a dyn arrangia_core::resolve::AssetLookup,
-    ) -> arrangia_core::resolve::ResolveOptions<'a> {
-        arrangia_core::resolve::ResolveOptions::new(assets)
+        assets: &'a dyn vitrine_core::resolve::AssetLookup,
+    ) -> vitrine_core::resolve::ResolveOptions<'a> {
+        vitrine_core::resolve::ResolveOptions::new(assets)
             .with_text(self)
             .with_frames(self.frames())
     }
@@ -415,12 +415,12 @@ pub fn render_canvas(ctx: &RenderContext, scene: &ResolvedScene, scale: f64) -> 
     )
 }
 
-impl arrangia_core::resolve::TextMeasure for RenderContext {
+impl vitrine_core::resolve::TextMeasure for RenderContext {
     fn content_rect(
         &self,
-        text: &arrangia_core::resolve::ResolvedText,
-        spans: &std::collections::BTreeMap<String, arrangia_core::resolve::ResolvedSpanStyle>,
-    ) -> Option<arrangia_core::geometry::Rect> {
+        text: &vitrine_core::resolve::ResolvedText,
+        spans: &std::collections::BTreeMap<String, vitrine_core::resolve::ResolvedSpanStyle>,
+    ) -> Option<vitrine_core::geometry::Rect> {
         self.with_layouter(|l| {
             layout::layout_text(l, text, &layout::span_styles(spans)).map(|p| p.content_rect())
         })

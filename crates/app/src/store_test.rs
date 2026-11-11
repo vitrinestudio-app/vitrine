@@ -14,20 +14,20 @@
 
 use std::time::Duration;
 
-use arrangia_core::model::StoreKind;
-use arrangia_publish::credentials::Secret;
-use arrangia_publish::{ClientOptions, Error, RetryPolicy, apple, google};
+use vitrine_core::model::StoreKind;
+use vitrine_publish::credentials::Secret;
+use vitrine_publish::{ClientOptions, Error, RetryPolicy, apple, google};
 
 use crate::stores::{
     ConnectionError, ConnectionFailure, ConnectionInfo, ConnectionTester, StoreAccount,
 };
 
 /// Env overrides of the store endpoints (dev bridge only; loopback URLs only).
-pub const ENV_ASC_BASE_URL: &str = "ARRANGIA_ASC_BASE_URL";
-pub const ENV_PLAY_BASE_URL: &str = "ARRANGIA_PLAY_BASE_URL";
-pub const ENV_PLAY_TOKEN_URL: &str = "ARRANGIA_PLAY_TOKEN_URL";
+pub const ENV_ASC_BASE_URL: &str = "VITRINE_ASC_BASE_URL";
+pub const ENV_PLAY_BASE_URL: &str = "VITRINE_PLAY_BASE_URL";
+pub const ENV_PLAY_TOKEN_URL: &str = "VITRINE_PLAY_TOKEN_URL";
 
-/// [`ConnectionTester`] backed by `arrangia_publish::{apple, google}`.
+/// [`ConnectionTester`] backed by `vitrine_publish::{apple, google}`.
 #[derive(Debug, Clone)]
 pub struct StoreClientTester {
     /// App Store Connect API base URL (`None` = production).

@@ -1,5 +1,5 @@
 # Store locale codes and the default mapping project language → store locale
-# (KONZEPT §7.2, Phase 5.1). Loaded by `arrangia_core::catalog::store_locales`
+# (KONZEPT §7.2, Phase 5.1). Loaded by `vitrine_core::catalog::store_locales`
 # (embedded at build time).
 #
 # A project language resolves to a store locale in this order:

@@ -4,18 +4,18 @@
 //!
 //! | file | macOS | Linux | Windows |
 //! |---|---|---|---|
-//! | `settings.yaml` | `~/Library/Application Support/app.Arrangia.Arrangia/` | `~/.config/arrangia/` | `%APPDATA%\Arrangia\Arrangia\config\` |
-//! | `app.sqlite` | same folder | `~/.local/share/arrangia/` | `%APPDATA%\Arrangia\Arrangia\data\` |
+//! | `settings.yaml` | `~/Library/Application Support/app.vitrinestudio/` | `~/.config/vitrinestudio/` | `%APPDATA%\vitrinestudio\config\` |
+//! | `app.sqlite` | same folder | `~/.local/share/vitrinestudio/` | `%APPDATA%\vitrinestudio\data\` |
 //! | `frames/` (imported frames, ADR 0012) | same folder | data folder | data folder |
 //!
-//! `ARRANGIA_APP_DIR` moves everything below one folder (`config/`, `data/`).
+//! `VITRINE_APP_DIR` moves everything below one folder (`config/`, `data/`).
 
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use arrangia_core::io::{from_yaml, to_yaml, write_atomic};
-use arrangia_core::model::{FrameStyle, Lang};
 use serde::{Deserialize, Serialize};
+use vitrine_core::io::{from_yaml, to_yaml, write_atomic};
+use vitrine_core::model::{FrameStyle, Lang};
 
 use crate::error::{CmdResult, CommandError};
 use crate::stores::StoreAccount;
@@ -30,15 +30,15 @@ pub struct AppPaths {
 }
 
 impl AppPaths {
-    /// The platform folders (`directories`), or below `$ARRANGIA_APP_DIR`
+    /// The platform folders (`directories`), or below `$VITRINE_APP_DIR`
     /// when set (like the CLI); `None` without a home folder.
     pub fn platform() -> Option<Self> {
         if let Some(dir) =
-            std::env::var_os(arrangia_core::frame_import::APP_DIR_ENV).filter(|v| !v.is_empty())
+            std::env::var_os(vitrine_core::frame_import::APP_DIR_ENV).filter(|v| !v.is_empty())
         {
             return Some(Self::in_dir(Path::new(&dir)));
         }
-        let dirs = directories::ProjectDirs::from("app", "Arrangia", "Arrangia")?;
+        let dirs = directories::ProjectDirs::from("app", "", "vitrinestudio")?;
         Some(Self {
             config_dir: dirs.config_dir().to_owned(),
             data_dir: dirs.data_dir().to_owned(),
@@ -102,7 +102,7 @@ pub struct Settings {
     /// port).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mcp_port: Option<u16>,
-    /// `arrangia mcp` starts the GUI when none is running (otherwise it
+    /// `vitrine mcp` starts the GUI when none is running (otherwise it
     /// works headless). On by default.
     #[serde(skip_serializing_if = "is_true")]
     pub mcp_autostart_gui: bool,
@@ -111,7 +111,7 @@ pub struct Settings {
     /// `store_account_*` commands, never by `settings_set`.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub store_accounts: Vec<StoreAccount>,
-    /// AI assistants may upload through `arrangia mcp --headless` (no
+    /// AI assistants may upload through `vitrine mcp --headless` (no
     /// GUI to confirm in). Off by default (ADR 0018).
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub mcp_allow_headless_upload: bool,
@@ -308,7 +308,7 @@ impl RecentStore {
             let (path, name, opened_at) = row?;
             let path = PathBuf::from(path);
             out.push(RecentProject {
-                exists: path.join(arrangia_core::io::PROJECT_FILE).is_file(),
+                exists: path.join(vitrine_core::io::PROJECT_FILE).is_file(),
                 path,
                 name,
                 opened_at,

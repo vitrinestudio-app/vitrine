@@ -4,11 +4,11 @@
 //! partly in German and French. Deterministic: same code, same pixels.
 //!
 //! ```sh
-//! cargo run -p arrangia-render --release --example screens -- tests/fixtures/example/screenshots
+//! cargo run -p vitrine-render --release --example screens -- tests/fixtures/example/screenshots
 //! ```
 //!
 //! The screens are drawn with tiny-skia and the bundled Inter fonts through
-//! `arrangia_core::layout`, in points scaled to the device resolution.
+//! `vitrine_core::layout`, in points scaled to the device resolution.
 
 #![allow(
     clippy::many_single_char_names,
@@ -20,14 +20,14 @@
 
 use std::path::{Path, PathBuf};
 
-use arrangia_core::layout::{FontLibrary, ResolvedTextStyle, TextInput, TextLayouter};
-use arrangia_core::model::{Align, Rgba as CoreRgba};
-use arrangia_render::paint::{
+use tiny_skia::{FillRule, LineCap, LineJoin, PathBuilder, Pixmap, Stroke, Transform};
+use vitrine_core::layout::{FontLibrary, ResolvedTextStyle, TextInput, TextLayouter};
+use vitrine_core::model::{Align, Rgba as CoreRgba};
+use vitrine_render::paint::{
     Rgba, circle, hex, linear, round_rect, shader_paint, solid, with_alpha,
 };
-use arrangia_render::raster::encode_png_rgb_with;
-use arrangia_render::text::draw_layout;
-use tiny_skia::{FillRule, LineCap, LineJoin, PathBuilder, Pixmap, Stroke, Transform};
+use vitrine_render::raster::encode_png_rgb_with;
+use vitrine_render::text::draw_layout;
 
 // ------------------------------------------------------------------ palette
 

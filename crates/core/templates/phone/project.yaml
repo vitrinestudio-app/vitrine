@@ -1,11 +1,11 @@
-# Arrangia project (format: docs/KONZEPT.md §3, docs/adr/0002-project-file-format.md).
+# Vitrine Studio project (format: docs/KONZEPT.md §3, docs/adr/0002-project-file-format.md).
 #
 # One phone strip of three pages, rendered for the iPhone 6.9" App Store
 # set, the Google Play phone set and a blog banner. Put your screenshots in
 # screenshots/<lang>/<variant>/<name>.png (variant = the target's
 # `screenshots` folder, e.g. ios-phone) or screenshots/<lang>/<name>.png;
 # missing screenshots are drawn as placeholders.
-format: arrangia/1
+format: vitrine/1
 revision: 0
 name: __NAME__
 languages:

@@ -172,7 +172,7 @@ export function planView(plan) {
   return h('div', { class: 'up-plan' }, parts.filter(Boolean));
 }
 
-/** App Store asset types (read-only `upload_refdata`): how Arrangia's slots
+/** App Store asset types (read-only `upload_refdata`): how Vitrine Studio's slots
  * resolve to App Asset Library placement groups, plus Apple's raw lists. */
 export async function showAssetTypes(err) {
   const body = h('div', { class: 'up-asset-types' }, h('p', { class: 'muted' }, t('upload.asset_types.loading')));

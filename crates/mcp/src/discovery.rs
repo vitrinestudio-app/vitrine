@@ -1,5 +1,5 @@
 //! The discovery file `<app data dir>/mcp.json` (ADR 0015): how
-//! `arrangia mcp` finds the MCP endpoint of a running GUI.
+//! `vitrine mcp` finds the MCP endpoint of a running GUI.
 //!
 //! ```json
 //! {"url": "http://127.0.0.1:53817/mcp", "port": 53817, "token": "…",
@@ -16,8 +16,8 @@ use std::net::{SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use arrangia_app::settings::AppPaths;
 use serde::{Deserialize, Serialize};
+use vitrine_app::settings::AppPaths;
 
 /// File name in the app data folder.
 pub const FILE_NAME: &str = "mcp.json";
@@ -103,7 +103,7 @@ pub fn pid_alive(pid: u32) -> Option<bool> {
     }
 }
 
-/// `GET /health` with the token: does the endpoint answer as Arrangia?
+/// `GET /health` with the token: does the endpoint answer as Vitrine Studio?
 pub fn healthy(info: &Discovery, timeout: Duration) -> bool {
     let addr = SocketAddr::from(([127, 0, 0, 1], info.port));
     let Ok(mut stream) = TcpStream::connect_timeout(&addr, timeout) else {

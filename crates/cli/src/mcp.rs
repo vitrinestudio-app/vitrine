@@ -1,8 +1,8 @@
-//! `arrangia mcp`: the MCP server over stdio (KONZEPT §8, ADR 0014).
+//! `vitrine mcp`: the MCP server over stdio (KONZEPT §8, ADR 0014).
 //!
 //! MCP clients (Claude Code, Claude Desktop) start this command themselves
 //! and speak JSON-RPC over stdin/stdout, so nothing else may be printed to
-//! stdout. With a running Arrangia app it forwards everything to the app's
+//! stdout. With a running Vitrine Studio app it forwards everything to the app's
 //! in-app endpoint (the assistant edits what the user sees, ADR 0015); without one
 //! it starts the app (setting `mcp_autostart_gui`, default on) or works
 //! headless with its own session. `--headless` forces the latter.
@@ -10,19 +10,19 @@
 use std::path::PathBuf;
 
 use anyhow::anyhow;
-use arrangia_core::io::PROJECT_FILE;
 use clap::Args;
+use vitrine_core::io::PROJECT_FILE;
 
 use crate::{EXIT_OK, Global};
 
 #[derive(Debug, Args)]
 pub struct McpArgs {
     /// App data folder (settings, recent projects, installed device
-    /// frames). Default: `$ARRANGIA_APP_DIR` or the platform folder.
+    /// frames). Default: `$VITRINE_APP_DIR` or the platform folder.
     #[arg(long, value_name = "DIR")]
     pub app_dir: Option<PathBuf>,
     /// Work on the project folder directly with an own session, never
-    /// through (or starting) the Arrangia app. Default: connect to the
+    /// through (or starting) the Vitrine Studio app. Default: connect to the
     /// running app, start it if needed, else headless.
     #[arg(long)]
     pub headless: bool,
@@ -40,11 +40,11 @@ fn start_project(global: &Global) -> Option<PathBuf> {
 }
 
 pub fn run(args: &McpArgs, global: &Global) -> anyhow::Result<u8> {
-    let opts = arrangia_mcp::stdio::StdioOptions {
+    let opts = vitrine_mcp::stdio::StdioOptions {
         project: start_project(global),
         app_dir: args.app_dir.clone(),
         headless: args.headless,
     };
-    arrangia_mcp::stdio::run(&opts).map_err(|e| anyhow!(e))?;
+    vitrine_mcp::stdio::run(&opts).map_err(|e| anyhow!(e))?;
     Ok(EXIT_OK)
 }

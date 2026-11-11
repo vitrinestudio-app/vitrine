@@ -1,23 +1,23 @@
-//! Arrangia desktop editor.
+//! Vitrine Studio desktop editor.
 //!
 //! The web view only shows pixmaps rendered in Rust and draws interaction
 //! overlays on top. All file and system access goes through the custom
 //! commands below; the web view itself only gets `core:default`. Every
-//! command is a thin wrapper around `arrangia_gui::commands` (the same
+//! command is a thin wrapper around `vitrine_gui::commands` (the same
 //! functions the dev HTTP bridge serves), run on a blocking worker thread.
 //!
-//! Usage: `arrangia-gui [PROJECT_DIR]` opens that project at start (else
+//! Usage: `vitrine-gui [PROJECT_DIR]` opens that project at start (else
 //! the start screen).
 //!
 //! The app hosts the MCP endpoint for AI assistants (ADR 0015,
-//! `arrangia_mcp::host`): on `127.0.0.1`, against this app's live state,
-//! with the discovery file `<app data>/mcp.json` for `arrangia mcp`
+//! `vitrine_mcp::host`): on `127.0.0.1`, against this app's live state,
+//! with the discovery file `<app data>/mcp.json` for `vitrine mcp`
 //! (removed again on exit). The setting "Allow AI assistants to connect
 //! via MCP" switches it.
 //!
 //! JS calls them as `invoke(name, { args: {...} })` (see `ui/js/transport.js`);
 //! image commands answer with an `ArrayBuffer` (header + PNG/RGBA, see
-//! `arrangia_gui::preview::PreviewImage::to_tauri_bytes`).
+//! `vitrine_gui::preview::PreviewImage::to_tauri_bytes`).
 
 // Hide the console window on Windows release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -27,14 +27,14 @@ mod native_menu;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
-use arrangia_gui::commands::{self, AppState};
-use arrangia_gui::dialogs::{Dialogs, FileFilter};
-use arrangia_gui::settings::AppPaths;
-use arrangia_gui::{CommandError, EventSink};
-use arrangia_mcp::ProgressRelay;
-use arrangia_mcp::host::{HostOptions, McpHost};
 use tauri::{AppHandle, Emitter, RunEvent};
 use tauri_plugin_dialog::DialogExt;
+use vitrine_gui::commands::{self, AppState};
+use vitrine_gui::dialogs::{Dialogs, FileFilter};
+use vitrine_gui::settings::AppPaths;
+use vitrine_gui::{CommandError, EventSink};
+use vitrine_mcp::ProgressRelay;
+use vitrine_mcp::host::{HostOptions, McpHost};
 
 type Shared = Arc<AppState>;
 
@@ -104,7 +104,7 @@ impl Dialogs for TauriDialogs {
     }
 
     fn open_url(&self, url: &str) -> Result<(), String> {
-        arrangia_gui::dialogs::open_in_browser(url)
+        vitrine_gui::dialogs::open_in_browser(url)
     }
 }
 
@@ -236,7 +236,7 @@ json_commands! {
     frames_list: commands::NoArgs,
     frames_remove: commands::FramesRemoveArgs,
     view_get: commands::NoArgs,
-    view_set: arrangia_gui::ViewState,
+    view_set: vitrine_gui::ViewState,
     mcp_status: commands::NoArgs,
     mcp_set_enabled: commands::McpSetEnabledArgs,
     claude_desktop_plan: commands::NoArgs,
@@ -271,7 +271,7 @@ image_commands! {
     frames_thumbnail: commands::FramesThumbnailArgs,
 }
 
-/// GUI-only command (no `arrangia-app` counterpart): installs the native
+/// GUI-only command (no `vitrine-app` counterpart): installs the native
 /// menu bar from the UI's spec (`native_menu`). Answers `{native: true}`
 /// on macOS; elsewhere the spec is only checked and the in-app menu stays
 /// the only menu (`{native: false}`).
@@ -298,7 +298,7 @@ fn menu_set(
     }
 }
 
-/// `arrangia-gui [PROJECT_DIR]`: the project to open right away.
+/// `vitrine-gui [PROJECT_DIR]`: the project to open right away.
 fn project_arg() -> Option<PathBuf> {
     std::env::args_os()
         .skip(1)
@@ -311,18 +311,18 @@ fn main() {
     let events = Arc::new(TauriEvents::default());
     let dialogs = Arc::new(TauriDialogs::default());
     let paths = AppPaths::platform()
-        .unwrap_or_else(|| AppPaths::in_dir(&std::env::temp_dir().join("arrangia")));
+        .unwrap_or_else(|| AppPaths::in_dir(&std::env::temp_dir().join("vitrine")));
     // Export progress of MCP calls is tapped from the app's event stream.
     let relay = Arc::new(ProgressRelay::new(events.clone()));
-    let discovery = arrangia_mcp::discovery::path(&paths);
+    let discovery = vitrine_mcp::discovery::path(&paths);
     let state: Shared = Arc::new(AppState::new(paths, relay.clone(), dialogs.clone()));
     // The real app always uploads to the production stores (no env overrides).
     state
         .upload()
-        .set_config(arrangia_gui::upload::UploadConfig::default());
+        .set_config(vitrine_gui::upload::UploadConfig::default());
     // "Test connection" of store accounts uses the real store clients (read-only).
     state.set_connection_tester(Arc::new(
-        arrangia_gui::store_test::StoreClientTester::default(),
+        vitrine_gui::store_test::StoreClientTester::default(),
     ));
     let open_at_start = project_arg();
     let startup = state.clone();
@@ -472,7 +472,7 @@ fn main() {
             menu_set,
         ])
         .build(tauri::generate_context!())
-        .expect("error while building Arrangia")
+        .expect("error while building Vitrine Studio")
         .run(move |_, event| {
             // Clean exit: stop the endpoint, remove the discovery file.
             if let RunEvent::Exit = event
@@ -493,9 +493,9 @@ mod tests {
             .nth(1)
             .and_then(|s| s.split(']').next())
             .unwrap();
-        for name in arrangia_gui::commands::JSON_COMMANDS
+        for name in vitrine_gui::commands::JSON_COMMANDS
             .iter()
-            .chain(arrangia_gui::commands::IMAGE_COMMANDS)
+            .chain(vitrine_gui::commands::IMAGE_COMMANDS)
         {
             assert!(
                 handler.split(',').any(|n| n.trim() == *name),

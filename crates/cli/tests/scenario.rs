@@ -13,14 +13,14 @@ use std::process::{Command, Output};
 
 use serde_json::Value;
 
-fn arrangia_in(project: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_arrangia"))
+fn vitrine_in(project: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_vitrine"))
         .arg("--project")
         .arg(project)
         .args(args)
         .env("NO_COLOR", "1")
         .output()
-        .expect("run arrangia")
+        .expect("run vitrine")
 }
 
 fn text(o: &Output) -> String {
@@ -84,7 +84,7 @@ fn three_languages_by_three_targets_export_with_fallbacks() {
     let project = example_copy(&tmp);
 
     // The example is clean: fallbacks are deliberate (infos only).
-    let o = arrangia_in(&project, &["validate", "--strict", "--format", "json"]);
+    let o = vitrine_in(&project, &["validate", "--strict", "--format", "json"]);
     assert_eq!(o.status.code(), Some(0), "{}", text(&o));
     let report = json(&o);
     assert_eq!(report["errors"], 0);
@@ -129,7 +129,7 @@ fn three_languages_by_three_targets_export_with_fallbacks() {
     for l in LANGS {
         args.extend(["--lang", l]);
     }
-    let o = arrangia_in(&project, &args);
+    let o = vitrine_in(&project, &args);
     assert_eq!(o.status.code(), Some(0), "{}", text(&o));
     let report = json(&o);
     assert_eq!(report["errors"].as_array().unwrap().len(), 0);
@@ -196,7 +196,7 @@ fn too_long_translation_is_reported_as_overflow() {
         .collect();
     fs::write(&fr, yaml).unwrap();
 
-    let o = arrangia_in(
+    let o = vitrine_in(
         &project,
         &[
             "validate",
@@ -219,7 +219,7 @@ fn too_long_translation_is_reported_as_overflow() {
     assert!(f["message"].as_str().unwrap().contains("plan.title"));
 
     // Other languages are not affected.
-    let o = arrangia_in(
+    let o = vitrine_in(
         &project,
         &["validate", "--target", "ios-iphone-69", "--lang", "de"],
     );

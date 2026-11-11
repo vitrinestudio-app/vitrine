@@ -2,8 +2,8 @@
 //!
 //! An account is listed in `settings.yaml` (`store_accounts:`) with its
 //! public facts only; the secret (Apple `.p8` key, Google service account
-//! JSON) lives in the system keychain (`arrangia_publish::credentials`),
-//! service `app.arrangia`, user `<id>/<kind>`. Projects reference accounts
+//! JSON) lives in the system keychain (`vitrine_publish::credentials`),
+//! service `app.vitrinestudio`, user `<id>/<kind>`. Projects reference accounts
 //! by id (`store.apple.account` in `project.yaml`).
 //!
 //! ```yaml
@@ -18,10 +18,10 @@
 //!   google: {client_email: uploader@demo.iam.gserviceaccount.com, project_id: demo}
 //! ```
 
-use arrangia_core::model::{StoreKind, is_valid_id};
-pub use arrangia_publish::credentials;
-use arrangia_publish::credentials::Secret;
 use serde::{Deserialize, Serialize};
+use vitrine_core::model::{StoreKind, is_valid_id};
+pub use vitrine_publish::credentials;
+use vitrine_publish::credentials::Secret;
 
 /// One store account (no secrets).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -106,7 +106,7 @@ pub fn check_accounts(accounts: &[StoreAccount]) -> Result<(), String> {
 
 /// A free account id derived from `label` (`apple-my-team`, `-2` …).
 pub fn new_account_id(kind: StoreKind, label: &str, taken: &[StoreAccount]) -> String {
-    let slug = arrangia_core::frame_import::slug(label);
+    let slug = vitrine_core::frame_import::slug(label);
     let base = if slug.is_empty() {
         kind.as_str().to_owned()
     } else if slug.starts_with(kind.as_str()) {
@@ -181,7 +181,7 @@ impl ConnectionError {
 }
 
 /// Seam for the store clients' "who am I" call. The GUI and the dev bridge
-/// install [`crate::store_test::StoreClientTester`] (`arrangia_publish::apple`
+/// install [`crate::store_test::StoreClientTester`] (`vitrine_publish::apple`
 /// / `google`); without a tester (CLI, headless MCP) `store_account_test`
 /// answers `not_implemented` after checking that the secret is in the
 /// keychain and valid.
