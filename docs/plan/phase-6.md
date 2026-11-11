@@ -75,7 +75,7 @@ and downloadable from a gallery.
       upload flow. User 2026-11-10: **own backend** (e.g. `api.vitrinestudio.app`
       on the user's Docker server; user also runs PHP and Node.js
       elsewhere). Stack (user OK 2026-11-10): Rust (axum) in
-      this workspace (`crates/gallery-server`), Docker image, SQLite, files
+      this workspace (`crates/api-server`, formerly `gallery-server`), Docker image, SQLite, files
       on disk, behind the user's reverse proxy – reuses `core` validation and
       `render` to build trusted preview images server-side. Uploader login
       via GitHub OAuth (no passwords), moderation queue, licence per
@@ -93,13 +93,16 @@ and downloadable from a gallery.
       --template <name|file>`, MCP `template_list|save|insert|import`, GUI
       (template cards in New project, "Save as template…", canvases dialog
       "From template"; not yet looked at in the real app).
-- [~] Gallery backend `crates/gallery-server` (axum, SQLite, Docker):
-      list/search/get/download/previews, upload with validation (server
-      regenerates placeholders and previews), abuse reports, moderation
-      queue, rate limits – tested in-process. TODO: GitHub OAuth (stubs,
-      feature `github-oauth`), uploader self-service, deletion of rejected
-      files, the website pages, in-app "browse gallery". Deployment by the
-      owner: `docs/gallery/DEPLOY.md`.
+- [~] Gallery backend `crates/api-server` (renamed from `gallery-server`
+      2026-11-11; axum, SQLite, Docker): list/search/get/download/previews
+      (public, rate limited), upload with validation (server regenerates
+      placeholders and previews), abuse reports, moderation queue, rate
+      limits; GitHub login (device + web flow, session tokens, ownership
+      by GitHub id, official flag; ADR 0025); client `publish::gallery`,
+      CLI `vitrine gallery`, app commands `gallery_*` – tested in-process.
+      TODO: in-app "browse gallery" (GUI), uploader self-service, deletion
+      of rejected files, the website pages. Deployment by the owner:
+      `docs/api/DEPLOY.md`.
 
 ## 6.4 Own frame packages
 KONZEPT §4.2 (frames, point 3): any PNG or SVG frame plus a small

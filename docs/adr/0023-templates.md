@@ -1,6 +1,6 @@
 # 0023 – Templates: package format, merge rules, gallery backend
 
-- Status: accepted (gallery backend: skeleton, see "Gallery")
+- Status: accepted (gallery backend renamed and GitHub login added: ADR 0025)
 - Date: 2026-11-11
 
 ## Context
@@ -141,22 +141,22 @@ save|list|import|export|remove|insert|new`, `vitrine new --template
 <name|file>`. MCP `template_list|save|insert|import`, `project_create
 {template}`.
 
-### Gallery backend (`crates/gallery-server`)
+### Gallery backend (`crates/api-server`, formerly `crates/gallery-server`)
 
-Binary `vitrine-gallery` (axum 0.8, rusqlite, files on disk, config via
-environment) for `api.vitrinestudio.app`, deployed by the owner with
-Docker behind his reverse proxy. It reuses `core` (the checks above,
-`regenerate_placeholders`: uploaded screenshots are always replaced by
-generated ones) and `render` (trusted previews rendered on the server, the
-uploaded `previews/` are discarded). Implemented: health, list/search,
-get, download, preview images, upload with validation (stored as
-`pending` unless `GALLERY_AUTO_APPROVE`), abuse reports, an admin
-moderation queue (approve/reject, bearer token from the environment),
-rate limiting of uploads/reports per client. **Stubs** (feature
-`github-oauth`, TODO): GitHub OAuth device/web flow; until then uploads
-use bearer tokens from `GALLERY_UPLOAD_TOKENS` (owner-issued, for testing).
-API sketch: `docs/gallery/API.md`; deployment, GDPR and Impressum:
-`docs/gallery/DEPLOY.md`.
+Binary `vitrine-api` (axum 0.8, rusqlite, files on disk, config via
+`VITRINE_API_*` environment variables) for `api.vitrinestudio.app`,
+deployed by the owner with Docker behind his reverse proxy. It reuses
+`core` (the checks above, `regenerate_placeholders`: uploaded screenshots
+are always replaced by generated ones) and `render` (trusted previews
+rendered on the server, the uploaded `previews/` are discarded).
+Implemented: health, list/search, get, download, preview images (public,
+no login), upload with validation (stored as `pending` unless
+`VITRINE_API_AUTO_APPROVE`), abuse reports, an admin moderation queue
+(approve/reject, bearer token from the environment), rate limiting.
+Renamed to `api-server` and given GitHub login (device + web flow, own
+session tokens, ownership by GitHub id, official templates) in ADR 0025.
+API: `docs/api/API.md`; deployment, GDPR and Impressum:
+`docs/api/DEPLOY.md`.
 
 ## Consequences
 
@@ -166,6 +166,6 @@ API sketch: `docs/gallery/API.md`; deployment, GDPR and Impressum:
   previews equal local ones.
 - Merge rules never change the project's existing look: conflicting styles
   are renamed unless the user asks for the project's styles.
-- Not done yet: a GUI "browse gallery" (network client belongs to a
-  `publish`-like crate, not `core`), template versions/updates, frame
+- Not done yet: a GUI "browse gallery" (client and app commands exist,
+  ADR 0025), template versions/updates, frame
   packs in templates (6.4), font subsetting.

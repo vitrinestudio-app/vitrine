@@ -60,8 +60,9 @@ crates/
   mcp/      vitrine-mcp      MCP server (rmcp 3.9, exact pin) over vitrine-app (ADR 0014);
                               GUI host + stdio proxy (ADR 0015)
   cli/      vitrine-cli      binary `vitrine` (clap)
-  gallery-server/ vitrine-gallery-server  template gallery backend (axum, SQLite,
-                              Docker; binary `vitrine-gallery`, ADR 0023; not in the GUI)
+  api-server/ vitrine-api-server  backend of api.vitrinestudio.app (axum, SQLite,
+                              Docker; binary `vitrine-api`; template gallery + GitHub
+                              login; ADR 0023, 0025; not in the GUI)
   gui/      vitrine-gui      Tauri 2 app + dev bridge over `app`; frontend in gui/ui/
                               (vanilla ES modules, see gui/ui/README.md)
 assets/fonts/           bundled OFL fonts (Inter 4.1 + 9 variable families in
@@ -128,8 +129,16 @@ ops on a scratch template project, one transaction), `store` (app-wide
 `crates/core/templates/<id>/`). Previews: `vitrine_render::template`
 (parametric frames only). App commands `template_*` (+ image
 `template_preview`), `project_new {template}`. Gallery backend:
-`crates/gallery-server` (reuses core checks + render previews; API
-`docs/gallery/API.md`, deploy `docs/gallery/DEPLOY.md`).
+`crates/api-server` (ADR 0025; reuses core checks + render previews;
+`routes/<area>.rs` per API area – `templates`, `admin`, `auth`; GitHub
+device + web flow, own hashed session tokens, ownership by GitHub id,
+`official` flag; env `VITRINE_API_*`; API `docs/api/API.md`, deploy
+`docs/api/DEPLOY.md`). Gallery client: `publish::gallery` (`api_url`:
+`--api`, `VITRINE_API_URL` loopback only, else production;
+`GalleryError::Unreachable`), app commands `gallery_list|gallery_download`
++ image `gallery_preview` (error codes `unreachable`, `remote`), CLI
+`vitrine gallery`; session token in the keychain via
+`SecretStore::{set,get,delete}_named` (`gallery/<api host>`).
 
 `core::frame_import` (ADR 0012) – Apple Product Bezels imported by the
 user: package (folder/zip/DMG), name rules in
@@ -354,7 +363,9 @@ print to stdout there), `upload plan [--store apple|google] [--target]
 [--lang] [--remote] [--force] [--format json]`, `upload execute --confirm
 <token> [--yes] [--changes-not-sent-for-review]`, `upload log [--last]
 [--events]`, `upload refdata [--account] [--app] [--format json]`
-(`upload` takes `--app-dir`; ADR 0018, 0019). Exit codes: 0 ok, 1 project
+(`upload` takes `--app-dir`; ADR 0018, 0019), `gallery login|logout|list
+[--query] [--tag] [--format json]|upload <file> [--token-env VAR]|download
+<id> [-o FILE]` (`--api URL`; ADR 0025). Exit codes: 0 ok, 1 project
 problems, 2 could not run.
 
 Golden tests (`crates/render/tests/golden.rs`) render every output image
