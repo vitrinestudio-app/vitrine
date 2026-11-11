@@ -166,16 +166,29 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
 - [x] Owner: review of `CLA.md` (2026-11-11)
 - [ ] Owner: set up the CLA bot (CONTRIBUTING.md)
 
-## 6.6 Website vitrinestudio.app (own step)
-- [ ] Static site (generator choice, hosting – open question), landing
-      page, screenshots made with Vitrine Studio itself, download links per OS,
-      feature overview, fastlane frameit migration page
+## 6.6 Website vitrinestudio.app (own step) – first version 2026-11-11
+- [x] Static site: Hugo (extended ≥ 0.154, the owner's generator) in
+      `website/`, no theme, own layouts/CSS/JS, no npm; en (default) + de
+      (`/de/`); light/dark; self-hosted font subsets; no cookies, trackers
+      or third-party requests (`website/README.md`)
+- [x] Landing page: animated "continuous canvas" hero, how it works,
+      language × device matrix, editor, features, example showcase, AI/MCP,
+      fastlane, store upload, templates teaser, open source + CLA, FAQ
+- [x] Download page ("coming soon" until 6.5; `downloads_available` +
+      URLs in `hugo.toml`), fastlane migration page (docs)
+- [ ] Owner: Impressum + Datenschutz texts (placeholders with TODO),
+      domain/hosting/deployment (SFTP pattern of the other sites, see
+      `website/README.md`), review of texts and design
+- [ ] Screenshots made with Vitrine Studio itself / from the new templates
+      (list of images to replace in `website/README.md`)
 - [ ] Hosts the template (and frame pack) gallery from 6.3/6.4
 
 ## 6.7 Documentation (own step)
-- [ ] User guide from `docs/guide/NOTES.md`: getting started, editor,
+- [~] User guide from `docs/guide/NOTES.md`: getting started, editor,
       languages, import (incl. fastlane), export, store upload setup (Apple
       key, Google service account), MCP/Claude, CLI reference, project file
-      format reference
-- [ ] Published on the website; screenshots of the real app
+      format reference – 2026-11-11: structure + short English summaries
+      on the website (`website/content/en/docs/`, 10 pages, sidebar,
+      prev/next); German pages are stubs ("Deutsche Übersetzung folgt")
+- [~] Published on the website (structure done); screenshots of the real app
 - [ ] `docs_get` MCP tool content stays in sync

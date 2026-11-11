@@ -76,6 +76,9 @@ tests/fixtures/example/ example project (all target kinds; en, de, fr, fr-CA
 docs/KONZEPT.md         concept (binding)
 docs/adr/               architecture decision records
 docs/plan/              task lists per phase
+website/                www.vitrinestudio.app: Hugo site (no theme), en + de,
+                        landing page + docs; `hugo server` / `hugo --minify`
+                        in website/, see website/README.md
 docs/example/           preview images of the example project (README)
 docs/gui/               screenshots of the editor (README)
 ```

@@ -331,6 +331,7 @@ points under the matching chapter. Keep entries short, concrete, with commands.
 - No browser context menu (Reload / Inspect Element) on right-click; text fields and selected text keep theirs (copy/paste, spelling). Developers: ⌥/Alt + right-click shows the web view's menu anywhere ("Inspect Element" in debug builds).
 
 ## Contributor notes
+- Website (2026-11-11): `website/` (Hugo, `hugo server` / `hugo --minify`); the docs pages in `website/content/en/docs/` are short summaries of this file – keep them in sync when a feature changes; landing-page texts live in the front matter of `website/content/<lang>/_index.md`.
 - Licence (2026-11-11, ADR 0022): code GPL-3.0-or-later (`LICENSE`); contributions need the CLA (`CLA.md`, signed via bot on the first pull request; `CONTRIBUTING.md`). Name, logo and app icons are not GPL (© Looking4Cache UG (haftungsbeschränkt); forks rebrand, `assets/brand/README.md`). Fonts OFL 1.1, hyphenation patterns MIT/BSD – their notices ship with the app. `vitrine --help` and the macOS About panel show copyright + licence.
 - Built-in device frames are own parametric artwork (devices.yaml + render/frames); how to add devices + ready-made Claude prompt: docs/dev/adding-devices.md.
 
