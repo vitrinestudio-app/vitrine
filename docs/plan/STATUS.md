@@ -59,6 +59,7 @@ current: update after each phase/merge and whenever the user decides something.
 - User-facing facts go to `docs/guide/NOTES.md` (English, notes only, no prose yet).
 
 ## Decisions taken with the user
+- 2026-11-11 App logo: concept "continuous canvas" (three store pages with one gradient + wave across the gaps), drawn as own SVG (no AI/Leonardo image), slightly tighter margin chosen by the user; sources in `assets/brand/`, app icons in `crates/gui/icons/` generated from `vitrine-studio-appicon.svg`.
 - 2026-11-11 Product renamed Arrangia → Vitrine Studio (user); CLI `vitrine`, crates `vitrine-*`, env `VITRINE_*`, identifier/keychain `app.vitrinestudio`, format `vitrine/1`, domain vitrinestudio.app (www = homepage, api = gallery backend)
 - 2026-11-10 Own frame packages (PNG/SVG + `frame.yaml`, KONZEPT §4.2) agreed as proposed. Template gallery: own backend (subdomain like `api.vitrinestudio.app`, user's Docker server); stack Rust/axum + SQLite in a Docker container (user OK), uploader login via GitHub OAuth, all gallery templates CC0 (fonts inside keep OFL) (phase-6.md 6.3).
 - 2026-11-10 Phase 6 runs in parallel with the Phase 5 real-run tests; plan in `docs/plan/phase-6.md`. Website vitrinestudio.app and documentation are separate steps. Colour management P3 → sRGB started now; installer/signing on 2026-11-11 (prepared in phase-6.md). Templates: uploadable to and downloadable from a web gallery (on vitrinestudio.app). Feature graphic: largely present (`play-feature-graphic`), close to Apple's header/search creatives.
