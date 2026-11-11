@@ -653,3 +653,119 @@ fn span_effects_replace_the_text_effects_without_changing_lines() {
     assert_eq!(a.effect_outsets(), (4.0, 32.0));
     assert_eq!(b.effect_outsets(), (0.0, 32.0));
 }
+
+fn styled(font: &str, weight: u16, italic: bool) -> ResolvedTextStyle {
+    ResolvedTextStyle {
+        font: font.into(),
+        weight,
+        italic,
+        size: 60.0,
+        ..ResolvedTextStyle::default()
+    }
+}
+
+#[test]
+fn bundled_families_are_registered_on_first_use() {
+    let mut l = layouter();
+    assert!(l.loaded_bundled_families().is_empty(), "nothing at start");
+    l.layout(&TextInput::new(
+        "Hello",
+        &styled("Inter", 400, false),
+        900.0,
+    ));
+    assert_eq!(l.loaded_bundled_families(), ["inter"]);
+    let spans = BTreeMap::from([(
+        "mono".to_owned(),
+        ResolvedSpanStyle {
+            font: Some("JetBrains Mono".into()),
+            ..ResolvedSpanStyle::default()
+        },
+    )]);
+    let out = l.layout(&TextInput {
+        spans: Some(&spans),
+        ..TextInput::new(
+            "Hello [mono]code[/]",
+            &styled("Montserrat", 700, false),
+            900.0,
+        )
+    });
+    assert_eq!(
+        l.loaded_bundled_families(),
+        ["inter", "jetbrains mono", "montserrat"]
+    );
+    let fams: BTreeSet<&str> = out
+        .runs
+        .iter()
+        .map(|r| l.fonts().face(r.font).unwrap().family.as_str())
+        .collect();
+    assert_eq!(fams, BTreeSet::from(["JetBrains Mono", "Montserrat"]));
+}
+
+/// Every bundled family lays out a line with its own face (no fallback
+/// to Inter, no missing glyphs).
+#[test]
+fn every_bundled_family_lays_out_with_its_own_face() {
+    let mut l = layouter();
+    for fam in bundled::FAMILIES {
+        let out = l.layout(&TextInput::new(
+            "PLANT plant 123",
+            &styled(fam.family, 400, false),
+            2000.0,
+        ));
+        assert!(
+            out.diagnostics.is_empty(),
+            "{}: {:?}",
+            fam.family,
+            out.diagnostics
+        );
+        for r in &out.runs {
+            assert_eq!(l.fonts().face(r.font).unwrap().family, fam.family);
+            assert!(
+                r.glyphs.iter().all(|g| g.id != 0),
+                "{}: .notdef",
+                fam.family
+            );
+        }
+    }
+}
+
+/// One variable file serves every weight: the `wght` axis follows the
+/// requested weight (heavier = wider), clamped to the font's range.
+#[test]
+fn variable_fonts_follow_the_requested_weight() {
+    let mut l = layouter();
+    let w = |l: &mut TextLayouter, font: &str, weight: u16| {
+        width_of(l, "Headline text", &styled(font, weight, false))
+    };
+    let (w300, w700, w900) = (
+        w(&mut l, "Montserrat", 300),
+        w(&mut l, "Montserrat", 700),
+        w(&mut l, "Montserrat", 900),
+    );
+    assert!(w300 < w700 && w700 < w900, "{w300} {w700} {w900}");
+    let out = l.layout(&TextInput::new(
+        "Bold",
+        &styled("Montserrat", 700, false),
+        900.0,
+    ));
+    assert!(!out.runs[0].coords.is_empty(), "wght coordinate set");
+    assert!(!out.runs[0].embolden, "no synthetic bold");
+    // Lora stops at 700: 900 looks like 700.
+    let (l400, l700, l900) = (
+        w(&mut l, "Lora", 400),
+        w(&mut l, "Lora", 700),
+        w(&mut l, "Lora", 900),
+    );
+    assert!(
+        (l900 - l700).abs() < 0.01 && l700 > l400,
+        "{l400} {l700} {l900}"
+    );
+    // Italic picks the italic file, not a synthetic slant.
+    let out = l.layout(&TextInput::new(
+        "Italic",
+        &styled("Playfair Display", 400, true),
+        900.0,
+    ));
+    let face = l.fonts().face(out.runs[0].font).unwrap();
+    assert!(face.italic && out.runs[0].skew.is_none());
+}

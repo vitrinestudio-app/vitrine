@@ -468,4 +468,49 @@ mod tests {
         assert_eq!(paths.highlights.len(), 1);
         assert_eq!(paths.highlights[0].color, [255, 0, 0, 255]);
     }
+
+    /// Every bundled family loads and draws a line (no golden image: this
+    /// checks loading and outlines, the goldens stay Inter-only).
+    #[test]
+    fn every_bundled_family_draws_a_line() {
+        let mut l = TextLayouter::new(FontLibrary::bundled());
+        for fam in vitrine_core::layout::bundled::FAMILIES {
+            let style = ResolvedTextStyle {
+                font: fam.family.to_owned(),
+                size: 48.0,
+                ..ResolvedTextStyle::default()
+            };
+            let layout = l.layout(&TextInput::new("Hamburgefonts 123", &style, 2000.0));
+            assert!(layout.diagnostics.is_empty(), "{}", fam.family);
+            let face = l.fonts().face(layout.runs[0].font).unwrap();
+            assert_eq!(face.family, fam.family);
+            let mut pm = Pixmap::new(600, 80).unwrap();
+            draw_layout(&mut pm, &layout, l.fonts(), Transform::identity(), None);
+            assert!(ink(&pm) > 1500, "{}: {} ink pixels", fam.family, ink(&pm));
+        }
+    }
+
+    /// A variable font draws heavier with a higher weight (the `wght`
+    /// coordinates reach the outlines).
+    #[test]
+    fn variable_weight_reaches_the_outlines() {
+        let mut l = TextLayouter::new(FontLibrary::bundled());
+        let mut ink_at = |weight: u16| {
+            let style = ResolvedTextStyle {
+                font: "Montserrat".to_owned(),
+                weight,
+                size: 48.0,
+                ..ResolvedTextStyle::default()
+            };
+            let layout = l.layout(&TextInput::new("Hamburgefonts", &style, 2000.0));
+            let mut pm = Pixmap::new(600, 80).unwrap();
+            draw_layout(&mut pm, &layout, l.fonts(), Transform::identity(), None);
+            ink(&pm)
+        };
+        let (thin, regular, black) = (ink_at(100), ink_at(400), ink_at(900));
+        assert!(
+            thin < regular && regular < black,
+            "{thin} {regular} {black}"
+        );
+    }
 }

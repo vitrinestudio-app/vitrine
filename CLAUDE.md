@@ -64,7 +64,9 @@ crates/
                               Docker; binary `vitrine-gallery`, ADR 0023; not in the GUI)
   gui/      vitrine-gui      Tauri 2 app + dev bridge over `app`; frontend in gui/ui/
                               (vanilla ES modules, see gui/ui/README.md)
-assets/fonts/           bundled OFL fonts (Inter 4.1, embedded by core::layout)
+assets/fonts/           bundled OFL fonts (Inter 4.1 + 9 variable families in
+                        <family>/ with OFL.txt; manifest core::layout::bundled,
+                        embedded, registered lazily; SOURCES.md)
 assets/hyphenation/     hyph-utf8 hyphenation patterns (permissive licences only,
                         see LICENSES.md; embedded by core::layout::hyphen)
 tests/fixtures/example/ example project (all target kinds; en, de, fr, fr-CA

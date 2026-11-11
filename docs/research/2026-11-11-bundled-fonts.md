@@ -1,7 +1,10 @@
 # More bundled fonts – proposal (2026-11-11)
 
-Status: **proposal, nothing bundled yet.** The owner decides on the set
-and the loading approach before any font file is added.
+Status: **decided and implemented 2026-11-11** – the owner chose the
+recommended 9 families (no DM Sans); bundled as variable files with the
+recommended italics, embedded with lazy registration and weight-range
+matching (`crates/core/src/layout/bundled.rs`, `assets/fonts/SOURCES.md`).
+The text below is the original proposal.
 
 Today Vitrine Studio bundles Inter 4.1 only (`assets/fonts/`, four static
 files, 1.67 MB, embedded with `include_bytes!` in

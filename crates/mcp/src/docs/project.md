@@ -27,6 +27,9 @@ styles:
   frame: detailed         # default device frame: stylized | detailed | imported:apple | pack:<id> (frames_list)
   fonts:                  # per family: fallbacks for missing characters
     Inter: {fallback: [Noto Sans JP]}
+  # font: a bundled family (catalog_fonts: Inter, Inter Display, Montserrat, Nunito,
+  # Oswald, Playfair Display, Lora, Bebas Neue, Caveat, Dancing Script, JetBrains Mono)
+  # or a family from the project's fonts/ folder
 canvases:
 - id: phone
   page: {aspect: "1320:2868", count: 5, ids?: [hero, plan, …]}   # ids name export files

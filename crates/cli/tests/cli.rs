@@ -531,3 +531,39 @@ fn frame_pack_import_into_the_project_and_render() {
     let o = run(&["frames", "remove", "--pack", "clay-phone"]);
     assert_eq!(code(&o), 2, "no app pack: {}", stderr(&o));
 }
+
+/// `vitrine fonts` lists the bundled families and the project's fonts.
+#[test]
+fn fonts_lists_bundled_and_project_families() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = new_project(&tmp, &[]);
+    std::fs::create_dir_all(dir.join("fonts")).unwrap();
+    std::fs::copy(
+        repo_file("assets/fonts/lora/Lora[wght].ttf"),
+        dir.join("fonts/Brand.ttf"),
+    )
+    .unwrap();
+    let o = vitrine_in(&dir, &["fonts", "--format", "json"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let list: Value = serde_json::from_str(&stdout(&o)).unwrap();
+    let list = list.as_array().unwrap();
+    let bundled: Vec<&str> = list
+        .iter()
+        .filter(|f| f["source"] == "bundled")
+        .map(|f| f["family"].as_str().unwrap())
+        .collect();
+    assert_eq!(bundled.len(), 11);
+    assert_eq!(bundled[0], "Inter");
+    assert!(bundled.contains(&"Playfair Display"));
+    let mono = list
+        .iter()
+        .find(|f| f["family"] == "JetBrains Mono")
+        .unwrap();
+    assert_eq!(mono["category"], "monospace");
+    assert_eq!(mono["weights"], serde_json::json!([100, 800]));
+    let project = list.iter().find(|f| f["source"] == "project").unwrap();
+    assert_eq!(project["family"], "Lora");
+    assert_eq!(project["weights"], serde_json::json!([400, 700]));
+    let o = vitrine_in(&dir, &["fonts"]);
+    assert!(stdout(&o).contains("Caveat"), "{}", stdout(&o));
+}

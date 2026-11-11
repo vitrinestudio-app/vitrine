@@ -251,7 +251,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
   function stylesPane(s) {
     const listId = 'ps-color-names';
     const datalist = h('datalist', { id: listId }, Object.keys(styles.colors ?? {}).map((n) => h('option', { value: `@${n}` })));
-    const fontNames = [...fonts.bundled, ...fonts.project];
+    const fontNames = fontOptions();
     const shadowNames = [...new Set([...BUILTIN_SHADOWS, ...Object.keys(styles.shadows ?? {})])];
     const patch = (p) => commit(() => api.stylesPatch(p));
     const renameInput = (kind, name) =>
@@ -420,6 +420,28 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
     return h('div', { class: 'inline' }, input({ type: 'number', value, step, cls: 'num', placeholder: t('project.styles.default'), onchange: (v) => onchange(v) }), h('span', { class: 'muted small' }, unit));
   }
 
+  /** Font picker options: bundled families with their category, then project fonts. */
+  function fontOptions() {
+    const info = fonts.bundled_info ?? fonts.bundled.map((family) => ({ family }));
+    return [
+      ...info.map((f) => ({ value: f.family, label: f.category ? `${f.family} · ${t(`fonts.category.${f.category}`)}` : f.family })),
+      ...fonts.project.filter((f) => !fonts.bundled.includes(f)).map((f) => ({ value: f, label: `${f} · ${t('fonts.project')}` })),
+    ];
+  }
+
+  /** Families the text and span styles name (the default is Inter). */
+  function usedFamilies() {
+    const used = new Set(['Inter']);
+    for (const st of [...Object.values(styles.text ?? {}), ...Object.values(styles.spans ?? {})]) if (st.font) used.add(st.font);
+    return used;
+  }
+
+  /** "100–900 · italic" for a bundled family. */
+  function bundledSummary(f) {
+    const w = f.weights[0] === f.weights[1] ? `${f.weights[0]}` : `${f.weights[0]}–${f.weights[1]}`;
+    return [t(`fonts.category.${f.category}`), w, f.italic ? t('fonts.italic') : null].filter(Boolean).join(' · ');
+  }
+
   /** System fallback state: off, on but not needed, or the loaded families. */
   function systemFontsText() {
     if (fonts.system.length) return `${t('fonts.system.loaded')}: ${fonts.system.join(', ')}`;
@@ -429,7 +451,9 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
   function fontsPane() {
     const all = [...fonts.bundled, ...fonts.project];
     const settings = styles.fonts ?? {};
-    const families = [...new Set([...all, ...Object.keys(settings)])];
+    // Rows for the families in use, project fonts and families with settings;
+    // every bundled family is listed compactly below.
+    const families = [...new Set([...usedFamilies(), ...fonts.project, ...Object.keys(settings)])];
     const listId = 'ps-font-names';
     const datalist = h('datalist', { id: listId }, all.map((f) => h('option', { value: f })));
     const setFallback = (family, list) => commit(() => api.stylesPatch({ fonts: { [family]: list.length ? { fallback: list } : null } }));
@@ -470,6 +494,9 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
       h('div', { class: 'section-title' }, t('fonts.families')),
       h('p', { class: 'muted small' }, t('fonts.fallback.hint')),
       ...families.map(familyRow),
+      h('div', { class: 'section-title' }, t('fonts.bundled_list')),
+      h('p', { class: 'muted small' }, t('fonts.bundled_list.hint')),
+      h('div', { class: 'stack' }, ...(fonts.bundled_info ?? []).map((f) => h('div', { class: 'inline' }, h('span', {}, f.family), h('span', { class: 'muted small' }, ` · ${bundledSummary(f)}`)))),
       h('div', { class: 'section-title' }, t('fonts.system')),
       h('p', { class: 'muted small' }, systemFontsText()),
       h('p', { class: 'muted small' }, t('project.fonts.hint')),
