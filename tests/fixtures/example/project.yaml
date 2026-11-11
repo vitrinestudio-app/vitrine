@@ -4,8 +4,8 @@
 # 6.3", Google Play phone (device swap to an Android frame), iPad 13"
 # landscape (two phone pages per image via `group: 2` + the
 # `tablet-landscape` variant), Mac App Store (16:10), web slides (browser
-# window and a notebook with browser chrome), a blog header and an Open
-# Graph image. Languages: en (default), de, fr and fr-CA. Fallbacks on
+# window and a notebook with browser chrome), a blog header, the Google
+# Play feature graphic (1024x500, Android frames) and an Open Graph image. Languages: en (default), de, fr and fr-CA. Fallbacks on
 # purpose: some German screenshots and all French ones except three phone
 # screens are missing (→ en, info); fr-CA translates only two texts
 # (Québec wording) and inherits the rest from fr via the automatic prefix
@@ -589,6 +589,17 @@ targets:
   gaps: none
   format: jpeg
   quality: 88
+- id: play-feature-graphic
+  kind: banner
+  strip: phone
+  variant: banner
+  size: [1024, 500]
+  screenshots: android-phone
+  device_map: {iphone-island: android-punchhole}
+  region: {rect: {page: 0, x: 0, y: 40, width: 3000, height: 1465}}
+  fit: cover
+  gaps: none
+  store: {google: {image_type: featureGraphic}}
 - id: open-graph
   kind: banner
   strip: web

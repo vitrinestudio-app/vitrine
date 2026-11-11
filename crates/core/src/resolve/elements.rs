@@ -15,7 +15,7 @@ use super::scene::{
 use super::style::StyleResolver;
 use super::{Diags, ResolveOptions};
 use crate::catalog::Device;
-use crate::frame_import::{BezelChoice, FrameIndex, select_bezel};
+use crate::frame_import::{BezelChoice, select_bezel};
 use crate::geometry::{CanvasLayout, Rect, Vec2};
 use crate::model::{
     Align, AnchorY, Clip, DeviceProps, Element, ElementId, ElementKind, ElementPatch, FitMode,
@@ -418,12 +418,12 @@ impl Walker<'_, '_> {
             None => self.device_color(
                 p,
                 device,
-                mapped_from.is_some() || matches!(requested, FrameStyle::Imported(_)),
+                mapped_from.is_some() || requested.is_external(),
                 d,
             ),
         };
         let frame = match (&requested, &imported) {
-            (FrameStyle::Imported(_), None) => FrameStyle::Detailed,
+            (r, None) if r.is_external() => FrameStyle::Detailed,
             _ => requested,
         };
         // `aspect: free` models (browser, none) take the screenshot's aspect
@@ -492,9 +492,8 @@ impl Walker<'_, '_> {
         screenshot_px: Option<PixelSize>,
         d: &mut Diags,
     ) -> Option<ImportedFrame> {
-        let FrameStyle::Imported(source) = requested else {
-            return None;
-        };
+        let source = requested.external_source()?;
+        let source = &source;
         if crate::frame_import::Rules::builtin(source).is_some_and(|r| !r.covers(model)) {
             // No vendor frame exists for this model (browser, Android …).
             return None;
@@ -581,8 +580,8 @@ impl Walker<'_, '_> {
         bezels.dedup();
         Some(ImportedFrame {
             source: source.clone(),
-            file: FrameIndex::rel_path(source, &f.file),
-            mask: FrameIndex::rel_path(source, &f.mask),
+            file: f.file.clone(),
+            mask: f.mask.clone(),
             size: f.size,
             screen: f.screen,
             color: f.color.clone(),

@@ -1162,7 +1162,7 @@ fn check_region(t: &Target, strip: &Strip) -> Result<(), OpError> {
 /// app-wide, not project data: resolve and validation report a missing
 /// one (info), ops only check the colour is a valid name.
 fn imported_frame_context(strip: &Strip, e: &Element, d: &DeviceProps, styles: &Styles) -> bool {
-    let imported = |f: Option<&FrameStyle>| matches!(f, Some(FrameStyle::Imported(_)));
+    let imported = |f: Option<&FrameStyle>| f.is_some_and(FrameStyle::is_external);
     imported(d.frame.as_ref().or(styles.frame.as_ref()))
         || strip.variants.values().any(|v| {
             v.overrides

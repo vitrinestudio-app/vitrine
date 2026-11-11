@@ -775,6 +775,8 @@ struct Play {
     commits: u32,
     deleted_edits: u32,
     fail_lang: Option<String>,
+    /// sha256 → uploaded bytes
+    bodies: BTreeMap<String, Vec<u8>>,
 }
 
 #[derive(Clone)]
@@ -825,6 +827,7 @@ impl Respond for FakePlay {
                     p.next += 1;
                     let id = format!("img-{}", p.next);
                     let sha = sha256_hex(&req.body);
+                    p.bodies.insert(sha.clone(), req.body.clone());
                     p.edits
                         .get_mut(*edit)
                         .unwrap()
@@ -1207,6 +1210,43 @@ async fn executes_both_stores_and_then_nothing_is_left() {
     );
     let forced = plan(&e.app, json!({ "force": true }));
     assert_eq!(forced["totals"]["upload_sets"], 4);
+}
+
+/// Phase 6.2: the Play feature graphic (banner target, `featureGraphic`)
+/// is planned and uploaded as one 24-bit PNG of 1024x500 without alpha.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn feature_graphic_uploads_as_one_opaque_png() {
+    let project = PROJECT.replace(
+        "store:\n  apple:",
+        "- id: feature\n  kind: banner\n  strip: main\n  size: [1024, 500]\n  \
+         region: {pages: [0, 1]}\n  fit: cover\n  \
+         store: {google: {image_type: featureGraphic}}\nstore:\n  apple:",
+    );
+    let e = env_with(&project).await;
+    let p = plan(&e.app, json!({ "store": "google", "targets": ["feature"] }));
+    assert_eq!(p["totals"]["sets"], 2, "{p:#}");
+    let s = set(&p, "feature", "en");
+    assert_eq!(s["images"].as_array().unwrap().len(), 1, "{s:#}");
+    assert!(p["blocking"].as_array().is_none_or(Vec::is_empty), "{p:#}");
+    let run = execute(&e.app, &p["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+
+    let play = e.play.lock().unwrap();
+    for lang in ["en-US", "de-DE"] {
+        let live = &play.live[&(lang.to_owned(), "featureGraphic".to_owned())];
+        assert_eq!(live.len(), 1, "{lang}: one feature graphic");
+        let png = &play.bodies[&live[0].1];
+        assert_eq!(&png[1..4], b"PNG");
+        let be = |o: usize| u32::from_be_bytes(png[o..o + 4].try_into().unwrap());
+        assert_eq!((be(16), be(20)), (1024, 500), "IHDR size");
+        assert_eq!((png[24], png[25]), (8, 2), "8-bit RGB, no alpha");
+    }
+    assert!(
+        !play
+            .live
+            .contains_key(&("en-US".to_owned(), "phoneScreenshots".to_owned())),
+        "only the selected target"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

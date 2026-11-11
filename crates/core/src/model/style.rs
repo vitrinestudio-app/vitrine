@@ -332,12 +332,14 @@ pub struct ShadowLayer {
 flow_style!(ShadowLayer);
 
 /// Device frame style (§4.1): built-in parametric `stylized` / `detailed`,
-/// or an imported frame package (`imported:apple`).
+/// an imported vendor package (`imported:apple`, ADR 0012) or an own frame
+/// pack (`pack:<id>`, ADR 0023).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FrameStyle {
     Stylized,
     Detailed,
     Imported(String),
+    Pack(String),
 }
 
 impl FrameStyle {
@@ -345,13 +347,37 @@ impl FrameStyle {
         match s {
             "stylized" => Ok(Self::Stylized),
             "detailed" => Ok(Self::Detailed),
-            _ => match s.strip_prefix("imported:") {
-                Some(src) if super::ids::is_valid_id(src) => Ok(Self::Imported(src.to_owned())),
-                _ => Err(format!(
-                    "invalid frame style `{s}`: expected `stylized`, `detailed` or `imported:<source>`"
-                )),
-            },
+            _ => {
+                if let Some(src) = s.strip_prefix("imported:")
+                    && super::ids::is_valid_id(src)
+                {
+                    return Ok(Self::Imported(src.to_owned()));
+                }
+                if let Some(id) = s.strip_prefix("pack:")
+                    && super::ids::is_valid_id(id)
+                {
+                    return Ok(Self::Pack(id.to_owned()));
+                }
+                Err(format!(
+                    "invalid frame style `{s}`: expected `stylized`, `detailed`, `imported:<source>` or `pack:<id>`"
+                ))
+            }
         }
+    }
+
+    /// Key of the frame source in the frame index (`apple`, `pack:clay`)
+    /// for frames drawn from image files; `None` for the parametric styles.
+    pub fn external_source(&self) -> Option<String> {
+        match self {
+            Self::Stylized | Self::Detailed => None,
+            Self::Imported(s) => Some(s.clone()),
+            Self::Pack(id) => Some(format!("pack:{id}")),
+        }
+    }
+
+    /// Drawn from image files (an imported vendor package or a frame pack)?
+    pub fn is_external(&self) -> bool {
+        matches!(self, Self::Imported(_) | Self::Pack(_))
     }
 }
 
@@ -361,6 +387,7 @@ impl fmt::Display for FrameStyle {
             Self::Stylized => f.write_str("stylized"),
             Self::Detailed => f.write_str("detailed"),
             Self::Imported(s) => write!(f, "imported:{s}"),
+            Self::Pack(id) => write!(f, "pack:{id}"),
         }
     }
 }
