@@ -209,7 +209,8 @@
   white-space: nowrap;
 }
 
-.fp-superseded td {
+.fp-superseded td,
+.fp-skipped td {
   color: var(--fg-muted);
 }
 

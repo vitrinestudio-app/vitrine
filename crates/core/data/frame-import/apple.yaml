@@ -57,7 +57,8 @@
 #     verified       date the rule was checked against a real package
 #     note           free text
 #   skip             {pattern, reason}: files that are deliberately not
-#                    imported (tried before the rules, shown as ignored)
+#                    imported (tried before the rules, reported as
+#                    "skipped on purpose" with the reason)
 #   The vendor model (`iPhone 18 Pro`) is the file name before the colour;
 #   projects may pin it with `bezel: iPhone 18 Pro`.
 
@@ -73,10 +74,10 @@ color_aliases:
   "(PRODUCT)RED": product-red
   "Space Grey": space-gray
 
-# Files that are not a frame for one screen (listed as ignored).
+# Files that are not a frame for one screen (reported as skipped on purpose).
 skip:
   - pattern: "iPhone Duo - {color} - Outer Open"
-    reason: marketing composite (back and outer display, open flat), no single-screen target
+    reason: marketing composite (back and outer display, opened flat), not a single device view
 
 rules:
   # ---- iPhone with notch (iPhone X … 13, 14 / 14 Plus, 16e)

@@ -183,13 +183,14 @@ fn print_plan(plan: &ImportPlan, root: &Path, global: &Global) {
             println!("         {} {w}", st.warn("warning:"));
         }
     }
+    // Skipped on purpose by a `skip` rule of the source (not a failure),
+    // ignored by the user's mapping, or not recognised by any rule.
     for u in &plan.unmatched {
-        let tag = if u.ignored { "ignored " } else { "unknown " };
-        let why = u
-            .reason
-            .as_deref()
-            .map(|r| format!("  ({r})"))
-            .unwrap_or_default();
+        let (tag, why) = match (&u.reason, u.ignored) {
+            (Some(r), _) => ("skipped ", format!("  (on purpose: {r})")),
+            (None, true) => ("ignored ", "  (your mapping)".to_owned()),
+            (None, false) => ("unknown ", "  (no rule matched)".to_owned()),
+        };
         println!("{} {}{}", st.dim(tag), u.file, st.dim(&why));
     }
     let n = plan.installs().count();
@@ -202,6 +203,18 @@ fn print_plan(plan: &ImportPlan, root: &Path, global: &Global) {
         "{} unmatched",
         plan.unmatched.iter().filter(|u| !u.ignored).count()
     )];
+    let on_purpose = plan.unmatched.iter().filter(|u| u.reason.is_some()).count();
+    if on_purpose > 0 {
+        counts.push(format!("{on_purpose} skipped on purpose"));
+    }
+    let by_you = plan
+        .unmatched
+        .iter()
+        .filter(|u| u.ignored && u.reason.is_none())
+        .count();
+    if by_you > 0 {
+        counts.push(format!("{by_you} ignored by your mapping"));
+    }
     if plan.psd > 0 {
         counts.push(format!("{} Photoshop file(s) ignored", plan.psd));
     }
