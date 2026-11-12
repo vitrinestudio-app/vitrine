@@ -107,6 +107,16 @@ and downloadable from a gallery.
       TODO: in-app "browse gallery" (GUI), uploader self-service, deletion
       of rejected files, the website pages. Deployment by the owner:
       `docs/api/DEPLOY.md`.
+- [x] Owner 2026-11-12: **sample screenshots** in templates (save option,
+      marker `screenshots/samples.yaml`, info `sample_screenshot`, upload
+      plan blocks, server keeps them only when confirmed), **fixed tag
+      facets** style/color/use + derived devices
+      (`data/template-tags.yaml`; CLI, GUI chips, MCP enums, server filters,
+      `GET /v1/tags`), **WebP gallery sprites** per canvas (API for the
+      website gallery), **bulk upload + dry run + admin CLI**, DB migration
+      (schema 1) + backfill + admin `rerender` (ADR 0023/0025 amendments).
+      [ ] owner: server upgrade, upload the ~50 templates; [ ] website
+      gallery on the sprite API (later agent).
 
 ## 6.4 Own frame packages
 KONZEPT §4.2 (frames, point 3): any PNG or SVG frame plus a small

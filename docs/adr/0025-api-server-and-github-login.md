@@ -96,3 +96,27 @@ tokens go to the keychain through `SecretStore::{set,get,delete}_named`
 - Open: uploader self-service (list/delete own templates, revoke all
   sessions), deleting rejected files, admin CLI, the GUI dialog, a
   website upload page, a session-cleanup job independent of new logins.
+
+## Amendment 2026-11-12: gallery data for the website, bulk upload, admin CLI
+
+- **Schema version 1** (`PRAGMA user_version`, idempotent `db::migrate`):
+  columns `devices`, `samples`, `sprites`, `backfilled`; tags stored as the
+  facet map. `backfill` (spawned after start) fills derived fields from
+  the stored packages and renders missing sprites of approved templates.
+- **Sprites**: per canvas `<data>/templates/<id>/sprites/<canvas>[@2x].webp`
+  (lossy WebP via the `webp` crate = bundled libwebp, BSD-3-Clause; only
+  this crate links it), metadata in the `sprites` column; rendered on
+  upload, on approve when missing and by `POST
+  /v1/admin/templates/{id}/rerender`; at most
+  `VITRINE_API_RENDER_CONCURRENCY` renders at once (tokio semaphore +
+  `spawn_blocking`). Public route with `ETag`/304 and a long cache for
+  `?v=<etag>` URLs.
+- **Filters and taxonomy**: `style|color|use|devices` list filters
+  (SQLite `json_each`), `GET /v1/tags`; uploads need complete tags (422
+  `invalid_tags`).
+- **Clients**: `publish::gallery` gains facet filters, `upload(…,
+  confirm_own_screenshots)`, `admin_queue`, `admin_action`
+  (approve/reject/rerender), `tags`. CLI `gallery upload <files…>
+  [--dry-run] [--confirm-own-screenshots]` (all local checks, summary,
+  continue on error) and `gallery admin …` (token only from an
+  environment variable). This closes the "admin CLI" open point.

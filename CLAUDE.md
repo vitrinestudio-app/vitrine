@@ -140,14 +140,18 @@ generated placeholder screenshots, assets, OFL fonts + licence files,
 previews): safe reading (`Limits`, paths, no symlinks, kinds by content,
 project validated), `fonts` (OFL check from the name table, licence file
 kept or generated), `placeholder`, `extract` (save canvases), `instantiate`
-(new project; placeholders not copied), `insert` (merge plan: renames via
+(new project; placeholders not copied, sample screenshots copied and
+marked in `screenshots/samples.yaml` via `core::samples`), `tags` (fixed
+taxonomy `data/template-tags.yaml`: style/color/use + derived devices), `insert` (merge plan: renames via
 ops on a scratch template project, one transaction), `store` (app-wide
 `<app data>/templates/`), `builtin` (`phone`, `minimal` from
-`crates/core/templates/<id>/`). Previews: `vitrine_render::template`
+`crates/core/templates/<id>/`). Previews and gallery sprites: `vitrine_render::template`
 (parametric frames only). App commands `template_*` (+ image
 `template_preview`), `project_new {template}`. Gallery backend:
 `crates/api-server` (ADR 0025; reuses core checks + render previews;
-`routes/<area>.rs` per API area – `templates`, `admin`, `auth`; GitHub
+`routes/<area>.rs` per API area – `templates`, `admin`, `auth`;
+`sprites` (WebP per canvas), `maintenance` (rerender, start-up backfill),
+`db` schema version via `PRAGMA user_version`; GitHub
 device + web flow, own hashed session tokens, ownership by GitHub id,
 `official` flag; env `VITRINE_API_*`; API `docs/api/API.md`, deploy
 `docs/api/DEPLOY.md`). Gallery client: `publish::gallery` (`api_url`:
@@ -381,7 +385,8 @@ cargo run -p vitrine-render --release --example screens -- tests/fixtures/exampl
 
 CLI usage (`--project <DIR>`, default the current folder): `new <dir>
 [--template <name|id|file>] [--lang …]`, `template save --name N
-[--canvas ID]… [--tag] [--id] [--version] [--replace] [-o file] | list |
+[--canvas ID]… [--style S] [--color C] [--use U] [--sample-screenshots] [--id]
+[--version] [--replace] [-o file] | list | tags |
 import <file> [--replace] | export <id> -o <file> | remove <id> | insert
 <template> [--canvas ID]… [--styles rename|use-project] [--dry-run] | new`, `validate [--target] [--lang]
 [--preview] [--strict] [--format text|json|github|gitlab|junit] [-o FILE]`, `render [--target] [--lang]
@@ -405,8 +410,10 @@ print to stdout there), `upload plan [--store apple|google] [--target]
 (`upload` takes `--app-dir`; ADR 0018, 0019; CI credentials
 `VITRINE_ASC_KEY_ID|_ISSUER_ID|_KEY|_KEY_PATH`,
 `VITRINE_PLAY_SERVICE_ACCOUNT[_PATH]`, read by `upload` only, ADR 0016), `gallery login|logout|list
-[--query] [--tag] [--format json]|upload <file> [--token-env VAR]|download
-<id> [-o FILE]` (`--api URL`; ADR 0025), `install-cli [--remove] [--status]
+[--query] [--tag] [--style|--color|--use|--devices] [--format json]|upload
+<files…> [--dry-run] [--confirm-own-screenshots] [--token-env VAR]|download
+<id> [-o FILE]|admin queue|approve|reject|rerender <id…>
+[--admin-token-env VAR]` (`--api URL`; ADR 0025), `install-cli [--remove] [--status]
 [--yes]` (`vitrine` on PATH; ADR 0026). Exit codes: 0 ok, 1 project
 problems, 2 could not run.
 

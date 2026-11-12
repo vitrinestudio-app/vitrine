@@ -169,3 +169,35 @@ API: `docs/api/API.md`; deployment, GDPR and Impressum:
 - Not done yet: a GUI "browse gallery" (client and app commands exist,
   ADR 0025), template versions/updates, frame
   packs in templates (6.4), font subsetting.
+
+## Amendment 2026-11-12: sample screenshots, tag facets, sprites
+
+Owner decisions (STATUS.md decision log); details in `docs/api/API.md`.
+
+- **Sample screenshots.** `template.yaml` may list `samples:` – package
+  paths under `screenshots/` (PNG/JPEG, ≤ 10 MB, ≤ 6000 px per side,
+  checked with the package) of the author's own app screenshots, CC0 like
+  the rest. `extract` packs them with `SaveOptions::sample_screenshots`
+  (the used keys in every template language, variant folders included;
+  placeholders only for keys without one and never where a sample sits at
+  the same place). New project and insert copy them (default language
+  from the serving template language, plus languages the template has;
+  insert never overwrites an existing screenshot of that name, any
+  extension) and list them in `screenshots/samples.yaml` with size and
+  SHA-256 (`core::samples`): a file is a sample only while its content
+  matches, so replacing it un-marks it. Validation: info
+  `sample_screenshot` (per language, via `AssetLookup::is_sample`); the
+  upload plan turns it into a blocking problem; export is allowed. The
+  server keeps samples only when the uploader confirms
+  (`?confirm_own_screenshots=true`, CLI `--confirm-own-screenshots`),
+  else `regenerate_placeholders(false)` replaces them as before.
+- **Tags.** `tags:` is a facet map `{style, color, use}` checked against
+  `crates/core/data/template-tags.yaml` (`core::template::tags`: max per
+  facet always, min with `check(true)` for the gallery); `devices` is
+  derived (`tags::devices`) and never stored in the manifest. Old flat
+  lists are still read (known values sorted into facets, others in
+  `dropped`, refused by the server). This replaces "`tags` (≤ 12, id-like)".
+- **Previews and sprites.** `vitrine_render::template::sprites` renders a
+  canvas's preview target page by page (exact page viewports, no gaps)
+  at a given page height and integer scales; the API server encodes them
+  as WebP (ADR 0025 amendment).
