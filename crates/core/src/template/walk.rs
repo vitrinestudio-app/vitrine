@@ -140,14 +140,7 @@ pub(crate) fn string_keys(canvas: &Canvas) -> BTreeSet<StringKey> {
 /// Font families named by the styles (text and span styles, font
 /// settings and their fallbacks).
 pub(crate) fn font_families(styles: &Styles) -> BTreeSet<String> {
-    let mut out = BTreeSet::new();
-    out.extend(styles.text.values().filter_map(|t| t.font.clone()));
-    out.extend(styles.spans.values().filter_map(|s| s.font.clone()));
-    for (family, f) in &styles.fonts {
-        out.insert(family.clone());
-        out.extend(f.fallback.iter().cloned());
-    }
-    out
+    crate::layout::setup::named_families(styles)
 }
 
 /// Keeps only `canvases` (and the targets showing them) and only the

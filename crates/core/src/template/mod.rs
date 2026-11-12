@@ -78,7 +78,7 @@ pub enum TemplateError {
     Invalid(String),
     /// A font may not be redistributed (no OFL declaration).
     #[error(
-        "font `{file}` may not be put into a template: {reason} (only fonts under the SIL Open Font License are allowed)"
+        "font `{file}` may not be put into a template: {reason} (only fonts under the SIL Open Font License are allowed; save without it to list the family as required but not included: `--skip-unlicensed-fonts`)"
     )]
     FontLicense { file: String, reason: String },
     /// The project subset does not load or validate.
@@ -138,6 +138,12 @@ pub struct Manifest {
     /// Fonts shipped with the template (all OFL).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fonts: Vec<FontInfo>,
+    /// Families the styles use that are **not** included (licence does not
+    /// allow sharing, or not in the project: a system font). A project made
+    /// from the template uses them when the user has them installed (system
+    /// or project fonts), else falls back to Inter (ADR 0028).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fonts_required: Vec<RequiredFont>,
     /// Sample screenshots: package paths (`screenshots/en/home.png`) of the
     /// author's own app screenshots (CC0), copied into new projects and
     /// marked as samples there; all other screenshots are placeholders.
@@ -179,6 +185,39 @@ pub struct FontInfo {
     /// Copyright line from the font (name ID 0).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub copyright: String,
+}
+
+/// Why a font family a template uses is not in the package.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RequiredReason {
+    /// The font's licence does not allow sharing it (not OFL).
+    License,
+    /// Not in the project's `fonts/` (a system font, or missing).
+    NotInProject,
+}
+
+/// A font family a template uses but does not include.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RequiredFont {
+    pub family: String,
+    pub reason: RequiredReason,
+}
+
+/// Families of `required` that neither `fonts` (the project's library)
+/// nor the installed system fonts (`index`) have: texts in them fall back
+/// to Inter.
+pub fn unavailable_fonts(
+    required: &[RequiredFont],
+    fonts: &crate::layout::FontLibrary,
+    index: &crate::layout::system::SystemFontIndex,
+) -> Vec<String> {
+    required
+        .iter()
+        .filter(|r| !fonts.has_family(&r.family) && index.family(&r.family).is_none())
+        .map(|r| r.family.clone())
+        .collect()
 }
 
 impl Manifest {

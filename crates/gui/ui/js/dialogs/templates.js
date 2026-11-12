@@ -191,7 +191,7 @@ function tagPickers(chosen) {
 /** "Save as template…": selected canvases (default: all) of the open project. */
 export function openSaveTemplate({ canvases, current }) {
   const err = errorLine();
-  const st = { name: '', id: '', description: '', author: '', tags: {}, samples: false, selected: new Set(canvases.map((c) => c.id)), file: false };
+  const st = { name: '', id: '', description: '', author: '', tags: {}, samples: false, skipFonts: false, selected: new Set(canvases.map((c) => c.id)), file: false };
   if (current && canvases.length > 1) st.selected = new Set([current]);
   const saveBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => save() }, tt('templates.save.button'));
   const result = h('div', { class: 'tpl-result small' });
@@ -205,6 +205,7 @@ export function openSaveTemplate({ canvases, current }) {
       author: st.author,
       tags: { style: st.tags.style ?? [], color: st.tags.color ?? [], use: st.tags.use ?? [] },
       sample_screenshots: st.samples,
+      skip_unlicensed_fonts: st.skipFonts,
       canvases: canvases.map((c) => c.id).filter((id) => st.selected.has(id)),
     };
     if (st.id.trim()) args.id = st.id.trim();
@@ -232,15 +233,27 @@ export function openSaveTemplate({ canvases, current }) {
       for (const [path, why] of r.report.samples_skipped ?? []) notes.push(tt('templates.save.sample_skipped', { file: path, why }));
       for (const f of r.report.licenses_generated ?? []) notes.push(tt('templates.save.licence', { file: f }));
       for (const f of r.report.fonts_missing ?? []) notes.push(tt('templates.save.font_missing', { font: f }));
+      for (const [file, why] of r.report.fonts_skipped ?? []) notes.push(tt('templates.save.font_skipped', { file, why }));
       if (r.file) notes.push(r.file);
       result.replaceChildren(...notes.map((n) => h('div', {}, n)));
       saveBtn.textContent = tt('templates.save.again');
     } catch (e) {
       err.show(e);
+      // A font whose licence does not allow sharing: offer to leave it out.
+      if (!st.skipFonts && /Open Font License/.test(e?.message ?? '')) {
+        const retry = h('button', { class: 'btn btn-small', type: 'button' }, tt('templates.save.skip_fonts_retry'));
+        retry.addEventListener('click', () => {
+          st.skipFonts = true;
+          skipBox.querySelector('input').checked = true;
+          save();
+        });
+        result.replaceChildren(retry);
+      }
     } finally {
       saveBtn.disabled = false;
     }
   }
+  const skipBox = checkbox({ label: tt('templates.save.skip_fonts'), checked: false, onchange: (v) => (st.skipFonts = v) });
 
   const m = openModal({
     title: tt('templates.save.title'),
@@ -270,6 +283,7 @@ export function openSaveTemplate({ canvases, current }) {
           ),
         ),
         row('', checkbox({ label: tt('templates.save.samples'), checked: false, onchange: (v) => (st.samples = v) }), tt('templates.save.samples_hint')),
+        row('', skipBox, tt('templates.save.skip_fonts_hint')),
         row('', checkbox({ label: tt('templates.save.file'), checked: false, onchange: (v) => (st.file = v) })),
         h('p', { class: 'form-hint' }, tt('templates.save.hint')),
         result,
@@ -293,6 +307,7 @@ function reportLines(r) {
   for (const k of r.keys_renamed) out.push(tt('templates.insert.key_renamed', { from: k.from, to: k.to }));
   for (const [lang, from] of r.copied_texts) out.push(tt('templates.insert.texts_copied', { lang, from }));
   if (r.files.length) out.push(tt('templates.insert.files', { n: r.files.length }));
+  for (const f of r.fonts_required ?? []) out.push(tt('templates.insert.font_required', { font: f.family }));
   return out;
 }
 
@@ -379,6 +394,9 @@ export function insertFromTemplate({ commit, onInserted, err }) {
   async function insert() {
     if (!st.template || !st.canvases.size) return err.show(new Error(tt('templates.insert.none')));
     const r = await commit(() => api.templateInsert(args()));
+    if (r?.fonts_unavailable?.length) {
+      report.replaceChildren(...r.fonts_unavailable.map((f) => h('div', { class: 'hint-warn small' }, tt('templates.insert.font_unavailable', { font: f }))));
+    }
     if (r) onInserted?.(r);
   }
 

@@ -622,7 +622,13 @@ fn fonts_lists_bundled_and_project_families() {
         .filter(|f| f["source"] == "bundled")
         .map(|f| f["family"].as_str().unwrap())
         .collect();
-    assert_eq!(bundled.len(), 11);
+    // 11 families plus the six script fonts (ADR 0028).
+    assert_eq!(bundled.len(), 17);
+    let arabic = list
+        .iter()
+        .find(|f| f["family"] == "Noto Sans Arabic")
+        .unwrap();
+    assert_eq!(arabic["category"], "script");
     assert_eq!(bundled[0], "Inter");
     assert!(bundled.contains(&"Playfair Display"));
     let mono = list
@@ -636,6 +642,30 @@ fn fonts_lists_bundled_and_project_families() {
     assert_eq!(project["weights"], serde_json::json!([400, 700]));
     let o = vitrine_in(&dir, &["fonts"]);
     assert!(stdout(&o).contains("Caveat"), "{}", stdout(&o));
+    // Nothing to store: the project uses no installed system font.
+    let o = vitrine_in(
+        &dir,
+        &[
+            "--no-system-fonts",
+            "fonts",
+            "embed",
+            "--dry-run",
+            "--format",
+            "json",
+        ],
+    );
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let plan: Value = serde_json::from_str(&stdout(&o)).unwrap();
+    assert_eq!(plan["items"], serde_json::json!([]));
+    assert_eq!(plan["applied"], false);
+    assert!(!dir.join("fonts/system").exists());
+    let o = vitrine_in(&dir, &["fonts", "unembed"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(
+        stdout(&o).contains("no system fonts stored"),
+        "{}",
+        stdout(&o)
+    );
 }
 
 /// CI formats of `validate`: GitHub annotations pointing at `project.yaml`

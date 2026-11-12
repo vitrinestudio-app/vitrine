@@ -197,6 +197,10 @@ pub struct TemplateInsertResult {
     #[serde(flatten)]
     pub result: ApplyResult,
     pub report: InsertReport,
+    /// Families of `report.fonts_required` this computer does not have
+    /// (bundled, project or installed): their texts use Inter.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fonts_unavailable: Vec<String>,
 }
 
 /// Inserts canvases of a template into the open project: copies assets
@@ -234,9 +238,20 @@ pub fn template_insert(
     match session.apply_ops(plan.ops.clone(), Some(label)) {
         Ok(result) => {
             marked?;
+            let index = if session.system_fonts() {
+                vitrine_core::layout::system::index()
+            } else {
+                Arc::new(vitrine_core::layout::system::SystemFontIndex::default())
+            };
+            let fonts_unavailable = vitrine_core::template::unavailable_fonts(
+                &plan.report.fonts_required,
+                session.render_context().fonts(),
+                &index,
+            );
             Ok(TemplateInsertResult {
                 result,
                 report: plan.report,
+                fonts_unavailable,
             })
         }
         Err(e) => {

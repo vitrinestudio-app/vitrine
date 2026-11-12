@@ -94,6 +94,12 @@ pub struct TemplateSaveParams {
     /// quality 60 (PNGs with transparency stay PNG); default placeholders.
     #[serde(default)]
     pub sample_screenshots: bool,
+    /// Leave out project fonts whose licence does not allow sharing (not
+    /// OFL) instead of failing; the template then lists them as required,
+    /// not included (used where installed, else Inter). Only when the user
+    /// agrees.
+    #[serde(default)]
+    pub skip_unlicensed_fonts: bool,
     /// Canvas ids to save (default: all canvases of the project).
     #[serde(default)]
     pub canvases: Vec<String>,
@@ -158,7 +164,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Save canvases of the open project (default: all) as a template in the app-wide store: the canvases with their targets and variants, styles, their texts in every language, image assets and OFL fonts (licence files kept or generated; other fonts are refused). Screenshots are replaced by generated placeholders unless `sample_screenshots` is true (only when the user confirms they are their own; they become samples in new projects and block store uploads there); store settings are left out. Tags only from the fixed facets style (1-2), color (1-2), use (1-3) – the gallery needs all three. Licence: CC0. Example: {\"name\": \"Bold gradient\", \"canvases\": [\"phone\"], \"style\": [\"bold\"], \"color\": [\"gradient\"], \"use\": [\"productivity\"]}."
+        description = "Save canvases of the open project (default: all) as a template in the app-wide store: the canvases with their targets and variants, styles, their texts in every language, image assets and OFL fonts (licence files kept or generated; other fonts are refused unless `skip_unlicensed_fonts`, which lists them as required but not included; installed system fonts are never included, only listed). Screenshots are replaced by generated placeholders unless `sample_screenshots` is true (only when the user confirms they are their own; they become samples in new projects and block store uploads there); store settings are left out. Tags only from the fixed facets style (1-2), color (1-2), use (1-3) – the gallery needs all three. Licence: CC0. Example: {\"name\": \"Bold gradient\", \"canvases\": [\"phone\"], \"style\": [\"bold\"], \"color\": [\"gradient\"], \"use\": [\"productivity\"]}."
     )]
     async fn template_save(
         &self,
@@ -174,6 +180,7 @@ impl VitrineMcp {
                     "use": tag_values(&p.use_),
                 },
                 "sample_screenshots": p.sample_screenshots,
+                "skip_unlicensed_fonts": p.skip_unlicensed_fonts,
                 "canvases": opt_list(&p.canvases),
             });
             for (k, v) in [

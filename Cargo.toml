@@ -76,7 +76,7 @@ flate2 = { version = "1.1.11", default-features = false, features = ["rust_backe
 skrifa = "0.44.0"
 # Text layout (docs/adr/0001-render-pipeline.md, 0003-text-markup-and-layout.md).
 # No system font discovery: only bundled/project fonts are used.
-parley = { version = "0.12.0", default-features = false, features = ["std"] }
+parley = { version = "0.12.0", default-features = false, features = ["std", "complex-scripts"] }
 rayon = "1.12.0"
 # SVG assets (logos, backgrounds). No text/system fonts, no raster images inside SVGs.
 resvg = { version = "0.49.0", default-features = false }

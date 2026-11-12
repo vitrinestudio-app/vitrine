@@ -52,6 +52,27 @@ pub fn run(args: &NewArgs, global: &Global) -> anyhow::Result<u8> {
         for (lang, from) in &created.copied_texts {
             println!("  texts for {lang} copied from {from} – translate them in i18n/{lang}.yaml");
         }
+        if !created.fonts_required.is_empty() {
+            let (lib, _) = vitrine_core::layout::setup::project_library(
+                dir,
+                Some(&project),
+                global.system_fonts(),
+            );
+            let index = if global.system_fonts() {
+                vitrine_core::layout::system::index()
+            } else {
+                std::sync::Arc::default()
+            };
+            for f in
+                vitrine_core::template::unavailable_fonts(&created.fonts_required, &lib, &index)
+            {
+                println!(
+                    "  {} the template uses the font `{f}` (not included); it is not installed \
+                     here, so its texts use Inter – install it or put it into fonts/",
+                    style.warn("note:")
+                );
+            }
+        }
         if !created.samples.is_empty() {
             println!(
                 "  {} copied from the template (listed in screenshots/samples.yaml) – replace them with your own; store uploads refuse samples",

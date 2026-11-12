@@ -45,6 +45,10 @@ pub enum FontCategory {
     Display,
     Handwriting,
     Monospace,
+    /// Fonts for a non-Latin script (Arabic, Hebrew, Indic, Thai), used
+    /// automatically for characters of that script
+    /// ([`super::script::bundled_fallback`]); selectable like any family.
+    Script,
 }
 
 /// A bundled family.
@@ -70,7 +74,7 @@ macro_rules! file {
 }
 
 /// Number of bundled font files.
-const N: usize = 18;
+const N: usize = 24;
 
 /// Every bundled font file. Order = face order of
 /// [`super::FontLibrary::bundled`] (Inter first: its face ids are stable).
@@ -162,6 +166,48 @@ pub static FILES: [BundledFile; N] = [
         100..=800,
         true
     ),
+    file!(
+        "notosansarabic/NotoSansArabic[wdth,wght].ttf",
+        "Noto Sans Arabic",
+        400,
+        100..=900,
+        false
+    ),
+    file!(
+        "notosanshebrew/NotoSansHebrew[wdth,wght].ttf",
+        "Noto Sans Hebrew",
+        100,
+        100..=900,
+        false
+    ),
+    file!(
+        "notosansdevanagari/NotoSansDevanagari[wdth,wght].ttf",
+        "Noto Sans Devanagari",
+        400,
+        100..=900,
+        false
+    ),
+    file!(
+        "notosansbengali/NotoSansBengali[wdth,wght].ttf",
+        "Noto Sans Bengali",
+        400,
+        100..=900,
+        false
+    ),
+    file!(
+        "notosanstamil/NotoSansTamil[wdth,wght].ttf",
+        "Noto Sans Tamil",
+        400,
+        100..=900,
+        false
+    ),
+    file!(
+        "notosansthai/NotoSansThai[wdth,wght].ttf",
+        "Noto Sans Thai",
+        400,
+        100..=900,
+        false
+    ),
 ];
 
 /// Every bundled family, in picker order (Inter first).
@@ -188,6 +234,36 @@ pub static FAMILIES: &[BundledFamily] = &[
         "JetBrains Mono",
         FontCategory::Monospace,
         "jetbrainsmono/OFL.txt",
+    ),
+    family(
+        "Noto Sans Arabic",
+        FontCategory::Script,
+        "notosansarabic/OFL.txt",
+    ),
+    family(
+        "Noto Sans Hebrew",
+        FontCategory::Script,
+        "notosanshebrew/OFL.txt",
+    ),
+    family(
+        "Noto Sans Devanagari",
+        FontCategory::Script,
+        "notosansdevanagari/OFL.txt",
+    ),
+    family(
+        "Noto Sans Bengali",
+        FontCategory::Script,
+        "notosansbengali/OFL.txt",
+    ),
+    family(
+        "Noto Sans Tamil",
+        FontCategory::Script,
+        "notosanstamil/OFL.txt",
+    ),
+    family(
+        "Noto Sans Thai",
+        FontCategory::Script,
+        "notosansthai/OFL.txt",
     ),
 ];
 

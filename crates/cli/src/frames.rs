@@ -173,14 +173,18 @@ pub fn installed(project: &Path) -> Option<Arc<FrameIndex>> {
     vitrine_render::frame_packs::frame_index(root.as_deref(), Some(project))
 }
 
-/// Render context of the project in `root` with the installed frames.
+/// Render context of `project` in `root` with the installed frames and –
+/// unless `--no-system-fonts` – the system fonts it needs (ADR 0028).
 pub fn render_context(
     root: &Path,
+    project: &Project,
+    global: &Global,
 ) -> (
     vitrine_render::scene::RenderContext,
-    Option<vitrine_core::layout::FontDirReport>,
+    vitrine_core::layout::FontDirReport,
 ) {
-    let (ctx, fonts) = vitrine_render::scene::RenderContext::new(root);
+    let (ctx, fonts) =
+        vitrine_render::scene::RenderContext::for_project(root, project, global.system_fonts());
     (ctx.with_frames(installed(root)), fonts)
 }
 

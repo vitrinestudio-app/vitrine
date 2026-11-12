@@ -214,7 +214,7 @@ fn run_import(args: &ImportArgs, global: &Global) -> anyhow::Result<u8> {
     if !args.no_layout_check {
         let fs = FsAssets::new(root);
         let mut v = ValidateOptions::new(&fs);
-        v.fonts = project::fonts(root, global.quiet);
+        v.fonts = project::fonts(root, &p, global);
         v.mode = ValidateMode::Preview;
         exchange::check_layout(&mut plan, &p, &v);
     }
