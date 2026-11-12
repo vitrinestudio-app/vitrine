@@ -13,6 +13,7 @@ import { h, icon } from '../dom.js';
 import { confirmDialog } from '../dialogs/modal.js';
 import { onImported, pickAndImport } from './importer.js';
 import { openScreenshotImport } from '../dialogs/screenshot-import.js';
+import { openImagePreview } from '../dialogs/image-preview.js';
 
 const THUMB = 96;
 
@@ -113,11 +114,30 @@ export function mount(el, { store, editor, api, t }) {
     store.set({ view: 'canvas', selection: [id] });
   }
 
-  function item({ path, title, sub, users, removable = true, stamp }) {
+  /**
+   * Adds `entry` to the preview list `list` and returns the thumbnail
+   * button that opens the image preview there (←/→ step through `list`).
+   */
+  function previewThumb(list, entry, stamp) {
+    const index = list.push(entry) - 1;
+    return h(
+      'button',
+      {
+        type: 'button',
+        class: 'as-thumb-btn',
+        title: t('preview.open'),
+        'aria-label': `${t('preview.open')}: ${entry.title ?? entry.path}`,
+        onclick: () => openImagePreview({ items: list, index, onSelectElement: selectElement }),
+      },
+      thumb(entry.path, stamp),
+    );
+  }
+
+  function item({ path, title, sub, users, removable = true, stamp, preview }) {
     return h(
       'div',
       { class: 'as-item', title: path },
-      path ? thumb(path, stamp) : h('div', { class: 'as-thumb placeholder-thumb' }, icon('image')),
+      preview ? previewThumb(preview.list, { path, title, ...preview.entry }, stamp) : path ? thumb(path, stamp) : h('div', { class: 'as-thumb placeholder-thumb' }, icon('image')),
       h('div', { class: 'as-meta' }, h('div', { class: 'as-name' }, title), sub ? h('div', { class: 'as-sub muted small' }, sub) : null, users),
       removable ? h('button', { type: 'button', class: 'as-remove', title: t('assets.remove'), onclick: () => remove(path, users?.dataset?.ids?.split(',') ?? []) }, icon('close')) : null,
     );
@@ -141,7 +161,7 @@ export function mount(el, { store, editor, api, t }) {
    * Screenshots `lang` shows from a fallback language (resolved per key in
    * Rust with the renderer's lookup), grouped by the source language.
    */
-  function borrowedGroups(borrowed, def) {
+  function borrowedGroups(borrowed, def, shots, lang) {
     const bySource = new Map();
     for (const b of borrowed) {
       if (!bySource.has(b.lang)) bySource.set(b.lang, []);
@@ -155,7 +175,15 @@ export function mount(el, { store, editor, api, t }) {
         ...list.map((b) => {
           const f = listing.screenshots.find((x) => x.path === b.path);
           const sub = [b.variant, f ? size(f) : ''].filter(Boolean).join(' · ');
-          return item({ path: b.path, title: b.key, sub, removable: false, stamp: f ? `${f.width}x${f.height}` : '' });
+          const users = listing.screenshot_keys[b.key] ?? [];
+          return item({
+            path: b.path,
+            title: b.key,
+            sub,
+            removable: false,
+            stamp: f ? `${f.width}x${f.height}` : '',
+            preview: { list: shots, entry: { key: b.key, lang, variant: b.variant, borrowedFrom: from, users } },
+          });
         }),
       ),
     );
@@ -168,6 +196,9 @@ export function mount(el, { store, editor, api, t }) {
     const def = s.languages.default;
     const langs = [def, ...s.languages.available.filter((x) => x !== def)];
 
+    // Preview lists (←/→ in the image preview): all screenshots, all images.
+    const shots = [];
+    const imgs = [];
     // Screenshots grouped by language → variant.
     const groups = langs.map((lang) => {
       const files = l.screenshots.filter((f) => f.lang === lang);
@@ -202,11 +233,12 @@ export function mount(el, { store, editor, api, t }) {
             ...byVariant.get(v).map((f) => {
               const users = usedBy(l.screenshot_keys[f.key]);
               users.dataset.ids = (l.screenshot_keys[f.key] ?? []).join(',');
-              return item({ path: f.path, title: f.key, sub: size(f), users, stamp: `${f.width}x${f.height}` });
+              const ids = l.screenshot_keys[f.key] ?? [];
+              return item({ path: f.path, title: f.key, sub: size(f), users, stamp: `${f.width}x${f.height}`, preview: { list: shots, entry: { key: f.key, lang, variant: f.variant, users: ids } } });
             }),
           ),
         ),
-        ...borrowedGroups(borrowed, def),
+        ...borrowedGroups(borrowed, def, shots, lang),
       );
     });
 
@@ -254,7 +286,7 @@ export function mount(el, { store, editor, api, t }) {
       const ids = l.asset_usage[f.path] ?? [];
       const users = usedBy(ids);
       users.dataset.ids = ids.join(',');
-      return item({ path: f.path, title: f.path.replace(/^assets\//, ''), sub: size(f), users, stamp: size(f) });
+      return item({ path: f.path, title: f.path.replace(/^assets\//, ''), sub: size(f), users, stamp: size(f), preview: { list: imgs, entry: { users: ids } } });
     });
 
     const fontItems = [
