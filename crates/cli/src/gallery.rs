@@ -389,6 +389,22 @@ fn check_file(
     Ok(bytes)
 }
 
+/// The message for an upload the server refused as too large (HTTP 413):
+/// the API names its limit (`too_large`); any other 413 comes from a
+/// reverse proxy in front of it.
+fn too_large_message(code: &str, message: &str, bytes: u64) -> String {
+    let size = format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0));
+    if code == "too_large" {
+        format!(
+            "{message} (this template: {size}; the server operator sets VITRINE_API_MAX_UPLOAD_MB)"
+        )
+    } else {
+        format!(
+            "the server refused the {size} template as too large (HTTP 413): a proxy in front of the API limits the request size (nginx `client_max_body_size`)"
+        )
+    }
+}
+
 fn upload_token(client: &GalleryClient, a: &UploadArgs) -> anyhow::Result<String> {
     Ok(match &a.token_env {
         Some(var) => std::env::var(var)
@@ -469,6 +485,15 @@ fn upload(
                 Err(GalleryError::Api { status: 401, .. }) => {
                     row.result = "error".into();
                     row.message = "the token was refused (expired or revoked): run `vitrine gallery login` again".into();
+                }
+                Err(GalleryError::Api {
+                    status: 413,
+                    code,
+                    message,
+                    ..
+                }) => {
+                    row.result = "error".into();
+                    row.message = too_large_message(&code, &message, row.bytes);
                 }
                 Err(e) => {
                     row.result = "error".into();

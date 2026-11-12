@@ -77,6 +77,22 @@ pub struct SaveReport {
     /// not PNG/JPEG …).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub samples_skipped: Vec<(String, String)>,
+    /// Samples kept as PNG when the others were re-encoded as JPEG
+    /// (`vitrine_render::template::compress_samples`): they have
+    /// transparent pixels.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub samples_png: Vec<String>,
+    /// Bytes of the sample screenshots as read from the project …
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub samples_bytes_original: u64,
+    /// … and as packed (smaller after JPEG re-encoding).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub samples_bytes: u64,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_zero(n: &u64) -> bool {
+    *n == 0
 }
 
 /// A path inside the project's stored vendor frames (`frames/imported/…`,
@@ -254,6 +270,8 @@ pub fn extract(
     // Sample screenshots (opt-in), then placeholders for the rest.
     let samples: BTreeSet<String> = if opts.sample_screenshots {
         let found = sample_files(&tpl, root, &mut report);
+        report.samples_bytes_original = found.values().map(|d| d.len() as u64).sum();
+        report.samples_bytes = report.samples_bytes_original;
         let set = found.keys().cloned().collect();
         files.extend(found);
         set
@@ -324,6 +342,10 @@ fn sample_files(tpl: &Project, root: &Path, report: &mut SaveReport) -> BTreeMap
         dirs.extend(subs);
         for dir in dirs {
             for key in &keys {
+                // One file per key and folder: the one the lookup picks
+                // (`SCREENSHOT_EXTENSIONS` order), so samples can be
+                // re-encoded (`.png` → `.jpg`) without colliding.
+                let mut packed: Option<String> = None;
                 for ext in crate::resolve::SCREENSHOT_EXTENSIONS {
                     let path = format!("{dir}/{key}.{ext}");
                     if archive::check_path(&path).is_err() {
@@ -333,8 +355,15 @@ fn sample_files(tpl: &Project, root: &Path, report: &mut SaveReport) -> BTreeMap
                     if !src.is_file() {
                         continue;
                     }
+                    if let Some(first) = &packed {
+                        report
+                            .samples_skipped
+                            .push((path, format!("{first} is used instead")));
+                        continue;
+                    }
                     match read_sample(&src) {
                         Ok(data) => {
+                            packed = Some(path.clone());
                             out.insert(path, data);
                         }
                         Err(why) => report.samples_skipped.push((path, why)),

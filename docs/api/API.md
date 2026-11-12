@@ -18,7 +18,7 @@ Every template is CC0-1.0; fonts inside keep the OFL.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/health` | `{"status": "ok", "version": "…"}` |
+| GET | `/health` | `{"status": "ok", "version": "…", "max_upload_mb": 50}` |
 | GET | `/v1/templates?q=&tag=&style=&color=&use=&devices=&limit=&offset=` | approved templates, newest first; `q` searches name, description, tags; `tag` matches any tag or device; facet filters below; `limit` 1–200 (default 50; the answer's `limit` is the one used – page with `offset += limit` until fewer come back) |
 | GET | `/v1/templates/{id}` | one approved template |
 | GET | `/v1/templates/{id}/download` | the `.vitrine-template` (`application/zip`, `Content-Disposition: attachment`); counts a download |
@@ -142,7 +142,7 @@ their own and CC0; unconfirmed samples are replaced like any screenshot
 (`samples_removed` counts them) – and **renders the previews and sprites
 itself** (uploaded previews are discarded). Rendering runs in a blocking
 task, at most `VITRINE_API_RENDER_CONCURRENCY` (default 2) at once. Errors:
-401 no/invalid token, 413 too large, 422 `invalid_template` (message says
+401 no/invalid token, 413 `too_large` (body over `VITRINE_API_MAX_UPLOAD_MB`; the answer carries `max_upload_mb`), 422 `invalid_template` (message says
 why) or `invalid_tags`, 409 `id_taken` (id of another uploader) or
 `version_exists`, 429 `rate_limited`.
 

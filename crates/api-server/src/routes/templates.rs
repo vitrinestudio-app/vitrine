@@ -7,6 +7,7 @@ use std::sync::Arc;
 use axum::Json;
 use axum::Router;
 use axum::body::Bytes;
+use axum::extract::rejection::BytesRejection;
 use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
@@ -266,10 +267,7 @@ struct Checked {
 /// tags, screenshots replaced by generated placeholders (confirmed sample
 /// screenshots kept), previews and sprites rendered here.
 fn validate_upload(bytes: &[u8], max: usize, confirm_samples: bool) -> Result<Checked, Refusal> {
-    let limits = Limits {
-        max_package: max as u64,
-        ..Limits::default()
-    };
+    let limits = Limits::for_package(max as u64);
     let invalid = |e: String| ("invalid_template", e);
     let mut pkg = Package::from_zip_bytes(bytes, limits).map_err(|e| invalid(e.to_string()))?;
     let t = &pkg.manifest.tags;
@@ -302,16 +300,34 @@ fn validate_upload(bytes: &[u8], max: usize, confirm_samples: bool) -> Result<Ch
     })
 }
 
+/// A refused upload body: over the body limit (`VITRINE_API_MAX_UPLOAD_MB`)
+/// is `413 too_large` naming the limit (also as `max_upload_mb`), so the
+/// client can say which limit applies.
+fn too_large(e: &BytesRejection, max: usize) -> ApiError {
+    let mb = max / (1024 * 1024);
+    if e.status() == StatusCode::PAYLOAD_TOO_LARGE {
+        ApiError::new(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "too_large",
+            format!("the template is larger than the server's upload limit of {mb} MB"),
+        )
+        .with("max_upload_mb", mb)
+    } else {
+        ApiError::new(e.status(), "bad_request", e.body_text())
+    }
+}
+
 async fn upload(
     State(state): St,
     client: Client,
     headers: HeaderMap,
     Query(q): Query<Vec<(String, String)>>,
-    body: Bytes,
+    body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<(StatusCode, Json<Value>)> {
     let who = auth::uploader(&state, &headers)?;
     limit(&state, &client, "upload")?;
     let max = state.config.max_upload;
+    let body = body.map_err(|e| too_large(&e, max))?;
     let confirm = q
         .iter()
         .any(|(k, v)| k == "confirm_own_screenshots" && matches!(v.trim(), "1" | "true" | "yes"));

@@ -20,10 +20,16 @@ use serde::{Deserialize, Serialize};
 pub const DEFAULT_API_URL: &str = "https://api.vitrinestudio.app";
 /// Base URL override (loopback URLs only).
 pub const API_URL_ENV: &str = "VITRINE_API_URL";
-/// Largest download accepted (the server's upload limit is 50 MB).
-pub const MAX_DOWNLOAD: usize = 64 * 1024 * 1024;
+/// Largest download accepted: the client package limit
+/// (`Limits::CLIENT_PACKAGE_MB`), which no server upload limit should exceed.
+pub const MAX_DOWNLOAD: usize =
+    (vitrine_core::template::Limits::CLIENT_PACKAGE_MB * 1024 * 1024) as usize;
 /// Largest preview image accepted.
 pub const MAX_PREVIEW: usize = 16 * 1024 * 1024;
+
+/// Time allowed for one template upload or download (packages up to a few
+/// hundred MB on slow lines; other requests keep the default 180 s).
+const UPLOAD_TIMEOUT: Duration = Duration::from_mins(15);
 
 /// Errors of the gallery client.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -434,7 +440,8 @@ impl GalleryClient {
     /// (unchecked – callers verify them with `Package::from_zip_bytes`).
     pub async fn download(&self, id: &str) -> Result<Vec<u8>> {
         let url = self.template_url(id, "/download")?;
-        self.bytes(self.http.get(url), MAX_DOWNLOAD).await
+        self.bytes(self.http.get(url).timeout(UPLOAD_TIMEOUT), MAX_DOWNLOAD)
+            .await
     }
 
     /// `GET /v1/templates/{id}/previews/{canvas}`: PNG bytes.
@@ -471,6 +478,8 @@ impl GalleryClient {
             .post(url)
             .bearer_auth(token)
             .header(reqwest::header::CONTENT_TYPE, "application/zip")
+            // Large packages on slow lines: more than the default 180 s.
+            .timeout(UPLOAD_TIMEOUT)
             .body(package);
         self.json(req).await
     }

@@ -1214,7 +1214,7 @@
   "templates.save.tags_hint": "Tags help people find the template in the gallery; uploading needs at least one per group.",
   "templates.save.tags_unavailable": "Tags could not be loaded.",
   "templates.save.samples": "Include my screenshots as sample screenshots",
-  "templates.save.samples_hint": "Only for your own app screenshots (e.g. of a demo app): they are published as CC0 when you upload the template. New projects get them marked as samples; store uploads refuse them until they are replaced.",
+  "templates.save.samples_hint": "Only for your own app screenshots (e.g. of a demo app): they are published as CC0 when you upload the template and are stored as JPEG (quality 60) to keep the template small. New projects get them marked as samples; store uploads refuse them until they are replaced.",
   "templates.save.samples_done": "{n} screenshots packed as samples.",
   "templates.save.sample_skipped": "{file} not packed: {why}",
   "templates.save.font_missing": "Font “{font}” is not in the project's fonts folder (a system font?): listed as required, not included – users without it see Inter.",

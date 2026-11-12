@@ -60,7 +60,8 @@ What goes in:
 - **not** your screenshots (replaced by generated placeholder screens in the
   device's aspect) – unless you include them as **sample screenshots**: then
   the screenshots the canvases use (PNG/JPEG, at most 10 MB and 6000 px per
-  side) go in as they are. Only do this with screenshots that are yours
+  side) go in, re-encoded as JPEG (quality 60) so the template stays small
+  (images with transparent pixels stay PNG). Only do this with screenshots that are yours
   (e.g. of a demo app); in the gallery they are published as CC0;
 - **not** store settings, import mappings or imported vendor frames
   (previews use the built-in frames).
@@ -121,8 +122,9 @@ vitrine template export bold-gradient -o bold.vitrine-template
 vitrine template remove bold-gradient          # built-in templates can't be removed
 ```
 
-Every template file is checked before it's used: size limits (50 MB packed,
-150 MB unpacked), only known file kinds checked by content, no paths outside
+Every template file is checked before it's used: size limits (250 MB packed,
+500 MB unpacked; the gallery server sets its own upload limit, 50 MB by
+default), only known file kinds checked by content, no paths outside
 the package or hidden files, SVG without scripts or external links, and the
 project inside must load and validate.
 

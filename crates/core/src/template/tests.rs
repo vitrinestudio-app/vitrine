@@ -636,3 +636,106 @@ fn template_texts_keep_span_styles_and_text_elements() {
     });
     assert_eq!(texts, 3);
 }
+
+/// A zip of the package's files plus `extra`, each `(path, bytes, deflate)`.
+fn zip_with(pkg: &Package, extra: &[(&str, Vec<u8>, bool)]) -> Vec<u8> {
+    let mut out = std::io::Cursor::new(Vec::new());
+    {
+        let mut zip = zip::ZipWriter::new(&mut out);
+        let opts = |deflate: bool| {
+            zip::write::SimpleFileOptions::default()
+                .compression_method(if deflate {
+                    zip::CompressionMethod::Deflated
+                } else {
+                    zip::CompressionMethod::Stored
+                })
+                .large_file(true)
+        };
+        zip.start_file(MANIFEST_FILE, opts(true)).unwrap();
+        zip.write_all(manifest_to_yaml(&pkg.manifest).unwrap().as_bytes())
+            .unwrap();
+        for path in pkg.paths() {
+            zip.start_file(path, opts(true)).unwrap();
+            zip.write_all(pkg.file(path).unwrap()).unwrap();
+        }
+        for (path, data, deflate) in extra {
+            zip.start_file(*path, opts(*deflate)).unwrap();
+            zip.write_all(data).unwrap();
+        }
+        zip.finish().unwrap();
+    }
+    out.into_inner()
+}
+
+/// A "PNG" of `len` bytes (magic + zeros): passes the screenshot content
+/// check, compresses to almost nothing when deflated.
+fn fake_png(len: usize) -> Vec<u8> {
+    let mut v = vec![0u8; len];
+    v[..8].copy_from_slice(b"\x89PNG\r\n\x1a\n");
+    v
+}
+
+#[test]
+fn client_limits_accept_packages_above_50_mb() {
+    let pkg = builtin::package("phone").unwrap();
+    // 2 × 30 MB stored: a 60 MB package (the old client limit was 50 MB).
+    let extra = [
+        ("screenshots/en/pad-1.png", fake_png(30 << 20), false),
+        ("screenshots/en/pad-2.png", fake_png(30 << 20), false),
+    ];
+    let bytes = zip_with(&pkg, &extra);
+    assert!(bytes.len() > 60 << 20);
+    let back = Package::from_zip_bytes(&bytes, Limits::default()).unwrap();
+    assert!(back.file("screenshots/en/pad-2.png").is_some());
+    // A server with the default 50 MB upload limit refuses it, naming the
+    // size and the limit.
+    let e = Package::from_zip_bytes(&bytes, Limits::for_package(50 << 20))
+        .unwrap_err()
+        .to_string();
+    assert!(e.contains("60.") && e.contains("limit of 50.0 MB"), "{e}");
+    // Derived limits.
+    let d = Limits::default();
+    assert_eq!(d.max_package, Limits::CLIENT_PACKAGE_MB << 20);
+    assert_eq!(d.max_total, 2 * d.max_package);
+    assert_eq!(Limits::for_package(50 << 20).max_total, 150 << 20);
+    assert_eq!(Limits::for_package(200 << 20).max_total, 400 << 20);
+}
+
+#[test]
+fn zip_bombs_are_still_refused() {
+    let pkg = builtin::package("phone").unwrap();
+    // Files of zeros deflate to almost nothing: a tiny package that would
+    // unpack to 3 × 6 MB, beyond a 16 MB unpacked limit.
+    let extra: Vec<_> = (0..3)
+        .map(|i| {
+            (
+                [
+                    "screenshots/en/a.png",
+                    "screenshots/en/b.png",
+                    "screenshots/en/c.png",
+                ][i],
+                fake_png(6 << 20),
+                true,
+            )
+        })
+        .collect();
+    let bytes = zip_with(&pkg, &extra);
+    assert!(bytes.len() < 1 << 20, "{}", bytes.len());
+    let limits = Limits {
+        max_total: 16 << 20,
+        ..Limits::for_package(1 << 20)
+    };
+    let e = Package::from_zip_bytes(&bytes, limits)
+        .unwrap_err()
+        .to_string();
+    assert!(e.contains("unpacks to more than"), "{e}");
+    // One file beyond the per-file limit, whatever its declared size.
+    let limits = Limits {
+        max_file: 5 << 20,
+        ..Limits::default()
+    };
+    let e = Package::from_zip_bytes(&bytes, limits)
+        .unwrap_err()
+        .to_string();
+    assert!(e.contains("is larger than 5.0 MB"), "{e}");
+}

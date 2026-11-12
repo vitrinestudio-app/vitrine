@@ -120,3 +120,15 @@ tokens go to the keychain through `SecretStore::{set,get,delete}_named`
   [--dry-run] [--confirm-own-screenshots]` (all local checks, summary,
   continue on error) and `gallery admin …` (token only from an
   environment variable). This closes the "admin CLI" open point.
+
+## Amendment 2026-11-12: upload limit errors
+
+- An upload body over `VITRINE_API_MAX_UPLOAD_MB` (default stays 50) is
+  answered `413` `{"code": "too_large", "max_upload_mb": N}`; `GET /health`
+  includes `max_upload_mb`. The package inside is read with
+  `Limits::for_package(max_upload)`; stored packages are re-read with the
+  larger of that and the client limit (ADR 0023 amendment).
+- The CLI tells the API's `too_large` (names the limit and the template's
+  size) apart from a reverse proxy's `413` without JSON (nginx
+  `client_max_body_size`, see `docs/api/DEPLOY.md`). Template uploads and
+  downloads get a 15-minute request timeout in `publish::gallery`.

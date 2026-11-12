@@ -90,7 +90,8 @@ pub struct TemplateSaveParams {
     pub use_: Vec<UseTag>,
     /// Pack the project's screenshots used by the canvases as sample
     /// screenshots (only when the user says they are their own app
-    /// screenshots and may be published as CC0); default placeholders.
+    /// screenshots and may be published as CC0), re-encoded as JPEG
+    /// quality 60 (PNGs with transparency stay PNG); default placeholders.
     #[serde(default)]
     pub sample_screenshots: bool,
     /// Leave out project fonts whose licence does not allow sharing (not

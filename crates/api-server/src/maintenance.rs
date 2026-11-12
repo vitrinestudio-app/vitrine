@@ -19,10 +19,10 @@ use crate::sprites;
 /// Reads the stored package of a template (checked again).
 fn stored_package(state: &AppState, id: &str) -> anyhow::Result<Package> {
     let bytes = state.storage.package(id)?;
-    let limits = Limits {
-        max_package: (state.config.max_upload as u64).max(Limits::default().max_package),
-        ..Limits::default()
-    };
+    // Stored packages passed the upload limit of their time: read them
+    // with the larger of the current upload limit and the client limits.
+    let limits =
+        Limits::for_package((state.config.max_upload as u64).max(Limits::default().max_package));
     Ok(Package::from_zip_bytes(&bytes, limits)?)
 }
 

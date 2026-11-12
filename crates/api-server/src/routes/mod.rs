@@ -103,6 +103,10 @@ pub(crate) fn poll_limit(state: &AppState, client: &Client) -> ApiResult<()> {
     check(&state.poll_limiter, client)
 }
 
-async fn health() -> Json<Value> {
-    Json(json!({ "status": "ok", "version": env!("CARGO_PKG_VERSION") }))
+async fn health(State(state): St) -> Json<Value> {
+    Json(json!({
+        "status": "ok",
+        "version": env!("CARGO_PKG_VERSION"),
+        "max_upload_mb": state.config.max_upload / (1024 * 1024),
+    }))
 }
