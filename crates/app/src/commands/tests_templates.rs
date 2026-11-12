@@ -54,9 +54,18 @@ fn save_insert_undo_export_import_and_new_project() {
         json!({"name": "Phone samples", "canvases": ["phone"], "sample_screenshots": true}),
     );
     assert!(with_samples["template"]["samples"].as_u64().unwrap() > 0);
-    assert_ne!(
-        with_samples["report"]["samples"].as_array().unwrap().len(),
-        0
+    let samples = with_samples["report"]["samples"].as_array().unwrap();
+    assert_ne!(samples.len(), 0);
+    // Re-encoded as JPEG (quality 60), smaller than the project's PNGs.
+    assert!(
+        samples.iter().all(|s| s.as_str().unwrap().ends_with("jpg")),
+        "{samples:?}"
+    );
+    assert!(
+        with_samples["report"]["samples_bytes"].as_u64().unwrap()
+            < with_samples["report"]["samples_bytes_original"]
+                .as_u64()
+                .unwrap()
     );
     assert!(saved["template"]["canvases"][0]["preview"].is_string());
     let list = call(app, "template_list", json!({}));

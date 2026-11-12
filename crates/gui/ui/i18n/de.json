@@ -1214,7 +1214,7 @@
   "templates.save.tags_hint": "Schlagwörter helfen, die Vorlage in der Galerie zu finden; zum Hochladen braucht jede Gruppe mindestens eins.",
   "templates.save.tags_unavailable": "Die Schlagwörter konnten nicht geladen werden.",
   "templates.save.samples": "Meine Screenshots als Beispiel-Screenshots mitnehmen",
-  "templates.save.samples_hint": "Nur für eigene App-Screenshots (z. B. einer Demo-App): Beim Hochladen der Vorlage werden sie als CC0 veröffentlicht. Neue Projekte erhalten sie als Beispiele markiert; Store-Uploads lehnen sie ab, bis sie ersetzt sind.",
+  "templates.save.samples_hint": "Nur für eigene App-Screenshots (z. B. einer Demo-App): Beim Hochladen der Vorlage werden sie als CC0 veröffentlicht und als JPEG (Qualität 60) gespeichert, damit die Vorlage klein bleibt. Neue Projekte erhalten sie als Beispiele markiert; Store-Uploads lehnen sie ab, bis sie ersetzt sind.",
   "templates.save.samples_done": "{n} Screenshots als Beispiele eingepackt.",
   "templates.save.sample_skipped": "{file} nicht eingepackt: {why}",
   "templates.save.font_missing": "Schrift „{font}“ liegt nicht im Schriftenordner des Projekts; die Vorlage verwendet stattdessen Inter.",

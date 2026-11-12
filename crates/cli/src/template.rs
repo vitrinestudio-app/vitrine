@@ -13,7 +13,7 @@ use vitrine_core::template::tags::taxonomy;
 use vitrine_core::template::{
     EXTENSION, Limits, Package, TEMPLATES_DIR, TemplateSource, TemplateTags,
 };
-use vitrine_render::template::{PREVIEW_HEIGHT, add_previews};
+use vitrine_render::template::{PREVIEW_HEIGHT, add_previews, compress_samples};
 
 use crate::term::{Style, plural};
 use crate::{EXIT_OK, Format, Global, new, project};
@@ -73,7 +73,9 @@ pub struct SaveArgs {
     pub tag: Vec<String>,
     /// Pack the project's screenshots used by the canvases as sample
     /// screenshots (your own app screenshots, published as CC0 when
-    /// uploaded); keys without a screenshot get placeholders.
+    /// uploaded), re-encoded as JPEG quality 60 to keep the package small
+    /// (PNGs with transparency stay PNG); keys without a screenshot get
+    /// placeholders.
     #[arg(long)]
     pub sample_screenshots: bool,
     /// Template version (default 1.0.0).
@@ -282,8 +284,9 @@ fn run_save(a: &SaveArgs, global: &Global) -> anyhow::Result<u8> {
         canvases: (!a.canvases.is_empty()).then(|| a.canvases.clone()),
         sample_screenshots: a.sample_screenshots,
     };
-    let (mut pkg, report) = extract(&project, root, &opts)?;
+    let (mut pkg, mut report) = extract(&project, root, &opts)?;
     pkg.manifest.generator = Some(format!("Vitrine Studio {}", env!("CARGO_PKG_VERSION")));
+    compress_samples(&mut pkg, &mut report)?;
     add_previews(&mut pkg, PREVIEW_HEIGHT)?;
     let t = store()?.install(&pkg, a.replace)?;
     if let Some(out) = &a.output {
@@ -317,9 +320,15 @@ fn run_save(a: &SaveArgs, global: &Global) -> anyhow::Result<u8> {
         }
         if !report.samples.is_empty() {
             println!(
-                "  {} packed as samples (your own screenshots; CC0 when uploaded)",
-                plural(report.samples.len(), "screenshot")
+                "  {} packed as samples (your own screenshots; CC0 when uploaded; JPEG quality {}: {} → {})",
+                plural(report.samples.len(), "screenshot"),
+                vitrine_render::template::SAMPLE_JPEG_QUALITY,
+                megabytes(report.samples_bytes_original),
+                megabytes(report.samples_bytes)
             );
+        }
+        for path in &report.samples_png {
+            println!("  {path} kept as PNG (it has transparent pixels)");
         }
         for (path, why) in &report.samples_skipped {
             println!("  {} {path} not packed: {why}", style.warn("warning:"));
@@ -444,4 +453,9 @@ fn run_insert(a: &InsertArgs, global: &Global) -> anyhow::Result<u8> {
         );
     }
     Ok(EXIT_OK)
+}
+
+/// `12.3 MB`.
+fn megabytes(bytes: u64) -> String {
+    format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
 }

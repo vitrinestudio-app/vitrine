@@ -14,9 +14,10 @@ use vitrine_core::geometry::Viewport;
 use vitrine_core::model::{Project, Target, TargetKind};
 use vitrine_core::resolve::{FsAssets, resolve};
 use vitrine_core::template::Package;
+use vitrine_core::template::extract::SaveReport;
 
 use crate::export::gallery;
-use crate::raster::encode_png_rgb;
+use crate::raster::{SourceImage, encode_png_rgb};
 use crate::scene::{Quality, RenderContext, RenderOptions, Scale};
 
 /// Default height of a gallery preview (px).
@@ -129,6 +130,110 @@ pub fn add_previews(pkg: &mut Package, height: u32) -> anyhow::Result<()> {
     }
     pkg.check()?;
     Ok(())
+}
+
+/// JPEG quality of sample screenshots in saved templates (owner decision
+/// 2026-11-12): packages shrink by roughly three quarters, UI screenshots
+/// stay readable as samples.
+pub const SAMPLE_JPEG_QUALITY: u8 = 60;
+
+/// Re-encodes the sample screenshots of a freshly extracted package as
+/// sRGB JPEG ([`SAMPLE_JPEG_QUALITY`]): `screenshots/en/home.png` becomes
+/// `screenshots/en/home.jpg`, which the screenshot lookup finds in the same
+/// place. Only `manifest.samples` are touched – never assets, fonts,
+/// placeholders or previews. A sample keeps its file when it has
+/// transparent pixels (reported in `samples_png`; JPEG has no alpha and
+/// the transparency may be intended), when the JPEG would not be smaller,
+/// or when it cannot be decoded. Colour profiles are converted to sRGB on
+/// decode (ADR 0021); the JPEG is untagged sRGB. Updates
+/// `report.samples` / `samples_bytes` and checks the package again.
+pub fn compress_samples(pkg: &mut Package, report: &mut SaveReport) -> anyhow::Result<()> {
+    if pkg.manifest.samples.is_empty() {
+        return Ok(());
+    }
+    let paths = std::mem::take(&mut pkg.manifest.samples);
+    // Decoding and encoding dominate: one thread per core.
+    let encoded: Vec<anyhow::Result<Option<Vec<u8>>>> = {
+        let inputs: Vec<&[u8]> = paths
+            .iter()
+            .map(|p| pkg.file(p).unwrap_or_default())
+            .collect();
+        let threads = std::thread::available_parallelism().map_or(4, std::num::NonZero::get);
+        let chunk = inputs.len().div_ceil(threads).max(1);
+        std::thread::scope(|scope| {
+            let handles: Vec<_> = inputs
+                .chunks(chunk)
+                .map(|c| {
+                    let h =
+                        scope.spawn(move || c.iter().map(|d| sample_jpeg(d)).collect::<Vec<_>>());
+                    (c.len(), h)
+                })
+                .collect();
+            handles
+                .into_iter()
+                .flat_map(|(n, h)| {
+                    h.join().unwrap_or_else(|_| {
+                        (0..n)
+                            .map(|_| Err(anyhow::anyhow!("encoder panicked")))
+                            .collect()
+                    })
+                })
+                .collect()
+        })
+    };
+    let mut samples = Vec::with_capacity(paths.len());
+    let mut bytes = 0u64;
+    for (path, result) in paths.into_iter().zip(encoded) {
+        let original = pkg.file(&path).map_or(0, <[u8]>::len);
+        let stem = path.rsplit_once('.').map_or(path.as_str(), |(s, _)| s);
+        let dest = format!("{stem}.jpg");
+        let free = dest == path || pkg.file(&dest).is_none();
+        match result {
+            Ok(Some(jpeg)) if jpeg.len() < original && free => {
+                bytes += jpeg.len() as u64;
+                pkg.remove(&path);
+                pkg.put(&dest, jpeg)?;
+                samples.push(dest);
+            }
+            Ok(None) => {
+                bytes += original as u64;
+                report.samples_png.push(path.clone());
+                samples.push(path);
+            }
+            _ => {
+                bytes += original as u64;
+                samples.push(path);
+            }
+        }
+    }
+    report.samples.clone_from(&samples);
+    report.samples_bytes = bytes;
+    pkg.manifest.samples = samples;
+    pkg.check()?;
+    Ok(())
+}
+
+/// A sample as sRGB JPEG, or `None` when it has transparent pixels.
+fn sample_jpeg(data: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {
+    let img = SourceImage::decode(data)?;
+    if img.rgba.as_chunks::<4>().0.iter().any(|px| px[3] < 255) {
+        return Ok(None);
+    }
+    let rgb: Vec<u8> = img
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .flat_map(|px| [px[0], px[1], px[2]])
+        .collect();
+    let mut out = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, SAMPLE_JPEG_QUALITY).encode(
+        &rgb,
+        img.width,
+        img.height,
+        image::ExtendedColorType::Rgb8,
+    )?;
+    Ok(Some(out))
 }
 
 /// Default page height of a gallery sprite (px); the 2× variant doubles it.
@@ -271,6 +376,94 @@ mod tests {
         let png = pkg.preview("main").unwrap();
         let size = imagesize_png(png);
         assert!(size.1 >= 120 && size.0 > size.1 / 3, "{size:?}");
+    }
+
+    fn example_dir() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/example")
+    }
+
+    fn png_rgba(w: u32, h: u32, alpha: u8) -> Vec<u8> {
+        let mut img = image::RgbaImage::new(w, h);
+        for (x, y, p) in img.enumerate_pixels_mut() {
+            *p = image::Rgba([(x * 7) as u8, (y * 3) as u8, 128, alpha]);
+        }
+        let mut out = std::io::Cursor::new(Vec::new());
+        img.write_to(&mut out, image::ImageFormat::Png).unwrap();
+        out.into_inner()
+    }
+
+    #[test]
+    fn samples_become_jpeg_and_new_projects_find_them() {
+        use vitrine_core::resolve::{FsAssets, lang_chain, lookup_screenshot};
+        use vitrine_core::samples::SampleMarks;
+        use vitrine_core::template::extract::{SaveOptions, extract};
+        use vitrine_core::template::instantiate::{create_project, parse_langs};
+
+        let root = example_dir();
+        let project = Project::load(&root).unwrap();
+        let opts = SaveOptions {
+            name: "Samples".into(),
+            canvases: Some(vec!["phone".into()]),
+            sample_screenshots: true,
+            ..SaveOptions::default()
+        };
+        let (mut pkg, mut report) = extract(&project, &root, &opts).unwrap();
+        let before = pkg.clone();
+        let pngs = before.manifest.samples.clone();
+        assert!(pngs.iter().all(|p| p.ends_with("png")), "{pngs:?}");
+        compress_samples(&mut pkg, &mut report).unwrap();
+
+        // Every sample is now a JPEG in the same place; the PNG is gone.
+        assert_eq!(pkg.manifest.samples.len(), pngs.len());
+        assert_eq!(report.samples, pkg.manifest.samples);
+        for (png, jpg) in pngs.iter().zip(&pkg.manifest.samples) {
+            assert_eq!(jpg, &png.replace(".png", ".jpg"));
+            assert!(pkg.file(png).is_none(), "{png}");
+            let data = pkg.file(jpg).unwrap();
+            assert!(data.starts_with(&[0xFF, 0xD8, 0xFF]), "{jpg}");
+            let (a, b) = (
+                image::load_from_memory(before.file(png).unwrap()).unwrap(),
+                image::load_from_memory(data).unwrap(),
+            );
+            assert_eq!((a.width(), a.height()), (b.width(), b.height()));
+        }
+        assert!(report.samples_bytes < report.samples_bytes_original);
+        assert_eq!(report.samples_png.len(), 0);
+        // Nothing else changed: assets, fonts, placeholders, texts.
+        for path in before.paths().filter(|p| !pngs.iter().any(|s| s == p)) {
+            assert_eq!(pkg.file(path), before.file(path), "{path}");
+        }
+
+        // A new project gets the JPEGs, marked with the hash of the bytes
+        // written, and the screenshot lookup finds them.
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("p");
+        let langs = parse_langs(&["en".into()]).unwrap();
+        let created = create_project(&pkg, &dir, "P", &langs).unwrap();
+        assert_ne!(created.samples.len(), 0);
+        let marks = SampleMarks::load(&dir);
+        for s in &created.samples {
+            assert!(s.ends_with("jpg"), "{s}");
+            assert!(marks.is_sample(&dir, s), "{s}");
+        }
+        let fs = FsAssets::new(&dir);
+        let chain = lang_chain(&created.project, "en");
+        let shot = lookup_screenshot(&fs, &chain, Some("ios-phone"), "planner");
+        assert_eq!(
+            shot.path.as_deref(),
+            Some("screenshots/en/ios-phone/planner.jpg")
+        );
+        // Previews render from the JPEG samples.
+        add_previews(&mut pkg, 120).unwrap();
+        assert!(pkg.preview("phone").is_some());
+    }
+
+    #[test]
+    fn transparent_samples_stay_png() {
+        assert!(sample_jpeg(&png_rgba(40, 30, 200)).unwrap().is_none());
+        let jpeg = sample_jpeg(&png_rgba(40, 30, 255)).unwrap().unwrap();
+        assert!(jpeg.starts_with(&[0xFF, 0xD8, 0xFF]));
+        assert!(sample_jpeg(b"not an image").is_err());
     }
 
     fn imagesize_png(png: &[u8]) -> (u32, u32) {

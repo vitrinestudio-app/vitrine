@@ -13,7 +13,7 @@ use vitrine_core::template::insert::{InsertOptions, InsertReport, StyleConflict,
 use vitrine_core::template::store::TemplateStore;
 use vitrine_core::template::tags::{Taxonomy, taxonomy};
 use vitrine_core::template::{EXTENSION, Limits, Package, TEMPLATES_DIR, TemplateSummary};
-use vitrine_render::template::{PREVIEW_HEIGHT, add_previews};
+use vitrine_render::template::{PREVIEW_HEIGHT, add_previews, compress_samples};
 
 use super::{AppState, NoArgs, absolute};
 use crate::error::{CmdResult, CommandError, ErrorCode};
@@ -72,8 +72,10 @@ pub fn template_save(app: &AppState, args: TemplateSaveArgs) -> CmdResult<Templa
         return Err(CommandError::invalid("a template needs a name"));
     }
     let project = session.snapshot();
-    let (mut pkg, report) = extract(&project, session.dir(), &args.options)?;
+    let (mut pkg, mut report) = extract(&project, session.dir(), &args.options)?;
     pkg.manifest.generator = Some(generator());
+    compress_samples(&mut pkg, &mut report)
+        .map_err(|e| CommandError::new(ErrorCode::Render, format!("{e:#}")))?;
     add_previews(&mut pkg, PREVIEW_HEIGHT)
         .map_err(|e| CommandError::new(ErrorCode::Render, format!("{e:#}")))?;
     let template = app.templates().install(&pkg, args.replace)?;
