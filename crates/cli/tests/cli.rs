@@ -569,7 +569,7 @@ fn fonts_lists_bundled_and_project_families() {
 }
 
 /// CI formats of `validate`: GitHub annotations pointing at `project.yaml`
-/// lines, GitLab Code Quality JSON, JUnit XML written with `-o` (the text
+/// lines, GitLab Code Quality JSON, `JUnit` XML written with `-o` (the text
 /// report stays on stdout); exit codes unchanged.
 #[test]
 fn validate_ci_formats() {
@@ -603,7 +603,7 @@ fn validate_ci_formats() {
     assert_eq!(code(&o), 1);
     let cq: Value = serde_json::from_str(&stdout(&o)).expect("Code Quality JSON");
     let issues = cq.as_array().unwrap();
-    assert!(!issues.is_empty());
+    assert_ne!(issues.len(), 0);
     assert!(issues.iter().all(|i| {
         i["severity"] == "critical"
             && i["check_name"] == "vitrine/screenshot_missing"

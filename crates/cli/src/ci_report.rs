@@ -7,8 +7,8 @@
 //!   first.
 //! - **gitlab**: GitLab Code Quality report (JSON array; `artifacts:
 //!   reports: codequality`), shown in the merge request widget.
-//! - **junit**: JUnit XML (GitLab `artifacts: reports: junit`, Jenkins
-//!   `junit`, Azure `PublishTestResults@2`, CircleCI `store_test_results`,
+//! - **junit**: `JUnit` XML (GitLab `artifacts: reports: junit`, Jenkins
+//!   `junit`, Azure `PublishTestResults@2`, `CircleCI` `store_test_results`,
 //!   Bitrise test reports). One test suite per target (plus `project`),
 //!   one failing test case per error, warnings as skipped test cases
 //!   (failing with `--strict`), a passing case for a target without
@@ -144,7 +144,7 @@ fn repo_path(file: &Path) -> String {
         .join("/")
 }
 
-/// Where the finding applies, for titles: `target (lang) page 2 `element``.
+/// Where the finding applies, for titles: ``target (lang) page 2 `element` ``.
 fn scope(f: &Finding) -> String {
     let mut parts = Vec::new();
     match (&f.target, &f.lang) {
@@ -284,7 +284,7 @@ fn xml(s: &str) -> String {
     out
 }
 
-/// JUnit XML: one suite per target in `targets` (checked targets, project
+/// `JUnit` XML: one suite per target in `targets` (checked targets, project
 /// order) plus `project`; infos are left out.
 pub fn junit(findings: &[Finding], targets: &[String], loc: &Locator, strict: bool) -> String {
     let mut suites: Vec<(String, Vec<&Finding>)> = std::iter::once("project".to_owned())
@@ -406,10 +406,10 @@ store:
         Finding {
             level,
             code,
-            target: target.map(|t| TargetId::new(t)),
+            target: target.map(TargetId::new),
             lang: target.map(|_| Lang::new("de")),
             page: el.map(|_| 1),
-            element: el.map(|e| ElementId::new(e)),
+            element: el.map(ElementId::new),
             message: "50% too long, \"really\" <b>\nsecond line".to_owned(),
         }
     }

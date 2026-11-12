@@ -27,7 +27,7 @@ pub enum ValidateFormat {
     Github,
     /// GitLab Code Quality report (JSON).
     Gitlab,
-    /// JUnit XML (GitLab, Jenkins, Azure Pipelines, CircleCI, Bitrise).
+    /// `JUnit` XML (GitLab, Jenkins, Azure Pipelines, `CircleCI`, Bitrise).
     Junit,
 }
 
