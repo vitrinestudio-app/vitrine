@@ -312,3 +312,73 @@ fn frame_packs_import_use_and_remove() {
         false
     );
 }
+
+/// "Store used device frames in the project" (ADR 0027): status, embed,
+/// a second app folder without frames resolves from the project, unembed.
+#[test]
+fn store_frames_in_the_project() {
+    let (tmp, dir) = example_copy();
+    let yaml = std::fs::read_to_string(dir.join("project.yaml")).unwrap();
+    std::fs::write(
+        dir.join("project.yaml"),
+        yaml.replacen("styles:\n", "styles:\n  frame: imported:apple\n", 1),
+    )
+    .unwrap();
+    let pkg = tmp.path().join("Bezels");
+    synthetic::write_folder(&pkg, &synthetic::default_specs()).unwrap();
+    let app = AppState::new(
+        AppPaths::in_dir(&tmp.path().join("mac")),
+        Arc::new(RecordingSink::default()),
+        Arc::new(NoDialogs),
+    )
+    .without_watcher();
+    let app = &app;
+    call(app, "project_open", json!({"dir": dir}));
+    call(app, "frames_import_apply", json!({"path": pkg}));
+
+    let status = call(app, "frames_embed_status", json!({}));
+    assert_eq!(status["stored"], false);
+    assert_eq!(status["uses_imported"], true);
+    assert_eq!(status["up_to_date"], false);
+    let adds = status["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|i| i["action"] == "add")
+        .count();
+    assert!(adds > 0, "{status}");
+    assert!(status["bytes_after"].as_u64().unwrap() > 0);
+
+    let done = call(app, "frames_embed", json!({}));
+    assert_eq!(done["applied"], true);
+    assert!(dir.join("frames/imported/apple/index.yaml").is_file());
+    let list = call(app, "frames_list", Value::Null);
+    assert!(list["stored"]["apple"].as_array().map_or(0, Vec::len) > 0);
+    let status = call(app, "frames_embed_status", json!({}));
+    assert_eq!(status["stored"], true);
+    assert_eq!(status["up_to_date"], true);
+    assert!(status["folder_bytes"].as_u64().unwrap() > 0);
+    // Resolved devices say where their bezel comes from.
+    let v = call(
+        app,
+        "validate",
+        json!({"targets": ["ios-iphone-69"], "langs": ["en"]}),
+    );
+    assert!(v.to_string().contains("imported_frames_stored"), "{v}");
+
+    // Another computer without the app-wide frames (a build server).
+    let ci = AppState::new(
+        AppPaths::in_dir(&tmp.path().join("ci")),
+        Arc::new(RecordingSink::default()),
+        Arc::new(NoDialogs),
+    )
+    .without_watcher();
+    call(&ci, "project_open", json!({"dir": dir}));
+    assert_eq!(missing_frames(&ci), 0);
+
+    let freed = call(app, "frames_unembed", Value::Null);
+    assert!(freed.as_u64().unwrap() > 0);
+    assert!(!dir.join("frames").exists());
+    ci.session().unwrap().set_frames(ci.frame_index(), false);
+    assert!(missing_frames(&ci) > 0);
+}

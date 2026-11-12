@@ -234,6 +234,18 @@
   color: var(--warning);
 }
 
+.fp-badge-kept {
+  color: var(--fg-muted);
+}
+
+.fp-license .inline {
+  gap: 6px;
+}
+
+.fp-license p {
+  margin: 6px 0 0;
+}
+
 .fp-badge-failed {
   border-color: var(--danger);
   color: var(--danger);

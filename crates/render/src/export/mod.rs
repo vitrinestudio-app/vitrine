@@ -989,7 +989,7 @@ fn scene_hash(
             format!("{:?}{:?}", d.device, d.palette).hash(&mut h);
             // A re-imported frame keeps its path: hash its files' mtimes.
             if let Some(f) = &d.imported
-                && let Some(cache) = ctx.frame_assets(&f.source)
+                && let Some(cache) = ctx.frame_assets(&f.files_key())
             {
                 cache.mtime(&f.file).hash(&mut h);
                 cache.mtime(&f.mask).hash(&mut h);

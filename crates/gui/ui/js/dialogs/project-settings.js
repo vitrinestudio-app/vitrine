@@ -2,7 +2,8 @@
 // (add/remove/reorder, fallback map, default language with the §5.0
 // impact warning), style tokens (colours, text styles, span styles, shadow
 // presets), the fonts available to the project and the store mapping
-// (Phase 5.1, `stores.js`). Every change is one
+// (Phase 5.1, `stores.js`), and the frames stored in the project
+// (`stored-frames.js`, ADR 0027). Every change is one
 // backend command building the ops in Rust, applied via `editor.apply`.
 
 import { api } from '../api.js';
@@ -12,8 +13,9 @@ import { t } from '../i18n.js';
 import { store } from '../store.js';
 import { checkbox, confirmDialog, errorLine, input, openModal, row, select } from './modal.js';
 import { storesPane } from './stores.js';
+import { storedFramesPane } from './stored-frames.js';
 
-const TABS = ['general', 'languages', 'styles', 'fonts', 'stores'];
+const TABS = ['general', 'languages', 'styles', 'fonts', 'frames', 'stores'];
 /** Frame styles of the project default; `imported:*` are Apple's bezels (ADR 0012). */
 const FRAMES = ['detailed', 'stylized', 'imported:apple'];
 const WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900];
@@ -30,6 +32,8 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
   let frames = null;
   /** Expanded style entries (`kind:name`), kept across re-renders after edits. */
   const openStyles = new Set();
+  /** "Frames" tab: the "all sizes" choice before it is applied. */
+  const framesState = {};
 
   const m = openModal({
     title: t('project.settings'),
@@ -95,6 +99,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
     }
     else if (current === 'languages') pane.replaceChildren(languages(s));
     else if (current === 'stores') pane.replaceChildren(await storesPane(commit));
+    else if (current === 'frames') pane.replaceChildren(await storedFramesPane(render, framesState));
     else if (current === 'styles') {
       styles ??= await api.stylesGet();
       fonts ??= await api.catalogFonts();
@@ -136,7 +141,8 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
     const options = [...FRAMES.map((f) => ({ value: f, label: label(f) })), ...packs.map((p) => ({ value: p.frame, label: t('frames.pack.label').replace('{name}', p.name) }))];
     if (value && !options.some((o) => o.value === value)) options.push({ value, label: value });
     const src = value?.startsWith('imported:') ? value.slice(9) : null;
-    const installed = src && frames?.sources?.find((x) => x.source === src)?.frames?.length;
+    // Installed on this computer, or stored in the project (ADR 0027).
+    const installed = src && (frames?.sources?.find((x) => x.source === src)?.frames?.length || frames?.stored?.[src]?.length);
     const hint = src && !installed ? h('span', {}, t('project.frame.hint'), h('br'), h('span', { class: 'hint-warn' }, t('project.frame.no_frames'))) : t('project.frame.hint');
     return row(t('project.frame'), select({ options, value, onchange: (v) => commit(() => api.stylesPatch({ frame: v })) }), hint);
   }

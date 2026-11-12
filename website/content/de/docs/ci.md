@@ -240,9 +240,17 @@ GitLab-Jobs auf geschützten Branches.
 
 ## Geräterahmen in der CI {#device-frames-in-ci}
 
-Apples Product Bezels lassen sich auf CI-Rechnern nicht nutzen: Du
-importierst sie auf deinem eigenen Mac, und ihre Lizenz erlaubt keine
-Weitergabe. In der CI fallen `imported:apple`-Rahmen auf den eingebauten
-Rahmen zurück, und die Prüfung meldet den Hinweis `imported_frame_missing`.
-Für überall gleiche Ergebnisse nimm die eingebauten Rahmen oder ein
-[Rahmenpaket](../devices-frames/) im Projekt (`frames/`).
+Apples Product Bezels importierst du auf deinem eigenen Mac, und ihre
+Lizenz erlaubt keine Weitergabe – der CI-Rechner hat also keine eigenen. Du
+hast zwei Möglichkeiten:
+
+- **Die verwendeten Bezels im Projekt speichern** (Projekteinstellungen →
+  Frames, oder `vitrine frames embed`). Sie werden nach `frames/imported/`
+  kopiert, und die CI rendert exakt dieselben Bilder wie dein Mac. Nur für
+  **private** Repositories – siehe
+  [Apple-Bezels in der CI](../devices-frames/#apple-bezels-in-ci).
+- Sonst fallen `imported:apple`-Rahmen in der CI auf den eingebauten Rahmen
+  zurück, und die Prüfung meldet `imported_frame_missing` (lokal
+  `imported_frame_not_stored`). Die eingebauten Rahmen oder ein
+  [Rahmenpaket](../devices-frames/) im Projekt liefern ebenfalls überall
+  gleiche Ergebnisse.

@@ -436,7 +436,7 @@ fn frames_import_keeps_all_sizes_and_shows_the_licence() {
         out.contains("subject to Apple's licence (License.rtf"),
         "{out}"
     );
-    assert!(out.contains("never in projects"), "{out}");
+    assert!(out.contains("vitrine frames embed"), "{out}");
     assert!(out.contains("/ iPhone 16 Pro "), "{out}");
     assert!(!app.exists(), "a dry run writes nothing");
 
@@ -456,6 +456,76 @@ fn frames_import_keeps_all_sizes_and_shows_the_licence() {
     let o = run(&["frames", "remove", "--bezel", "iPhone 16 Pro"]);
     assert_eq!(code(&o), 0, "{}", stderr(&o));
     assert!(stdout(&o).contains("removed 2 frames"), "{}", stdout(&o));
+}
+
+/// `frames embed` stores the used imported frames in the project (ADR
+/// 0027): a second, empty app folder ("the build server") validates
+/// without `imported_frame_missing`; `frames unembed` removes them.
+#[test]
+fn frames_embed_for_ci_and_unembed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let pkg = tmp.path().join("Bezels");
+    vitrine_core::frame_import::synthetic::write_folder(
+        &pkg,
+        &vitrine_core::frame_import::synthetic::default_specs(),
+    )
+    .unwrap();
+    let project = new_project(&tmp, &[]);
+    let yaml = std::fs::read_to_string(project.join("project.yaml")).unwrap();
+    std::fs::write(
+        project.join("project.yaml"),
+        yaml.replacen("styles:\n", "styles:\n  frame: imported:apple\n", 1),
+    )
+    .unwrap();
+    let mac = tmp.path().join("mac");
+    let ci = tmp.path().join("ci");
+    let run = |app: &Path, args: &[&str]| {
+        let mut all = vec!["--project", project.to_str().unwrap()];
+        all.extend_from_slice(args);
+        Command::new(env!("CARGO_BIN_EXE_vitrine"))
+            .args(all)
+            .env("NO_COLOR", "1")
+            .env("VITRINE_APP_DIR", app)
+            .output()
+            .expect("run vitrine")
+    };
+    let o = run(&mac, &["frames", "import", pkg.to_str().unwrap()]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    let o = run(&mac, &["validate", "--format", "json"]);
+    assert!(
+        stdout(&o).contains("imported_frame_not_stored"),
+        "{}",
+        stdout(&o)
+    );
+    let o = run(&mac, &["frames", "embed", "--dry-run"]);
+    assert_eq!(code(&o), 0, "{}{}", stdout(&o), stderr(&o));
+    let out = stdout(&o);
+    assert!(out.contains("add "), "{out}");
+    assert!(out.contains("(dry run)"), "{out}");
+    assert!(out.contains("private repository"), "{out}");
+    assert!(!project.join("frames").exists());
+    let o = run(&mac, &["frames", "embed"]);
+    assert_eq!(code(&o), 0, "{}{}", stdout(&o), stderr(&o));
+    assert!(stdout(&o).contains("stored "), "{}", stdout(&o));
+    assert!(project.join("frames/imported/README.md").is_file());
+    let o = run(&mac, &["frames", "embed"]);
+    assert!(stdout(&o).contains("up to date"), "{}", stdout(&o));
+
+    let o = run(&ci, &["validate", "--format", "json"]);
+    let out = stdout(&o);
+    assert!(!out.contains("imported_frame_missing"), "{out}");
+    assert!(out.contains("imported_frames_stored"), "{out}");
+
+    let o = run(&ci, &["frames", "unembed"]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(stdout(&o).contains("removed "), "{}", stdout(&o));
+    assert!(!project.join("frames").exists());
+    let o = run(&ci, &["validate", "--format", "json"]);
+    assert!(
+        stdout(&o).contains("imported_frame_missing"),
+        "{}",
+        stdout(&o)
+    );
 }
 
 /// Own frame packs (ADR 0024): `frames import` recognises a pack zip,

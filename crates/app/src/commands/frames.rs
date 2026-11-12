@@ -8,6 +8,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use vitrine_core::frame_import::embed::{self, EmbedPlan};
 use vitrine_core::frame_import::pack::{
     self, PACKS_DIR, PROJECT_FRAMES_DIR, PackImport, PackInfo, PackTarget,
 };
@@ -16,6 +17,7 @@ use vitrine_core::frame_import::{
     Package, PackageError, RemoveFilter, Rules, import, normalize_name,
 };
 use vitrine_core::model::Orientation;
+use vitrine_core::resolve::FsAssets;
 use vitrine_render::frame_packs;
 use vitrine_render::raster::{Filter, SourceImage};
 
@@ -193,6 +195,9 @@ pub struct FramesList {
     /// Own frame packs (ADR 0024): the open project's (`frames/`) first,
     /// then the app-wide ones (`<root>/packs/`).
     pub packs: Vec<PackInfo>,
+    /// Imported frames stored in the open project (`frames/imported/`,
+    /// ADR 0027), per source.
+    pub stored: BTreeMap<String, Vec<InstalledFrame>>,
 }
 
 pub fn frames_list(app: &AppState, _: NoArgs) -> CmdResult<FramesList> {
@@ -231,10 +236,19 @@ pub fn frames_list(app: &AppState, _: NoArgs) -> CmdResult<FramesList> {
         .collect();
     let project = app.session().ok().map(|s| s.dir().to_owned());
     let packs = frame_packs::load_packs(Some(&root), project.as_deref());
+    let mut stored = BTreeMap::new();
+    if let Some(dir) = &project {
+        let mut ix = FrameIndex::default();
+        embed::add_project_copies(&mut ix, dir);
+        for s in ix.sources().map(str::to_owned).collect::<Vec<_>>() {
+            stored.insert(s.clone(), ix.frames(&s).to_vec());
+        }
+    }
     Ok(FramesList {
         root,
         sources,
         packs,
+        stored,
     })
 }
 
@@ -364,7 +378,10 @@ pub struct FramesThumbnailArgs {
 /// PNG thumbnail of an installed bezel.
 pub fn frames_thumbnail(app: &AppState, args: FramesThumbnailArgs) -> CmdResult<Arc<PreviewImage>> {
     let rel = Path::new(&args.file);
-    let pack_id = args.source.strip_prefix(pack::PACK_PREFIX);
+    let pack_id = args
+        .source
+        .strip_prefix(pack::PACK_PREFIX)
+        .or_else(|| args.source.strip_prefix("project:"));
     let ok = !args.file.is_empty()
         && rel.components().all(|c| matches!(c, Component::Normal(_)))
         && match pack_id {
@@ -380,7 +397,8 @@ pub fn frames_thumbnail(app: &AppState, args: FramesThumbnailArgs) -> CmdResult<
         )));
     }
     let base = match pack_id {
-        // Compiled pack files (project packs win over app packs).
+        // Compiled pack files (project packs win over app packs), stored
+        // project copies (`project:apple`).
         Some(_) => app
             .frame_index()
             .map(|ix| ix.source_dir(&args.source))
@@ -401,4 +419,95 @@ pub fn frames_thumbnail(app: &AppState, args: FramesThumbnailArgs) -> CmdResult<
         .resample(tw, th, None, Filter::Bilinear)
         .map_err(|e| render_err(e.to_string()))?;
     Ok(Arc::new(PreviewImage::encode(&pm, None, PixelFormat::Png)?))
+}
+
+// ----- frames stored in the project (ADR 0027) ------------------------------------------
+
+/// The full frame index of the open project (app store + stored copies +
+/// packs), or an empty one.
+fn project_frame_index(app: &AppState, dir: &Path) -> FrameIndex {
+    app.frame_index_for(Some(dir))
+        .map_or_else(|| FrameIndex::load(&app.frames_root()), |ix| (*ix).clone())
+}
+
+/// [`frames_embed_status`]: what is stored, what an update would do, and
+/// the licence notice.
+#[derive(Debug, Clone, Serialize)]
+pub struct FramesEmbedStatus {
+    #[serde(flatten)]
+    pub plan: EmbedPlan,
+    /// The project uses imported vendor frames at all (or stores some).
+    pub uses_imported: bool,
+    /// Size of the whole stored folder (frames, masks, licence files).
+    pub folder_bytes: u64,
+}
+
+/// What "Store used device frames in the project" would do now (dry run,
+/// with the stored `all_sizes` option, or `all_sizes` when given).
+pub fn frames_embed_status(
+    app: &AppState,
+    args: FramesEmbedStatusArgs,
+) -> CmdResult<FramesEmbedStatus> {
+    let session = app.session()?;
+    let dir = session.dir().to_owned();
+    let index = project_frame_index(app, &dir);
+    let project = session.snapshot();
+    let all_sizes = args
+        .all_sizes
+        .unwrap_or_else(|| embed::read_options(&dir).all_sizes);
+    let plan = embed::plan(&project, &dir, &index, &FsAssets::new(&dir), all_sizes);
+    Ok(FramesEmbedStatus {
+        uses_imported: !plan.items.is_empty() || !plan.missing.is_empty(),
+        folder_bytes: embed::dir_bytes(&plan.dir),
+        plan,
+    })
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FramesEmbedStatusArgs {
+    /// Plan with this option instead of the stored one.
+    #[serde(default)]
+    pub all_sizes: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FramesEmbedArgs {
+    /// Keep every installed size (vendor model) of the used model ×
+    /// colour × orientation (default: the stored option, else only the
+    /// bezels the targets draw).
+    #[serde(default)]
+    pub all_sizes: Option<bool>,
+    /// Only report what would happen.
+    #[serde(default)]
+    pub dry_run: bool,
+}
+
+/// Stores (or updates) the imported frames the project uses in
+/// `frames/imported/` and re-renders with them.
+pub fn frames_embed(app: &AppState, args: FramesEmbedArgs) -> CmdResult<EmbedPlan> {
+    let session = app.session()?;
+    let dir = session.dir().to_owned();
+    let index = project_frame_index(app, &dir);
+    let project = session.snapshot();
+    let all_sizes = args
+        .all_sizes
+        .unwrap_or_else(|| embed::read_options(&dir).all_sizes);
+    let fs = FsAssets::new(&dir);
+    if args.dry_run {
+        return Ok(embed::plan(&project, &dir, &index, &fs, all_sizes));
+    }
+    let plan = embed::apply(&project, &dir, &index, &fs, all_sizes)
+        .map_err(|e| CommandError::new(ErrorCode::Io, e))?;
+    app.refresh_frames();
+    Ok(plan)
+}
+
+/// Removes the frames stored in the project; returns the bytes freed.
+pub fn frames_unembed(app: &AppState, _: NoArgs) -> CmdResult<u64> {
+    let session = app.session()?;
+    let bytes = embed::remove(session.dir()).map_err(|e| CommandError::new(ErrorCode::Io, e))?;
+    app.refresh_frames();
+    Ok(bytes)
 }

@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use resvg::usvg;
 use tiny_skia::{Pixmap, Transform};
+use vitrine_core::frame_import::embed;
 use vitrine_core::frame_import::pack::{self, PackInfo, SvgRasterizer};
 use vitrine_core::frame_import::{FrameIndex, RgbaImage};
 
@@ -66,9 +67,14 @@ pub fn load_packs(frames_root: Option<&Path>, project: Option<&Path>) -> Vec<Pac
 }
 
 /// The frame index for rendering and validation: installed vendor frames
-/// below `frames_root` plus all packs (`None` when there is nothing).
+/// below `frames_root`, the project's stored copies of them
+/// (`frames/imported/`, ADR 0027; they win), plus all packs (`None` when
+/// there is nothing).
 pub fn frame_index(frames_root: Option<&Path>, project: Option<&Path>) -> Option<Arc<FrameIndex>> {
     let mut index = frames_root.map(FrameIndex::load).unwrap_or_default();
+    if let Some(project) = project {
+        embed::add_project_copies(&mut index, project);
+    }
     let packs = load_packs(frames_root, project);
     pack::add_packs(&mut index, &packs);
     (!index.is_empty()).then(|| Arc::new(index))

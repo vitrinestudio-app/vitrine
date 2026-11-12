@@ -1,6 +1,6 @@
 ---
 title: Devices & frames
-description: "Built-in device frames, Apple Product Bezels you import yourself, your own frame packs, device swaps per target, foldables and watches."
+description: "Built-in device frames, Apple Product Bezels you import yourself (and store in a private project for CI), your own frame packs, device swaps per target, foldables and watches."
 weight: 50
 icon: frame
 ---
@@ -99,10 +99,11 @@ matching the target's image size; you can pin one per device.
 
 Good to know:
 
-- Bezels are stored in the app data folder, **never in the project**. The
-  project only says `frame: imported:apple`. On a computer without the bezels
-  (a colleague's, CI) the built-in detailed frame is drawn and validation
-  notes `imported_frame_missing`.
+- Bezels are stored in the app data folder; the project only says
+  `frame: imported:apple`. On a computer without the bezels (a colleague's,
+  CI) the built-in detailed frame is drawn and validation notes
+  `imported_frame_missing` – unless you
+  [store the used bezels in the project](#apple-bezels-in-ci).
 - A colour that isn't installed there falls back to an installed one
   (`imported_color_fallback`).
 - The import report separates files **skipped on purpose** (e.g. marketing
@@ -119,6 +120,47 @@ vitrine frames import /Volumes/Bezel-iPhone-18
 vitrine frames list
 vitrine frames remove --bezel "iPhone 18 Pro"              # or --model, --color, --all
 ```
+
+## Apple bezels in CI: store them in the project {#apple-bezels-in-ci}
+
+A build server has no imported bezels, so `vitrine export` there would draw
+the built-in frames. To get the same images as on your Mac, store the bezels
+your project uses **in the project**:
+
+- **Project settings → Frames → Store used device frames in the project**, or
+  `vitrine frames embed`.
+- Only the bezels your targets actually draw are copied (model × colour ×
+  orientation × size), as imported, into `frames/imported/apple/` – usually a
+  few MB. **All sizes of the used models** also keeps e.g. the iPhone Pro next
+  to the Pro Max.
+- The folder carries a `README.md` with the licence notice and, when the
+  package was imported with it, Apple's licence file
+  (`apple/licenses/<package>/License.rtf`).
+- Frames are then looked up in the project first, then in this computer's
+  frame store, then the built-in frame is drawn. The inspector says where a
+  bezel comes from (*stored in the project* / *this computer's frame store*).
+- When devices, colours or targets change, the tab shows what an update would
+  do (new, re-imported, no longer used) – click **Update stored frames** or
+  run `vitrine frames embed` again. Validation notes it as well:
+  `imported_frame_not_stored` (a target draws bezels only this computer has),
+  `stored_frames_stale` (unused or outdated copies) and
+  `imported_frames_stored` (licence reminder).
+- **Remove from project** / `vitrine frames unembed` deletes the folder.
+
+```sh
+vitrine frames embed --dry-run      # what would be stored, with sizes
+vitrine frames embed                # store or update (--all-sizes, --used-only)
+vitrine frames unembed              # remove frames/imported/
+```
+
+{{< callout warn >}}
+**Licence: private repositories only.** Apple's licence allows the bezels in
+mock-ups but not redistributing them. Stored frames are fine in a private
+repository; never publish the project with them – no public repository, no
+shared archive. Templates and gallery uploads never contain them. For a public
+repository add `frames/imported/` to `.gitignore` (CI then draws the built-in
+frames) or remove the stored frames.
+{{< /callout >}}
 
 ## Your own frame packs
 
@@ -172,7 +214,8 @@ The complete field reference is in the repository:
 Check the terms of vendor kits before you use them in store listings. Apple's
 bezels are for mock-ups of Apple-platform apps and may not be redistributed;
 Google's Device Art Generator output may not be used in Play listings. Keep
-vendor packs app-wide – never in a project you share.
+vendor packs app-wide; Apple bezels go into a project only as
+[stored frames](#apple-bezels-in-ci) of a private repository.
 {{< /callout >}}
 
 ## Foldables: iPhone Duo

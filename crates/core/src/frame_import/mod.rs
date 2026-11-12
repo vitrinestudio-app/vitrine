@@ -19,6 +19,7 @@
 
 mod analyze;
 mod colors;
+pub mod embed;
 pub mod pack;
 mod package;
 mod rules;
@@ -38,8 +39,9 @@ pub use package::{
 };
 pub use rules::{FileMatch, Pattern, Rule, Rules, normalize_name, slug, vendor_model};
 pub use store::{
-    ANY_MODEL, Assignment, FrameIndex, FrameSourceIndex, FrameStore, INDEX_FILE, InstalledColor,
-    InstalledFrame, RemoveFilter, USER_MAPPING_FILE, UserMapping, today,
+    ANY_MODEL, Assignment, FrameIndex, FrameOrigin, FrameSourceIndex, FrameStore, INDEX_FILE,
+    InstalledColor, InstalledFrame, LICENSES_DIR, RemoveFilter, USER_MAPPING_FILE, UserMapping,
+    project_source_key, today,
 };
 
 use crate::model::{Orientation, PixelSize};
@@ -234,9 +236,26 @@ pub fn import(
                 license: license.clone(),
                 imported: date.clone(),
                 swatch: Some(hex_rgb(a.swatch)),
+                origin: FrameOrigin::App,
             };
             let mask_png = encode_gray_png(a.size.w, a.size.h, &a.mask)?;
             store.install(source, frame, &bytes, &mask_png)?;
+        }
+        // Keep the package's licence files next to the frames: a project
+        // copy of the frames carries them along (ADR 0027).
+        if analysed
+            .iter()
+            .any(|i| matches!(i.action, Action::Install | Action::Replace))
+        {
+            for rel in &package.licenses {
+                let entry = PackageEntry {
+                    path: rel.clone(),
+                    name: rel.rsplit('/').next().unwrap_or(rel).to_owned(),
+                };
+                if let Ok(bytes) = package.read(&entry) {
+                    store.save_license(source, &package_name, &entry.name, &bytes)?;
+                }
+            }
         }
     }
     Ok(ImportPlan {

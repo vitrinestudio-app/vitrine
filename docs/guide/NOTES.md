@@ -129,7 +129,7 @@ guide pages in both languages.
 - The DMGs contain a licence agreement: **open the DMG in Finder, accept the licence, then import the mounted volume** (`/Volumes/Bezel-iPhone-18`). Direct DMG import fails with "attach canceled".
 - Package contents: PNGs per model/colour/orientation (`iPhone 18 Pro Max - Black - Portrait.png`), Photoshop files (ignored), License.rtf.
 - iPhone 18 package (verified 2026-11-10): models Pro and Pro Max; colours Black, Burgundy, Glacier, Silver; screen exactly 1320×2868 (Pro Max) / 1206×2622 (Pro).
-- Frames are stored app-wide (app data dir), never in the project; projects only say `frame: imported:apple`. Missing on another machine → parametric frame + info.
+- Frames are stored app-wide (app data dir); projects only say `frame: imported:apple`. Missing on another machine → parametric frame + info – unless the used bezels are stored in the project (next section).
 - CLI: `vitrine frames import <path> [--dry-run -v]`, `frames list`, `frames remove`.
 - Import report (2026-11-11): three kinds of not-imported PNGs, kept apart – **skipped on purpose** (a `skip` rule of the source, with its reason, e.g. `skipped  iPhone Duo - Night Sky - Outer Open.png  (on purpose: marketing composite …, not a single device view)`; GUI badge "Skipped on purpose", no assignment controls, own count in the summary), **ignored (your choice)** (your saved mapping), **unknown / unmatched** (no rule matched; assign by hand). Only the last one counts as "unmatched".
 - iPhone Duo package `Bezel-iPhone-Duo.dmg` (verified 2026-11-10): `iPhone Duo - <Night Sky|Star White> - <Inner Open|Outer Closed> <Portrait|Landscape>.png` → `iphone-duo` (open, screen 2007×2853) / `iphone-duo-folded` (closed, 1398×2034). `… - Outer Open.png` (back + outer display, open flat) is skipped on purpose as a marketing composite (rule files support `skip:` patterns with a reason).
@@ -139,6 +139,18 @@ guide pages in both languages.
 - Colours come from the package (Black, Burgundy, Glacier, Silver for iPhone 18), not from Vitrine Studio's palette. With an Apple frame the inspector shows only the installed colours, as swatches in the real housing colour (measured from each bezel at import: outer metal rim, black glass border excluded; stored as `swatch` in the store's `index.yaml`, filled in for older imports the first time the frame list is shown).
 - Switching the frame source (device or project default) changes the colour too, in the same undo step: the closest colour of the new source by housing colour (Black titanium → Black, Natural titanium → Silver; Burgundy → Black titanium back). Round trips can change the colour (White titanium → Silver → Natural titanium).
 - A colour that is not installed (e.g. project from another machine) → the default/first installed colour is drawn, info `imported_color_fallback`. No Apple frame installed at all → built-in detailed frame with the default colour, info `imported_frame_missing`.
+
+### Apple frames in CI: stored in the project (ADR 0027, 2026-11-12)
+- Project settings → **Frames** → "Store used device frames in the project" (CLI `vitrine frames embed [--all-sizes|--used-only] [--dry-run]`, `vitrine frames unembed`) copies the imported bezels the targets actually draw into `<project>/frames/imported/apple/` (same layout and `index.yaml` as the app store, PNGs unchanged + masks), with `README.md` (licence notice) and `embed.yaml` (`all_sizes`).
+- Only drawn bezels (model × colour × orientation × size, every target × language); "All sizes of the used models" also keeps e.g. the Pro next to the Pro Max. Typical size: a few MB.
+- Lookup: project copy → this computer's store → parametric frame. The project copy wins even when this computer has a newer import (CI and Mac stay identical); the tab offers "Update stored frames" (new / re-imported / no longer used).
+- Inspector frame hint: "Bezel stored in the project" or "from this computer's frame store".
+- Validation infos: `imported_frame_not_stored` (target draws bezels only this computer has), `imported_frames_stored` (licence reminder), `stored_frames_stale` (unused or outdated copies; only in a full validation).
+- Licence: Apple's bezels may be used in mock-ups, not redistributed → **private repositories only**; public repo: add `frames/imported/` to `.gitignore` or unembed. Templates never contain them (file whitelist; image assets from `frames/imported/` are refused), gallery uploads neither.
+- Imports now keep the package's licence file (`<app data>/frames/apple/licenses/<package>/License.rtf`); embedding copies it. Bezels imported earlier: re-import the package to get the licence file into the project (the tab says so).
+- MCP `frames_list` shows `stored`; storing is a user action (GUI/CLI), not an MCP tool.
+- The GUI does not notice `frames/imported/` changing on disk (git pull) – re-open the project.
+- Pack id `imported` is reserved.
 
 ### Text effects
 - Outline (stroke), glow, shadow on text styles, span styles and elements. Precedence span > element > style. Disable inherited: `width: 0`, `opacity: 0`, `shadow: none`. Sizes in lu (don't shrink with auto-fit).

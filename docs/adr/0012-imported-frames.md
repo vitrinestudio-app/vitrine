@@ -1,7 +1,8 @@
 # 0012 – Imported device frames (Apple Product Bezels)
 
 - Status: accepted (iPhone 15+ rules verified with a real package on
-  2026-11-10; iPad / Mac rules still unverified)
+  2026-11-10; iPad / Mac rules still unverified); amended by 0027 (the
+  used bezels may be stored in a private project for CI)
 - Date: 2026-11-10
 
 ## Context

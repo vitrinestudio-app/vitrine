@@ -67,7 +67,9 @@ js/dialogs/*.js       targets.js = canvases & targets editor (canvas pane: new /
                       rename / duplicate / remove, variants; target add and
                       form), variants.js = "New variant" dialog + remove
                       confirmation, validation popover, export, project
-                      and app settings; stores.js = store accounts (app
+                      and app settings; stored-frames.js = project settings
+                      "Frames" tab (imported frames stored in the project for
+                      CI, licence warning; ADR 0027); stores.js = store accounts (app
                       settings) + store mapping tab (project settings);
                       upload.js = "Upload to stores…" (plan table → confirm →
                       progress → result/log) + MCP upload confirmation dialog;

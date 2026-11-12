@@ -1,7 +1,8 @@
 # 0024 – Own frame packs (`frame.yaml` + PNG/SVG)
 
 - Status: accepted (user agreed to the concept 2026-11-10; format decided by
-  the implementing agent and confirmed by the user 2026-11-11)
+  the implementing agent and confirmed by the user 2026-11-11); pack id
+  `imported` reserved by 0027
 - Date: 2026-11-11
 
 ## Context

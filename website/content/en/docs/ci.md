@@ -231,9 +231,16 @@ jobs on protected branches.
 
 ## Device frames in CI
 
-Apple's Product Bezels can't be used on CI machines: you import them on
-your own Mac, and their licence doesn't allow passing them on. In CI,
-`imported:apple` frames fall back to the built-in frame, and validation
-reports the info `imported_frame_missing`. For identical results
-everywhere, use the built-in frames or a [frame pack](../devices-frames/)
-stored inside the project (`frames/`).
+Apple's Product Bezels are imported on your own Mac, and their licence
+doesn't allow passing them on – so the CI machine has none of its own. You
+have two options:
+
+- **Store the used bezels in the project** (Project settings → Frames, or
+  `vitrine frames embed`). They are copied to `frames/imported/` and CI
+  renders exactly the same images as your Mac. Only for **private**
+  repositories – see [Apple bezels in CI](../devices-frames/#apple-bezels-in-ci).
+- Otherwise `imported:apple` frames fall back to the built-in frame in CI,
+  and validation reports `imported_frame_missing` (or
+  `imported_frame_not_stored` locally). The built-in frames or a
+  [frame pack](../devices-frames/) inside the project give identical
+  results everywhere too.

@@ -122,13 +122,19 @@ vitrine frames list                                 # installierte Apple-Rahmen
 vitrine frames list --packs                         # Frame-Pakete
 vitrine frames remove --model iphone-island --color silver
 vitrine frames remove --pack my-pack --from project
+vitrine frames embed                                # verwendete Apple-Bezels im Projekt speichern (CI)
+vitrine frames unembed                              # wieder entfernen
 ```
 
-Siehe [Geräte & Rahmen](../devices-frames/).
+Siehe [Geräte & Rahmen](../devices-frames/) und, für `embed`,
+[Apple-Bezels in CI](../devices-frames/#apple-bezels-in-ci) (nur private
+Repositorys).
 
 {{< cli-help "vitrine frames import" >}}
 {{< cli-help "vitrine frames list" >}}
 {{< cli-help "vitrine frames remove" >}}
+{{< cli-help "vitrine frames embed" >}}
+{{< cli-help "vitrine frames unembed" >}}
 
 ## `fonts` {#fonts}
 

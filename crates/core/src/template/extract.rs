@@ -56,6 +56,20 @@ pub struct SaveReport {
     pub placeholders: usize,
 }
 
+/// A path inside the project's stored vendor frames (`frames/imported/…`,
+/// ADR 0027), which never go into a template.
+pub fn is_vendor_frame_path(path: &str) -> bool {
+    let mut parts = path
+        .split(['/', '\\'])
+        .filter(|c| !c.is_empty() && *c != ".");
+    parts
+        .next()
+        .is_some_and(|c| c.eq_ignore_ascii_case(crate::frame_import::pack::PROJECT_FRAMES_DIR))
+        && parts
+            .next()
+            .is_some_and(|c| c.eq_ignore_ascii_case(crate::frame_import::embed::EMBED_DIR))
+}
+
 /// Builds a template package from `project` (in folder `root`).
 #[allow(clippy::too_many_lines)]
 pub fn extract(
@@ -110,6 +124,14 @@ pub fn extract(
             archive::check_path(&asset).map_err(|e| {
                 TemplateError::invalid(format!("canvas `{}`: asset {e}", canvas.id))
             })?;
+            if is_vendor_frame_path(&asset) {
+                // Stored vendor frames (ADR 0027) must never be published.
+                return Err(TemplateError::invalid(format!(
+                    "canvas `{}` uses `{asset}`, a stored vendor device frame: its licence \
+                     does not allow publishing it in a template",
+                    canvas.id
+                )));
+            }
             let src = archive::join(root, &asset);
             let data = std::fs::read(&src).map_err(|_| {
                 TemplateError::NotFound(format!(

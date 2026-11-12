@@ -250,6 +250,13 @@ export const api = {
   /** `opts`: { target?: 'app' | 'project', id?, dry_run? }; error details `{kind: 'not_a_pack'}` for other packages. */
   framesPackImport: (path, opts = {}) => invoke('frames_pack_import', { path, ...opts }),
   framesPackRemove: (id, target = 'app') => invoke('frames_pack_remove', { id, target }),
+  // ----- imported frames stored in the project (ADR 0027) -----
+  /** Dry run of storing the used frames: { stored, up_to_date, items, missing, bytes_now, bytes_after, folder_bytes, … }. */
+  framesEmbedStatus: (allSizes) => invoke('frames_embed_status', allSizes == null ? {} : { all_sizes: allSizes }),
+  /** `opts`: { all_sizes?, dry_run? }; returns the applied plan. */
+  framesEmbed: (opts = {}) => invoke('frames_embed', opts),
+  /** Removes `frames/imported/`; returns the bytes freed. */
+  framesUnembed: () => invoke('frames_unembed'),
   // ----- banner from this canvas (6.2) -----
   /** Store banner proposals for `canvas`: [{ preset, label, store, size, pages, existing }]. */
   canvasBannerOptions: (canvas, page) => invoke('canvas_banner_options', page == null ? { canvas } : { canvas, page }),
