@@ -22,6 +22,7 @@
 //! | 1 | the project has problems: validation errors, export failures, import files unresolved or failed |
 //! | 2 | the command could not run: usage error (clap), project not loadable, IO error |
 
+mod ci_report;
 mod export;
 mod fonts;
 mod frames;
