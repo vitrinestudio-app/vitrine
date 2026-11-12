@@ -1,13 +1,16 @@
 //! `vitrine frames import|list|remove`: the app-wide store of imported
 //! vendor frames (Apple Product Bezels, KONZEPT §4.2, ADR 0012). The store
 //! lives in the app data folder (same as the GUI; `VITRINE_APP_DIR`
-//! overrides it), never in a project.
+//! overrides it). `frames embed|unembed` copy the used frames into the
+//! project (`frames/imported/`, for CI) or remove them (ADR 0027).
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, bail};
 use clap::{Args, Subcommand};
+use vitrine_core::Project;
+use vitrine_core::frame_import::embed::{self, EmbedAction, EmbedPlan};
 use vitrine_core::frame_import::pack::{
     self, PACKS_DIR, PROJECT_FRAMES_DIR, PackInfo, PackOrigin, PackTarget,
 };
@@ -16,6 +19,7 @@ use vitrine_core::frame_import::{
     Rules, import, orientation_name,
 };
 use vitrine_core::model::Orientation;
+use vitrine_core::resolve::FsAssets;
 use vitrine_render::frame_packs::{ResvgRasterizer, load_packs};
 
 use crate::term::{Style, plural};
@@ -36,6 +40,37 @@ pub enum FramesCommand {
     List(ListArgs),
     /// Remove installed frames.
     Remove(RemoveArgs),
+    /// Store the imported frames the project uses in the project
+    /// (`frames/imported/`), or update the stored copies, so that a build
+    /// server (CI) without the app-wide frames renders the same images.
+    /// Licence: keep such a project private.
+    Embed(EmbedArgs),
+    /// Remove the frames stored in the project (`frames/imported/`).
+    Unembed(UnembedArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct EmbedArgs {
+    /// Store every installed size (vendor model, e.g. iPhone 18 Pro and
+    /// Pro Max) of the used models, colours and orientations, not only the
+    /// bezels the targets draw (remembered for later updates).
+    #[arg(long, conflicts_with = "used_only")]
+    pub all_sizes: bool,
+    /// Store only the bezels the targets draw (switches `--all-sizes` off).
+    #[arg(long)]
+    pub used_only: bool,
+    /// Only show what would be stored, updated or removed.
+    #[arg(long)]
+    pub dry_run: bool,
+    #[arg(long, value_enum, default_value_t = Format::Text)]
+    pub format: Format,
+}
+
+#[derive(Debug, Args)]
+pub struct UnembedArgs {
+    /// Only show what would be removed.
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 #[derive(Debug, Args)]
@@ -158,6 +193,8 @@ pub fn run(args: &FramesArgs, global: &Global) -> anyhow::Result<u8> {
         FramesCommand::List(a) => run_list(a, &store),
         FramesCommand::Remove(a) if a.pack.is_some() => run_pack_remove(a, &store, global),
         FramesCommand::Remove(a) => run_remove(a, &store, global),
+        FramesCommand::Embed(a) => run_embed(a, &store, global),
+        FramesCommand::Unembed(a) => run_unembed(a, global),
     }
 }
 
@@ -446,7 +483,8 @@ fn print_license_notice(plan: &ImportPlan) {
     let name = first.rsplit(['/', '\\']).next().unwrap_or(first);
     println!(
         "{} these frames are subject to Apple's licence ({name} in the package). \
-         They are stored only on this computer and never in projects.",
+         They are stored on this computer; a project gets copies only when you store \
+         them there (`vitrine frames embed`; keep such projects private).",
         st.warn("licence:")
     );
     for l in &plan.licenses {
@@ -522,6 +560,169 @@ fn run_remove(a: &RemoveArgs, store: &FrameStore, global: &Global) -> anyhow::Re
         .map_err(anyhow::Error::msg)?;
     if !global.quiet {
         println!("removed {}", plural(n, "frame"));
+    }
+    Ok(EXIT_OK)
+}
+
+// ----- frames stored in the project (ADR 0027) ------------------------------------------
+
+fn mb(bytes: u64) -> String {
+    #[allow(clippy::cast_precision_loss, reason = "display only")]
+    let b = bytes as f64;
+    if bytes < 1_000_000 {
+        format!("{:.0} KB", (b / 1000.0).ceil())
+    } else {
+        format!("{:.1} MB", b / 1_000_000.0)
+    }
+}
+
+/// The licence warning printed whenever frames are (to be) stored.
+fn print_embed_licence(st: Style) {
+    println!(
+        "{} Apple's bezel licence allows mock-ups but not redistribution: keep this project \
+         in a private repository and never publish it with `{}` (public repository, template, \
+         gallery upload); for a public repository add `{}` to .gitignore",
+        st.warn("licence:"),
+        embed::embed_dir_display(),
+        embed::embed_dir_display()
+    );
+}
+
+fn load_project(global: &Global) -> anyhow::Result<(PathBuf, Project)> {
+    let dir = project_dir(global).context("needs a project (--project <DIR> with project.yaml)")?;
+    let project = Project::load(dir).with_context(|| format!("loading {}", dir.display()))?;
+    Ok((dir.to_owned(), project))
+}
+
+fn run_embed(a: &EmbedArgs, store: &FrameStore, global: &Global) -> anyhow::Result<u8> {
+    let (dir, project) = load_project(global)?;
+    let mut index = FrameIndex::load(store.root());
+    embed::add_project_copies(&mut index, &dir);
+    let all_sizes = if a.all_sizes {
+        true
+    } else if a.used_only {
+        false
+    } else {
+        embed::read_options(&dir).all_sizes
+    };
+    let fs = FsAssets::new(&dir);
+    let plan = if a.dry_run {
+        embed::plan(&project, &dir, &index, &fs, all_sizes)
+    } else {
+        embed::apply(&project, &dir, &index, &fs, all_sizes).map_err(anyhow::Error::msg)?
+    };
+    match a.format {
+        Format::Json => println!("{}", serde_json::to_string_pretty(&plan)?),
+        Format::Text => print_embed_plan(&plan, global),
+    }
+    Ok(if plan.missing.is_empty() {
+        EXIT_OK
+    } else {
+        EXIT_PROBLEMS
+    })
+}
+
+fn print_embed_plan(plan: &EmbedPlan, global: &Global) {
+    let st = Style::stdout();
+    for i in &plan.items {
+        let tag = match i.action {
+            EmbedAction::Add => st.ok("add     "),
+            EmbedAction::Update => st.warn("update  "),
+            EmbedAction::Keep => st.dim("keep    "),
+            EmbedAction::Remove => st.warn("remove  "),
+        };
+        if global.quiet && i.action == EmbedAction::Keep {
+            continue;
+        }
+        let what = format!(
+            "{} / {} / {} / {}",
+            i.model,
+            i.color,
+            orientation_name(i.orientation),
+            i.bezel
+        );
+        let used = if i.targets.is_empty() {
+            String::new()
+        } else {
+            format!("  ({})", i.targets.join(", "))
+        };
+        println!("{tag} {what:<62} {:>9}{}", mb(i.bytes), st.dim(&used));
+    }
+    for m in &plan.missing {
+        println!(
+            "{} {} / {} / {}: not imported on this computer, drawn parametric ({})",
+            st.warn("missing "),
+            m.model,
+            m.color.as_deref().unwrap_or("default colour"),
+            orientation_name(m.orientation),
+            m.targets.join(", ")
+        );
+    }
+    for p in &plan.licenses_missing {
+        println!(
+            "{} the licence file of {p} is not on this computer (imported before licence \
+             files were kept); re-import the package to store it with the frames",
+            st.warn("note:")
+        );
+    }
+    let n = plan
+        .items
+        .iter()
+        .filter(|i| i.action != EmbedAction::Remove)
+        .count();
+    let state = if plan.up_to_date && plan.stored && n > 0 {
+        format!(
+            "{} stored, up to date ({})",
+            plural(n, "frame"),
+            mb(plan.bytes_now)
+        )
+    } else if plan.applied {
+        if n == 0 {
+            "no imported frames used; nothing stored".to_owned()
+        } else {
+            format!(
+                "stored {} ({}) → {}",
+                plural(n, "frame"),
+                mb(plan.bytes_after),
+                plan.dir.display()
+            )
+        }
+    } else {
+        format!(
+            "would store {} ({}, now {}) (dry run)",
+            plural(n, "frame"),
+            mb(plan.bytes_after),
+            mb(plan.bytes_now)
+        )
+    };
+    println!(
+        "{} {state}{}",
+        st.bold("frames:"),
+        if plan.all_sizes { ", all sizes" } else { "" }
+    );
+    if n > 0 {
+        print_embed_licence(st);
+    }
+}
+
+fn run_unembed(a: &UnembedArgs, global: &Global) -> anyhow::Result<u8> {
+    let (dir, _) = load_project(global)?;
+    let root = embed::embed_root(&dir);
+    if a.dry_run {
+        println!(
+            "would remove {} ({})",
+            root.display(),
+            mb(embed::dir_bytes(&root))
+        );
+        return Ok(EXIT_OK);
+    }
+    let bytes = embed::remove(&dir).map_err(anyhow::Error::msg)?;
+    if !global.quiet {
+        if bytes == 0 {
+            println!("no frames stored in the project");
+        } else {
+            println!("removed {} ({})", root.display(), mb(bytes));
+        }
     }
     Ok(EXIT_OK)
 }

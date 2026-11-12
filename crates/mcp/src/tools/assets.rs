@@ -309,7 +309,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Device frames from image files: vendor frames installed app-wide (Apple Product Bezels imported by the user, `sources`; devices use `frame: imported:apple`) and own frame packs (`packs`: the project's `frames/<id>/` and app-wide ones; devices use `frame: pack:<id>`, colours are the pack's colour ids). Models, colours, orientations. Read-only.",
+        description = "Device frames from image files: vendor frames installed app-wide (Apple Product Bezels imported by the user, `sources`; devices use `frame: imported:apple`) and own frame packs (`packs`: the project's `frames/<id>/` and app-wide ones; devices use `frame: pack:<id>`, colours are the pack's colour ids), plus the Apple bezels the user stored in the project for CI (`stored`, `frames/imported/`; they win over the app-wide ones; storing/removing them is the user's decision in the GUI or CLI because of Apple's licence). Models, colours, orientations. Read-only.",
         annotations(read_only_hint = true)
     )]
     async fn frames_list(
@@ -326,8 +326,16 @@ impl VitrineMcp {
                 .map(|s| s["frames"].as_array().map_or(0, Vec::len))
                 .sum();
             let packs = v["packs"].as_array().map_or(0, Vec::len);
+            let stored: usize = v["stored"]
+                .as_object()
+                .into_iter()
+                .flat_map(|m| m.values())
+                .map(|f| f.as_array().map_or(0, Vec::len))
+                .sum();
             Ok(ToolOutput::new(
-                format!("{n} installed vendor frame(s), {packs} frame pack(s)"),
+                format!(
+                    "{n} installed vendor frame(s), {packs} frame pack(s), {stored} stored in the project"
+                ),
                 v,
             ))
         })
