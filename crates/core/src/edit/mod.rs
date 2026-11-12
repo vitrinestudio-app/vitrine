@@ -1447,6 +1447,7 @@ impl<'a> Editor<'a> {
             clip: None,
             visible: true,
             visible_in: None,
+            allow: Vec::new(),
             kind: ElementKind::Group(GroupProps::default()),
         };
         let mut ops = vec![Op::AddElement {

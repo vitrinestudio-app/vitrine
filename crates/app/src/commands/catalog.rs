@@ -157,7 +157,7 @@ pub struct GalleryInfo {
     pub radius_y: f64,
     pub background: String,
     /// Page colour of the store in dark mode (gallery preview
-    /// `background: dark`).
+    /// `background: dark`, design check `page_blends_with_store`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub background_dark: Option<String>,
     pub measured: String,

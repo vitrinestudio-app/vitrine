@@ -128,6 +128,10 @@ pub struct ValidateParams {
     /// Editing mode: missing screenshots are warnings, not errors.
     #[serde(default)]
     pub preview: bool,
+    /// Run the rendered design checks (contrast, text near devices,
+    /// screens, seams, corners, store background); default true.
+    #[serde(default)]
+    pub pixel_checks: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
@@ -245,24 +249,10 @@ fn rect_rel(r: &Value, ox: f64, oy: f64) -> Value {
     })
 }
 
-/// Area of the intersection of two canvas rects.
-fn overlap_area(r1: &Value, r2: &Value) -> f64 {
-    let get = |r: &Value, k: &str| r[k].as_f64().unwrap_or(0.0);
-    let span = |pos: &str, len: &str| {
-        (get(r1, pos) + get(r1, len)).min(get(r2, pos) + get(r2, len))
-            - get(r1, pos).max(get(r2, pos))
-    };
-    let (width, height) = (span("x", "w"), span("y", "h"));
-    if width > 0.0 && height > 0.0 {
-        width * height
-    } else {
-        0.0
-    }
-}
-
-/// Layout report from the overlay of a view: page-relative boxes, text
-/// metrics, gaps and overlaps of texts with other elements.
-pub fn layout_report(overlay: &Value, page_filter: Option<u32>) -> Value {
+/// Layout report from the overlay of a view plus its rendered geometry
+/// (`scene_report`): page-relative boxes, text metrics, devices with their
+/// screens, gallery gap and seams, pixel overlaps.
+pub fn layout_report(overlay: &Value, scene: &Value, page_filter: Option<u32>) -> Value {
     let pages = overlay["pages"].as_array().cloned().unwrap_or_default();
     let origin = |page: u64| {
         pages
@@ -275,13 +265,9 @@ pub fn layout_report(overlay: &Value, page_filter: Option<u32>) -> Value {
                 )
             })
     };
-    let all: Vec<&Value> = overlay["elements"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .collect();
+    let devices: Vec<&Value> = scene["devices"].as_array().into_iter().flatten().collect();
     let mut elements = Vec::new();
-    for e in &all {
+    for e in overlay["elements"].as_array().into_iter().flatten() {
         let page = e["page"].as_u64().unwrap_or(0);
         if page_filter.is_some_and(|f| u64::from(f) != page) {
             continue;
@@ -311,54 +297,30 @@ pub fn layout_report(overlay: &Value, page_filter: Option<u32>) -> Value {
             }
             item["text"] = text;
         }
+        if let Some(d) = devices.iter().find(|d| d["id"] == e["id"]) {
+            item["model"] = d["model"].clone();
+            item["frame"] = d["frame"].clone();
+            item["screen"] = d["screen"].clone();
+            if d["covered_by"].as_array().is_some_and(|a| !a.is_empty()) {
+                item["screen_covered_by"] = d["covered_by"].clone();
+            }
+        }
         elements.push(item);
     }
-    // Texts overlapping other visible elements (not their own groups).
-    let mut overlaps = Vec::new();
-    for (i, a) in all.iter().enumerate() {
-        let Some(at) = a.get("text").filter(|t| t.is_object()) else {
-            continue;
-        };
-        for b in all.iter().skip(i + 1).chain(all.iter().take(i)) {
-            if b["kind"] == "background" || b["kind"] == "group" || b["id"] == a["id"] {
-                continue;
-            }
-            let b_is_text = b.get("text").is_some_and(Value::is_object);
-            if b_is_text && b["id"].as_str() < a["id"].as_str() {
-                continue; // each text pair once
-            }
-            let br = if b_is_text {
-                &b["text"]["content"]
-            } else {
-                &b["rect"]
-            };
-            let area = overlap_area(&at["content"], br);
-            if area <= 1.0 {
-                continue;
-            }
-            if page_filter.is_some_and(|f| {
-                a["page"].as_u64() != Some(u64::from(f)) && b["page"].as_u64() != Some(u64::from(f))
-            }) {
-                continue;
-            }
-            let text_area = at["content"]["w"].as_f64().unwrap_or(0.0)
-                * at["content"]["h"].as_f64().unwrap_or(0.0);
-            overlaps.push(json!({
-                "text": a["id"], "other": b["id"], "other_kind": b["kind"],
-                "area_lu2": area.round(),
-                "share_of_text": if text_area > 0.0 { json!(((area / text_area) * 100.0).round() / 100.0) } else { Value::Null },
-            }));
-        }
-    }
-    json!({
+    let mut out = json!({
         "target": overlay["target"], "lang": overlay["lang"], "variant": overlay["variant"],
         "pages": pages.iter().map(|p| json!({
             "index": p["index"], "id": p["id"], "image": p["image"],
             "size": {"w": r1(&p["rect"]["w"]), "h": r1(&p["rect"]["h"])},
         })).collect::<Vec<_>>(),
         "elements": elements,
-        "overlaps": overlaps,
-    })
+        "overlaps": scene["overlaps"].as_array().cloned().unwrap_or_default(),
+        "seams": scene["seams"].as_array().cloned().unwrap_or_default(),
+    });
+    if scene["gallery"].is_object() {
+        out["gallery"] = scene["gallery"].clone();
+    }
+    out
 }
 
 /// Errors and warnings of `target` × `lang` (editing mode).
@@ -533,7 +495,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Exact layout of a target × language: per element its home page and box (lu relative to the page's top-left), rotation, `in_gap` (cut from page exports); per text the chosen font size, line count, content box, overflow, auto-hyphenated words and emergency breaks; plus texts overlapping other elements. Use it to fix overflows and collisions precisely.",
+        description = "Exact layout of a target × language: per element its home page and box (lu relative to the page's top-left), rotation, `in_gap` (cut from page exports); per text the chosen font size, line count, content box, overflow, auto-hyphenated words and emergency breaks; per device its rotated `frame` corners and `screen` (unrotated box x/y/w/h, rotated `quad`, corner radius, `header` = height of the status bar / title zone) plus `screen_covered_by` (shares of screen and header); `gallery` (store gap and corner radius in lu/px, `measured`), `seams` (gap per page border, `next_page_offset` to express a canvas point on the next page); `overlaps` measured on drawn pixels (texts with other elements; `seam: true` = an element reaching across a page border over one of the next page). Use it to place cards relative to screens and to fix collisions precisely.",
         annotations(read_only_hint = true)
     )]
     async fn layout_report(
@@ -543,8 +505,14 @@ impl VitrineMcp {
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
             let (target, lang) = view_of(app, p.target, p.lang)?;
-            let overlay = cmd(app, "overlay", json!({ "target": target, "lang": lang }))?;
-            let r = layout_report(&overlay, p.page);
+            let view = json!({ "target": target, "lang": lang });
+            let overlay = cmd(app, "overlay", view.clone())?;
+            let mut args = view;
+            if let Some(page) = p.page {
+                args["page"] = json!(page);
+            }
+            let scene = cmd(app, "scene_report", args)?;
+            let r = layout_report(&overlay, &scene, p.page);
             let texts = r["elements"]
                 .as_array()
                 .into_iter()
@@ -568,7 +536,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Check the project for every target × language: errors (block export: missing screenshots, wrong sizes, store rules), warnings (text overflow, emergency breaks, content in gaps), infos (fallbacks). Use preview: true while still editing.",
+        description = "Check the project for every target × language: errors (block export: missing screenshots, wrong sizes, store rules), warnings (text overflow, emergency breaks, content in gaps, low text contrast, text touching devices), infos (fallbacks, text near devices, screen top bars covered or cut, seam overlaps, rounded store corners, small devices, pages blending with the store background). Rendered design checks run by default (pixel_checks: false = layout only, faster). Use preview: true while still editing. Intended findings: element field `allow: [code]`, project `checks.off`.",
         annotations(read_only_hint = true)
     )]
     async fn validate(
@@ -580,7 +548,10 @@ impl VitrineMcp {
             let v = cmd(
                 app,
                 "validate",
-                json!({ "targets": p.targets, "langs": p.langs, "preview": p.preview }),
+                json!({
+                    "targets": p.targets, "langs": p.langs, "preview": p.preview,
+                    "pixel_checks": p.pixel_checks,
+                }),
             )?;
             let line = format!(
                 "{} error(s), {} warning(s), {} info(s)",
@@ -752,7 +723,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn report_is_page_relative_and_finds_overlaps() {
+    fn report_is_page_relative_and_merges_scene_geometry() {
         let overlay = json!({
             "target": "t", "lang": "en", "variant": null,
             "pages": [
@@ -766,29 +737,30 @@ mod tests {
                  "text": {"font_size": 80.04, "lines": 2, "overflow": false, "content": {"x": 1200, "y": 120, "w": 800, "h": 420}}},
             ],
         });
-        let r = layout_report(&overlay, None);
+        let scene = json!({
+            "gallery": {"gap_lu": 100.0, "gap_px": 132.0, "radius_lu": {"x": 125.0, "y": 125.0}, "measured": "no"},
+            "seams": [{"after_page": 0, "x": 1000.0, "gap_lu": 100.0, "next_page_offset": -1100.0}],
+            "devices": [{"id": "dev", "page": 1, "model": "iphone-island", "rotation": 5.0,
+                         "frame": [], "screen": {"x": 230.0, "y": 520.0, "w": 540.0, "h": 1160.0}, "covered_by": []}],
+            "overlaps": [{"text": "title", "other": "dev", "other_kind": "device", "area_lu2": 9000.0, "share_of_text": 0.05}],
+        });
+        let r = layout_report(&overlay, &scene, None);
         let title = &r["elements"][2];
         assert_eq!(title["box"]["x"], 80.0);
         assert_eq!(title["text"]["font_size"], 80.0);
         assert_eq!(title["text"]["content"]["x"], 100.0);
         assert_eq!(r["elements"][1]["rotation"], 5.0);
-        let o = r["overlaps"].as_array().unwrap();
-        assert_eq!(o.len(), 1);
-        assert_eq!(o[0]["other"], "dev");
-        assert_eq!(o[0]["area_lu2"], 600.0 * 40.0);
+        assert_eq!(r["elements"][1]["screen"]["w"], 540.0);
+        assert!(r["elements"][1].get("screen_covered_by").is_none());
+        assert_eq!(r["overlaps"][0]["other"], "dev");
+        assert_eq!(r["gallery"]["gap_lu"], 100.0);
+        assert_eq!(r["seams"][0]["next_page_offset"], -1100.0);
         assert_eq!(
-            layout_report(&overlay, Some(0))["elements"]
+            layout_report(&overlay, &scene, Some(0))["elements"]
                 .as_array()
                 .unwrap()
                 .len(),
             1
         );
-    }
-
-    #[test]
-    fn overlap_area_of_disjoint_rects_is_zero() {
-        let a = json!({"x": 0, "y": 0, "w": 10, "h": 10});
-        let b = json!({"x": 20, "y": 0, "w": 10, "h": 10});
-        assert!(overlap_area(&a, &b).abs() < f64::EPSILON);
     }
 }

@@ -897,3 +897,202 @@ fn unusable_color_profile_is_info() {
         [(Severity::Info, FindingCode::ColorProfileUnsupported)]
     );
 }
+
+// ------------------------------------------------- design checks (ADR 0029)
+
+const SPLIT: &str = "
+  - id: half-a
+    kind: shape
+    page: 0
+    at: {x: 1000, y: 800}
+    width: 200
+    height: 200
+    shape: ellipse
+    fill: \"#2152CF\"
+    clip: page
+  - id: half-b
+    kind: shape
+    page: 1
+    at: {x: 0, y: 800}
+    width: 200
+    height: 200
+    shape: ellipse
+    fill: \"#2152CF\"
+    clip: page";
+
+#[test]
+fn seam_split_needs_a_store_gap() {
+    let p = project(SPLIT, "  gallery: appstore-iphone\n");
+    let r = run(&p);
+    let f = find(&r, FindingCode::SeamSplit);
+    assert_eq!(f.level, Severity::Info);
+    assert_eq!(f.element.as_ref().map(ElementId::as_str), Some("half-a"));
+    assert!(f.message.contains("clip: none"), "{}", f.message);
+    // Without a gallery the pages touch: nothing to pull apart.
+    assert!(!has(&run(&project(SPLIT, "")), FindingCode::SeamSplit));
+}
+
+#[test]
+fn allow_and_checks_off_switch_design_findings_off() {
+    let gallery = "  gallery: appstore-iphone\n";
+    let mut p = project(SPLIT, gallery);
+    p.canvases[0].elements[0].allow = vec!["seam_split".into()];
+    assert!(!has(&run(&p), FindingCode::SeamSplit));
+    let mut p = project(SPLIT, gallery);
+    p.checks.off = vec!["seam_split".into()];
+    assert!(!has(&run(&p), FindingCode::SeamSplit));
+    // Unknown and non-allowable codes are reported; the rest still runs.
+    p.checks.off = vec!["nonsense".into(), "text_overflow".into()];
+    p.canvases[0].elements[1].allow = vec!["screenshot_missing".into()];
+    let r = run(&p);
+    assert_eq!(
+        r.with_code(FindingCode::UnknownAllow).count(),
+        3,
+        "{:#?}",
+        r.findings
+    );
+    assert!(has(&r, FindingCode::SeamSplit));
+}
+
+#[test]
+fn allow_round_trips_and_applies_to_group_children() {
+    let elements = "
+  - id: g
+    kind: group
+    page: 0
+    allow: [seam_split]
+    children:
+    - id: half-a
+      kind: shape
+      page: 0
+      at: {x: 1000, y: 800}
+      width: 200
+      height: 200
+      shape: ellipse
+      fill: \"#2152CF\"
+      clip: page
+  - id: half-b
+    kind: shape
+    page: 1
+    at: {x: 0, y: 800}
+    width: 200
+    height: 200
+    shape: ellipse
+    fill: \"#2152CF\"
+    clip: page";
+    let p = project(elements, "  gallery: appstore-iphone\n");
+    assert!(!has(&run(&p), FindingCode::SeamSplit));
+    let yaml = p.to_yaml().expect("yaml");
+    assert!(yaml.contains("allow: [seam_split]"), "{yaml}");
+    let back = crate::io::project_from_yaml(&yaml).expect("reload");
+    assert_eq!(back.canvases[0].elements[0].allow, vec!["seam_split"]);
+}
+
+#[test]
+fn device_small_reports_the_largest_device_of_a_page() {
+    let el = |w: u32| {
+        format!(
+            "
+  - id: phone
+    kind: device
+    page: 0
+    at: {{x: 500, y: 1000}}
+    width: {w}
+    model: iphone-island"
+        )
+    };
+    let r = run(&project(&el(300), ""));
+    assert_eq!(find(&r, FindingCode::DeviceSmall).level, Severity::Info);
+    assert!(!has(&run(&project(&el(600), "")), FindingCode::DeviceSmall));
+}
+
+#[test]
+fn page_not_covered_finds_a_thin_strip() {
+    let el = |h: u32| {
+        format!(
+            "
+  - id: photo
+    kind: shape
+    page: 0
+    at: {{x: 500, y: {}}}
+    width: 1000
+    height: {h}
+    shape: rect
+    fill: \"#334455\"",
+            h / 2
+        )
+    };
+    let r = run(&project(&el(1900), ""));
+    let f = find(&r, FindingCode::PageNotCovered);
+    assert!(f.message.contains("bottom"), "{}", f.message);
+    // Covering all of it, or only half of it (a deliberate panel): quiet.
+    assert!(!has(
+        &run(&project(&el(2000), "")),
+        FindingCode::PageNotCovered
+    ));
+    assert!(!has(
+        &run(&project(&el(1000), "")),
+        FindingCode::PageNotCovered
+    ));
+}
+
+#[test]
+fn thresholds_take_the_project_checks() {
+    let mut c = crate::model::Checks {
+        device_distance: Some(30.0),
+        min_contrast: Some(7.0),
+        ..Default::default()
+    };
+    let t = Thresholds::default().with_checks(&c);
+    assert!((t.device_distance - 30.0).abs() < f64::EPSILON);
+    assert!((t.required_contrast(30.0, 400) - 7.0).abs() < f64::EPSILON);
+    assert!((t.required_contrast(90.0, 400) - 3.0).abs() < f64::EPSILON);
+    assert!((t.required_contrast(64.0, 700) - 3.0).abs() < f64::EPSILON);
+    assert!(c.check().is_ok());
+    c.min_contrast = Some(40.0);
+    assert!(c.check().is_err());
+}
+
+/// An inspector reporting one finding per scene, to check the plumbing.
+struct Fake;
+
+impl SceneInspector for Fake {
+    fn inspect(&self, scene: &ResolvedScene, _: &Thresholds, first: bool) -> Vec<SceneFinding> {
+        vec![SceneFinding {
+            level: Severity::Warn,
+            code: FindingCode::LowContrast,
+            element: Some(ElementId::new("title")),
+            lang_dependent: true,
+            message: format!("{} {first}", scene.lang),
+        }]
+    }
+}
+
+#[test]
+fn inspector_findings_get_target_language_and_page() {
+    let mut p = project(HEADLINE, "");
+    set(&mut p, "en", "title", "Hello");
+    set(&mut p, "de", "title", "Hallo");
+    let mut o = ValidateOptions::new(&NoAssets);
+    o.inspector = Some(&Fake);
+    let r = validate(&p, &o);
+    let got: Vec<_> = r
+        .with_code(FindingCode::LowContrast)
+        .map(|f| {
+            (
+                f.lang.as_ref().map(ToString::to_string),
+                f.page,
+                f.message.clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        got,
+        vec![
+            (Some("en".to_owned()), Some(0), "en true".to_owned()),
+            (Some("de".to_owned()), Some(0), "de false".to_owned()),
+        ]
+    );
+    p.canvases[0].elements[0].allow = vec!["low_contrast".into()];
+    assert!(!has(&validate(&p, &o), FindingCode::LowContrast));
+}

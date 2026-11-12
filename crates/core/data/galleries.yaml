@@ -14,11 +14,13 @@
 #   radius      corner radius of the images as shown; a number or {x, y}
 #               (elliptical, x along the width, y along the height)
 #   background  page colour behind the gallery (preview only)
-#   background_dark  page colour in the store's dark mode (preview only;
-#               `render_gallery {background: dark}`). NOT YET MEASURED for
-#               any profile: placeholders from the platform colours (iOS
-#               systemBackground dark #000000, Material 3 dark surface
-#               #131314), added 2026-11-12.
+#   background_dark  page colour in the store's dark mode (gallery preview
+#               `render_gallery {background: dark}`, validation
+#               `page_blends_with_store`). NOT YET MEASURED for any profile:
+#               placeholders from the platform colours (iOS systemBackground
+#               dark #000000, Material 3 dark surface #131314), added 2026-11-12:
+#               https://developer.apple.com/design/human-interface-guidelines/dark-mode
+#               https://m3.material.io/styles/color/static/baseline
 #   measured    false   = NOT YET MEASURED, placeholder guess
 #               web-css = measured from the store website's CSS/layout
 #               fixed   = by definition (no store involved)

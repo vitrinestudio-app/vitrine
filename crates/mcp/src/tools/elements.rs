@@ -29,7 +29,7 @@ macro_rules! patch_fields_doc {
         " Fields (YAML names; `null` resets to the default). \
 All kinds: page (home page, 0-based), lock_page, locked (GUI canvas lock), at {x, y} (centre, lu relative to the home page), \
 width, height, rotation (degrees, clockwise), pivot {x, y}, anchor_y (top|bottom|center|stretch), \
-opacity (0..1), z (layer), clip (none|page), visible, visible_in {targets, langs}. \
+opacity (0..1), z (layer), clip (none|page), visible, visible_in {targets, langs}, allow [finding codes meant on purpose]. \
 device: model, orientation (portrait|landscape), frame (stylized|detailed|imported:apple), bezel, \
 color, fold (open|folded, foldables), chrome (none|browser), url, appearance (light|dark), screenshot (key), fit (cover|contain|stretch), shadow. \
 text: text (translation key), style, box {top, left, right, bottom} (margins to the page), align \

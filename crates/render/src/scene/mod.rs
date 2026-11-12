@@ -183,6 +183,19 @@ pub struct PreparedScene<'s> {
     pub issues: Vec<RenderIssue>,
 }
 
+impl<'s> PreparedScene<'s> {
+    /// A prepared scene from already placed texts (index-aligned with
+    /// `scene.elements`); for partial renders of a prepared scene
+    /// (`crate::quality`).
+    pub(crate) fn from_parts(scene: &'s ResolvedScene, texts: Vec<Option<PlacedText>>) -> Self {
+        Self {
+            scene,
+            texts,
+            issues: Vec::new(),
+        }
+    }
+}
+
 impl PreparedScene<'_> {
     /// Placed layout of the text element at `index` in `scene.elements`.
     pub fn text(&self, index: usize) -> Option<&PlacedText> {

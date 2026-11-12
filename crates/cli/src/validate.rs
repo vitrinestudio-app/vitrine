@@ -52,6 +52,10 @@ pub struct ValidateArgs {
     /// Fail (exit code 1) on warnings too.
     #[arg(long)]
     pub strict: bool,
+    /// Skip the rendered design checks (contrast, text near devices,
+    /// screens, seams, corners, store background): faster, layout only.
+    #[arg(long)]
+    pub no_pixel_checks: bool,
 }
 
 /// JSON output: the report plus counts.
@@ -70,10 +74,15 @@ pub fn run(args: &ValidateArgs, global: &Global) -> anyhow::Result<u8> {
     project::check_targets(&project, &args.targets)?;
     project::check_langs(&args.langs)?;
     let fs = FsAssets::new(root);
-    let frames = crate::frames::installed(root);
+    // One render context (project, stored and system fonts, installed
+    // frames) for the layout checks and the pixel checks alike.
+    let (ctx, font_report) = crate::frames::render_context(root, &project, global);
+    if !global.quiet {
+        project::report_font_errors(&font_report.errors);
+    }
     let mut opts = ValidateOptions::new(&fs);
-    opts.frames = frames.as_deref();
-    opts.fonts = project::fonts(root, &project, global);
+    opts.frames = ctx.frames();
+    opts.fonts = ctx.fonts().clone();
     opts.targets = (!args.targets.is_empty()).then(|| args.targets.clone());
     opts.langs = (!args.langs.is_empty()).then(|| args.langs.clone());
     opts.mode = if args.preview {
@@ -81,6 +90,10 @@ pub fn run(args: &ValidateArgs, global: &Global) -> anyhow::Result<u8> {
     } else {
         ValidateMode::Export
     };
+    let inspector = vitrine_render::quality::Inspector::new(&ctx);
+    if !args.no_pixel_checks {
+        opts.inspector = Some(&inspector);
+    }
     let report = validate(&project, &opts);
     let errors = report.count(Severity::Error);
     let warnings = report.count(Severity::Warn);

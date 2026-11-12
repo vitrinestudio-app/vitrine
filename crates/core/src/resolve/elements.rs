@@ -190,6 +190,11 @@ impl Walker<'_, '_> {
             };
             for r in &mut self.out[start..] {
                 apply_group(r, &xf);
+                for a in &e.allow {
+                    if !r.allow.contains(a) {
+                        r.allow.push(a.clone());
+                    }
+                }
             }
             return;
         }
@@ -264,6 +269,7 @@ impl Walker<'_, '_> {
             pivot: e.pivot.map_or(Vec2::ZERO, |p| Vec2::new(p.x, p.y)),
             opacity: e.opacity,
             clip: (e.effective_clip() == Clip::Page).then(|| layout.page_rect(page)),
+            allow: e.allow.clone(),
             props: ResolvedKind::Background {
                 fill: super::scene::ResolvedFill::Color {
                     color: Rgba::rgb(0, 0, 0),
@@ -843,6 +849,7 @@ pub(super) fn screenshot_only(
             pivot: Vec2::ZERO,
             opacity: 1.0,
             clip: Some(rect),
+            allow: Vec::new(),
             props: ResolvedKind::Device(Box::new(dev)),
         });
     }
@@ -896,6 +903,7 @@ mod tests {
             pivot: Vec2::ZERO,
             opacity: 0.5,
             clip: None,
+            allow: Vec::new(),
             props: ResolvedKind::Background {
                 fill: super::super::scene::ResolvedFill::Color {
                     color: Rgba::rgb(0, 0, 0),

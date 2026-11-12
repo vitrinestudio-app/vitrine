@@ -622,3 +622,44 @@ fn gallery_background(scene: &ResolvedScene, spec: Option<&str>) -> CmdResult<Op
 pub fn preview_stats(app: &AppState, _: NoArgs) -> CmdResult<CacheStats> {
     Ok(app.session()?.preview().stats())
 }
+
+/// Arguments of [`scene_report`].
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(clippy::option_option)]
+pub struct SceneReportArgs {
+    /// Default: the first target.
+    #[serde(default)]
+    pub target: Option<String>,
+    /// Default: the project's default language.
+    #[serde(default)]
+    pub lang: Option<String>,
+    /// Missing = the target's own variant, `null` = the base elements.
+    #[serde(default, deserialize_with = "double_option")]
+    pub variant: Option<Option<String>>,
+    /// Only devices and overlaps of elements with this home page.
+    #[serde(default)]
+    pub page: Option<u32>,
+}
+
+/// Rendered geometry of a target × language (ADR 0029): gallery gap and
+/// corner radius, seams, device frames and screens in page coordinates
+/// with what covers them, pixel overlaps.
+pub fn scene_report(
+    app: &AppState,
+    args: SceneReportArgs,
+) -> CmdResult<vitrine_render::quality::SceneReport> {
+    let session = app.session()?;
+    let (_, _, scene) = scene(
+        &session,
+        None,
+        args.target,
+        args.lang,
+        args.variant.as_ref(),
+    )?;
+    Ok(vitrine_render::quality::scene_report(
+        &session.render_context(),
+        &scene,
+        args.page,
+    ))
+}
