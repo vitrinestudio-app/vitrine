@@ -64,7 +64,8 @@ Was hineinkommt:
   Seitenverhältnis des Geräts) – außer du nimmst sie als
   **Beispiel-Screenshots** mit: Dann kommen die Screenshots, die die
   Leinwände verwenden (PNG/JPEG, höchstens 10 MB und 6000 px je Seite),
-  unverändert hinein. Mach das nur mit Screenshots, die dir gehören (z. B.
+  als JPEG (Qualität 60) neu kodiert hinein, damit die Vorlage klein bleibt
+  (Bilder mit transparenten Pixeln bleiben PNG). Mach das nur mit Screenshots, die dir gehören (z. B.
   einer Demo-App); in der Galerie werden sie als CC0 veröffentlicht;
 - **nicht** Store-Einstellungen, Import-Zuordnungen oder importierte
   Hersteller-Rahmen (Vorschauen nutzen die eingebauten Rahmen).
@@ -128,8 +129,9 @@ vitrine template export bold-gradient -o bold.vitrine-template
 vitrine template remove bold-gradient          # mitgelieferte Vorlagen lassen sich nicht entfernen
 ```
 
-Jede Vorlagendatei wird vor der Verwendung geprüft: Größengrenzen (50 MB
-gepackt, 150 MB entpackt), nur bekannte Dateiarten, anhand des Inhalts
+Jede Vorlagendatei wird vor der Verwendung geprüft: Größengrenzen (250 MB
+gepackt, 500 MB entpackt; der Galerie-Server hat ein eigenes Upload-Limit,
+standardmäßig 50 MB), nur bekannte Dateiarten, anhand des Inhalts
 geprüft, keine Pfade außerhalb des Pakets oder versteckte Dateien, SVG ohne
 Skripte oder externe Links, und das enthaltene Projekt muss sich laden und
 prüfen lassen.

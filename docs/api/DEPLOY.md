@@ -34,6 +34,17 @@ The owner deploys; agents never do. Backend: `crates/api-server` (crate
    proxy_pass http://127.0.0.1:8080;
    ```
    (Caddy: `request_body { max_size 55MB }` + `reverse_proxy 127.0.0.1:8080`.)
+   Keep `client_max_body_size` (nginx default: only 1 MB!) a few MB above
+   `VITRINE_API_MAX_UPLOAD_MB` and raise both together. Over the API's
+   limit, the API answers `413` with `{"code": "too_large",
+   "max_upload_mb": N}` and the CLI names that limit; a `413` from nginx
+   itself has no JSON body, so the CLI reports "a proxy in front of the API
+   limits the request size". Templates with sample screenshots are packed
+   as JPEG (quality 60) and mostly stay well below 50 MB; the app/CLI read
+   packages up to 250 MB, so the server limit can be raised up to that
+   (nginx: also `proxy_read_timeout`/`client_body_timeout` for slow
+   uploads; the CLI waits 15 min per upload). `GET /health` shows the
+   active limit (`max_upload_mb`).
 6. **Check**: `curl https://api.vitrinestudio.app/health`; device login:
    `vitrine gallery login` (shows a code for github.com/login/device).
 7. **Backups**: the volume (`api.sqlite` – use `sqlite3 .backup` or stop
@@ -54,7 +65,7 @@ its position among the non-empty entries ("entry 2"), never by its value.
 | `VITRINE_API_DATA_DIR` | `/data` | `api.sqlite` + `templates/` |
 | `VITRINE_API_PUBLIC_URL` | `https://api.vitrinestudio.app` | base of links in responses and of the OAuth callback (`…/v1/auth/github/callback`) |
 | `VITRINE_API_TRUST_PROXY` | `0` | client address from `X-Forwarded-For` |
-| `VITRINE_API_MAX_UPLOAD_MB` | `50` | upload body limit |
+| `VITRINE_API_MAX_UPLOAD_MB` | `50` | upload body limit (MB); keep the proxy's body limit above it; at most 250 (the client limit) |
 | `VITRINE_API_RATE_LIMIT_PER_HOUR` | `20` | uploads and reports per client |
 | `VITRINE_API_READ_RATE_LIMIT_PER_HOUR` | `3000` | list/detail/preview/download per client |
 | `VITRINE_API_LOGIN_RATE_LIMIT_PER_HOUR` | `10` | login starts (`POST /v1/auth/github/device`, `GET /v1/auth/github/login`) per client |

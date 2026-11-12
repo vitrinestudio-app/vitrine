@@ -50,7 +50,7 @@ demand).
 ### Reading a package safely (`Package::from_zip_bytes`, `from_dir`)
 
 - Limits (`Limits::default()`): 50 MB packed, 150 MB unpacked, 25 MB per
-  file (read with `take(limit + 1)`, the declared size is not trusted),
+  file (raised 2026-11-12, see the amendment below) (read with `take(limit + 1)`, the declared size is not trusted),
   500 files, path depth 6.
 - Paths: relative, `/`-separated, no `..`/`.`/empty components, no
   absolute paths, backslashes, colons, control characters or hidden
@@ -201,3 +201,27 @@ Owner decisions (STATUS.md decision log); details in `docs/api/API.md`.
   canvas's preview target page by page (exact page viewports, no gaps)
   at a given page height and integer scales; the API server encodes them
   as WebP (ADR 0025 amendment).
+
+## Amendment 2026-11-12: package size, JPEG samples
+
+Templates saved with sample screenshots from real projects reached
+80–210 MB (full-size PNG screenshots) and failed the 50 MB limit.
+
+- **Sample screenshots as JPEG.** `vitrine_render::template::compress_samples`
+  (run by the app command, CLI and MCP save after `extract`) re-encodes every
+  sample as sRGB JPEG quality 60 (`SAMPLE_JPEG_QUALITY`, owner decision):
+  `screenshots/en/home.png` → `home.jpg`, which the screenshot lookup finds
+  in the same place. Samples with transparent pixels stay PNG (JPEG has no
+  alpha; reported in `SaveReport::samples_png`), as do files the JPEG would
+  not shrink. `extract` packs one file per key and folder (the one the lookup
+  picks) so `.png` → `.jpg` never collides. Assets, fonts, placeholders and
+  previews are untouched. The report gives `samples_bytes_original` /
+  `samples_bytes`.
+- **Limits.** `Limits::for_package(max)`: unpacked ≤ 2 × packed (at least
+  150 MB), 50 MB per file, 1000 files, depth 6. `Limits::default()` is the
+  client limit (`CLIENT_PACKAGE_MB` = 250 MB packed, 500 MB unpacked) used by
+  the app, CLI and gallery download (`publish::gallery::MAX_DOWNLOAD`), so a
+  local check never refuses what a server with a raised upload limit accepts.
+  The server checks uploads with `for_package(VITRINE_API_MAX_UPLOAD_MB)`
+  (ADR 0025 amendment). Zip-bomb protection is unchanged (sizes counted
+  while reading, declared sizes not trusted).
