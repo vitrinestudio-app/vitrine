@@ -106,10 +106,15 @@ def main() -> int:
 | macOS 11+ (Apple silicon + Intel) | {link('_macos_universal.dmg')} | {cli('_macos_universal.tar.gz')} |
 | Windows 10/11 x64 | {link('_windows_x64-setup.exe')} | {cli('_windows_x64.zip')} |
 | Linux x86_64 | {link('_linux_x86_64.AppImage')} · {link('_linux_amd64.deb')} · {link('_linux_x86_64.rpm')} | {cli('_linux_x86_64.tar.gz')} |
+| Linux aarch64 (arm64) | – | {cli('_linux_aarch64.tar.gz')} |
+| Linux, static (musl: Alpine, any distribution) | – | {cli('_linux_x86_64-musl.tar.gz')} · {cli('_linux_aarch64-musl.tar.gz')} |
 
 The app contains the `vitrine` command line tool (App settings → Command line
-tool installs it for terminals). Checksums: `SHA256SUMS.txt`
-(`sha256sum -c SHA256SUMS.txt`).
+tool installs it for terminals). The glibc Linux builds need Ubuntu 22.04 /
+Debian 12 or newer; the static musl builds run anywhere on Linux. For CI there
+is also a container image (amd64 + arm64, Alpine, static build):
+`docker pull ghcr.io/{args.repo.split('/')[0].lower()}/vitrine-cli:{args.version}`.
+Checksums: `SHA256SUMS.txt` (`sha256sum -c SHA256SUMS.txt`).
 
 ### Signing
 
