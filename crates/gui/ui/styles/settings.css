@@ -513,3 +513,20 @@
 .store-check[data-state='error'] {
   color: var(--danger);
 }
+
+/* Font family picker (dialogs/font-picker.js): search + grouped list. */
+.font-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.font-picker-search {
+  width: 150px;
+}
+
+.font-picker-list {
+  flex: 1;
+  min-width: 200px;
+}
