@@ -9,6 +9,7 @@ use std::process::{Command, Output};
 use serde_json::{Value, json};
 use vitrine_api_server::{AppState, Config, StaticToken, serve};
 use vitrine_core::Project;
+use vitrine_core::template::TemplateTags;
 use vitrine_core::template::extract::{SaveOptions, extract};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -62,6 +63,7 @@ fn start() -> Env {
     let config = Config {
         data_dir: tmp.path().join("server"),
         auto_approve: true,
+        admin_token: Some("admin-secret".into()),
         github_url: github.uri(),
         github_api_url: github.uri(),
         upload_tokens: vec![StaticToken {
@@ -115,20 +117,38 @@ fn text(o: &Output) -> (String, String) {
 }
 
 fn write_package(dir: &Path) -> std::path::PathBuf {
+    write_template(dir, "Fernwood Mac", "mac", true, false)
+}
+
+fn write_template(
+    dir: &Path,
+    name: &str,
+    canvas: &str,
+    tagged: bool,
+    samples: bool,
+) -> std::path::PathBuf {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/example");
     let project = Project::load(&root).unwrap();
+    let tags = if tagged {
+        TemplateTags {
+            style: vec!["minimal".into()],
+            color: vec!["light".into()],
+            use_: vec!["productivity".into()],
+            ..TemplateTags::default()
+        }
+    } else {
+        TemplateTags::default()
+    };
     let opts = SaveOptions {
-        name: "Fernwood Mac".into(),
-        canvases: Some(vec!["mac".into()]),
+        name: name.into(),
+        canvases: Some(vec![canvas.into()]),
+        tags,
+        sample_screenshots: samples,
         ..SaveOptions::default()
     };
-    let bytes = extract(&project, &root, &opts)
-        .unwrap()
-        .0
-        .to_zip_bytes()
-        .unwrap();
-    let file = dir.join("fernwood-mac.vitrine-template");
-    std::fs::write(&file, bytes).unwrap();
+    let (pkg, _) = extract(&project, &root, &opts).unwrap();
+    let file = dir.join(format!("{}.vitrine-template", pkg.manifest.id));
+    std::fs::write(&file, pkg.to_zip_bytes().unwrap()).unwrap();
     file
 }
 
@@ -177,13 +197,7 @@ fn list_upload_download_login_logout() {
         &[("VITRINE_TEST_TOKEN", "static-official")],
     );
     assert!(o.status.success(), "{:?}", text(&o));
-    assert!(
-        text(&o)
-            .0
-            .contains("uploaded fernwood-mac 1.0.0 – status: approved"),
-        "{:?}",
-        text(&o)
-    );
+    assert!(text(&o).0.contains("uploaded (approved)"), "{:?}", text(&o));
     let o = vitrine(
         &env,
         &[
@@ -197,8 +211,12 @@ fn list_upload_download_login_logout() {
         ],
         &[("VITRINE_TEST_TOKEN", "wrong")],
     );
-    assert_eq!(o.status.code(), Some(2));
-    assert!(!text(&o).1.contains("wrong"), "the token is never printed");
+    assert_eq!(o.status.code(), Some(1));
+    assert!(text(&o).0.contains("token was refused"), "{:?}", text(&o));
+    assert!(
+        !text(&o).0.contains("wrong") && !text(&o).1.contains("wrong"),
+        "the token is never printed"
+    );
 
     // List (via the loopback env override instead of --api), JSON.
     let o = vitrine(
@@ -288,4 +306,132 @@ fn unreachable_and_invalid_urls() {
     );
     assert_eq!(o.status.code(), Some(2));
     assert!(text(&o).1.contains("https"), "{:?}", text(&o));
+}
+
+#[test]
+fn bulk_upload_dry_run_samples_and_admin() {
+    let env = start();
+    let api = env.api.as_str();
+    let dir = env.tmp.path();
+    let good = write_template(dir, "Bulk Mac", "mac", true, false);
+    let untagged = write_template(dir, "Bulk Untagged", "mac", false, false);
+    let samples = write_template(dir, "Bulk Phone", "phone", true, true);
+    let broken = dir.join("broken.vitrine-template");
+    std::fs::write(&broken, b"not a zip").unwrap();
+    let files: Vec<&str> = [&good, &untagged, &samples, &broken]
+        .iter()
+        .map(|p| p.to_str().unwrap())
+        .collect();
+
+    // Dry run: all local checks, nothing sent, no login needed.
+    let mut args = vec!["gallery", "upload", "--api", api, "--dry-run"];
+    args.extend(&files);
+    let o = vitrine(&env, &args, &[]);
+    let (out, err) = text(&o);
+    assert_eq!(o.status.code(), Some(1), "{out}{err}");
+    assert!(out.contains("bulk-mac") && out.contains("ok"), "{out}");
+    assert!(out.contains("at least 1 style tag"), "{out}");
+    assert!(out.contains("--confirm-own-screenshots"), "{out}");
+    assert!(out.contains("not a valid template"), "{out}");
+    assert!(
+        out.contains("dry run: 4 files 1 ready to upload, 3 failed"),
+        "{out}"
+    );
+    let o = vitrine(
+        &env,
+        &["gallery", "list", "--api", api, "--format", "json"],
+        &[],
+    );
+    let v: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(v["templates"].as_array().unwrap().len(), 0, "nothing sent");
+
+    // Real run with confirmation: continues after errors.
+    let mut args = vec![
+        "gallery",
+        "upload",
+        "--api",
+        api,
+        "--confirm-own-screenshots",
+        "--token-env",
+        "VITRINE_TEST_TOKEN",
+        "--format",
+        "json",
+    ];
+    args.extend(&files);
+    let o = vitrine(&env, &args, &[("VITRINE_TEST_TOKEN", "static-official")]);
+    assert_eq!(o.status.code(), Some(1));
+    let v: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(v["failed"], 2);
+    assert_eq!(v["files"][0]["result"], "uploaded");
+    assert_eq!(v["files"][2]["result"], "uploaded");
+    assert!(v["files"][2]["samples"].as_u64().unwrap() > 0);
+
+    // Filters.
+    let o = vitrine(
+        &env,
+        &[
+            "gallery",
+            "list",
+            "--api",
+            api,
+            "--devices",
+            "phone",
+            "--format",
+            "json",
+        ],
+        &[],
+    );
+    let v: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(v["templates"].as_array().unwrap().len(), 1);
+    assert_eq!(v["templates"][0]["id"], "bulk-phone");
+    assert!(v["templates"][0]["samples"].as_u64().unwrap() > 0);
+    assert!(v["templates"][0]["canvases"][0]["sprite"]["url"].is_string());
+
+    // Admin: token only from the environment.
+    let o = vitrine(&env, &["gallery", "admin", "queue", "--api", api], &[]);
+    assert_eq!(o.status.code(), Some(2));
+    assert!(
+        text(&o).1.contains("VITRINE_API_ADMIN_TOKEN"),
+        "{:?}",
+        text(&o)
+    );
+    let admin = [("VITRINE_API_ADMIN_TOKEN", "admin-secret")];
+    let o = vitrine(&env, &["gallery", "admin", "queue", "--api", api], &admin);
+    assert!(o.status.success(), "{:?}", text(&o));
+    assert!(text(&o).0.contains("no pending templates"));
+    let o = vitrine(
+        &env,
+        &["gallery", "admin", "rerender", "bulk-mac", "--api", api],
+        &admin,
+    );
+    assert!(o.status.success(), "{:?}", text(&o));
+    let o = vitrine(
+        &env,
+        &[
+            "gallery", "admin", "reject", "bulk-mac", "nope", "--note", "test", "--api", api,
+        ],
+        &admin,
+    );
+    assert_eq!(o.status.code(), Some(1));
+    let (out, err) = text(&o);
+    assert!(
+        out.contains("ok bulk-mac reject") && err.contains("nope"),
+        "{out}{err}"
+    );
+    assert!(!out.contains("admin-secret") && !err.contains("admin-secret"));
+    let o = vitrine(
+        &env,
+        &[
+            "gallery",
+            "admin",
+            "approve",
+            "bulk-mac",
+            "--api",
+            api,
+            "--admin-token-env",
+            "MY_ADMIN",
+        ],
+        &[("MY_ADMIN", "admin-secret")],
+    );
+    assert!(o.status.success(), "{:?}", text(&o));
 }

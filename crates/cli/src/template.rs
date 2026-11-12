@@ -1,4 +1,4 @@
-//! `vitrine template save|list|import|export|remove|insert|new`: the
+//! `vitrine template save|list|tags|import|export|remove|insert|new`: the
 //! app-wide template store (`<app data>/templates/`, same as the GUI;
 //! `VITRINE_APP_DIR` overrides it) and templates in projects (ADR 0023).
 
@@ -9,7 +9,10 @@ use clap::{Args, Subcommand, ValueEnum};
 use vitrine_core::template::extract::{SaveOptions, extract};
 use vitrine_core::template::insert::{InsertOptions, StyleConflict, plan_insert};
 use vitrine_core::template::store::TemplateStore;
-use vitrine_core::template::{EXTENSION, Limits, Package, TEMPLATES_DIR, TemplateSource};
+use vitrine_core::template::tags::taxonomy;
+use vitrine_core::template::{
+    EXTENSION, Limits, Package, TEMPLATES_DIR, TemplateSource, TemplateTags,
+};
 use vitrine_render::template::{PREVIEW_HEIGHT, add_previews};
 
 use crate::term::{Style, plural};
@@ -27,6 +30,9 @@ pub enum TemplateCommand {
     Save(SaveArgs),
     /// List built-in and installed templates.
     List(ListArgs),
+    /// List the template tags (facets style, color, use; devices are
+    /// derived from the targets).
+    Tags(ListArgs),
     /// Install a `.vitrine-template` file into the store (checked first).
     Import(ImportArgs),
     /// Write a template as a `.vitrine-template` file (to share or upload).
@@ -52,9 +58,24 @@ pub struct SaveArgs {
     pub description: String,
     #[arg(long, default_value = "")]
     pub author: String,
-    /// Tag; repeat for more.
-    #[arg(long = "tag", value_name = "TAG")]
-    pub tags: Vec<String>,
+    /// Style tag (1–2 for the gallery; `vitrine template tags`); repeat
+    /// or separate with commas.
+    #[arg(long, value_name = "STYLE", value_delimiter = ',', value_parser = facet_values("style"))]
+    pub style: Vec<String>,
+    /// Colour tag (1–2 for the gallery).
+    #[arg(long, value_name = "COLOR", value_delimiter = ',', value_parser = facet_values("color"))]
+    pub color: Vec<String>,
+    /// App category tag (1–3 for the gallery).
+    #[arg(long = "use", value_name = "USE", value_delimiter = ',', value_parser = facet_values("use"))]
+    pub use_: Vec<String>,
+    /// Free tags are no longer accepted (use --style, --color, --use).
+    #[arg(long = "tag", value_name = "TAG", hide = true)]
+    pub tag: Vec<String>,
+    /// Pack the project's screenshots used by the canvases as sample
+    /// screenshots (your own app screenshots, published as CC0 when
+    /// uploaded); keys without a screenshot get placeholders.
+    #[arg(long)]
+    pub sample_screenshots: bool,
     /// Template version (default 1.0.0).
     #[arg(long)]
     pub version: Option<String>,
@@ -123,6 +144,39 @@ pub struct InsertArgs {
     pub format: Format,
 }
 
+/// Allowed values of a tag facet (for clap).
+fn facet_values(facet: &str) -> clap::builder::PossibleValuesParser {
+    let values: Vec<&'static str> = taxonomy()
+        .facet(facet)
+        .map(|f| f.values.iter().map(|v| v.id.as_str()).collect())
+        .unwrap_or_default();
+    clap::builder::PossibleValuesParser::new(values)
+}
+
+/// The error for the removed `--tag`.
+fn tag_hint(tags: &[String]) -> anyhow::Error {
+    let t = TemplateTags::from_flat(tags);
+    let mut hint = Vec::new();
+    for (flag, values) in [
+        ("--style", &t.style),
+        ("--color", &t.color),
+        ("--use", &t.use_),
+    ] {
+        if !values.is_empty() {
+            hint.push(format!("{flag} {}", values.join(",")));
+        }
+    }
+    let hint = if hint.is_empty() {
+        String::new()
+    } else {
+        format!(" (e.g. {})", hint.join(" "))
+    };
+    anyhow::anyhow!(
+        "--tag is no longer supported: templates use predefined tags in three facets – \
+         --style, --color and --use{hint}; see `vitrine template tags`"
+    )
+}
+
 /// The app-wide store (`$VITRINE_APP_DIR/data/templates` or the platform
 /// data folder).
 pub fn store() -> anyhow::Result<TemplateStore> {
@@ -135,6 +189,7 @@ pub fn run(args: &TemplateArgs, global: &Global) -> anyhow::Result<u8> {
     match &args.command {
         TemplateCommand::Save(a) => run_save(a, global),
         TemplateCommand::List(a) => run_list(a),
+        TemplateCommand::Tags(a) => run_tags(a),
         TemplateCommand::Import(a) => {
             let pkg = Package::open(&a.path, Limits::default())
                 .with_context(|| format!("cannot import `{}`", a.path.display()))?;
@@ -182,7 +237,34 @@ fn with_extension(p: &std::path::Path) -> PathBuf {
     }
 }
 
+fn run_tags(a: &ListArgs) -> anyhow::Result<u8> {
+    let tax = taxonomy();
+    if a.format == Format::Json {
+        println!("{}", serde_json::to_string_pretty(tax)?);
+        return Ok(EXIT_OK);
+    }
+    let style = Style::stdout();
+    for f in &tax.facets {
+        let rule = if f.derived {
+            "derived from the targets, not set by hand".to_owned()
+        } else {
+            format!(
+                "--{} · {}–{} per template in the gallery",
+                f.id, f.min, f.max
+            )
+        };
+        println!("{} {}", style.bold(&f.id), style.dim(&format!("({rule})")));
+        for v in &f.values {
+            println!("  {:<16} {}", v.id, style.dim(&v.label.en));
+        }
+    }
+    Ok(EXIT_OK)
+}
+
 fn run_save(a: &SaveArgs, global: &Global) -> anyhow::Result<u8> {
+    if !a.tag.is_empty() {
+        return Err(tag_hint(&a.tag));
+    }
     let root = &global.project;
     let project = project::load(root)?;
     let opts = SaveOptions {
@@ -190,9 +272,15 @@ fn run_save(a: &SaveArgs, global: &Global) -> anyhow::Result<u8> {
         name: a.name.clone(),
         description: a.description.clone(),
         author: a.author.clone(),
-        tags: a.tags.clone(),
+        tags: TemplateTags {
+            style: a.style.clone(),
+            color: a.color.clone(),
+            use_: a.use_.clone(),
+            dropped: Vec::new(),
+        },
         version: a.version.clone(),
         canvases: (!a.canvases.is_empty()).then(|| a.canvases.clone()),
+        sample_screenshots: a.sample_screenshots,
     };
     let (mut pkg, report) = extract(&project, root, &opts)?;
     pkg.manifest.generator = Some(format!("Vitrine Studio {}", env!("CARGO_PKG_VERSION")));
@@ -227,6 +315,21 @@ fn run_save(a: &SaveArgs, global: &Global) -> anyhow::Result<u8> {
         for (from, to) in &report.assets_moved {
             println!("  asset {from} → {to}");
         }
+        if !report.samples.is_empty() {
+            println!(
+                "  {} packed as samples (your own screenshots; CC0 when uploaded)",
+                plural(report.samples.len(), "screenshot")
+            );
+        }
+        for (path, why) in &report.samples_skipped {
+            println!("  {} {path} not packed: {why}", style.warn("warning:"));
+        }
+        if let Err(e) = t.tags.check(true) {
+            println!(
+                "  {} the gallery needs complete tags: {e}",
+                style.warn("note:")
+            );
+        }
     }
     Ok(EXIT_OK)
 }
@@ -253,6 +356,19 @@ fn run_list(a: &ListArgs) -> anyhow::Result<u8> {
         );
         if !t.description.is_empty() {
             println!("    {}", t.description);
+        }
+        let mut tags = t.tags.all();
+        tags.extend(t.devices.iter().cloned());
+        if !tags.is_empty() || t.samples > 0 {
+            let samples = if t.samples > 0 {
+                format!(" · {}", plural(t.samples, "sample screenshot"))
+            } else {
+                String::new()
+            };
+            println!(
+                "    {}",
+                style.dim(&format!("{}{samples}", tags.join(", ")))
+            );
         }
     }
     Ok(EXIT_OK)
@@ -314,7 +430,8 @@ fn run_insert(a: &InsertArgs, global: &Global) -> anyhow::Result<u8> {
         std::fs::write(&dest, pkg.file(&f.from).unwrap_or_default())
             .with_context(|| format!("cannot write `{}`", dest.display()))?;
     }
-    if let Err(e) = project.apply_ops(plan.ops) {
+    vitrine_core::template::insert::mark_samples(root, &pkg, &plan)?;
+    if let Err(e) = project.apply_ops(plan.ops.clone()) {
         bail!("cannot insert: {e}");
     }
     project.save(root)?;
