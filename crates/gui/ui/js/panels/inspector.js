@@ -461,9 +461,13 @@ export function mount(el, ctx) {
       else if (!importedColors.length) frameHint = t('frames.inspector.pack_no_model');
       else if (e.color && !e.color.startsWith('#') && !importedColors.some((c) => c.id === e.color)) frameHint = t('frames.inspector.color_missing');
     } else if (isImported) {
+      const drawn = extra.resolved?.element?.props?.imported;
       if (!importedSrc?.models?.includes(e.model)) frameHint = t('frames.inspector.no_model');
       else if (!importedColors.length) frameHint = t('frames.inspector.missing');
       else if (e.color && !e.color.startsWith('#') && !importedColors.some((c) => c.id === e.color)) frameHint = t('frames.inspector.color_missing');
+      // Where the drawn bezel comes from: the project's stored copy or this
+      // computer's frame store (ADR 0027).
+      else if (drawn) frameHint = t(`frames.inspector.origin.${drawn.origin === 'project' ? 'project' : 'app'}`);
     }
     const packOptions = packs.map((p) => ({ value: p.frame, label: t('frames.pack.label').replace('{name}', p.name), title: `${p.frame} (${t(`frames.pack.origin.${p.origin}`)})` }));
     if (e.frame?.startsWith('pack:') && !packOf(e.frame)) packOptions.push({ value: e.frame, label: t('frames.pack.missing_option').replace('{id}', e.frame.slice(5)) });
