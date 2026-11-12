@@ -1,3 +1,9 @@
 {{- $js := resources.Get "js/site.js" -}}
 {{- if hugo.IsProduction }}{{ $js = $js | minify | fingerprint }}{{ end -}}
 <script src="{{ $js.RelPermalink }}" defer{{ with $js.Data.Integrity }} integrity="{{ . }}"{{ end }}></script>
+{{- /* The gallery script: on the gallery page and the home page (live cards). */ -}}
+{{- if or (eq .Layout "gallery") .IsHome }}
+{{- $g := resources.Get "js/gallery.js" -}}
+{{- if hugo.IsProduction }}{{ $g = $g | minify | fingerprint }}{{ end }}
+<script src="{{ $g.RelPermalink }}" defer{{ with $g.Data.Integrity }} integrity="{{ . }}"{{ end }}></script>
+{{- end }}

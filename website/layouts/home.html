@@ -235,6 +235,18 @@
 <section class="section section--templates" id="templates">
   <div class="wrap">
     {{ partial "section-head.html" $p.templates }}
+    {{- /* Live cards from the gallery snapshot; the illustrations until it has templates. */}}
+    {{- $g := partialCached "gallery/data.html" . "gallery-data" -}}
+    {{- $gallery := site.GetPage "/gallery" -}}
+    {{- if and $g.templates $gallery }}
+    {{- $labels := partial "gallery/labels.html" $g.tags }}
+    <div class="gal-grid gal-grid--teaser" data-gallery-teaser>
+      {{- range $i, $t := first 3 (sort $g.templates "downloads" "desc") }}
+      {{ partial "gallery/card.html" (dict "t" $t "labels" $labels "href" (printf "%s#%s" $gallery.RelPermalink $t.id) "i" $i) }}
+      {{- end }}
+    </div>
+    <p class="tpl-teaser__more"><a class="btn btn--grad" href="{{ $gallery.RelPermalink }}"><span>{{ T "galTeaserAll" (dict "Count" (len $g.templates)) }}</span>{{ partial "icon.html" "arrow" }}</a></p>
+    {{- else }}
     <div class="templates">
       {{- range $i, $t := $p.templates.cards }}
       <article class="tpl card card--hover reveal" style="--i:{{ $i }}">
@@ -249,6 +261,10 @@
       </article>
       {{- end }}
     </div>
+    {{- with $gallery }}
+    <p class="tpl-teaser__more"><a class="btn btn--ghost" href="{{ .RelPermalink }}"><span>{{ T "galTeaserSoon" }}</span>{{ partial "icon.html" "arrow" }}</a></p>
+    {{- end }}
+    {{- end }}
     <ul class="ticks ticks--row reveal">
       {{- range $p.templates.points }}<li>{{ partial "icon.html" "check" }}<span>{{ . | markdownify }}</span></li>{{ end }}
     </ul>

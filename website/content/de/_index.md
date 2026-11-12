@@ -235,7 +235,7 @@ templates:
   points:
     - "Vorlagen sind **CC0** – enthaltene Schriften behalten ihre OFL-Lizenz"
     - "Sicherer Import: Größenlimits, kein ausführbarer Inhalt, jede Datei geprüft"
-    - "**Community-Galerie** unter `api.vitrinestudio.app` – stöbern und laden ohne Konto (bald)"
+    - "**Community-Galerie** – stöbern, filtern und laden ohne Konto"
 
 oss:
   eyebrow: "Open Source"
