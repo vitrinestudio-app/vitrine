@@ -1,0 +1,38 @@
+# DRAFT – GitLab CI/CD component: export every target × language of a
+# Vitrine Studio project and keep the images as a job artifact. Not
+# published; see ../README.md.
+spec:
+  inputs:
+    stage:
+      default: build
+      description: Stage of the job.
+    image:
+      default: ghcr.io/vitrinestudio-app/vitrine-cli:latest
+      description: Container image with the vitrine CLI (docker/cli/Dockerfile).
+    project:
+      default: "."
+      description: Project folder (with project.yaml), relative to the repository.
+    layout:
+      default: standard
+      options: [standard, fastlane]
+      description: "`standard` or `fastlane` (deliver/supply folders)."
+    out:
+      default: vitrine-export
+      description: Output folder (artifact path), relative to the repository.
+    job_name:
+      default: vitrine-export
+      description: Name of the job.
+---
+"$[[ inputs.job_name ]]":
+  stage: $[[ inputs.stage ]]
+  image: $[[ inputs.image ]]
+  variables:
+    VITRINE_PROJECT: "$[[ inputs.project ]]"
+  script:
+    - vitrine --version
+    - vitrine --project "$VITRINE_PROJECT" export --layout "$[[ inputs.layout ]]" --out "$[[ inputs.out ]]" --no-gallery
+  artifacts:
+    name: store-screenshots
+    expose_as: Store screenshots
+    paths:
+      - $[[ inputs.out ]]/

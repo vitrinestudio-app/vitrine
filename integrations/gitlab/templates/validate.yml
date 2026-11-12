@@ -1,0 +1,52 @@
+# DRAFT – GitLab CI/CD component: validate a Vitrine Studio project and
+# publish the findings as Code Quality + JUnit reports (merge request
+# widget, pipeline "Tests" tab). Not published; see ../README.md.
+spec:
+  inputs:
+    stage:
+      default: test
+      description: Stage of the job.
+    image:
+      default: ghcr.io/vitrinestudio-app/vitrine-cli:latest
+      description: Container image with the vitrine CLI (docker/cli/Dockerfile).
+    project:
+      default: "."
+      description: Project folder (with project.yaml), relative to the repository.
+    strict:
+      type: boolean
+      default: false
+      description: Fail on warnings too.
+    preview:
+      type: boolean
+      default: false
+      description: Missing screenshots are warnings, not errors.
+    job_name:
+      default: vitrine-validate
+      description: Name of the job (to include the component twice).
+---
+"$[[ inputs.job_name ]]":
+  stage: $[[ inputs.stage ]]
+  image: $[[ inputs.image ]]
+  variables:
+    VITRINE_PROJECT: "$[[ inputs.project ]]"
+    VITRINE_STRICT: "$[[ inputs.strict ]]"
+    VITRINE_PREVIEW: "$[[ inputs.preview ]]"
+  script:
+    - |
+      set -u
+      flags=""
+      if [ "$VITRINE_STRICT" = "true" ]; then flags="$flags --strict"; fi
+      if [ "$VITRINE_PREVIEW" = "true" ]; then flags="$flags --preview"; fi
+      vitrine --version
+      status=0
+      # Text report in the log, Code Quality JSON for the merge request.
+      vitrine --project "$VITRINE_PROJECT" validate $flags --format gitlab -o gl-code-quality-report.json || status=$?
+      # Same findings as JUnit for the pipeline's test report.
+      vitrine --project "$VITRINE_PROJECT" validate $flags --quiet --format junit -o vitrine-junit.xml > /dev/null || true
+      exit "$status"
+  artifacts:
+    when: always
+    expire_in: 1 week
+    reports:
+      codequality: gl-code-quality-report.json
+      junit: vitrine-junit.xml

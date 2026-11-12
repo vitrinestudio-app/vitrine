@@ -1,5 +1,8 @@
-# Docker build context of crates/api-server/Dockerfile
+# Docker build context of crates/api-server/Dockerfile and
+# docker/cli/Dockerfile (both build from the repository root).
 target/
 .claude/
 tests/fixtures/example/golden/
 docs/
+website/
+integrations/
