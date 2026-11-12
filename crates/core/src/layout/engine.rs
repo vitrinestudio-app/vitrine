@@ -60,6 +60,8 @@ struct Prepared {
     text: String,
     /// Shaping locale (the text's language).
     locale: Option<parley::fontique::Language>,
+    /// Korean text: break lines at spaces only (CSS `word-break: keep-all`).
+    keep_words: bool,
     base: RangeStyle,
     ranges: Vec<(std::ops::Range<usize>, RangeStyle)>,
     /// Effect sets: `[0]` from the text style, more from span styles.
@@ -193,6 +195,9 @@ fn prepare(
     let finite_pos = |v: f32, d: f32| if v.is_finite() && v > 0.0 { v } else { d };
     Prepared {
         text,
+        keep_words: input.lang.is_some_and(|l| {
+            super::script::cjk_flavour(l) == Some(super::script::CjkFlavour::Korean)
+        }),
         locale: input
             .lang
             .and_then(|l| parley::fontique::Language::parse(l).ok()),
@@ -237,6 +242,7 @@ fn hyphenate_prepared(
         Prepared {
             text,
             locale: p.locale,
+            keep_words: p.keep_words,
             base: p.base.clone(),
             ranges,
             effects: p.effects.clone(),
@@ -486,6 +492,10 @@ impl TextLayouter {
         b.push_default(StyleProperty::FontSize(size));
         if let Some(l) = &p.locale {
             b.push_default(StyleProperty::Locale(Some(*l)));
+        }
+        if p.keep_words {
+            // Korean breaks between words (spaces), not between syllables.
+            b.push_default(StyleProperty::WordBreak(parley::WordBreak::KeepAll));
         }
         b.push_default(StyleProperty::FontWeight(FontWeight::new(f32::from(
             p.base.weight,

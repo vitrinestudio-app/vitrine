@@ -873,3 +873,22 @@ fn rtl_lines_follow_the_physical_alignment() {
         }
     }
 }
+
+/// Korean breaks between words (spaces), not between syllables.
+#[test]
+fn korean_keeps_words_together() {
+    let mut l = layouter();
+    let style = headline(60.0);
+    let text = "몇 분 만에 정원을 계획하세요";
+    let words: Vec<&str> = text.split(' ').collect();
+    let out = l.layout(&TextInput {
+        lang: Some("ko"),
+        ..TextInput::new(text, &style, 300.0)
+    });
+    assert!(out.lines.len() > 1);
+    for line in texts(&out) {
+        for w in line.split_whitespace() {
+            assert!(words.contains(&w), "{w:?} split inside a word");
+        }
+    }
+}
