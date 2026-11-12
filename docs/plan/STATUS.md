@@ -20,6 +20,7 @@ conflicts by keeping both sides, run the gate, push, check CI per OS):
 - GUI polish – menu order ("Projekt schließen"), Apple bezels help link,
   ☰ on app icon/project name, "Leinwände & Ziele", resizable wider
   inspector, image preview lightbox, **background elements editable**.
+- Website gallery page (started 2026-11-12, owner: "really cool"): all templates loaded once, local filters (style/color/use/devices, AND across facets) with FLIP enter/leave/reorder animation; phone canvas shown unless a device filter selects another canvas; floating rounded pages from the sprites, mouse tilt; detail view + download; build-time snapshot + live refresh, CORS on the API if needed; dev data from copies of the owner's templates via a local API server.
 - Fonts – system fonts first-class (+ "store used system fonts in the
   project", licence warning), template save without non-OFL fonts
   (`--skip-unlicensed-fonts`), bundled Noto for Arabic/Hebrew/Devanagari/
