@@ -719,7 +719,7 @@ fn project_text_checks(
             }
         }
     }
-    system_font_checks(project, &options.fonts, &root, &mut out);
+    system_font_checks(project, &options.fonts, root, out);
     for s in &project.canvases {
         s.walk_elements(&mut |e| {
             for l in e.text_props().into_iter().flat_map(|t| t.langs.keys()) {
