@@ -56,9 +56,9 @@ fn save_insert_undo_export_import_and_new_project() {
     assert!(with_samples["template"]["samples"].as_u64().unwrap() > 0);
     let samples = with_samples["report"]["samples"].as_array().unwrap();
     assert_ne!(samples.len(), 0);
-    // Re-encoded as JPEG (quality 60), smaller than the project's PNGs.
+    // Re-encoded as JPEG (quality 60) where that is smaller.
     assert!(
-        samples.iter().all(|s| s.as_str().unwrap().ends_with("jpg")),
+        samples.iter().any(|s| s.as_str().unwrap().ends_with("jpg")),
         "{samples:?}"
     );
     assert!(

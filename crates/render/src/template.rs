@@ -413,10 +413,18 @@ mod tests {
         assert!(pngs.iter().all(|p| p.ends_with("png")), "{pngs:?}");
         compress_samples(&mut pkg, &mut report).unwrap();
 
-        // Every sample is now a JPEG in the same place; the PNG is gone.
+        // Every sample is a JPEG in the same place (the PNG gone) – or,
+        // where the JPEG would not be smaller (the fixture's flat fake UI),
+        // the unchanged PNG.
         assert_eq!(pkg.manifest.samples.len(), pngs.len());
         assert_eq!(report.samples, pkg.manifest.samples);
+        let mut jpegs = 0;
         for (png, jpg) in pngs.iter().zip(&pkg.manifest.samples) {
+            if jpg == png {
+                assert_eq!(pkg.file(png), before.file(png), "{png}");
+                continue;
+            }
+            jpegs += 1;
             assert_eq!(jpg, &png.replace(".png", ".jpg"));
             assert!(pkg.file(png).is_none(), "{png}");
             let data = pkg.file(jpg).unwrap();
@@ -427,6 +435,7 @@ mod tests {
             );
             assert_eq!((a.width(), a.height()), (b.width(), b.height()));
         }
+        assert!(jpegs > 0, "{:?}", pkg.manifest.samples);
         assert!(report.samples_bytes < report.samples_bytes_original);
         assert_eq!(report.samples_png.len(), 0);
         // Nothing else changed: assets, fonts, placeholders, texts.
@@ -443,16 +452,20 @@ mod tests {
         assert_ne!(created.samples.len(), 0);
         let marks = SampleMarks::load(&dir);
         for s in &created.samples {
-            assert!(s.ends_with("jpg"), "{s}");
             assert!(marks.is_sample(&dir, s), "{s}");
         }
+        let jpg = created
+            .samples
+            .iter()
+            .find(|s| s.starts_with("screenshots/en/ios-phone/") && s.ends_with(".jpg"))
+            .expect("a JPEG sample for ios-phone");
+        let key = jpg
+            .trim_start_matches("screenshots/en/ios-phone/")
+            .trim_end_matches(".jpg");
         let fs = FsAssets::new(&dir);
         let chain = lang_chain(&created.project, "en");
-        let shot = lookup_screenshot(&fs, &chain, Some("ios-phone"), "planner");
-        assert_eq!(
-            shot.path.as_deref(),
-            Some("screenshots/en/ios-phone/planner.jpg")
-        );
+        let shot = lookup_screenshot(&fs, &chain, Some("ios-phone"), key);
+        assert_eq!(shot.path.as_deref(), Some(jpg.as_str()));
         // Previews render from the JPEG samples.
         add_previews(&mut pkg, 120).unwrap();
         assert!(pkg.preview("phone").is_some());

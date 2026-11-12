@@ -684,7 +684,10 @@ async fn too_large_uploads_name_the_server_limit() {
     assert_eq!(v["code"], "too_large");
     assert_eq!(v["max_upload_mb"], 1);
     assert!(
-        v["error"].as_str().unwrap().contains("upload limit of 1 MB"),
+        v["error"]
+            .as_str()
+            .unwrap()
+            .contains("upload limit of 1 MB"),
         "{v}"
     );
 }
