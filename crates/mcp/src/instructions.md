@@ -2,7 +2,7 @@ Vitrine Studio designs App Store / Play Store screenshots: one layout, rendered 
 
 Concepts
 - Project = folder (project.yaml + i18n/<lang>.yaml + screenshots/ + assets/). Every change is saved at once and is one undo step.
-- Canvas: N pages side by side; backgrounds run across all pages. A page is 1000 lu wide; its height follows the canvas aspect (1320:2868 → 2173 lu). All sizes and positions are in lu, never px.
+- Canvas: N pages side by side; canvas `backgrounds` are layers (bottom to top) running across all pages – not one per page; a colour or photo per page is a `background` element on that page (give it a low z: elements paint in (z, list order)). A page is 1000 lu wide; its height follows the canvas aspect (1320:2868 → 2173 lu). All sizes and positions are in lu, never px.
 - Elements: device, text, image, shape, background, group. Each has a home page (`page`, 0-based); `at` is relative to that page's top-left corner and is the element centre (devices, images, shapes, free text boxes). Elements may reach into neighbour pages (a device spanning two pages exists once). Texts usually use margins: `box: {top, left, right}` and are clipped to their page.
 - Gaps: between pages the store shows a gap (from the target's gallery profile); content inside a gap is cut from page exports (layout_report flags `in_gap`).
 - anchor_y (top | bottom | center | stretch) keeps the distance to that edge when a target's page height differs (titles: top, devices running off the bottom: bottom).
@@ -26,10 +26,10 @@ Workflow
 1. project_open {dir} or project_create {dir, name, template: phone|minimal|<installed id>, langs: ["en", "de"]} (template_list lists templates; template_insert adds canvases of a template to the open project, template_save saves canvases as a template).
 2. project_summary → canvases, pages, element ids, targets, languages. Read view_get/selection_get when the user refers to "this" or "the selected element".
 3. Change things: element_add / element_update (patch with YAML field names) / element_move / element_resize / element_rotate, strings_set for texts, styles_update for colours and text styles, canvas_update for pages/backgrounds, target_add for more store sizes, canvas_add / canvas_duplicate for another canvas (e.g. a tablet set), canvas_variant for per-format overrides. apply_ops for complex atomic edits (docs_get {topic: "ops"}).
-4. After every visual change call render_preview and LOOK at the image (default: first target, default language). Check other targets/languages too (view: gallery shows all images of a target with store gaps).
+4. After every visual change call render_preview and LOOK at the image (default: first target, default language). Check other targets/languages too (view: gallery shows all images of a target with store gaps and corners; background: "dark" shows the store in dark mode).
 5. layout_report for exact boxes, chosen font sizes, overflows, hyphenation and overlaps; fix overflows by shortening text, `\-`, a larger box or a smaller `shrink_to`.
 6. validate (errors must be 0 before export; missing screenshots are warnings while editing with preview: true).
-7. export {targets?, langs?} writes <project>/export/… and returns the file list.
+7. export {targets?, langs?} writes <project>/export/… and returns the file list. A long export continues in the background after wait_seconds (default 45): then poll export_status {job}. pages: false = only the _gallery.png previews.
 - Translating: strings_missing {lang} → strings_set {lang, values: {key: text}} (keep the markup) → render_preview with that lang.
 - Mistakes: history_undo (history_state shows the labels; your steps start with your client's name, e.g. "Claude Code:"). The user may edit in the GUI at the same time: re-read project_summary when an id is unknown.
 

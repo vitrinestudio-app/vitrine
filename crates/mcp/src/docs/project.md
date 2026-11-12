@@ -33,11 +33,13 @@ styles:
 canvases:
 - id: phone
   page: {aspect: "1320:2868", count: 5, ids?: [hero, plan, …]}   # ids name export files
-  backgrounds: ["#F4F7F0", {kind: linear-gradient, angle: 160, stops: [["#F4F7F0", 0], ["#DCEBD5", 1]]}]
+  # layers over the WHOLE canvas, bottom to top (not one per page; per-page
+  # colours = a `background` element per page):
+  backgrounds: ["#F4F7F0", {kind: linear-gradient, angle: 160, stops: [["#F4F7F0", 0], ["#DCEBD5AA", 1]]}]
   elements: [ … ]          # docs_get {topic: "elements"}
   variants:
     tablet-landscape:
-      content_scale: 0.92  # scales device content (default 1)
+      content_scale: 0.92  # scales device elements only (default 1)
       overrides:           # element id → fields (only values, never null)
         phone-plan: {at: {x: 500, y: 1683}, width: 600}
       # (variants are added with canvas_variant)

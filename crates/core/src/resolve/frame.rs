@@ -211,5 +211,6 @@ fn gallery(
         gap: gap * factor,
         radius: Vec2::new(radius.x * factor, radius.y * factor),
         background: profile.map(|p| p.background),
+        background_dark: profile.and_then(|p| p.background_dark),
     })
 }

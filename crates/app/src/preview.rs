@@ -46,13 +46,21 @@ pub enum PixelFormat {
     Png,
     /// Raw RGBA 8 bit, straight (not premultiplied) alpha, row-major.
     Rgba,
+    /// JPEG (quality [`JPEG_QUALITY`], transparency flattened onto white):
+    /// much smaller than PNG for photos, e.g. large gallery previews over
+    /// MCP.
+    Jpeg,
 }
+
+/// JPEG quality of [`PixelFormat::Jpeg`] previews.
+pub const JPEG_QUALITY: u8 = 85;
 
 impl PixelFormat {
     pub fn code(self) -> u32 {
         match self {
             Self::Rgba => 0,
             Self::Png => 1,
+            Self::Jpeg => 2,
         }
     }
 
@@ -60,6 +68,7 @@ impl PixelFormat {
         match self {
             Self::Png => "image/png",
             Self::Rgba => "application/octet-stream",
+            Self::Jpeg => "image/jpeg",
         }
     }
 
@@ -67,6 +76,7 @@ impl PixelFormat {
         match self {
             Self::Png => "png",
             Self::Rgba => "rgba",
+            Self::Jpeg => "jpeg",
         }
     }
 }
@@ -92,11 +102,14 @@ impl PreviewImage {
         viewport: Option<&Viewport>,
         format: PixelFormat,
     ) -> CmdResult<Self> {
-        let rgba = straight_rgba(pixmap);
         let data = match format {
-            PixelFormat::Rgba => rgba,
-            PixelFormat::Png => encode_png(&rgba, pixmap.width(), pixmap.height())
+            PixelFormat::Rgba => straight_rgba(pixmap),
+            PixelFormat::Png => encode_png(&straight_rgba(pixmap), pixmap.width(), pixmap.height())
                 .map_err(|e| CommandError::new(crate::ErrorCode::Render, e.to_string()))?,
+            PixelFormat::Jpeg => {
+                vitrine_render::raster::encode_jpeg(pixmap, [255, 255, 255], JPEG_QUALITY)
+                    .map_err(|e| CommandError::new(crate::ErrorCode::Render, e.to_string()))?
+            }
         };
         Ok(Self {
             width: pixmap.width(),
@@ -116,7 +129,7 @@ impl PreviewImage {
     /// | 0..4 | magic `ARPX` |
     /// | 4..8 | width, u32 LE |
     /// | 8..12 | height, u32 LE |
-    /// | 12..16 | format, u32 LE: 0 = RGBA, 1 = PNG |
+    /// | 12..16 | format, u32 LE: 0 = RGBA, 1 = PNG, 2 = JPEG |
     /// | 16..24 | origin x (canvas lu), f64 LE |
     /// | 24..32 | origin y (canvas lu), f64 LE |
     /// | 32..40 | scale (px per lu), f64 LE |

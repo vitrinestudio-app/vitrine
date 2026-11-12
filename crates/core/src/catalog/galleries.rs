@@ -134,6 +134,10 @@ pub struct GalleryProfile {
     pub radius: CornerRadius,
     /// Page colour behind the gallery (preview only).
     pub background: Rgba,
+    /// Page colour of the store in dark mode (preview only; default
+    /// `background`).
+    #[serde(default)]
+    pub background_dark: Option<Rgba>,
     pub measured: Measured,
     pub source: String,
     #[serde(default)]

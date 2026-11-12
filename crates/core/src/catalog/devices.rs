@@ -492,6 +492,69 @@ impl Device {
     pub fn has_color(&self, color: &str) -> bool {
         self.colors.iter().any(|c| c == color)
     }
+
+    /// Geometry of a device element `width` lu wide in `orientation`, as
+    /// the parametric frames draw it: outer height and the screen rect
+    /// relative to the element box's top-left corner. `None` for `aspect:
+    /// free` models (browser, `none`: the height follows the screenshot).
+    /// Imported vendor frames have their own proportions.
+    pub fn frame_metrics(&self, orientation: Orientation, width: f64) -> Option<FrameMetrics> {
+        if self.screenshot.aspect.is_none() || self.browser {
+            return None;
+        }
+        let outer = self.outer_size();
+        if outer.w <= 0.0 || outer.h <= 0.0 || width <= 0.0 {
+            return None;
+        }
+        // Same mapping as `vitrine_render::frames::Layout` (rotated = 90°
+        // counter-clockwise around the outer centre).
+        let rot = orientation != self.natural && self.class != DeviceClass::None;
+        let height = if rot {
+            width * outer.w / outer.h
+        } else {
+            width * outer.h / outer.w
+        };
+        let k = width / if rot { outer.h } else { outer.w };
+        let (cx, cy) = (self.body.w / 2.0, outer.h / 2.0);
+        let disp = &self.display;
+        let screen = if rot {
+            // (x, y) → (k·(y − cy), k·(cx − x))
+            Rect {
+                x: k * (disp.y - cy) + width / 2.0,
+                y: k * (cx - disp.right()) + height / 2.0,
+                w: disp.h * k,
+                h: disp.w * k,
+                radius: disp.radius * k,
+            }
+        } else {
+            Rect {
+                x: k * (disp.x - cx) + width / 2.0,
+                y: k * (disp.y - cy) + height / 2.0,
+                w: disp.w * k,
+                h: disp.h * k,
+                radius: disp.radius * k,
+            }
+        };
+        Some(FrameMetrics {
+            width,
+            height,
+            screen,
+            corner_radius: self.body.radius * k,
+        })
+    }
+}
+
+/// Parametric frame geometry of one device element (lu), see
+/// [`Device::frame_metrics`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FrameMetrics {
+    pub width: f64,
+    pub height: f64,
+    /// Screen rect relative to the top-left corner of the element box
+    /// (before rotation), with its corner radius.
+    pub screen: Rect,
+    /// Corner radius of the body.
+    pub corner_radius: f64,
 }
 
 pub(super) fn check(c: &Catalog, errors: &mut Vec<String>) {
