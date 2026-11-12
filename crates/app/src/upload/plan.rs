@@ -315,6 +315,7 @@ pub(crate) fn build_local(
                 targets: Some(slotted.iter().map(|t| t.id.to_string()).collect()),
                 langs: (!args.langs.is_empty()).then(|| args.langs.clone()),
                 preview: false,
+                pixel_checks: Some(false),
             },
         )?
         .report

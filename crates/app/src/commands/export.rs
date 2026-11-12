@@ -27,6 +27,10 @@ pub struct ValidateArgs {
     /// Editing mode: a missing screenshot is a warning, not an error.
     #[serde(default)]
     pub preview: bool,
+    /// Run the rendered design checks (contrast, text near devices,
+    /// screens, seams, corners, store background); default true.
+    #[serde(default)]
+    pub pixel_checks: Option<bool>,
 }
 
 /// Validation report with counts.
@@ -57,6 +61,10 @@ pub fn validate(app: &AppState, args: ValidateArgs) -> CmdResult<ValidateResult>
     } else {
         ValidateMode::Export
     };
+    let inspector = vitrine_render::quality::Inspector::new(&ctx);
+    if args.pixel_checks.unwrap_or(true) {
+        opts.inspector = Some(&inspector);
+    }
     let report = vitrine_core::validate::validate(&project, &opts);
     Ok(ValidateResult {
         errors: report.count(Severity::Error),

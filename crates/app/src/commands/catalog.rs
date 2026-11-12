@@ -114,6 +114,9 @@ pub struct GalleryInfo {
     pub radius_x: f64,
     pub radius_y: f64,
     pub background: String,
+    /// Dark-mode page colour (estimate, design check only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_dark: Option<String>,
     pub measured: String,
     pub source: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -245,6 +248,7 @@ pub fn catalog_galleries(_: &AppState, _: NoArgs) -> CmdResult<Vec<GalleryInfo>>
             radius_x: g.radius.x,
             radius_y: g.radius.y,
             background: g.background.to_string(),
+            background_dark: g.background_dark.map(|c| c.to_string()),
             measured: snake(g.measured),
             source: g.source.clone(),
             note: g.note.clone(),

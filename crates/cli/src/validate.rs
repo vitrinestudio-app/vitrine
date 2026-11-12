@@ -52,6 +52,10 @@ pub struct ValidateArgs {
     /// Fail (exit code 1) on warnings too.
     #[arg(long)]
     pub strict: bool,
+    /// Skip the rendered design checks (contrast, text near devices,
+    /// screens, seams, corners, store background): faster, layout only.
+    #[arg(long)]
+    pub no_pixel_checks: bool,
 }
 
 /// JSON output: the report plus counts.
@@ -81,6 +85,12 @@ pub fn run(args: &ValidateArgs, global: &Global) -> anyhow::Result<u8> {
     } else {
         ValidateMode::Export
     };
+    let ctx = vitrine_render::RenderContext::with_fonts(root, opts.fonts.clone())
+        .with_frames(frames.clone());
+    let inspector = vitrine_render::quality::Inspector::new(&ctx);
+    if !args.no_pixel_checks {
+        opts.inspector = Some(&inspector);
+    }
     let report = validate(&project, &opts);
     let errors = report.count(Severity::Error);
     let warnings = report.count(Severity::Warn);

@@ -25,6 +25,7 @@ pub mod frame_packs;
 pub mod frames;
 pub mod geometry;
 pub mod paint;
+pub mod quality;
 pub mod raster;
 pub mod scene;
 pub mod template;
