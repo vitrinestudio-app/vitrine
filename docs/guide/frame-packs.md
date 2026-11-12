@@ -14,7 +14,8 @@ vendor material whose licence allows it (see
 | App-wide | `<app data>/frames/packs/<id>/` | every project on this computer |
 
 A project pack hides an app pack with the same id. The folder name is the
-pack id (letters, digits, `-`, `_`, `.`). Devices use a pack with
+pack id (letters, digits, `-`, `_`, `.`; `imported` is reserved for the
+Apple bezels a project stores for CI, `frames/imported/`, ADR 0027). Devices use a pack with
 `frame: pack:<id>` (element or project default `styles.frame`), the colour
 with `color: <colour id>`, a size with `bezel: <name>`.
 

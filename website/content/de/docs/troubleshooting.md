@@ -29,6 +29,9 @@ häufigsten:
 | `variant_suggested` | Hinweis | das Seitenverhältnis des Ziels weicht stark von der Leinwand ab – überleg dir eine Variante. |
 | `store_size`, `store_count`, `store_format` | Fehler | Größe, Bildanzahl oder Format passt nicht zum Store-Slot (zu wenige Bilder sind eine Warnung). |
 | `imported_frame_missing` | Hinweis | Apple-Bezels oder ein Frame-Paket sind hier nicht installiert – der eingebaute Rahmen wird gezeichnet. |
+| `imported_frame_not_stored` | Hinweis | ein Ziel zeichnet Apple-Bezels, die nur dieser Rechner hat – CI würde den eingebauten Rahmen zeichnen; [im Projekt speichern](../devices-frames/#apple-bezels-in-ci). |
+| `stored_frames_stale` | Hinweis | im Projekt gespeicherte Bezels werden nicht mehr verwendet, oder dieser Rechner hat einen neueren Import – gespeicherte Frames aktualisieren. |
+| `imported_frames_stored` | Hinweis | das Projekt speichert Apple-Bezels – halte das Repository privat. |
 | `color_profile_unsupported` | Hinweis | das Farbprofil eines Bildes ist nicht nutzbar (CMYK, HDR) – es wird als sRGB gezeichnet. |
 
 In der App springt **Auf der Leinwand zeigen** zum Element.

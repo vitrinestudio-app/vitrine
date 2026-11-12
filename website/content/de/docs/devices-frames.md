@@ -105,10 +105,11 @@ die zur Bildgröße des Ziels passt; du kannst pro Gerät eine festlegen.
 
 Gut zu wissen:
 
-- Bezels liegen im App-Datenordner, **nie im Projekt**. Das Projekt sagt nur
+- Bezels liegen im App-Datenordner; das Projekt sagt nur
   `frame: imported:apple`. Auf einem Rechner ohne die Bezels (bei Kollegen, in
   CI) wird der eingebaute detaillierte Frame gezeichnet, und die Prüfung
-  vermerkt `imported_frame_missing`.
+  vermerkt `imported_frame_missing` – außer du
+  [speicherst die verwendeten Bezels im Projekt](#apple-bezels-in-ci).
 - Eine Farbe, die dort nicht installiert ist, weicht auf eine installierte aus
   (`imported_color_fallback`).
 - Der Import-Bericht trennt Dateien, die **bewusst übersprungen** werden (z. B.
@@ -125,6 +126,51 @@ vitrine frames import /Volumes/Bezel-iPhone-18
 vitrine frames list
 vitrine frames remove --bezel "iPhone 18 Pro"              # oder --model, --color, --all
 ```
+
+## Apple-Bezels in CI: im Projekt speichern {#apple-bezels-in-ci}
+
+Ein Build-Server hat keine importierten Bezels; `vitrine export` würde dort die
+eingebauten Rahmen zeichnen. Damit dieselben Bilder wie auf deinem Mac
+entstehen, speicherst du die Bezels, die dein Projekt verwendet, **im
+Projekt**:
+
+- **Projekteinstellungen → Frames → Verwendete Geräterahmen im Projekt
+  speichern** oder `vitrine frames embed`.
+- Kopiert werden nur die Bezels, die deine Ziele tatsächlich zeichnen (Modell ×
+  Farbe × Ausrichtung × Größe), unverändert, nach `frames/imported/apple/` –
+  meist wenige MB. **Alle Größen der verwendeten Modelle** behält z. B. auch
+  das iPhone Pro neben dem Pro Max.
+- Der Ordner enthält eine `README.md` mit dem Lizenzhinweis und, wenn das
+  Paket mit ihr importiert wurde, Apples Lizenzdatei
+  (`apple/licenses/<paket>/License.rtf`).
+- Frames werden dann zuerst im Projekt gesucht, dann im Frame-Speicher dieses
+  Rechners, sonst wird der eingebaute Rahmen gezeichnet. Der Inspektor zeigt,
+  woher ein Bezel kommt (*im Projekt gespeichert* / *Frame-Speicher dieses
+  Rechners*).
+- Ändern sich Geräte, Farben oder Ziele, zeigt der Tab, was eine
+  Aktualisierung täte (neu, neu importiert, nicht mehr verwendet) – klicke
+  **Gespeicherte Frames aktualisieren** oder führe `vitrine frames embed`
+  erneut aus. Auch die Prüfung meldet es: `imported_frame_not_stored` (ein
+  Ziel zeichnet Bezels, die nur dieser Rechner hat), `stored_frames_stale`
+  (unbenutzte oder veraltete Kopien) und `imported_frames_stored`
+  (Lizenz-Erinnerung).
+- **Aus dem Projekt entfernen** / `vitrine frames unembed` löscht den Ordner.
+
+```sh
+vitrine frames embed --dry-run      # was gespeichert würde, mit Größen
+vitrine frames embed                # speichern oder aktualisieren (--all-sizes, --used-only)
+vitrine frames unembed              # frames/imported/ entfernen
+```
+
+{{< callout warn >}}
+**Lizenz: nur private Repositorys.** Apples Lizenz erlaubt die Bezels in
+Mock-ups, aber nicht ihre Weitergabe. Gespeicherte Frames sind in einem
+privaten Repository in Ordnung; veröffentliche das Projekt nie mit ihnen – kein
+öffentliches Repository, kein weitergegebenes Archiv. Vorlagen und
+Galerie-Uploads enthalten sie nie. Für ein öffentliches Repository trägst du
+`frames/imported/` in die `.gitignore` ein (CI zeichnet dann die eingebauten
+Rahmen) oder entfernst die gespeicherten Frames.
+{{< /callout >}}
 
 ## Eigene Frame-Pakete {#your-own-frame-packs}
 
@@ -180,7 +226,8 @@ Prüfe die Bedingungen von Hersteller-Kits, bevor du sie in Store-Einträgen
 verwendest. Apples Bezels sind für Mock-ups von Apps auf Apple-Plattformen und
 dürfen nicht weitergegeben werden; Ausgaben von Googles Device Art Generator
 dürfen nicht in Play-Einträgen verwendet werden. Halte Hersteller-Pakete
-app-weit – nie in einem Projekt, das du teilst.
+app-weit; Apple-Bezels kommen nur als [gespeicherte Frames](#apple-bezels-in-ci)
+eines privaten Repositorys ins Projekt.
 {{< /callout >}}
 
 ## Foldables: iPhone Duo {#foldables-iphone-duo}

@@ -166,10 +166,12 @@ vitrine strings import translations/fr.xlf --dry-run                 # report: c
 # screenshots from fastlane snapshot, a Vitrine Studio folder tree or a flat folder
 vitrine import screenshots fastlane/screenshots --dry-run            # --device-map "iPhone 17 Pro Max=ios-phone" --save-mapping
 
-# Apple Product Bezels (downloaded by you; stored app-wide, never in the project)
+# Apple Product Bezels (downloaded by you; stored app-wide)
 vitrine frames import /Volumes/Bezel-iPhone-18 --dry-run             # folder, zip or DMG
 vitrine frames list
 vitrine frames remove --model iphone-island                          # --color, --orientation; --all removes everything
+vitrine frames embed                                                 # copy the used bezels into the project for CI (private repos only!)
+vitrine frames unembed                                               # remove them from the project again
 
 # store upload: plan (dry run, prints a confirm token) → confirm → execute
 vitrine upload plan --store apple --remote                           # --target, --lang, --force, --format json

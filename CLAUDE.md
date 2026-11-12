@@ -168,6 +168,17 @@ point `vitrine_render::frame_packs::frame_index(frames_root, project)`;
 `frame: imported:apple` resolves to it (bezel picked per target page size,
 screenshot size, aspect, or pinned with `bezel:`) or falls back to the
 parametric frame (info `imported_frame_missing`).
+Stored copies (ADR 0027, `core::frame_import::embed`): the bezels a
+project draws, copied into `<project>/frames/imported/<source>/` (store
+layout + README licence notice + `embed.yaml`) for CI; merged by
+`FrameIndex::add_project_copies` (project copy → app store → parametric,
+`InstalledFrame.origin`/`ImportedFrame.origin`, files under key
+`project:<source>`); `embed::{plan, apply, remove}`, app
+`frames_embed_status|frames_embed|frames_unembed`, CLI `frames
+embed|unembed`, GUI project settings → Frames; infos
+`imported_frame_not_stored`, `imported_frames_stored`,
+`stored_frames_stale`. Private repositories only (Apple licence);
+templates refuse them.
 
 `app` (ADR 0008, split out in Phase 4, ADR 0013) – the transport-agnostic
 application layer shared by GUI and MCP (no Tauri dependency): `commands` (plain
@@ -377,7 +388,8 @@ standard|fastlane] [--no-gallery] [--no-html] [--force] [--format json]`, `strin
 [--dry-run] [--create-keys] [--empty keep|remove]`, `import screenshots
 <dir> [--format auto|vitrine|fastlane|flat] [--device-map|--lang-map|--key-map
 A=B] [--dry-run] [--save-mapping]`, `frames import <path> [--dry-run]`, `frames
-list`, `frames remove [--model] [--color] [--orientation] [--bezel] [--all]`
+list`, `frames remove [--model] [--color] [--orientation] [--bezel] [--all]`,
+`frames embed [--all-sizes|--used-only] [--dry-run]`, `frames unembed`
 (synthetic test package: `cargo run -p vitrine-core --example
 synthetic_bezels -- [--full-size] <dir|file.zip>`), `mcp [--app-dir DIR]
 [--headless]` (MCP over stdio: proxy to the running GUI, GUI autostart,

@@ -29,6 +29,9 @@ common ones:
 | `variant_suggested` | info | the target's page aspect differs a lot from the canvas – consider a variant. |
 | `store_size`, `store_count`, `store_format` | error | the size, number of images or format is not accepted by the store slot (too few images is a warning). |
 | `imported_frame_missing` | info | Apple bezels or a frame pack aren't installed here – the built-in frame is drawn. |
+| `imported_frame_not_stored` | info | a target draws Apple bezels only this computer has – CI would draw the built-in frame; [store them in the project](../devices-frames/#apple-bezels-in-ci). |
+| `stored_frames_stale` | info | bezels stored in the project are no longer used, or this computer has a newer import – update the stored frames. |
+| `imported_frames_stored` | info | the project stores Apple bezels – keep the repository private. |
 | `color_profile_unsupported` | info | an image's colour profile can't be used (CMYK, HDR) – it is drawn as sRGB. |
 
 In the app, **Show on the canvas** jumps to the element.
