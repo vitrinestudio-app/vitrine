@@ -1,0 +1,12 @@
+{{- /* Tag labels in the page language from the /v1/tags facets:
+       dict <facet id> (dict "label" <facet label> "values" (dict <value id> <label>)). */ -}}
+{{- $lang := site.Language.Lang -}}
+{{- $out := dict -}}
+{{- range . -}}
+  {{- $values := dict -}}
+  {{- range .values -}}
+    {{- $values = merge $values (dict .id (index .label $lang | default .label.en | default .id)) -}}
+  {{- end -}}
+  {{- $out = merge $out (dict .id (dict "label" (index .label $lang | default .label.en | default .id) "values" $values)) -}}
+{{- end -}}
+{{- return $out -}}

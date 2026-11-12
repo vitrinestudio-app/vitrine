@@ -21,8 +21,8 @@ pub use asset_library::{
 };
 pub use devices::{
     BrowserChrome, BrowserTheme, Button, ButtonStyle, ColorVariant, Cutout, CutoutKind,
-    CutoutShape, Device, DeviceClass, DevicesFile, Edge, FoldLink, Hinge, HingeAt, Laptop,
-    LaptopBase, MIN_CHROME_SCALE, Rect, Screenshot, Size, Stand, StandFoot,
+    CutoutShape, Device, DeviceClass, DevicesFile, Edge, FoldLink, FrameMetrics, Hinge, HingeAt,
+    Laptop, LaptopBase, MIN_CHROME_SCALE, Rect, Screenshot, Size, Stand, StandFoot,
 };
 pub use fastlane::{
     Ambiguous, Deliver, DisplayTypeSizes, FastlaneFile, Frameit, Screengrab, Snapshot, Supply,

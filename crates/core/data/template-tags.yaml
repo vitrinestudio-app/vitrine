@@ -1,0 +1,120 @@
+# Template tags (owner decision 2026-11-12, ADR 0023 amendment): a fixed
+# taxonomy in three facets the uploader sets (`style`, `color`, `use`) plus
+# the facet `devices`, which is derived from the template's targets and
+# canvases and never set by hand. Free-form tags are not accepted any more.
+#
+# Used by `vitrine_core::template::tags` (embedded at build time) and through
+# it by the app ("Save as template…" chip pickers), the CLI (`vitrine
+# template save --style … --color … --use …`, `vitrine template tags`), the
+# MCP schema, the API server (validation, list filters, `GET /v1/tags`) and
+# the website gallery.
+#
+# Field reference
+#   facets      in display order
+#     id        facet slug (`use` is a reserved word in Rust: `use_` there)
+#     label     {en, de}
+#     min, max  number of values per template; `min` is enforced for the
+#               gallery (upload), a local template may leave a facet empty
+#     derived   true = computed, not set by the user (`devices`)
+#     values    id (slug, never renamed once published) + label {en, de};
+#               derived values say how they are matched:
+#       kinds      target kinds (`banner`)
+#       presets    target preset ids (a project target with that id)
+#       platforms  preset platforms (ios, ipados, macos, watchos, wearos,
+#                  android, chromeos, web)
+#       classes    device classes of device elements on the canvas
+#                  (phone, tablet, watch, laptop, desktop, browser)
+
+facets:
+  - id: style
+    label: {en: Style, de: Stil}
+    min: 1
+    max: 2
+    values:
+      - {id: minimal, label: {en: Minimal, de: Minimalistisch}}
+      - {id: bold, label: {en: Bold, de: Kräftig}}
+      - {id: playful, label: {en: Playful, de: Verspielt}}
+      - {id: elegant, label: {en: Elegant, de: Elegant}}
+      - {id: realistic, label: {en: Realistic, de: Realistisch}}
+      - {id: illustrated, label: {en: Illustrated, de: Illustriert}}
+      - {id: editorial, label: {en: Editorial, de: Redaktionell}}
+      - {id: retro, label: {en: Retro, de: Retro}}
+      - {id: futuristic, label: {en: Futuristic, de: Futuristisch}}
+      - {id: organic, label: {en: Organic, de: Organisch}}
+
+  - id: color
+    label: {en: Colour, de: Farbe}
+    min: 1
+    max: 2
+    values:
+      - {id: light, label: {en: Light, de: Hell}}
+      - {id: dark, label: {en: Dark, de: Dunkel}}
+      - {id: colorful, label: {en: Colourful, de: Bunt}}
+      - {id: pastel, label: {en: Pastel, de: Pastell}}
+      - {id: monochrome, label: {en: Monochrome, de: Monochrom}}
+      - {id: gradient, label: {en: Gradient, de: Farbverlauf}}
+      - {id: neon, label: {en: Neon, de: Neon}}
+      - {id: earthy, label: {en: Earthy, de: Erdtöne}}
+
+  - id: use
+    label: {en: App category, de: App-Kategorie}
+    min: 1
+    max: 3
+    values:
+      - {id: games, label: {en: Games, de: Spiele}}
+      - {id: productivity, label: {en: Productivity, de: Produktivität}}
+      - {id: business, label: {en: Business, de: Business}}
+      - {id: finance, label: {en: Finance, de: Finanzen}}
+      - {id: health-fitness, label: {en: Health & fitness, de: Gesundheit & Fitness}}
+      - {id: sports, label: {en: Sports, de: Sport}}
+      - {id: education, label: {en: Education, de: Bildung}}
+      - {id: kids, label: {en: Kids, de: Kinder}}
+      - {id: food-drink, label: {en: Food & drink, de: Essen & Trinken}}
+      - {id: travel, label: {en: Travel, de: Reisen}}
+      - {id: navigation, label: {en: Navigation, de: Navigation}}
+      - {id: social, label: {en: Social, de: Soziale Netzwerke}}
+      - {id: lifestyle, label: {en: Lifestyle, de: Lifestyle}}
+      - {id: shopping, label: {en: Shopping, de: Shopping}}
+      - {id: entertainment, label: {en: Entertainment, de: Unterhaltung}}
+      - {id: music, label: {en: Music, de: Musik}}
+      - {id: photo-video, label: {en: Photo & video, de: Foto & Video}}
+      - {id: news, label: {en: News, de: Nachrichten}}
+      - {id: weather, label: {en: Weather, de: Wetter}}
+      - {id: utilities, label: {en: Utilities, de: Dienstprogramme}}
+      - {id: developer-tools, label: {en: Developer tools, de: Entwickler-Tools}}
+      - {id: medical, label: {en: Medical, de: Medizin}}
+      - {id: home-garden, label: {en: Home & garden, de: Haus & Garten}}
+      - {id: books, label: {en: Books, de: Bücher}}
+      - {id: events, label: {en: Events, de: Veranstaltungen}}
+
+  - id: devices
+    label: {en: Devices, de: Geräte}
+    derived: true
+    values:
+      - id: phone
+        label: {en: Phone, de: Smartphone}
+        presets: [play-phone, play-phone-2x1]
+        platforms: [ios, android]
+        classes: [phone]
+      - id: tablet
+        label: {en: Tablet, de: Tablet}
+        presets: [play-tablet-7, play-tablet-10]
+        platforms: [ipados]
+        classes: [tablet]
+      - id: watch
+        label: {en: Watch, de: Uhr}
+        platforms: [watchos, wearos]
+        classes: [watch]
+      - id: mac
+        label: {en: Mac & desktop, de: Mac & Desktop}
+        platforms: [macos, chromeos]
+        classes: [laptop, desktop]
+      - id: web
+        label: {en: Web, de: Web}
+        platforms: [web]
+        classes: [browser]
+      - id: tv
+        label: {en: TV, de: TV}
+      - id: banner
+        label: {en: Banner, de: Banner}
+        kinds: [banner]

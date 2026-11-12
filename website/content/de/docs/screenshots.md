@@ -53,7 +53,11 @@ screenshots/
 
 **Assets → Screenshots** listet jeden Schlüssel pro Sprache und Variante,
 markiert *fehlende* und *unbenutzte* und zeigt, welche aus einer
-Fallback-Sprache geliehen sind.
+Fallback-Sprache geliehen sind. Ein Klick auf ein Vorschaubild
+(Screenshots und Bilder) öffnet die **Vorschau**: das Bild groß mit
+Dateiname, Pixelgröße, Dateigröße, Format, Farbprofil (mit Warnung, wenn es
+ignoriert wird) und den Elementen, die es verwenden; <kbd>←</kbd>/<kbd>→</kbd>
+blättern, <kbd>Esc</kbd> oder ein Klick daneben schließt sie.
 
 ## Einen Ordner importieren (auch fastlane) {#importing-a-folder-and-fastlane}
 

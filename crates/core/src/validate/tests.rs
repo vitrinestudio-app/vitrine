@@ -898,7 +898,7 @@ fn unusable_color_profile_is_info() {
     );
 }
 
-// ------------------------------------------------- design checks (ADR 0028)
+// ------------------------------------------------- design checks (ADR 0029)
 
 const SPLIT: &str = "
   - id: half-a

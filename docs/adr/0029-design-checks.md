@@ -1,4 +1,4 @@
-# 0028 – Design checks: layout and pixel findings
+# 0029 – Design checks: layout and pixel findings
 
 - Status: accepted
 - Date: 2026-11-12

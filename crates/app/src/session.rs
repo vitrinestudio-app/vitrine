@@ -359,8 +359,13 @@ impl Session {
             .read()
             .unwrap_or_else(PoisonError::into_inner)
             .clone();
+        // Decoded images do not depend on fonts or frames: keep them.
+        let assets = self.render_context().shared_assets();
         if !self.system_fonts.load(Ordering::Relaxed) {
-            return RenderContext::new(&self.dir).0.with_frames(frames);
+            return RenderContext::new(&self.dir)
+                .0
+                .with_frames(frames)
+                .with_assets(assets);
         }
         let mut fonts = FontLibrary::bundled();
         let dir = self.dir.join("fonts");
@@ -373,7 +378,9 @@ impl Session {
             .flat_map(|m| m.values().map(String::as_str))
             .collect();
         fonts.add_system_fallbacks(&text.join(" "));
-        RenderContext::with_fonts(&self.dir, fonts).with_frames(frames)
+        RenderContext::with_fonts(&self.dir, fonts)
+            .with_frames(frames)
+            .with_assets(assets)
     }
 
     fn replace_context(&self, ctx: RenderContext) {
@@ -554,6 +561,7 @@ impl Session {
         }
         let r = r.with_history(inner.history_state());
         drop(inner);
+        self.after_commit(&r);
         self.emit_edited("apply", options.actor, label, &r);
         Ok(r)
     }
@@ -575,6 +583,7 @@ impl Session {
         }
         let r = r.with_history(inner.history_state());
         drop(inner);
+        self.after_commit(&r);
         self.emit_edited("undo", actor, label, &r);
         Ok(r)
     }
@@ -596,8 +605,18 @@ impl Session {
         }
         let r = r.with_history(inner.history_state());
         drop(inner);
+        self.after_commit(&r);
         self.emit_edited("redo", actor, label, &r);
         Ok(r)
+    }
+
+    /// Work after a committed step, outside the model lock (loading system
+    /// fonts can take seconds; other tools must not wait for it).
+    fn after_commit(&self, r: &ApplyResult) {
+        if r.applied && !r.changes.strings.is_empty() && self.system_fonts.load(Ordering::Relaxed) {
+            let project = self.snapshot();
+            self.check_system_fallback(&project, &r.changes);
+        }
     }
 
     /// Emits `project-edited` for an applied step (nothing for a no-op).
@@ -645,7 +664,6 @@ impl Session {
             return Err(err);
         }
         let changes = Changes::between(&inner.project, &project);
-        self.check_system_fallback(&project, &changes);
         inner.project = project;
         inner.history = history;
         let r = ApplyResult {

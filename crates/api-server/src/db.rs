@@ -1,10 +1,30 @@
 //! SQLite: template metadata, abuse reports, login sessions and pending
 //! OAuth states (`<data>/api.sqlite`).
+//!
+//! Schema versions (`PRAGMA user_version`), applied by [`init`] and
+//! idempotent (columns are only added when missing):
+//! - 0: the first deployment (tags as a free JSON list).
+//! - 1 (2026-11-12): `devices` (derived device tags), `samples` (number of
+//!   sample screenshots), `sprites` (gallery sprite metadata per canvas);
+//!   `tags` becomes the facet map `{"style", "color", "use"}` (old lists
+//!   are sorted into facets, unknown words dropped). Devices and sample
+//!   counts of existing rows are filled from the stored packages by
+//!   `crate::backfill`.
+//! - 2 (2026-11-12): each canvas object in `canvases` gets `devices` (the
+//!   derived device tags of that canvas alone; the website shows the
+//!   canvas of the device a visitor filters by). Existing rows are marked
+//!   for the backfill again.
 
+use std::fmt::Write as _;
 use std::path::Path;
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
+use serde_json::{Value, json};
+use vitrine_core::template::TemplateTags;
+
+/// Current schema version.
+pub const SCHEMA_VERSION: i64 = 2;
 
 /// Moderation state of a template.
 pub const PENDING: &str = "pending";
@@ -59,7 +79,60 @@ pub fn init(db: &Connection) -> rusqlite::Result<()> {
              verifier TEXT NOT NULL,
              expires_at INTEGER NOT NULL
          );",
-    )
+    )?;
+    migrate(db)
+}
+
+/// Does `table` have `column`?
+fn has_column(db: &Connection, table: &str, column: &str) -> rusqlite::Result<bool> {
+    let mut stmt = db.prepare(&format!("PRAGMA table_info({table})"))?;
+    let names: Vec<String> = stmt
+        .query_map([], |r| r.get::<_, String>(1))?
+        .collect::<rusqlite::Result<_>>()?;
+    Ok(names.iter().any(|n| n == column))
+}
+
+/// Brings an older database to [`SCHEMA_VERSION`] (safe to run again).
+fn migrate(db: &Connection) -> rusqlite::Result<()> {
+    let version: i64 = db.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    if version >= SCHEMA_VERSION {
+        return Ok(());
+    }
+    for (column, ddl) in [
+        ("devices", "devices TEXT NOT NULL DEFAULT '[]'"),
+        ("samples", "samples INTEGER NOT NULL DEFAULT 0"),
+        ("sprites", "sprites TEXT NOT NULL DEFAULT '[]'"),
+        ("backfilled", "backfilled INTEGER NOT NULL DEFAULT 0"),
+    ] {
+        if !has_column(db, "templates", column)? {
+            db.execute_batch(&format!("ALTER TABLE templates ADD COLUMN {ddl}"))?;
+        }
+    }
+    // Free tag lists → facet maps.
+    let rows: Vec<(String, String)> = {
+        let mut stmt = db.prepare("SELECT id, tags FROM templates")?;
+        stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+            .collect::<rusqlite::Result<_>>()?
+    };
+    for (id, tags) in rows {
+        if let Ok(list) = serde_json::from_str::<Vec<String>>(&tags) {
+            let map = tags_json(&TemplateTags::from_flat(&list));
+            db.execute(
+                "UPDATE templates SET tags = ?2 WHERE id = ?1",
+                params![id, map.to_string()],
+            )?;
+        }
+    }
+    if version < 2 {
+        // Per-canvas devices come from the stored packages.
+        db.execute_batch("UPDATE templates SET backfilled = 0")?;
+    }
+    db.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION}"))
+}
+
+/// The tags as the API shows them: all three facets, always present.
+pub fn tags_json(t: &TemplateTags) -> Value {
+    json!({ "style": t.style, "color": t.color, "use": t.use_ })
 }
 
 /// A template row as the API shows it.
@@ -69,7 +142,7 @@ pub struct TemplateRow {
     pub name: String,
     pub description: String,
     pub author: String,
-    pub tags: serde_json::Value,
+    pub tags: Value,
     pub version: String,
     pub license: &'static str,
     pub uploader: String,
@@ -78,20 +151,28 @@ pub struct TemplateRow {
     #[serde(skip)]
     pub uploader_id: Option<i64>,
     pub status: String,
-    pub canvases: serde_json::Value,
-    pub fonts: serde_json::Value,
+    pub canvases: Value,
+    pub fonts: Value,
     pub size: i64,
     pub downloads: i64,
     pub created_at: i64,
     pub updated_at: i64,
+    /// Derived device tags (`["phone", "banner"]`).
+    pub devices: Value,
+    /// Number of sample screenshots in the package (0 = placeholders only).
+    pub samples: i64,
+    /// Sprite metadata per canvas ([`crate::sprites::SpriteMeta`]); shown
+    /// inside the canvases by the routes.
+    #[serde(skip)]
+    pub sprites: Value,
 }
 
-const COLUMNS: &str = "id, name, description, author, tags, version, uploader, status, canvases, fonts, size, downloads, created_at, updated_at, uploader_id";
+const COLUMNS: &str = "id, name, description, author, tags, version, uploader, status, canvases, fonts, size, downloads, created_at, updated_at, uploader_id, devices, samples, sprites";
 
 fn row(r: &rusqlite::Row<'_>) -> rusqlite::Result<TemplateRow> {
-    let json = |i: usize| -> rusqlite::Result<serde_json::Value> {
+    let json = |i: usize| -> rusqlite::Result<Value> {
         let s: String = r.get(i)?;
-        Ok(serde_json::from_str(&s).unwrap_or(serde_json::Value::Null))
+        Ok(serde_json::from_str(&s).unwrap_or(Value::Null))
     };
     Ok(TemplateRow {
         id: r.get(0)?,
@@ -110,6 +191,9 @@ fn row(r: &rusqlite::Row<'_>) -> rusqlite::Result<TemplateRow> {
         created_at: r.get(12)?,
         updated_at: r.get(13)?,
         uploader_id: r.get(14)?,
+        devices: json(15)?,
+        samples: r.get(16)?,
+        sprites: json(17)?,
     })
 }
 
@@ -128,13 +212,23 @@ pub fn get(db: &Connection, id: &str) -> rusqlite::Result<Option<TemplateRow>> {
     .optional()
 }
 
-/// Approved templates matching `q` (name, description, tags) and `tag`,
-/// newest first.
+/// What [`search`] filters by.
+#[derive(Debug, Clone, Default)]
+pub struct Filter {
+    /// Substring of name, description or tags.
+    pub q: Option<String>,
+    /// Any tag value in any facet (`?tag=`, kept for old clients).
+    pub tag: Option<String>,
+    /// Per facet (`style`, `color`, `use`, `devices`) the wanted values: a
+    /// template matches when it has one of them in every given facet.
+    pub facets: Vec<(String, Vec<String>)>,
+}
+
+/// Templates with `status` matching `filter`, newest first.
 pub fn search(
     db: &Connection,
     status: &str,
-    q: Option<&str>,
-    tag: Option<&str>,
+    filter: &Filter,
     limit: u32,
     offset: u32,
 ) -> rusqlite::Result<Vec<TemplateRow>> {
@@ -145,28 +239,115 @@ pub fn search(
             .replace('_', "\\_");
         format!("%{escaped}%")
     };
-    let q = q.map_or_else(|| "%".to_owned(), like);
-    let tag = tag.map_or_else(|| "%".to_owned(), |t| like(&format!("\"{t}\"")));
-    let mut stmt = db.prepare(&format!(
-        "SELECT {COLUMNS} FROM templates
-         WHERE status = ?1
-           AND (name LIKE ?2 ESCAPE '\\' OR description LIKE ?2 ESCAPE '\\' OR tags LIKE ?2 ESCAPE '\\')
-           AND tags LIKE ?3 ESCAPE '\\'
-         ORDER BY updated_at DESC, id LIMIT ?4 OFFSET ?5"
-    ))?;
-    stmt.query_map(params![status, q, tag, limit, offset], row)?
-        .collect()
+    let mut sql = format!("SELECT {COLUMNS} FROM templates WHERE status = ?1");
+    let mut args: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(status.to_owned())];
+    let mut arg = |sql: &mut String, v: Box<dyn rusqlite::ToSql>| {
+        args.push(v);
+        let _ = write!(sql, "?{}", args.len());
+    };
+    if let Some(q) = filter.q.as_deref().filter(|s| !s.is_empty()) {
+        sql.push_str(" AND (name LIKE ");
+        arg(&mut sql, Box::new(like(q)));
+        sql.push_str(" ESCAPE '\\' OR description LIKE ");
+        arg(&mut sql, Box::new(like(q)));
+        sql.push_str(" ESCAPE '\\' OR tags LIKE ");
+        arg(&mut sql, Box::new(like(q)));
+        sql.push_str(" ESCAPE '\\')");
+    }
+    if let Some(t) = filter.tag.as_deref().filter(|s| !s.is_empty()) {
+        sql.push_str(" AND (tags LIKE ");
+        arg(&mut sql, Box::new(like(&format!("\"{t}\""))));
+        sql.push_str(" ESCAPE '\\' OR devices LIKE ");
+        arg(&mut sql, Box::new(like(&format!("\"{t}\""))));
+        sql.push_str(" ESCAPE '\\')");
+    }
+    for (facet, values) in &filter.facets {
+        if values.is_empty() {
+            continue;
+        }
+        // json_each over the facet's list; the facet names are checked by
+        // the route (a fixed set), values are bound.
+        let source = if facet == "devices" {
+            "json_each(templates.devices)".to_owned()
+        } else {
+            format!("json_each(templates.tags, '$.\"{facet}\"')")
+        };
+        let _ = write!(sql, " AND EXISTS (SELECT 1 FROM {source} WHERE value IN (");
+        for (i, v) in values.iter().enumerate() {
+            if i > 0 {
+                sql.push_str(", ");
+            }
+            arg(&mut sql, Box::new(v.clone()));
+        }
+        sql.push_str("))");
+    }
+    sql.push_str(" ORDER BY updated_at DESC, id LIMIT ");
+    arg(&mut sql, Box::new(limit));
+    sql.push_str(" OFFSET ");
+    arg(&mut sql, Box::new(offset));
+    let mut stmt = db.prepare(&sql)?;
+    let refs: Vec<&dyn rusqlite::ToSql> = args.iter().map(AsRef::as_ref).collect();
+    stmt.query_map(refs.as_slice(), row)?.collect()
+}
+
+/// Every template row (any status), for maintenance jobs.
+pub fn all(db: &Connection) -> rusqlite::Result<Vec<TemplateRow>> {
+    let mut stmt = db.prepare(&format!("SELECT {COLUMNS} FROM templates ORDER BY id"))?;
+    stmt.query_map([], row)?.collect()
+}
+
+/// Stores the sprite metadata of a template.
+pub fn set_sprites(db: &Connection, id: &str, sprites: &Value) -> rusqlite::Result<()> {
+    db.execute(
+        "UPDATE templates SET sprites = ?2 WHERE id = ?1",
+        params![id, sprites.to_string()],
+    )?;
+    Ok(())
+}
+
+/// Ids of rows whose derived fields were not filled from the package yet
+/// (rows from before schema version 2).
+pub fn not_backfilled(db: &Connection) -> rusqlite::Result<Vec<String>> {
+    let mut stmt = db.prepare("SELECT id FROM templates WHERE backfilled = 0 ORDER BY id")?;
+    stmt.query_map([], |r| r.get(0))?.collect()
+}
+
+/// Fields derived from a stored package (see [`set_derived`]).
+#[derive(Debug)]
+pub struct Derived {
+    pub devices: Value,
+    pub samples: i64,
+    pub tags: Value,
+    /// The manifest's canvases with `devices` per canvas.
+    pub canvases: Value,
+}
+
+/// Stores the fields derived from the package (devices, sample count,
+/// tags, per-canvas devices) and marks the row as backfilled.
+pub fn set_derived(db: &Connection, id: &str, d: &Derived) -> rusqlite::Result<()> {
+    db.execute(
+        "UPDATE templates SET devices = ?2, samples = ?3, tags = ?4, canvases = ?5, backfilled = 1 WHERE id = ?1",
+        params![
+            id,
+            d.devices.to_string(),
+            d.samples,
+            d.tags.to_string(),
+            d.canvases.to_string()
+        ],
+    )?;
+    Ok(())
 }
 
 /// Inserts or replaces a template row (a new version resets moderation;
 /// the uploader login follows a renamed GitHub account).
 pub fn upsert(db: &Connection, t: &TemplateRow) -> rusqlite::Result<()> {
     db.execute(
-        "INSERT INTO templates (id, name, description, author, tags, version, uploader, status, canvases, fonts, size, downloads, created_at, updated_at, uploader_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, ?12, ?12, ?13)
+        "INSERT INTO templates (id, name, description, author, tags, version, uploader, status, canvases, fonts, size, downloads, created_at, updated_at, uploader_id, devices, samples, sprites, backfilled)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, ?12, ?12, ?13, ?14, ?15, ?16, 1)
          ON CONFLICT(id) DO UPDATE SET name = ?2, description = ?3, author = ?4, tags = ?5,
              version = ?6, uploader = ?7, status = ?8, canvases = ?9, fonts = ?10, size = ?11,
-             updated_at = ?12, uploader_id = COALESCE(?13, uploader_id)",
+             updated_at = ?12, uploader_id = COALESCE(?13, uploader_id), devices = ?14,
+             samples = ?15, sprites = ?16, backfilled = 1",
         params![
             t.id,
             t.name,
@@ -181,6 +362,9 @@ pub fn upsert(db: &Connection, t: &TemplateRow) -> rusqlite::Result<()> {
             t.size,
             t.updated_at,
             t.uploader_id,
+            t.devices.to_string(),
+            t.samples,
+            t.sprites.to_string(),
         ],
     )?;
     Ok(())

@@ -81,3 +81,14 @@
   gap: 2px;
   color: var(--fg-muted, inherit);
 }
+
+/* Tag chip pickers of "Save as template". */
+.tpl-tags {
+  gap: 8px;
+}
+
+.tpl-facet {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

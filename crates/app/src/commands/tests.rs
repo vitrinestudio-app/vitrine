@@ -223,6 +223,49 @@ fn render_commands_cache_and_invalidate() {
         json!({"target": "ios-iphone-69", "height": 200}),
     );
     assert!(gallery.width > gallery.height);
+    // A gallery wider than allowed is rendered lower instead of failing
+    // (was "preview too large (…×0)").
+    let narrow = image(
+        &f.app,
+        "render_gallery",
+        json!({"target": "ios-iphone-69", "height": 2000, "max_width": 900}),
+    );
+    assert!(narrow.width <= 900, "{}", narrow.width);
+    assert!(
+        narrow.height < 2000 && narrow.height > 100,
+        "{}",
+        narrow.height
+    );
+    // Store page colours: dark mode, custom, and a wrong value.
+    let dark = image(
+        &f.app,
+        "render_gallery",
+        json!({"target": "ios-iphone-69", "height": 200, "background": "dark", "format": "rgba"}),
+    );
+    assert_eq!(
+        &dark.data[..4],
+        &[0, 0, 0, 255],
+        "top-left is the page colour"
+    );
+    let custom = image(
+        &f.app,
+        "render_gallery",
+        json!({"target": "ios-iphone-69", "height": 200, "background": "#F2F2F7", "format": "rgba"}),
+    );
+    assert_eq!(&custom.data[..4], &[0xF2, 0xF2, 0xF7, 255]);
+    let e = dispatch(
+        &f.app,
+        "render_gallery",
+        json!({"target": "ios-iphone-69", "background": "dusk"}),
+    )
+    .unwrap_err();
+    assert_eq!(e.code, ErrorCode::InvalidArgs);
+    let jpeg = image(
+        &f.app,
+        "render_gallery",
+        json!({"target": "ios-iphone-69", "height": 200, "format": "jpeg"}),
+    );
+    assert!(jpeg.data.starts_with(&[0xFF, 0xD8]));
     let e = dispatch(&f.app, "render_gallery", json!({"target": "blog-header"})).unwrap_err();
     assert_eq!(e.code, ErrorCode::InvalidArgs);
     let e = dispatch(&f.app, "render_image", json!({"image": 99})).unwrap_err();

@@ -19,13 +19,30 @@ Every template is CC0-1.0; fonts inside keep the OFL.
 | Method | Path | Description |
 |---|---|---|
 | GET | `/health` | `{"status": "ok", "version": "…"}` |
-| GET | `/v1/templates?q=&tag=&limit=&offset=` | approved templates, newest first; `q` searches name, description, tags; `limit` 1–100 (default 50) |
+| GET | `/v1/templates?q=&tag=&style=&color=&use=&devices=&limit=&offset=` | approved templates, newest first; `q` searches name, description, tags; `tag` matches any tag or device; facet filters below; `limit` 1–200 (default 50; the answer's `limit` is the one used – page with `offset += limit` until fewer come back) |
 | GET | `/v1/templates/{id}` | one approved template |
 | GET | `/v1/templates/{id}/download` | the `.vitrine-template` (`application/zip`, `Content-Disposition: attachment`); counts a download |
-| GET | `/v1/templates/{id}/previews/{canvas}` | preview PNG of a canvas (rendered by the server) |
+| GET | `/v1/templates/{id}/previews/{canvas}` | preview PNG of a canvas (rendered by the server; store gallery look with gaps) |
+| GET | `/v1/templates/{id}/sprites/{canvas}.webp`, `…/{canvas}@2x.webp` | gallery sprite of a canvas (WebP): all pages side by side, no gaps; `ETag`, `If-None-Match` → 304; `Cache-Control: public, max-age=31536000, immutable` when the URL carries the current `?v=<etag>` (the URLs in the template object do), else `max-age=3600` |
+| GET | `/v1/tags` | the tag taxonomy: `{"facets": [{"id", "label": {"en", "de"}, "min", "max", "derived", "values": [{"id", "label": {"en", "de"}}]}]}` |
 | POST | `/v1/templates/{id}/report` | abuse report `{"reason": "copyright|trademark|offensive|malware|other", "message": "…"}` → 202; rate limited |
 
-The four GET routes under `/v1/templates` share a read limit per client
+**Tags** (owner decision 2026-11-12; data `crates/core/data/template-tags.yaml`,
+ADR 0023 amendment): three facets the author sets – `style` (1–2:
+minimal, bold, playful, elegant, realistic, illustrated, editorial, retro,
+futuristic, organic), `color` (1–2: light, dark, colorful, pastel,
+monochrome, gradient, neon, earthy), `use` (1–3: games, productivity,
+business, finance, health-fitness, sports, education, kids, food-drink,
+travel, navigation, social, lifestyle, shopping, entertainment, music,
+photo-video, news, weather, utilities, developer-tools, medical,
+home-garden, books, events) – plus `devices`, derived by the server from
+the targets and canvases (phone, tablet, watch, mac, web, tv, banner).
+No free-form tags. **Filters**: `style`, `color`, `use`, `devices`, each
+repeated (`style=bold&style=retro`) or comma-separated (`use=games,kids`);
+within a facet any value matches, across facets all must. An unknown value
+is 400 `invalid_filter` naming the allowed ones.
+
+The GET routes under `/v1/templates` and `/v1/tags` share a read limit per client
 (`VITRINE_API_READ_RATE_LIMIT_PER_HOUR`, default 3000); reports and uploads
 share `VITRINE_API_RATE_LIMIT_PER_HOUR` (default 20); login starts
 (`VITRINE_API_LOGIN_RATE_LIMIT_PER_HOUR`, 10) and device-flow polls
@@ -37,28 +54,74 @@ Template object:
 ```json
 {
   "id": "bold-gradient", "name": "Bold gradient", "description": "…",
-  "author": "…", "tags": ["gradient"], "version": "1.0.0",
+  "author": "…",
+  "tags": {"style": ["bold"], "color": ["gradient", "dark"], "use": ["travel"]},
+  "devices": ["phone", "banner"],
+  "samples": 5,
+  "version": "1.0.0",
   "license": "CC0-1.0", "uploader": "octocat", "official": false,
   "status": "approved",
-  "canvases": [{"id": "phone", "aspect": "1320:2868", "pages": 5,
-                "targets": ["ios-iphone-69", "play-phone"],
+  "canvases": [{"id": "phone", "aspect": "1320:2868", "page_aspect": "1320:2868",
+                "pages": 5, "targets": ["ios-iphone-69", "play-phone"],
+                "devices": ["phone"],
                 "preview": "previews/phone.png",
-                "preview_url": "https://api.vitrinestudio.app/v1/templates/bold-gradient/previews/phone"}],
+                "preview_url": "https://api.vitrinestudio.app/v1/templates/bold-gradient/previews/phone",
+                "sprite": {"url": "https://api.vitrinestudio.app/v1/templates/bold-gradient/sprites/phone.webp?v=3f0c9a1b2c4d5e6f7a8b",
+                           "url_2x": "https://api.vitrinestudio.app/v1/templates/bold-gradient/sprites/phone@2x.webp?v=…",
+                           "width": 1380, "height": 600,
+                           "page_width": 276, "page_height": 600}}],
   "fonts": ["Lora"], "size": 412345, "downloads": 12,
   "created_at": 1762850000, "updated_at": 1762850000,
   "download_url": "https://api.vitrinestudio.app/v1/templates/bold-gradient/download"
 }
 ```
 
+- `tags` always has the three keys (empty lists for templates without
+  tags); `devices` is derived; `canvases[].devices` are the derived devices
+  of that canvas alone (schema 2, 2026-11-12; the website shows the canvas
+  of the device a visitor filters by – older servers lack the field); `samples` = number of sample screenshots
+  in the package (0 = placeholders only).
+- `sprite` (per canvas; `null` while not rendered): `width` × `height`
+  is the 1× image, `page_width` × `page_height` one page (`width =
+  pages × page_width`); the `url_2x` image is exactly twice as large.
+  Page heights are 600 px (2×: 1200), lower only for very wide sets
+  (1× sprites stay ≤ 8000 px wide). Lossy WebP (quality 80, typically
+  50–200 KB at 1×). Page *n* (0-based) in CSS:
+
+  ```css
+  .page {
+    aspect-ratio: 276 / 600;                 /* page_width / page_height */
+    background-image: image-set(url(SPRITE_URL) 1x, url(SPRITE_URL_2X) 2x);
+    background-size: calc(100% * 5) 100%;    /* pages × 100 % */
+    background-position: calc(100% * n / (5 - 1)) 0;  /* n / (pages - 1) */
+  }
+  ```
+
+  Sprites are rendered from the stored package: the template's sample
+  screenshots when it has them, else placeholders; built-in parametric
+  frames only.
+
 `official` is `true` when the uploader is one of
 `VITRINE_API_OFFICIAL_LOGINS` (default `vitrinestudio-app`, the org that
 publishes the official templates; compared case-insensitively).
+
+### CORS (website)
+
+`VITRINE_API_CORS_ORIGINS` (comma-separated origins, e.g.
+`https://www.vitrinestudio.app`; empty = no CORS headers) lets those
+browser origins `fetch` the public reads: `GET`/`HEAD` of `/health`,
+`/v1/tags`, `/v1/templates` and everything below it except `…/report`
+get `Access-Control-Allow-Origin: <the origin>` (echoed, never `*`, no
+credentials) and `Vary: Origin`; a preflight (`OPTIONS` with
+`Access-Control-Request-Method: GET|HEAD`) is answered 204. Uploads,
+reports, login and moderation never carry CORS headers. Sprites and
+downloads used as `<img>`/CSS backgrounds or links need no CORS.
 
 ## Upload (login required)
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/v1/templates` | body: the `.vitrine-template` (`application/zip`, ≤ `VITRINE_API_MAX_UPLOAD_MB`); `Authorization: Bearer <token>` → 201 `{"id", "version", "status": "pending"}` |
+| POST | `/v1/templates[?confirm_own_screenshots=true]` | body: the `.vitrine-template` (`application/zip`, ≤ `VITRINE_API_MAX_UPLOAD_MB`); `Authorization: Bearer <token>` → 201 `{"id", "version", "status": "pending", "samples", "samples_removed"}` |
 
 The bearer token is a **session token** (`vss_…`, from the GitHub login
 below) or a **static upload token** from `VITRINE_API_UPLOAD_TOKENS`
@@ -69,12 +132,19 @@ Server-side checks (same code as the app, `vitrine_core::template`): size
 limits, safe paths, no symlinks, only the allowed file types (checked by
 content), SVG without scripts/external references, fonts must declare the
 OFL (name ID 13/14) with an OFL licence file, `license: CC0-1.0`, the
-project subset loads and validates, no store settings. Then the server
-**replaces all screenshots by generated placeholders** and **renders the
-previews itself** (uploaded previews are discarded). Errors: 401 no/invalid
-token, 413 too large, 422 `invalid_template` (message says why), 409
-`id_taken` (id of another uploader) or `version_exists`, 429
-`rate_limited`.
+project subset loads and validates, no store settings, **complete tags**
+(each facet within its min/max, only known values; 422 `invalid_tags`
+names the allowed values). Then the server **replaces all screenshots by
+generated placeholders** – except **sample screenshots** (listed under
+`samples:` in `template.yaml`, PNG/JPEG ≤ 10 MB, ≤ 6000 px per side) when
+the uploader confirms with `?confirm_own_screenshots=true` that they are
+their own and CC0; unconfirmed samples are replaced like any screenshot
+(`samples_removed` counts them) – and **renders the previews and sprites
+itself** (uploaded previews are discarded). Rendering runs in a blocking
+task, at most `VITRINE_API_RENDER_CONCURRENCY` (default 2) at once. Errors:
+401 no/invalid token, 413 too large, 422 `invalid_template` (message says
+why) or `invalid_tags`, 409 `id_taken` (id of another uploader) or
+`version_exists`, 429 `rate_limited`.
 
 **Ownership**: the server stores the uploader's GitHub login and numeric
 GitHub user id. A new version (same id, different `version`) is accepted
@@ -149,21 +219,30 @@ checked 2026-11-11):
 | Method | Path | Description |
 |---|---|---|
 | GET | `/v1/admin/queue` | `{"pending": [templates], "reports": [open reports]}` |
-| POST | `/v1/admin/templates/{id}/approve` | publish; optional body `{"note": "…"}`; resolves its reports |
+| POST | `/v1/admin/templates/{id}/approve` | publish; optional body `{"note": "…"}`; resolves its reports; renders the sprites first if the template has none |
 | POST | `/v1/admin/templates/{id}/reject` | hide (also for taking down a reported template) |
+| POST | `/v1/admin/templates/{id}/rerender` | render previews and sprites again from the stored package (any status) → `{"id", "sprites": [metadata]}` |
+
+Admin CLI: `vitrine gallery admin queue|approve <id…>|reject <id…>
+[--note]|rerender <id…>`; the token is read only from an environment
+variable (`--admin-token-env VAR`, default `VITRINE_API_ADMIN_TOKEN`).
+
+On start the server fills what rows from before schema version 1 lack
+(devices, sample count, facet tags from the stored package) and renders
+missing sprites of approved templates in the background.
 
 Not yet: deleting files of rejected templates (manual for now), uploader
-self-service (list/delete own templates), notification of the uploader,
-an admin CLI.
+self-service (list/delete own templates), notification of the uploader.
 
 ## Clients
 
-- CLI: `vitrine gallery login|logout|list|upload|download` (`--api URL`,
+- CLI: `vitrine gallery login|logout|list|upload|download|admin` (`--api URL`,
   default `https://api.vitrinestudio.app`; `VITRINE_API_URL` overrides it
   with a loopback URL only). The session token lives in the system
   keychain: service `app.vitrinestudio`, account `gallery/<api host>`.
 - App commands (for the GUI's "new project" dialog, GUI not built yet):
-  `gallery_list {query, tag, offset, limit}` (adds `installed_version`),
+  `gallery_list {query, tag, style, color, use, devices, offset, limit}`
+  (adds `installed_version`), `template_tags` (taxonomy),
   image command `gallery_preview {id, canvas?}`, `gallery_download {id,
   replace?}` (checked with the same safe-import code as template files,
   installed into the app-wide template store). An unreachable server is

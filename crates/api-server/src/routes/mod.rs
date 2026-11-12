@@ -27,6 +27,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .merge(templates::routes(max))
         .merge(admin::routes())
         .merge(auth::routes())
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::cors::layer,
+        ))
         .with_state(state)
 }
 

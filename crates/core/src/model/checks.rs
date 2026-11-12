@@ -1,6 +1,6 @@
 //! Design-check settings stored in `project.yaml` (`checks:`): thresholds
 //! of the layout and pixel checks of `core::validate` and finding codes
-//! switched off for the whole project (ADR 0028).
+//! switched off for the whole project (ADR 0029).
 //!
 //! ```yaml
 //! checks:

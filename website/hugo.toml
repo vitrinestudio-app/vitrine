@@ -38,7 +38,11 @@ disableKinds = ['taxonomy', 'term', 'rss']
 
 [params]
   github = 'https://github.com/vitrinestudio-app/vitrine'
-  gallery_api = 'https://api.vitrinestudio.app'
+  # Template gallery API: build-time snapshot (layouts/_partials/gallery/data.html)
+  # and the live refresh in the browser (assets/js/gallery.js; the server needs
+  # this site in VITRINE_API_CORS_ORIGINS). Local development:
+  # HUGO_PARAMS_GALLERYAPI=http://127.0.0.1:8787 hugo server
+  galleryAPI = 'https://api.vitrinestudio.app'
   company = 'Looking4Cache UG (haftungsbeschränkt)'
   # Flip to true and fill `downloads` below once signed installers are
   # published (phase 6.5). Until then every download button says
@@ -51,6 +55,13 @@ disableKinds = ['taxonomy', 'term', 'rss']
     macos = ''
     windows = ''
     linux = ''
+
+# Remote resources (the template gallery snapshot, layouts/_partials/gallery/data.html)
+# are fetched fresh on every build: no file cache.
+[caches]
+  [caches.getresource]
+    dir = ':cacheDir/:project'
+    maxAge = 0
 
 [markup]
   [markup.goldmark.renderer]

@@ -1,4 +1,4 @@
-//! Design checks that need rendered geometry or pixels (ADR 0028):
+//! Design checks that need rendered geometry or pixels (ADR 0029):
 //! `core::validate` calls them through [`vitrine_core::validate::SceneInspector`]
 //! when a front end passes an [`Inspector`]; [`scene_report`] gives the same
 //! geometry to `layout_report` (MCP) and the GUI.
@@ -831,7 +831,26 @@ pub fn screen_rect(e: &ResolvedElement, d: &ResolvedDevice) -> (Rect, f64) {
             ),
             0.0,
         )
+    } else if let Some(m) = d
+        .device
+        .frame_metrics(d.orientation, e.size.x)
+        .filter(|_| d.chrome != Some(vitrine_core::model::Chrome::Browser))
+    {
+        // The catalog's frame metrics (also `catalog_devices.frame`; kept
+        // equal to the drawn frame by `frames::tests`), relative to the
+        // element box's top-left corner.
+        (
+            Rect::new(
+                m.screen.x - e.size.x / 2.0,
+                m.screen.y - m.height / 2.0,
+                m.screen.w,
+                m.screen.h,
+            ),
+            m.screen.radius,
+        )
     } else {
+        // Free-aspect models (browser, `none`) and browser chrome on a
+        // notebook: the drawn geometry.
         let g = frames::device_geometry(d, e.size);
         (g.screen, f64::from(g.screen_radius))
     };

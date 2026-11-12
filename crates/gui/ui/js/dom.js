@@ -82,6 +82,7 @@ const ICONS = {
   down: 'M8 3.5v9M4.5 9 8 12.5 11.5 9',
   trash: 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9',
   'chevron-right': 'M6.5 4.5 10 8l-3.5 3.5',
+  'chevron-left': 'M9.5 4.5 6 8l3.5 3.5',
   'align-left': 'M2.5 4h11M2.5 7h7M2.5 10h11M2.5 13h7',
   'align-center': 'M2.5 4h11M4.5 7h7M2.5 10h11M4.5 13h7',
   'align-right': 'M2.5 4h11M6.5 7h7M2.5 10h11M6.5 13h7',

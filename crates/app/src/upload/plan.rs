@@ -209,6 +209,17 @@ fn validation_problems(report: &ValidationReport, target: &str, lang: &str) -> V
         if f.target.is_none() && !store_warning {
             continue;
         }
+        if f.code == FindingCode::SampleScreenshot {
+            // Info in validation, but never uploaded (owner 2026-11-12).
+            out.push(Problem::blocking(
+                f.code.as_str(),
+                format!(
+                    "{} – this set still contains a sample screenshot from a template; replace it with a screenshot of your app before uploading",
+                    f.message
+                ),
+            ));
+            continue;
+        }
         if f.level == Severity::Error || store_warning {
             out.push(Problem::blocking(f.code.as_str(), f.message.clone()));
         } else if f.level == Severity::Warn && f.target.is_some() {

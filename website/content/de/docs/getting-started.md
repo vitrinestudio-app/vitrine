@@ -37,9 +37,10 @@ du sie jederzeit wieder.
 
 {{< shot src="images/editor-dark.jpg" alt="Der Editor von Vitrine Studio im dunklen Modus: Seitenleiste links, Leinwand in der Mitte, Inspektor rechts." caption="Der Editor (eine ältere Version – der linke Tab heißt jetzt *Leinwände*)." >}}
 
-- **Obere Leiste:** das ☰-Menü; die Auswahlen **Leinwand**, **Ziel**,
+- **Obere Leiste:** das ☰-Menü (öffnet sich auch über App-Symbol und
+  Projektnamen); die Auswahlen **Leinwand**, **Ziel**,
   **Sprache** und **Variante** bestimmen, was du siehst und bearbeitest; der
-  Button neben der Ziel-Auswahl öffnet *Leinwände & Ausgabeziele*;
+  Button neben der Ziel-Auswahl öffnet *Leinwände & Ziele*;
   **Hinzufügen** setzt ein neues Element auf die sichtbare Seite; rechts die
   Assistenten-Anzeige, **Export**, das Prüf-Abzeichen (**OK** oder die Zahl
   der Probleme) und Rückgängig/Wiederholen.

@@ -15,8 +15,8 @@ pub struct ToolOutput {
     pub summary: String,
     /// The machine-readable result (`structuredContent`).
     pub data: Value,
-    /// PNG images, shown after the text.
-    pub images: Vec<Vec<u8>>,
+    /// Images (data, MIME type), shown after the text.
+    pub images: Vec<(Vec<u8>, &'static str)>,
     /// The text block is `summary` alone (long markdown such as docs),
     /// without the JSON copy of `data`.
     pub text_only: bool,
@@ -42,8 +42,14 @@ impl ToolOutput {
 
     /// Appends a PNG image.
     #[must_use]
-    pub fn with_png(mut self, png: Vec<u8>) -> Self {
-        self.images.push(png);
+    pub fn with_png(self, png: Vec<u8>) -> Self {
+        self.with_image(png, "image/png")
+    }
+
+    /// Appends an image of type `mime` (`image/png`, `image/jpeg`).
+    #[must_use]
+    pub fn with_image(mut self, data: Vec<u8>, mime: &'static str) -> Self {
+        self.images.push((data, mime));
         self
     }
 
@@ -61,10 +67,10 @@ impl ToolOutput {
             format!("{}\n{}", self.summary, compact(&structured))
         };
         let mut content = vec![ContentBlock::text(text)];
-        for png in self.images {
+        for (data, mime) in self.images {
             content.push(ContentBlock::image(
-                base64::engine::general_purpose::STANDARD.encode(png),
-                "image/png",
+                base64::engine::general_purpose::STANDARD.encode(data),
+                mime,
             ));
         }
         let mut r = CallToolResult::success(content);

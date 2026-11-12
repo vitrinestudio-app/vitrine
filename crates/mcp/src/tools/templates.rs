@@ -1,6 +1,8 @@
 //! Templates (phase 6.3, ADR 0023): `template_list`, `template_save`,
 //! `template_insert`, `template_import`. New projects from a template:
-//! `project_create {template}`.
+//! `project_create {template}`. Tags come from the fixed taxonomy
+//! (`crates/core/data/template-tags.yaml`): the schema lists the allowed
+//! values of each facet as an enum.
 
 use std::path::PathBuf;
 
@@ -16,6 +18,55 @@ use super::project::NoParams;
 use crate::output::ToolOutput;
 use crate::server::{VitrineMcp, cmd};
 
+/// A tag value of one facet; its JSON schema is a string enum of the
+/// taxonomy's values.
+macro_rules! facet_tag {
+    ($name:ident, $facet:literal, $doc:literal) => {
+        #[doc = $doc]
+        #[derive(Debug, Clone, Deserialize)]
+        #[serde(transparent)]
+        pub struct $name(pub String);
+
+        impl JsonSchema for $name {
+            fn schema_name() -> std::borrow::Cow<'static, str> {
+                stringify!($name).into()
+            }
+
+            fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+                let values: Vec<&str> = vitrine_core::template::tags::taxonomy()
+                    .facet($facet)
+                    .map(|f| f.values.iter().map(|v| v.id.as_str()).collect())
+                    .unwrap_or_default();
+                schemars::json_schema!({ "type": "string", "enum": values, "description": $doc })
+            }
+        }
+    };
+}
+
+facet_tag!(StyleTag, "style", "Style tag of a template.");
+facet_tag!(ColorTag, "color", "Colour tag of a template.");
+facet_tag!(UseTag, "use", "App category tag of a template.");
+
+fn tag_values<T: Clone + Into<String>>(v: &[T]) -> Vec<String> {
+    v.iter().cloned().map(Into::into).collect()
+}
+
+impl From<StyleTag> for String {
+    fn from(t: StyleTag) -> Self {
+        t.0
+    }
+}
+impl From<ColorTag> for String {
+    fn from(t: ColorTag) -> Self {
+        t.0
+    }
+}
+impl From<UseTag> for String {
+    fn from(t: UseTag) -> Self {
+        t.0
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TemplateSaveParams {
@@ -28,8 +79,20 @@ pub struct TemplateSaveParams {
     pub description: Option<String>,
     #[serde(default)]
     pub author: Option<String>,
+    /// Style tags (1–2 for the gallery).
     #[serde(default)]
-    pub tags: Vec<String>,
+    pub style: Vec<StyleTag>,
+    /// Colour tags (1–2 for the gallery).
+    #[serde(default)]
+    pub color: Vec<ColorTag>,
+    /// App category tags (1–3 for the gallery).
+    #[serde(default, rename = "use")]
+    pub use_: Vec<UseTag>,
+    /// Pack the project's screenshots used by the canvases as sample
+    /// screenshots (only when the user says they are their own app
+    /// screenshots and may be published as CC0); default placeholders.
+    #[serde(default)]
+    pub sample_screenshots: bool,
     /// Canvas ids to save (default: all canvases of the project).
     #[serde(default)]
     pub canvases: Vec<String>,
@@ -94,7 +157,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Save canvases of the open project (default: all) as a template in the app-wide store: the canvases with their targets and variants, styles, their texts in every language, image assets and OFL fonts (licence files kept or generated; other fonts are refused). Screenshots are replaced by generated placeholders; store settings are left out. Licence: CC0. Example: {\"name\": \"Bold gradient\", \"canvases\": [\"phone\"], \"tags\": [\"gradient\"]}."
+        description = "Save canvases of the open project (default: all) as a template in the app-wide store: the canvases with their targets and variants, styles, their texts in every language, image assets and OFL fonts (licence files kept or generated; other fonts are refused). Screenshots are replaced by generated placeholders unless `sample_screenshots` is true (only when the user confirms they are their own; they become samples in new projects and block store uploads there); store settings are left out. Tags only from the fixed facets style (1-2), color (1-2), use (1-3) – the gallery needs all three. Licence: CC0. Example: {\"name\": \"Bold gradient\", \"canvases\": [\"phone\"], \"style\": [\"bold\"], \"color\": [\"gradient\"], \"use\": [\"productivity\"]}."
     )]
     async fn template_save(
         &self,
@@ -103,7 +166,13 @@ impl VitrineMcp {
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
             let mut args = json!({
-                "name": p.name, "tags": p.tags, "replace": p.replace,
+                "name": p.name, "replace": p.replace,
+                "tags": {
+                    "style": tag_values(&p.style),
+                    "color": tag_values(&p.color),
+                    "use": tag_values(&p.use_),
+                },
+                "sample_screenshots": p.sample_screenshots,
                 "canvases": opt_list(&p.canvases),
             });
             for (k, v) in [
@@ -182,5 +251,26 @@ impl VitrineMcp {
             ))
         })
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn save_schema_lists_the_tag_values() {
+        let schema = serde_json::to_string(&schemars::schema_for!(TemplateSaveParams)).unwrap();
+        for v in [
+            "\"minimal\"",
+            "\"pastel\"",
+            "\"health-fitness\"",
+            "\"sample_screenshots\"",
+        ] {
+            assert!(schema.contains(v), "{v} missing in {schema}");
+        }
+        let p: TemplateSaveParams =
+            serde_json::from_value(json!({"name": "X", "use": ["travel"]})).unwrap();
+        assert_eq!(tag_values(&p.use_), ["travel"]);
     }
 }

@@ -32,7 +32,9 @@ js/shortcuts.js       keyboard map → named handlers (+ DOM copy/cut/paste even
 js/context-menu.js    right-click / ⇧F10 menu (`openContextMenu({x, y, items})`)
 js/geometry.js        2D helpers for canvas lu geometry
 js/dom.js             h()/s() element helpers, inline SVG icons, picker()
-js/shell.js           top bar, sidebar tabs, inspector, view switch, zoom
+js/shell.js           top bar (☰ + icon + name = one menu button), sidebar tabs,
+                      inspector (+ resize handle: `--inspector-w`, localStorage
+                      `vitrine.inspector.width`), view switch, zoom
 js/views/viewport.js  shared zoom/pan viewport of all centre views (fit mode,
                       wheel/pinch, pan, overlay scrollbars, per-view memory) + pixmap slots with
                       loading placeholder (`makeSlot`/`paintSlot`, `densityFor`)
@@ -75,7 +77,9 @@ js/dialogs/*.js       targets.js = canvases & targets editor (canvas pane: new /
                       progress → result/log) + MCP upload confirmation dialog;
                       templates.js = template picker cards (New project,
                       insert), "Save as template…", canvases dialog "From
-                      template" (template_* commands, ADR 0023)
+                      template" (template_* commands, ADR 0023);
+                      image-preview.js = image preview of screenshots/images
+                      (`asset_thumbnail` + `asset_info`, ←/→, used-by chips)
 styles/templates.css  template cards, previews, reports
 styles/{dialogs,targets,start,settings}.css   styles of the above
 styles/{textedit,translations,assets}.css      text editor, translations, assets

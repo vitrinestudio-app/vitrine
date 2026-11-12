@@ -79,6 +79,39 @@ fn geometry_invariants() {
     }
 }
 
+/// `catalog::Device::frame_metrics` (`catalog_devices` `frame`) describes
+/// exactly the screen the parametric frames draw.
+#[test]
+fn frame_metrics_match_the_drawn_screen() {
+    let mut checked = 0;
+    for dev in all_devices() {
+        let Some(m) = dev.device.frame_metrics(dev.orientation, 400.0) else {
+            assert!(dev.free_aspect || dev.device.browser, "{}", dev.model);
+            continue;
+        };
+        let g = device_geometry(&dev, device_size(&dev, 400.0));
+        let id = format!("{} {:?}", dev.model, dev.orientation);
+        let eps = 1e-3;
+        assert!((m.height - g.outer.h).abs() < eps, "{id}: height");
+        let s = g.screen;
+        let (x, y) = (s.x - g.outer.x, s.y - g.outer.y);
+        if dev.chrome.is_none() {
+            assert!(
+                (m.screen.x - x).abs() < eps
+                    && (m.screen.y - y).abs() < eps
+                    && (m.screen.w - s.w).abs() < eps
+                    && (m.screen.h - s.h).abs() < eps,
+                "{id}: {:?} vs drawn {x} {y} {} {}",
+                m.screen,
+                s.w,
+                s.h
+            );
+            checked += 1;
+        }
+    }
+    assert!(checked > 20, "{checked}");
+}
+
 #[test]
 fn free_aspect_follows_screenshot() {
     for model in ["browser", "none"] {

@@ -42,6 +42,7 @@ häufigsten:
 | `stored_frames_stale` | Hinweis | im Projekt gespeicherte Bezels werden nicht mehr verwendet, oder dieser Rechner hat einen neueren Import – gespeicherte Frames aktualisieren. |
 | `imported_frames_stored` | Hinweis | das Projekt speichert Apple-Bezels – halte das Repository privat. |
 | `color_profile_unsupported` | Hinweis | das Farbprofil eines Bildes ist nicht nutzbar (CMYK, HDR) – es wird als sRGB gezeichnet. |
+| `background_hidden` | Warnung | eine Hintergrund-Ebene der Leinwand liegt unter einer deckenden und ist nie zu sehen – Leinwand-Hintergründe sind Ebenen, nicht einer pro Seite (siehe unten). |
 
 In der App springt **Auf der Leinwand zeigen** zum Element.
 
@@ -76,6 +77,19 @@ Das automatische Einpassen hat sie verkleinert. Gib Deutsch einen
 [Sprach-Override](../languages/#language-overrides) mit breiterer Box oder
 höherer Mindestgröße, füge einen weichen Trennstrich ein oder schalte die
 Silbentrennung ein.
+
+**Ich habe der Leinwand eine Hintergrundfarbe pro Seite gegeben, aber alle Seiten haben dieselbe Farbe.**
+Die Hintergründe der Leinwand sind **Ebenen** über der ganzen Leinwand, von
+unten nach oben – die oberste deckende verdeckt die anderen. Für eine Farbe
+(oder ein Foto) pro Seite leg auf jeder Seite ein *Hintergrund*-Element an; es
+füllt seine Seite in der Höhe jedes Ziels. Elemente werden in der Reihenfolge
+ihrer Ebene (`z`) und der Ebenenliste gemalt – halte Seitenhintergründe also
+unten (niedriges `z`).
+
+**Mein Hintergrund-Element ist hinter einem Foto verschwunden.**
+Hintergrund-Elemente sind normale Ebenen: Ein deckendes Bild darüber in der
+Ebenenliste (oder mit höherem `z`) verdeckt sie. Schieb den Hintergrund nach
+unten oder gib dem Bild transparente Bereiche.
 
 **Das Phone sitzt bei Google Play zu hoch.**
 Die 1:2-Seite von Google Play ist kürzer als die iPhone-Seite. Stell den

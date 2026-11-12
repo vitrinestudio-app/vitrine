@@ -88,6 +88,13 @@ pub struct Config {
     /// browser after login (token in the URL fragment); unset = the
     /// callback answers JSON.
     pub web_login_return_url: Option<String>,
+    /// `VITRINE_API_RENDER_CONCURRENCY` (default 2): previews and sprites
+    /// rendered at the same time (uploads, approvals, re-renders).
+    pub render_concurrency: usize,
+    /// `VITRINE_API_CORS_ORIGINS` = `https://www.vitrinestudio.app,…`:
+    /// browser origins that may read the public GET routes (template list,
+    /// detail, sprites, tags, health) with `fetch`. Empty = no CORS headers.
+    pub cors_origins: Vec<String>,
     /// GitHub web base (`https://github.com`); tests point it to a fake.
     pub github_url: String,
     /// GitHub REST API base (`https://api.github.com`); tests: a fake.
@@ -116,6 +123,8 @@ impl std::fmt::Debug for Config {
             .field("session_days", &self.session_days)
             .field("official_logins", &self.official_logins)
             .field("web_login_return_url", &self.web_login_return_url)
+            .field("render_concurrency", &self.render_concurrency)
+            .field("cors_origins", &self.cors_origins)
             .field("github_url", &self.github_url)
             .field("github_api_url", &self.github_api_url)
             .finish()
@@ -137,12 +146,14 @@ impl Default for Config {
             login_rate_limit_per_hour: 10,
             poll_rate_limit_per_hour: 300,
             enforce_poll_interval: true,
+            render_concurrency: 2,
             public_url: "https://api.vitrinestudio.app".to_owned(),
             github_client_id: DEFAULT_GITHUB_CLIENT_ID.to_owned(),
             github_client_secret: None,
             session_days: 90,
             official_logins: vec![DEFAULT_OFFICIAL_LOGIN.to_owned()],
             web_login_return_url: None,
+            cors_origins: Vec::new(),
             github_url: "https://github.com".to_owned(),
             github_api_url: "https://api.github.com".to_owned(),
         }
@@ -221,6 +232,33 @@ fn parse_logins(var: &str, v: &str) -> anyhow::Result<Vec<String>> {
         .collect()
 }
 
+/// Origins `scheme://host[:port]` (http or https, no path; a trailing `/`
+/// is dropped), stored lowercase.
+fn parse_origins(var: &str, v: &str) -> anyhow::Result<Vec<String>> {
+    entries(v)
+        .map(|(pos, origin)| {
+            let o = origin.trim_end_matches('/').to_ascii_lowercase();
+            let rest = o
+                .strip_prefix("https://")
+                .or_else(|| o.strip_prefix("http://"));
+            match rest {
+                Some(host)
+                    if !host.is_empty()
+                        && host.bytes().all(|b| {
+                            b.is_ascii_alphanumeric()
+                                || matches!(b, b'.' | b'-' | b':' | b'[' | b']')
+                        }) =>
+                {
+                    Ok(o)
+                }
+                _ => Err(anyhow::anyhow!(
+                    "{var}: entry {pos} is not an origin like https://www.example.com"
+                )),
+            }
+        })
+        .collect()
+}
+
 fn parse<T: std::str::FromStr>(var: &str, v: &str) -> anyhow::Result<T> {
     v.trim()
         .parse()
@@ -284,6 +322,15 @@ impl Config {
         }
         c.web_login_return_url =
             get("VITRINE_API_WEB_LOGIN_RETURN_URL").map(|v| v.trim().to_owned());
+        if let Some(v) = get("VITRINE_API_RENDER_CONCURRENCY") {
+            c.render_concurrency = parse("VITRINE_API_RENDER_CONCURRENCY", &v)?;
+            if c.render_concurrency == 0 {
+                anyhow::bail!("VITRINE_API_RENDER_CONCURRENCY: must be at least 1");
+            }
+        }
+        if let Some(v) = get("VITRINE_API_CORS_ORIGINS") {
+            c.cors_origins = parse_origins("VITRINE_API_CORS_ORIGINS", &v)?;
+        }
         Ok(c)
     }
 
@@ -384,6 +431,31 @@ mod tests {
             .to_string();
         assert!(e.contains("VITRINE_API_BIND"), "{e}");
         assert!(with(&[("VITRINE_API_SESSION_DAYS", "0")]).is_err());
+    }
+
+    #[test]
+    fn cors_origins() {
+        let c = with(&[(
+            "VITRINE_API_CORS_ORIGINS",
+            "https://www.vitrinestudio.app/, http://localhost:1313 ,",
+        )])
+        .unwrap();
+        assert_eq!(
+            c.cors_origins,
+            ["https://www.vitrinestudio.app", "http://localhost:1313"]
+        );
+        assert_eq!(Config::default().cors_origins, Vec::<String>::new());
+        for bad in [
+            "*",
+            "www.vitrinestudio.app",
+            "https://x.app/gallery",
+            "ftp://x",
+        ] {
+            let e = with(&[("VITRINE_API_CORS_ORIGINS", bad)])
+                .unwrap_err()
+                .to_string();
+            assert!(e.contains("VITRINE_API_CORS_ORIGINS"), "{e}");
+        }
     }
 
     #[test]

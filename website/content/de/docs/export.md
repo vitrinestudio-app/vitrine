@@ -117,10 +117,14 @@ vitrine export --project my-app --target ios-iphone-69 --lang de
 vitrine export --out ~/Desktop/shots --force          # anderer Ordner, alles neu rendern
 vitrine export --layout fastlane --out ../fastlane    # deliver-/supply-Ordner
 vitrine export --no-gallery --no-html --format json   # für Skripte
+vitrine export --gallery-only --target play-phone     # nur _gallery.png, ein schneller Blick
 ```
 
 Ein kompletter Export des Beispielprojekts (neun Ziele, vier Sprachen) dauert
-in einem Release-Build etwa zwei Sekunden. Exit-Code 1 bedeutet, dass einige
+in einem Release-Build etwa zwei Sekunden. Projekte mit vielen großen Fotos
+brauchen länger – die meiste Zeit kostet das Komprimieren der PNGs (etwa 25
+Sekunden für 84 Fotoseiten). `--gallery-only` schreibt nur die
+Galerie-Vorschauen und lässt die Seitendateien früherer Exporte stehen. Exit-Code 1 bedeutet, dass einige
 Dateien nicht exportiert werden konnten; siehe [CLI-Referenz](../cli/).
 
 ## Einzelne Vorschauen rendern {#rendering-single-previews}

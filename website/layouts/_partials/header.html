@@ -1,6 +1,7 @@
 {{- $home := site.Home.RelPermalink -}}
 {{- $mark := resources.Get "brand/vitrine-studio-nobackground.svg" | fingerprint -}}
 {{- $docs := site.GetPage "/docs" -}}
+{{- $gallery := site.GetPage "/gallery" -}}
 <header class="site-header" data-header>
   <div class="wrap site-header__inner">
     <a class="brand" href="{{ $home }}" aria-label="{{ site.Title }} – {{ T "home" }}">
@@ -13,7 +14,9 @@
         <li><a href="{{ $home }}#features">{{ T "navFeatures" }}</a></li>
         <li><a href="{{ $home }}#ai">{{ T "navAI" }}</a></li>
         <li><a href="{{ $home }}#fastlane">fastlane</a></li>
-        <li><a href="{{ $home }}#templates">{{ T "navTemplates" }}</a></li>
+        {{- with $gallery }}
+        <li><a href="{{ .RelPermalink }}"{{ if eq $.RelPermalink .RelPermalink }} aria-current="page"{{ end }}>{{ T "navTemplates" }}</a></li>
+        {{- end }}
         {{- with $docs }}
         <li><a href="{{ .RelPermalink }}"{{ if or (eq $.Section "docs") }} aria-current="page"{{ end }}>{{ T "navDocs" }}</a></li>
         {{- end }}

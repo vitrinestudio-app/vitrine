@@ -101,9 +101,13 @@ bis zum Neustart der App; mit einem **Festen Port** bleibt der Port gleich.
 - **Das Ergebnis sehen:** `render_preview` liefert das gerenderte Bild – ein
   exportiertes Bild, die ganze Leinwand mit Lücken oder die Store-Galerie –
   plus die Probleme dieses Ziels und dieser Sprache. `layout_report` zeigt, wie
-  jeder Text eingepasst wurde.
+  jeder Text eingepasst wurde. Die Galerie lässt sich auf der dunklen
+  Store-Seite zeigen (`background: dark`), für große Sets als JPEG schicken
+  oder ins Projekt speichern (`out_file`, z. B. für eine README).
 - **Prüfen und erzeugen:** prüfen, exportieren, Screenshots und Schriften
-  importieren.
+  importieren. Ein Export, der länger als etwa 45 Sekunden dauert, läuft im
+  Hintergrund weiter; der Assistent fragt mit `export_status` nach, bis er
+  fertig ist.
 - **Vorlagen:** auflisten, speichern, einfügen.
 - **Uploads:** planen und – mit deiner Bestätigung – ausführen (siehe unten).
 

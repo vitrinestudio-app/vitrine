@@ -30,7 +30,11 @@ use serde::{Deserialize, Serialize};
 use crate::model::{CanvasId, ElementId, Lang, Project, StringKey, StyleKind, Styles, TargetId};
 use crate::ops::Op;
 
-use super::{Package, TemplateError, archive, instantiate::adapt_languages, walk};
+use super::{
+    Package, TemplateError, archive,
+    instantiate::{adapt_languages, sample_copies},
+    walk,
+};
 
 /// How a style name used by both the project and the template with
 /// different definitions is resolved.
@@ -99,8 +103,13 @@ pub struct InsertReport {
     pub keys_renamed: Vec<Renamed>,
     /// `(language, template language)` whose texts were copied over.
     pub copied_texts: Vec<(Lang, Lang)>,
-    /// Project paths of copied files (assets, fonts, licences).
+    /// Project paths of copied files (assets, fonts, licences, samples).
     pub files: Vec<String>,
+    /// Project paths of the copied sample screenshots (also in `files`;
+    /// marked in `screenshots/samples.yaml`). A screenshot the project
+    /// already has is never replaced.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub samples: Vec<String>,
 }
 
 /// Ops and files of an insert.
@@ -170,6 +179,7 @@ pub fn plan_insert(
         _ => full.canvases.iter().map(|c| c.id.to_string()).collect(),
     };
     let mut tpl = walk::subset(&full, &selected);
+    let template_langs = tpl.languages.clone();
     let mut report = InsertReport::default();
 
     // Languages: the project's, default first.
@@ -226,6 +236,27 @@ pub fn plan_insert(
             planned.insert(licence_to);
         }
     }
+    // Sample screenshots of the inserted canvases, where the project has no
+    // screenshot of that name yet (any extension).
+    let keys: BTreeSet<String> = tpl
+        .canvases
+        .iter()
+        .flat_map(walk::screenshots)
+        .map(|u| u.key)
+        .collect();
+    for (from, to) in sample_copies(pkg, &template_langs, &langs, Some(&keys)) {
+        let stem = to.rsplit_once('.').map_or(to.as_str(), |(s, _)| s);
+        let taken = crate::resolve::SCREENSHOT_EXTENSIONS.iter().any(|ext| {
+            let p = format!("{stem}.{ext}");
+            planned.contains(&p) || archive::join(root, &p).exists()
+        });
+        if taken {
+            continue;
+        }
+        planned.insert(to.clone());
+        report.samples.push(to.clone());
+        files.push(FileCopy { from, to });
+    }
     report.files = files.iter().map(|f| f.to.clone()).collect();
 
     // Ops: styles, texts, canvases, targets – one transaction.
@@ -266,6 +297,28 @@ pub fn plan_insert(
         .apply_ops(ops.clone())
         .map_err(op_err("the inserted canvases do not fit the project"))?;
     Ok(InsertPlan { ops, files, report })
+}
+
+/// Marks the sample screenshots an insert copied (call after writing
+/// `plan.files`).
+pub fn mark_samples(root: &Path, pkg: &Package, plan: &InsertPlan) -> Result<(), TemplateError> {
+    if plan.report.samples.is_empty() {
+        return Ok(());
+    }
+    let mut marks = crate::samples::SampleMarks::load(root);
+    if marks.template.is_empty() {
+        marks.template.clone_from(&pkg.manifest.id);
+    }
+    for f in plan
+        .files
+        .iter()
+        .filter(|f| plan.report.samples.contains(&f.to))
+    {
+        marks.add(&f.to, pkg.file(&f.from).unwrap_or_default());
+    }
+    marks
+        .save(root)
+        .map_err(|e| TemplateError::Project(e.to_string()))
 }
 
 /// Where a package file goes: its own path, a reused identical file

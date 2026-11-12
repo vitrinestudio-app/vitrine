@@ -28,6 +28,8 @@ zip.workspace = true
 flate2.workspace = true
 # Templates walk canvases as JSON (asset references in any field).
 serde_json.workspace = true
+# Sample screenshots from templates are recognised by their SHA-256.
+sha2.workspace = true
 
 [dev-dependencies]
 insta.workspace = true

@@ -2,14 +2,18 @@
 //! screen): all canvases, targets, styles, texts, assets and fonts. The
 //! placeholder screenshots stay in the template – the new project shows the
 //! editor's placeholder until real screenshots are added, so no
-//! placeholder can end up in a store upload.
+//! placeholder can end up in a store upload. Sample screenshots (the
+//! author's own, listed in the manifest) are copied and marked in
+//! `screenshots/samples.yaml` (`core::samples`): validation reports them
+//! and store uploads refuse them until they are replaced.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::io::IoError;
 use crate::model::{Lang, Languages, Project, StringKey};
+use crate::samples::SampleMarks;
 
 use super::{Package, TemplateError, archive, walk};
 
@@ -126,12 +130,51 @@ pub(crate) fn adapt_languages(tpl: &mut Project, langs: &[Lang]) -> Vec<(Lang, L
     copied
 }
 
+/// Where the template's sample screenshots go in a project with `langs`
+/// (the first is the default): `(package path, project path)`. A sample of
+/// template language `src` is copied to the project's default language when
+/// `src` serves it ([`source_lang`]) and to every project language equal to
+/// `src`; other languages fall back to the default language's files. With
+/// `keys`, only samples of those screenshot keys.
+pub(crate) fn sample_copies(
+    pkg: &Package,
+    template: &Languages,
+    langs: &[Lang],
+    keys: Option<&BTreeSet<String>>,
+) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for path in &pkg.manifest.samples {
+        let Some(rest) = path.strip_prefix("screenshots/") else {
+            continue;
+        };
+        let Some((src, tail)) = rest.split_once('/') else {
+            continue;
+        };
+        if let Some(keys) = keys {
+            let file = tail.rsplit('/').next().unwrap_or(tail);
+            let stem = file.rsplit_once('.').map_or(file, |(s, _)| s);
+            if !keys.contains(stem) {
+                continue;
+            }
+        }
+        for (i, lang) in langs.iter().enumerate() {
+            let serves = source_lang(template, lang).as_str() == src;
+            if serves && (i == 0 || lang.as_str() == src) {
+                out.push((path.clone(), format!("screenshots/{lang}/{tail}")));
+            }
+        }
+    }
+    out
+}
+
 /// Result of [`create_project`].
 #[derive(Debug)]
 pub struct Created {
     pub project: Project,
     /// `(language, copied from)` for texts that need translating.
     pub copied_texts: Vec<(Lang, Lang)>,
+    /// Project paths of the copied sample screenshots.
+    pub samples: Vec<String>,
 }
 
 /// Creates a project from `pkg` in `dir` (which must not exist or be
@@ -165,6 +208,7 @@ pub fn create_project(
         return Err(TemplateError::invalid("at least one language is required"));
     };
     let mut project = pkg.project()?;
+    let samples = sample_copies(pkg, &project.languages, langs, None);
     let copied_texts = adapt_languages(&mut project, langs);
     name.clone_into(&mut project.name);
     project.revision = 0;
@@ -191,11 +235,26 @@ pub fn create_project(
         let path = dir.join(sub);
         fs::create_dir_all(&path).map_err(TemplateError::io(&path))?;
     }
+    let mut marks = SampleMarks {
+        template: pkg.manifest.id.clone(),
+        ..SampleMarks::default()
+    };
+    for (from, to) in &samples {
+        let data = pkg.file(from).unwrap_or_default();
+        let dest = archive::join(dir, to);
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent).map_err(TemplateError::io(parent))?;
+        }
+        fs::write(&dest, data).map_err(TemplateError::io(&dest))?;
+        marks.add(to, data);
+    }
+    marks.save(dir).map_err(|e| io_error(&e))?;
     project.save(dir).map_err(|e| io_error(&e))?;
     let project = Project::load(dir).map_err(|e| io_error(&e))?;
     Ok(Created {
         project,
         copied_texts,
+        samples: samples.into_iter().map(|(_, to)| to).collect(),
     })
 }
 

@@ -73,11 +73,21 @@ Unter Windows und Linux liest du in diesem Handbuch <kbd>⌘</kbd> als
 Hintergründe, die über **alle** Seiten laufen, gehören zur Leinwand: Heb die
 Auswahl auf und bearbeite **Leinwand-Hintergründe** im Inspektor.
 
+Ein **Seitenhintergrund** füllt seine ganze Heimatseite; ein Klick auf die
+Seite wählt deshalb das Element davor aus, nicht den Hintergrund. Du wählst
+ihn per **Doppelklick auf eine freie Stelle** der Seite, mit Rechtsklick →
+*Hintergrund „…“ auswählen*, unter **Ebenen** oder in den Einstellungen der
+Leinwand (nichts ausgewählt) unter **Seitenhintergründe** aus – dort gibt es
+auch *Seitenhintergrund hinzufügen*. Der Inspektor bearbeitet dann
+*Heimatseite*, *Füllung* (Farbe, Verlauf oder Bild), *Deckkraft*, *Ebene
+(z)*, *Beschnitt* und die Sichtbarkeit.
+
 ## Auswählen {#selecting}
 
 - **Klick** wählt ein Element aus (eine Gruppe als Ganzes).
 - **Doppelklick** wählt das Element innerhalb seiner Gruppe aus – bei einem
-  Text öffnet er den Text zum Bearbeiten.
+  Text öffnet er den Text zum Bearbeiten, auf einer freien Stelle einer Seite
+  wählt er das Hintergrund-Element der Seite aus.
 - <kbd>⌘</kbd> + Klick wählt das Element unter dem Mauszeiger direkt aus,
   auch innerhalb einer Gruppe.
 - <kbd>Umschalt</kbd> + Klick fügt zur Auswahl hinzu oder entfernt daraus.
@@ -170,7 +180,7 @@ wichtigsten:
   *Schriftgröße*, *Kontur*, *Leuchten*, *Schatten*. Darunter zeigt *Gesetzt*
   die Schriftgröße und Zeilenzahl, die der Text tatsächlich bekommen hat, oder
   *Text passt nicht in die Box*.
-- **Bild:** *Asset*, *Einpassung*, *Schatten*. **Form:** *Form*, *Radius*,
+- **Bild:** *Asset* (der Augen-Button öffnet die Bildvorschau), *Einpassung*, *Schatten*. **Form:** *Form*, *Radius*,
   *Füllung*, *Kontur*. Füllungen können eine Farbe, ein linearer oder radialer
   Verlauf oder ein Bild sein.
 
@@ -182,7 +192,12 @@ nehmen `#RRGGBB`, `#RRGGBBAA` oder eine Projektfarbe (`@accent`).
 Ist **nichts ausgewählt**, zeigt der Inspektor die **Einstellungen der
 Leinwand**: *Seitenverhältnis* und *Seitenhöhe*, Anzahl der *Seiten*
 (am Ende hinzufügen oder entfernen), *Seiten-IDs* (sie benennen die
-exportierten Dateien), *Leinwand-Hintergründe* und die *Varianten*.
+exportierten Dateien), *Leinwand-Hintergründe*, *Seitenhintergründe* und
+die *Varianten*.
+
+Der Inspektor ist breiter als früher und **in der Breite veränderbar**: Zieh
+seinen linken Rand (Doppelklick darauf: Standardbreite). Die Breite bleibt
+gespeichert.
 
 {{< shot src="images/inspector-text.jpg" alt="Der Inspektor mit einem ausgewählten Textelement." caption="Der Inspektor mit einem ausgewählten Text." >}}
 
@@ -210,20 +225,20 @@ z. B. die Smartphones im iPad-Querformat-Set etwas tiefer – als
   zurücksetzen*.
 - Stell die Auswahl auf **Basis**, um das gemeinsame Layout zu bearbeiten.
 - **Neue Variante …** (Auswahl Variante, Einstellungen der Leinwand oder
-  *Leinwände & Ausgabeziele*): *Name*, *Basiert auf* (das Basis-Layout oder
+  *Leinwände & Ziele*): *Name*, *Basiert auf* (das Basis-Layout oder
   eine Kopie einer anderen Variante), *Inhalts-Skalierung* (skaliert Geräte
   und Bilder in dieser Variante) und *Gezeigt von* (Ziele, die sie ab jetzt
   verwenden).
 
 Welche Variante ein Ziel **exportiert**, steht im Ziel (*Leinwände &
-Ausgabeziele* → Ziel → *Variante*). Siehe
+Ziele* → Ziel → *Variante*). Siehe
 [Ziele & Store-Formate](../targets/).
 
 ## Leinwände {#canvases}
 
 Der Tab **Leinwände** listet die Leinwände des Projekts mit ihren Seiten und
 Zielen; **Neue Leinwand …** und **Verwalten …** öffnen *Leinwände &
-Ausgabeziele* (auch im ☰-Menü). Dort kannst du
+Ziele* (auch im ☰-Menü). Dort kannst du
 
 - eine Leinwand anlegen – *Leer*, *Überschrift + Gerät* (eine Überschrift und
   ein Gerät auf jeder Seite) oder als *Kopie einer Leinwand* – mit einem
@@ -273,7 +288,13 @@ man einen gewollten mit `allow` markiert – erklärt
 
 ## Hilfe in der App {#help-in-the-app}
 
+Das ☰-Menü öffnet sich über den ☰-Button, das App-Symbol oder den
+Projektnamen in der oberen Leiste (mit Fokus auch per <kbd>Enter</kbd>/
+<kbd>Leertaste</kbd>; die Pfeiltasten gehen durch die Einträge).
+
 - **Tastatur & Maus …** (☰ → Hilfe, der **?**-Button in der unteren Leiste
   oder <kbd>?</kbd>) – alle Tastenkürzel und Gesten. Auch auf
   [Tastatur & Maus](../shortcuts/).
 - **So ist Vitrine Studio aufgebaut …** – die Übersicht auf einer Seite.
+- **Apple Product Bezels herunterladen** (oben im Hilfe-Menü) öffnet Apples
+  Design-Resources-Seite – siehe [Geräte & Frames](../devices-frames/).

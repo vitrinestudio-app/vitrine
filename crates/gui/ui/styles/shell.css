@@ -2,7 +2,8 @@
 
 .app {
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr) 256px;
+  /* --inspector-w: set by the inspector's resize handle (shell.js). */
+  grid-template-columns: var(--left-w, 232px) minmax(0, 1fr) var(--inspector-w, 340px);
   grid-template-rows: 44px minmax(0, 1fr);
   grid-template-areas:
     "top top top"
@@ -28,6 +29,30 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 220px;
+}
+
+/* ☰ + app icon + project name: one button that opens the app menu. */
+.topbar .menu-trigger {
+  width: auto;
+  max-width: 300px;
+  padding: 0 4px;
+  gap: 4px;
+  height: 30px;
+  color: var(--fg);
+}
+
+.topbar .menu-trigger > svg {
+  color: var(--fg-muted);
+  flex: none;
+}
+
+.topbar .menu-trigger .logo {
+  margin-right: 0;
+  flex: none;
+}
+
+.topbar .menu-trigger .project-name {
+  padding: 0 4px 0 2px;
 }
 
 .topbar .sep {
@@ -63,6 +88,43 @@
 .sidebar-right {
   grid-area: right;
   border-left: 1px solid var(--border);
+  position: relative;
+}
+
+/* Drag handle on the inspector's left edge (resize; double-click = default width). */
+.inspector-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* Inside the edge: the sidebar clips overflow. */
+  left: 0;
+  width: 6px;
+  z-index: 5;
+  cursor: col-resize;
+  outline: none;
+}
+
+.inspector-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1px;
+  width: 2px;
+  background: transparent;
+  transition: background 0.12s;
+}
+
+.inspector-resizer:hover::after,
+.inspector-resizer.dragging::after,
+.inspector-resizer:focus-visible::after {
+  background: var(--accent);
+}
+
+body.resizing-inspector,
+body.resizing-inspector * {
+  cursor: col-resize !important;
+  user-select: none;
 }
 
 .panel-body {
@@ -83,6 +145,7 @@
 }
 
 .center {
+  container-type: inline-size;
   grid-area: center;
   display: flex;
   flex-direction: column;
@@ -150,10 +213,21 @@
 
 @media (max-width: 1100px) {
   .app {
-    grid-template-columns: 200px minmax(0, 1fr) 220px;
+    --left-w: 200px;
   }
 
   .topbar .picker .picker-label {
+    display: none;
+  }
+}
+
+/* A wide inspector leaves little room: the view switch shows icons only. */
+.bottombar .segmented button {
+  white-space: nowrap;
+}
+
+@container (max-width: 680px) {
+  .bottombar .seg-label {
     display: none;
   }
 }

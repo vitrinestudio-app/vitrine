@@ -16,7 +16,9 @@
         <li><a href="{{ $home }}#features">{{ T "navFeatures" }}</a></li>
         <li><a href="{{ $home }}#ai">{{ T "navAI" }}</a></li>
         <li><a href="{{ $home }}#fastlane">fastlane</a></li>
-        <li><a href="{{ $home }}#templates">{{ T "navTemplates" }}</a></li>
+        {{- with site.GetPage "/gallery" }}
+        <li><a href="{{ .RelPermalink }}">{{ T "navTemplates" }}</a></li>
+        {{- end }}
         <li><a href="{{ relLangURL "download/" }}">{{ T "navDownload" }}</a></li>
       </ul>
     </nav>

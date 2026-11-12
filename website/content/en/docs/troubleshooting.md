@@ -42,6 +42,7 @@ common ones:
 | `stored_frames_stale` | info | bezels stored in the project are no longer used, or this computer has a newer import – update the stored frames. |
 | `imported_frames_stored` | info | the project stores Apple bezels – keep the repository private. |
 | `color_profile_unsupported` | info | an image's colour profile can't be used (CMYK, HDR) – it is drawn as sRGB. |
+| `background_hidden` | warning | a canvas background layer lies under an opaque one and never shows – canvas backgrounds are layers, not one per page (see below). |
 
 In the app, **Show on the canvas** jumps to the element.
 
@@ -73,6 +74,18 @@ edit was not saved.
 Auto-fit shrank it to fit. Give German a [language override](../languages/#language-overrides)
 with a wider box or a higher minimum size, add a soft hyphen, or switch on
 hyphenation.
+
+**I gave the canvas one background colour per page, but every page has the same colour.**
+The canvas backgrounds are **layers** over the whole canvas, bottom to top –
+the top opaque one covers the others. For a colour (or photo) per page add a
+*Background* element on each page; it fills its page at every target's
+height. Elements paint in the order of their layer (`z`) and the layers list,
+so keep page backgrounds at the bottom (a low `z`).
+
+**My background element disappeared behind a photo.**
+Background elements are ordinary layers: an opaque image above them in the
+layers list (or with a higher `z`) covers them. Move the background down or
+give the image transparent areas.
 
 **The phone sits too high on Google Play.**
 Google Play's 1:2 page is shorter than the iPhone page. Set the phone's

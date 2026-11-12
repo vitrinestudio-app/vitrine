@@ -33,9 +33,31 @@ fn save_insert_undo_export_import_and_new_project() {
     let saved = call(
         app,
         "template_save",
-        json!({"name": "Mac set", "canvases": ["mac"], "tags": ["desktop"]}),
+        json!({"name": "Mac set", "canvases": ["mac"],
+               "tags": {"style": ["minimal"], "color": ["light"], "use": ["productivity"]}}),
     );
     assert_eq!(saved["template"]["id"], "mac-set");
+    assert_eq!(saved["template"]["tags"]["style"], json!(["minimal"]));
+    assert_eq!(saved["template"]["devices"], json!(["mac"]));
+    let bad = dispatch(
+        app,
+        "template_save",
+        json!({"name": "Bad", "canvases": ["mac"], "tags": {"style": ["fancy"]}}),
+    )
+    .unwrap_err();
+    assert!(bad.message.contains("allowed: minimal"), "{bad:?}");
+    let tags = call(app, "template_tags", json!({}));
+    assert_eq!(tags["facets"].as_array().unwrap().len(), 4);
+    let with_samples = call(
+        app,
+        "template_save",
+        json!({"name": "Phone samples", "canvases": ["phone"], "sample_screenshots": true}),
+    );
+    assert!(with_samples["template"]["samples"].as_u64().unwrap() > 0);
+    assert_ne!(
+        with_samples["report"]["samples"].as_array().unwrap().len(),
+        0
+    );
     assert!(saved["template"]["canvases"][0]["preview"].is_string());
     let list = call(app, "template_list", json!({}));
     assert!(

@@ -64,6 +64,15 @@ plus Tauri's default macOS menu (English, no app actions).
 - Help links must be in `HELP_URLS` (`vitrine_app::commands::os`); user
   guide links can be added there once the guide is online.
 
+## Amendment (2026-11-12): menu order, bezels link
+
+Owner feedback: "Close project" moved directly below "Open project" (File
+menu and in-app menu, `ITEMS`). The Help menu starts with "Download Apple
+Product Bezels" (`APPLE_BEZELS_URL` in `HELP_URLS`), above the quick guide
+and the gestures sheet; the in-app menu shows it first in its help part.
+The in-app menu opens from the ☰ button, the app icon and the project name
+(one button).
+
 ## Amendment (2026-11-11): in-app help
 
 The Help menu now starts with the app's own help: "How Vitrine Studio is

@@ -98,7 +98,8 @@ pub struct GalleryInfo {
     /// Corner radius of the images in canvas lu (`x` along the width).
     pub radius: Vec2,
     pub background: Option<Rgba>,
-    /// Dark-mode page colour behind the gallery, if known.
+    /// The store's page colour in dark mode (gallery preview on `dark`,
+    /// design check `page_blends_with_store`), if known.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub background_dark: Option<Rgba>,
     /// How the preset's values were obtained (`no` = not yet measured,
@@ -606,6 +607,9 @@ pub enum DiagnosticCode {
     /// A page of a `screenshot_only` target has no device: the image
     /// stays empty.
     ScreenshotOnlyEmpty,
+    /// A canvas background layer lies under an opaque layer and is never
+    /// visible (canvas backgrounds are layers, not one fill per page).
+    BackgroundHidden,
 }
 
 /// An info or warning collected during resolve.

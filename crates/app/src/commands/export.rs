@@ -94,6 +94,10 @@ pub struct ExportArgs {
     /// layout).
     #[serde(default)]
     pub gallery: Option<bool>,
+    /// Write the page/banner images (default true). `false` = only the
+    /// gallery previews (standard layout; earlier page files are kept).
+    #[serde(default)]
+    pub pages: Option<bool>,
     /// Folder structure (`standard` | `fastlane`).
     #[serde(default)]
     pub layout: ExportLayout,
@@ -122,6 +126,12 @@ pub fn export(app: &AppState, args: ExportArgs) -> CmdResult<ExportReport> {
     let project = session.snapshot();
     for t in &args.targets {
         check_target(&project, t)?;
+    }
+    let pages = args.pages.unwrap_or(true);
+    if !pages && (args.layout == ExportLayout::Fastlane || args.gallery == Some(false)) {
+        return Err(CommandError::invalid(
+            "pages: false writes only the gallery previews: it needs the standard layout and gallery",
+        ));
     }
     let cancel = Arc::new(AtomicBool::new(false));
     {
@@ -158,6 +168,7 @@ pub fn export(app: &AppState, args: ExportArgs) -> CmdResult<ExportReport> {
             targets: args.targets,
             langs: args.langs,
             gallery: args.gallery.unwrap_or(true),
+            pages,
             incremental: !args.force,
             hooks: ExportHooks {
                 progress: Some(progress),

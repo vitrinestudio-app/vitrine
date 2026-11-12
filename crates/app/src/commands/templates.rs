@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use vitrine_core::template::extract::{SaveOptions, SaveReport, extract};
 use vitrine_core::template::insert::{InsertOptions, InsertReport, StyleConflict, plan_insert};
 use vitrine_core::template::store::TemplateStore;
+use vitrine_core::template::tags::{Taxonomy, taxonomy};
 use vitrine_core::template::{EXTENSION, Limits, Package, TEMPLATES_DIR, TemplateSummary};
 use vitrine_render::template::{PREVIEW_HEIGHT, add_previews};
 
@@ -33,6 +34,13 @@ fn generator() -> String {
 /// Built-in and installed templates.
 pub fn template_list(app: &AppState, _: NoArgs) -> CmdResult<Vec<TemplateSummary>> {
     Ok(app.templates().list())
+}
+
+/// The template tag taxonomy (`crates/core/data/template-tags.yaml`):
+/// facets `style`, `color`, `use` (set by the author, with min/max) and the
+/// derived `devices`, each value with English and German labels.
+pub fn template_tags(_: &AppState, _: NoArgs) -> CmdResult<Taxonomy> {
+    Ok(taxonomy().clone())
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -220,11 +228,15 @@ pub fn template_insert(
         names.join(", "),
         pkg.manifest.name
     );
-    match session.apply_ops(plan.ops, Some(label)) {
-        Ok(result) => Ok(TemplateInsertResult {
-            result,
-            report: plan.report,
-        }),
+    let marked = vitrine_core::template::insert::mark_samples(&root, &pkg, &plan);
+    match session.apply_ops(plan.ops.clone(), Some(label)) {
+        Ok(result) => {
+            marked?;
+            Ok(TemplateInsertResult {
+                result,
+                report: plan.report,
+            })
+        }
         Err(e) => {
             remove_all(&written);
             Err(e)

@@ -81,17 +81,29 @@ pub trait AssetLookup {
         let _ = path;
         None
     }
+
+    /// Is the file at `path` an unchanged sample screenshot from a
+    /// template (`core::samples`)? `false` (the default) when unknown.
+    fn is_sample(&self, path: &str) -> bool {
+        let _ = path;
+        false
+    }
 }
 
 /// Looks files up below a project folder on disk.
 #[derive(Clone, Debug)]
 pub struct FsAssets {
     pub root: PathBuf,
+    /// `screenshots/samples.yaml`, read on first use.
+    samples: std::sync::Arc<std::sync::OnceLock<crate::samples::SampleMarks>>,
 }
 
 impl FsAssets {
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+        Self {
+            root: root.into(),
+            samples: std::sync::Arc::default(),
+        }
     }
 }
 
@@ -109,6 +121,13 @@ impl AssetLookup for FsAssets {
     /// Reads only the header and the embedded profile (cached per file).
     fn color_note(&self, path: &str) -> Option<String> {
         crate::colorspace::inspect_file(&self.root.join(path))
+    }
+
+    /// Reads the sample marker once, then compares the file's content.
+    fn is_sample(&self, path: &str) -> bool {
+        self.samples
+            .get_or_init(|| crate::samples::SampleMarks::load(&self.root))
+            .is_sample(&self.root, path)
     }
 }
 

@@ -3,6 +3,97 @@
 Living hand-off document so work can continue after a context reset. Keep it
 current: update after each phase/merge and whenever the user decides something.
 
+## Coordinator hand-off (2026-11-12, before a context compaction)
+
+Read this first when resuming. Repo: github.com/vitrinestudio-app/vitrine
+(remote `origin`; old repo = remote `old-arrangia`, to be archived/deleted
+by the owner). Local folder still `/Users/thorsten/Dev/arrangia`.
+
+**Subagents running at hand-off time** (worktrees under `.claude/worktrees/`,
+each reports back; merge with `--no-ff`, resolve STATUS/NOTES/i18n
+conflicts by keeping both sides, run the gate, push, check CI per OS):
+- MCP findings A – bugs (render_preview height 0, multiple canvas
+  backgrounds, 80 s timeouts), docs gaps, export/preview P2.4–P2.6, P2.1–P2.3,
+  P3 triage → answers in `docs/research/2026-11-12-mcp-test-results.md`.
+- MCP findings B – quality checks P1.1–P1.8 (text near device, screen box,
+  contrast, seams, pixel overlap, gap per target, gallery corners).
+- GUI polish – menu order ("Projekt schließen"), Apple bezels help link,
+  ☰ on app icon/project name, "Leinwände & Ziele", resizable wider
+  inspector, image preview lightbox, **background elements editable**.
+- Website gallery page (started 2026-11-12, owner: "really cool"): all templates loaded once, local filters (style/color/use/devices, AND across facets) with FLIP enter/leave/reorder animation; phone canvas shown unless a device filter selects another canvas; floating rounded pages from the sprites, mouse tilt; detail view + download; build-time snapshot + live refresh, CORS on the API if needed; dev data from copies of the owner's templates via a local API server.
+- Fonts – system fonts first-class (+ "store used system fonts in the
+  project", licence warning), template save without non-OFL fonts
+  (`--skip-unlicensed-fonts`), bundled Noto for Arabic/Hebrew/Devanagari/
+  Bengali/Tamil/Thai, CJK via system fonts + font-pack proposal.
+
+**Release 0.1.0** (tag `v0.1.0` on 3152f19, draft release not yet created):
+macOS universal signed + notarized ✅, Windows NSIS (unsigned) ✅, Linux ❌ –
+AppImage bundling fails in `linuxdeploy` even with
+`APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true` + libfuse2. Waiting for the owner
+to paste the verbose log tail (Actions → Release v0.1.0 → Build linux →
+"Build and bundle"), or the OK to ship 0.1.0 without AppImage (deb/rpm only).
+Then: delete + re-push the tag (no release exists yet), owner reviews and
+publishes the draft, makes the ghcr package `vitrine-cli` public, enables
+website downloads. Public API (no auth) for run/job status:
+`api.github.com/repos/vitrinestudio-app/vitrine/actions/runs/<id>/jobs`
+(steps + conclusions; logs need auth – ask the owner). Helper scripts used:
+`scratchpad/ci2.sh <sha>` (CI per OS), `scratchpad/run.sh <run id>`.
+
+**Server** api.vitrinestudio.app (owner's Docker/Portainer, nginx): running
+`vitrine-api` (renamed from gallery-server), GitHub login verified
+(`vitrine gallery login` as Looking4Cache). Pending owner step: upgrade per
+`docs/api/DEPLOY.md` "Upgrade 2026-11-12" (tags/samples/sprites migration),
+then save + dry-run + upload the ~50 templates
+(`/Users/thorsten/cloud.grove.eco/App Development/App Vitrine-Studio/Vorlagen/`,
+read-only for agents) with the `vitrinestudio-app` token, approve via
+`vitrine gallery admin`. Next coordinator task after that: **website
+gallery page** on the sprite API (floating rounded pages reacting to the
+mouse, like the hero; filters by style/color/use/devices).
+
+**Website gallery page done (2026-11-12, worktree agent):** `/gallery/`,
+`/de/galerie/`, nav "Templates/Vorlagen", home teaser with live cards;
+API server: CORS allow list `VITRINE_API_CORS_ORIGINS`, list `limit` up to
+200, `canvases[].devices` (schema 2, backfilled on start). Owner steps:
+upgrade the server and set `VITRINE_API_CORS_ORIGINS=https://www.vitrinestudio.app,https://vitrinestudio.app`;
+rebuild the site after approving templates. Finding: templates with
+`--sample-screenshots` from the owner's projects are 80–210 MB (limit 50 MB)
+– needs a decision (smaller samples: one language / JPEG / fewer canvases,
+or a higher limit).
+
+**Open owner decisions (collected):**
+- CJK font pack (download on demand?) – after the fonts agent's proposal.
+- Gallery defaults to confirm (sample limits 10 MB/6000 px, WebP q80, local
+  templates may leave tag facets empty); gallery rule for templates with
+  "required, not included" fonts.
+- German wording: "Frame" vs "Rahmen" (UI mixes both); translate device/
+  colour names?
+- Release defaults to confirm: universal macOS build, no MSI, macOS ≥ 11,
+  daily update check on.
+- Switch Apple upload default to the App Asset Library after one real run
+  with "asset library only"; remove the screenshot-set API later (owner
+  asked 2026-11-12; answer: keep as fallback until verified/Apple date).
+- (g4) more CI integrations on demand; (g5) fastlane variable names.
+- Publish: GitLab project `vitrinestudio/vitrine-gitlab-ci` (owner creates,
+  coordinator pushes `integrations/gitlab/`), Marketplace release of
+  `vitrinestudio-app/vitrine-github-action` (pushed 7d1645d) after the
+  first Vitrine release; fastlane plugin gem.
+- SignPath application (needs public release + code signing policy page;
+  CLA relicensing clause vs "no commercial dual-licensing").
+- Website: Impressum/Datenschutz texts, deploy (www + redirect), images.
+
+**Lessons for coordinating:**
+- Worktree agents sometimes start from `origin/main`: push main before
+  spawning and tell every agent to `git merge main` first.
+- Never merge while a gate runs on the same working tree.
+- The owner may run `hugo serve` in `website/`: build checks go to a temp
+  dir (`hugo --minify -d <tmp>`), point the link checker there.
+- GUI checks: dev bridge (`--copy`, own `--app-dir`) + headless Chrome via
+  CDP (node 24 script) – Claude-in-Chrome is usually not connected.
+- Never use tokens the owner pastes into chat; tell them to run the command
+  themselves (`read -s`, `--token-env`).
+- Check `git status` before committing with `-a`: the owner edits files
+  (e.g. CLA.md, logo files, tauri.conf.json pubkey) in the same tree.
+
 ## Current state (2026-11-11)
 - 2026-11-11 Product renamed **Arrangia → Vitrine Studio** (CLI `vitrine`, crates `vitrine-*`, env `VITRINE_*`, identifier/keychain `app.vitrinestudio`, project format `vitrine/1`, export manifest `.vitrine-export.json`, MCP server / Claude Desktop key `vitrine-studio`, domain vitrinestudio.app). Old `arrangia/1` projects are rejected with a clear hint (no migration code). Names and paths: `docs/guide/NOTES.md` → "Names, app data and keychain".
 - Phase 0 (spike), Phase 1 (core + CLI), Phase 2 (GUI editor) done and reviewed by the user.
@@ -53,6 +144,12 @@ current: update after each phase/merge and whenever the user decides something.
   - Next: first `workflow_dispatch` run (checks `cli` + `image` jobs); after the first tag: make the ghcr package public (`docs/dev/releasing.md` §5); copy `integrations/github-action/` to its repo (coordinator), create the gitlab.com project.
 - Apple frames stored in the project for CI (2026-11-12, owner request, worktree agent embed, ADR 0027): project settings → **Frames** "Store used device frames in the project" / CLI `vitrine frames embed [--all-sizes|--used-only] [--dry-run]`, `frames unembed` copy the bezels the targets draw into `frames/imported/apple/` (app-store layout, README licence notice, package licence file); lookup project copy → app store → parametric; inspector shows the bezel's origin; infos `imported_frame_not_stored`, `imported_frames_stored`, `stored_frames_stale`; templates refuse them; imports keep the package licence file from now on. Tests: `crates/render/tests/stored_frames.rs` (pixel-identical render from the project with an empty app store), CLI + app tests. GUI tab checked in the dev bridge with synthetic bezels only.
   - Next: owner stores the real iPhone 18 bezels in Fernwood, checks the Frames tab and inspector hint in the real app, re-imports the bezel package once (so `License.rtf` lands next to the frames), then runs the CI export with an empty `VITRINE_APP_DIR`. Website `docs/ci` (§ "Device frames in CI") still says bezels can't be used in CI – to be pointed at `devices-frames/#apple-bezels-in-ci` (left to the CI agent's pages).
+- Gallery content features (2026-11-12, owner decisions, worktree agent gal, ADR 0023/0025 amendments): **sample screenshots** in templates (`template save --sample-screenshots`, GUI checkbox, MCP flag; `samples:` in `template.yaml`; new project/insert copy and mark them in `screenshots/samples.yaml` with SHA-256; info `sample_screenshot`; upload plan blocks such sets; server keeps them only with `?confirm_own_screenshots=true`), **fixed tag facets** (`crates/core/data/template-tags.yaml`, en/de labels; style/color/use + derived devices; CLI `--style/--color/--use`, `template tags`; GUI chip pickers; MCP enums; server filters + `GET /v1/tags`), **gallery sprites** (server renders WebP per canvas, 600 px + 2×, `/v1/templates/{id}/sprites/…` with ETag/long cache, metadata in list/detail; libwebp via the `webp` crate in the api-server only), **bulk upload / dry run / admin CLI** (`vitrine gallery upload <files…> --dry-run`, `gallery admin queue|approve|reject|rerender`), DB schema version 1 with idempotent migration + start-up backfill, admin `rerender` endpoint. Docs: API.md, DEPLOY.md (upgrade + bulk upload steps), website templates page en/de, NOTES. GUI dialog not looked at in the real app.
+  - Next (owner): server upgrade (`docs/api/DEPLOY.md` → "Upgrade 2026-11-12"), raise the upload rate limit for the bulk upload, save the ~50 templates with tags (+ `--sample-screenshots`), `gallery upload --dry-run` then real, `gallery admin approve`; check the Save-as-template dialog in the real app; a later agent builds the website gallery on the sprite API.
+- MCP test-run findings, bugs/docs/export side (2026-11-12, worktree agent mcpfix; `docs/research/2026-11-12-mcp-test-results.md` §8 "Status / Antworten", §9 P3 triage): `render_preview` gallery no longer fails on wide galleries (rendered lower, `note`; the "…×0" message was a wrong width check); canvas `backgrounds` documented as layers + warning `background_hidden`; timeouts traced to the debug GUI (≈ 7–15× slower renders) plus two real stalls – system-font fallback rebuilt under the model lock, and every render-context rebuild dropped all decoded images (now kept; 1.5 GiB LRU budget). MCP `export` returns after `wait_seconds` (default 45) and continues in the background (`export_status`), `pages: false` / CLI `--gallery-only`; `render_preview` `background: light|dark|#hex` (gallery profiles got `background_dark`, NOT measured), `format: jpeg`, `out_file`/`inline`; `catalog_devices` `frame` metrics (screen rect per orientation, tested against the drawn frames); docs_get overview sections on layers, groups, anchors, `content_scale`, devices; website FAQ/export/MCP (en+de).
+  - Proposed, not built (owner): group `scale` in variants (P2.1), `{lang}` placeholder in image `asset` paths (P2.3; touches templates), running the GUI with `--release` (or `opt-level = 1` for our render crate in dev) for long MCP sessions.
+- GUI feedback round (2026-11-12, owner, worktree agent gui4): ☰ menu: "Projekt schließen" right below "Projekt öffnen" (in-app + native File menu); Help menu starts with "Download Apple Product Bezels" (allow-listed `APPLE_BEZELS_URL`); the ☰ button, app icon and project name are one menu button (keyboard: Enter/Space, arrows, Esc); "Leinwände & Ausgabeziele" → "Leinwände & Ziele" (en was already "Canvases & targets"); inspector default 340 px (was 288), resizable by its left edge (260–640 px, centre keeps ≥ 420 px, localStorage `vitrine.inspector.width`, double-click resets, arrow keys on the focused handle); image preview (`dialogs/image-preview.js`, new app command `asset_info`: bytes, pixel size, format, colour space + note; `asset_thumbnail` max edge 2048, SVGs drawn at the requested edge) from the assets panel thumbnails (screenshots + images, ←/→ through the section) and the image inspector (eye button); background elements: model/ops/inspector already supported them – the bug was discoverability (canvas clicks and the marquee skip them, the layers list puts them at the very bottom): now double-click on empty page space, the canvas context menu ("Select background …") and the canvas settings section "Page backgrounds" (list + "Add page background") select them. Also fixed: Esc did not close dialogs while a project was open (the canvas Esc/arrow/Delete shortcuts handled and `preventDefault`ed the key behind the modal; now skipped while a `dialog[open]` exists).
+  - Next (owner, real app): native menu order + Help link, menu button on icon/name, inspector drag handle in WebKit, image preview (Esc, arrows, P3 note on a Display P3 screenshot), selecting/editing `bg-parents` in the real project.
 - Next phases per KONZEPT §12: 7 3D.
 
 ## Open questions for the user
@@ -77,11 +174,12 @@ current: update after each phase/merge and whenever the user decides something.
 - Coordinator session plans and reviews (incl. looking at rendered images); subagents implement (worktrees for parallel work, merged with `--no-ff`).
 - Every commit: fmt, clippy `-D warnings`, `cargo test --all`, `cargo build -p vitrine-gui`.
 - CI on GitHub (Linux/macOS/Windows) must stay green; LF line endings enforced by `.gitattributes`.
-- GUI verification via the dev bridge in Chrome (Claude-in-Chrome).
+- GUI verification via the dev bridge + headless Chrome (CDP script); Claude-in-Chrome only when connected.
 - User-facing facts go to `docs/guide/NOTES.md` (English, notes only, no prose yet).
 
 ## Decisions taken with the user
-- 2026-11-12 MCP test results P1 (design checks, `docs/research/2026-11-12-mcp-test-results.md` §3 P1, ADR 0028) – agent's choices, to confirm: rendered checks live in `vitrine_render::quality` behind the core trait `SceneInspector` (core stays render-free), on by default in CLI/GUI/MCP `validate` (`--no-pixel-checks`, `pixel_checks: false`), off in export/upload pre-checks; opt-out per element `allow: [codes]` (name chosen like Rust's `#[allow]`; only design codes) and project `checks:` (thresholds + `off`); defaults 16 lu device distance, WCAG AA 4.5/3 with "large" = 80 lu (bold 62 lu), device_small 50 %; no "continue on next page" feature – a `clip: none` element already continues behind the gap, `seam_split` flags the two-halves workaround; dark store backgrounds added to `galleries.yaml` as unmeasured estimates; new app command `scene_report` (MCP `layout_report` merges it, overlaps now pixel-based).
+- 2026-11-12 MCP test results P1 (design checks, `docs/research/2026-11-12-mcp-test-results.md` §3 P1, ADR 0029) – agent's choices, to confirm: rendered checks live in `vitrine_render::quality` behind the core trait `SceneInspector` (core stays render-free), on by default in CLI/GUI/MCP `validate` (`--no-pixel-checks`, `pixel_checks: false`), off in export/upload pre-checks; opt-out per element `allow: [codes]` (name chosen like Rust's `#[allow]`; only design codes) and project `checks:` (thresholds + `off`); defaults 16 lu device distance, WCAG AA 4.5/3 with "large" = 80 lu (bold 62 lu), device_small 50 %; no "continue on next page" feature – a `clip: none` element already continues behind the gap, `seam_split` flags the two-halves workaround; dark store backgrounds added to `galleries.yaml` as unmeasured estimates; new app command `scene_report` (MCP `layout_report` merges it, overlaps now pixel-based).
+- 2026-11-12 Gallery content (owner): (1) **sample screenshots** – templates may carry the uploader's own dummy app screenshots for users to experiment with; they are marked as samples in projects (validation info, store upload blocked, export allowed); uploading them needs the explicit confirmation "my own, CC0" (CLI `--confirm-own-screenshots`, API `?confirm_own_screenshots=true`), else the server replaces them with placeholders as before. (2) **Pre-rendered sprites** per canvas on the server (WebP, pages side by side without gaps, 1× + 2×) for the website gallery; previews stay. (3) **Predefined tags in three facets** (exact slugs: style, color, use; plus derived devices), no free tags, validated in save, import and on the server. (4) **Bulk upload with dry run** and an **admin CLI** for the ~50 official templates; admin token only from an env var. Agent's choices (to confirm): manifest field `samples:` (list of package paths); marker `screenshots/samples.yaml` with size + SHA-256 (project-relative paths); samples go to the new project's default language and to languages the template has; insert never overwrites existing screenshots; limits 10 MB / 6000 px per sample; `tags:` as a facet map (old flat lists read, unknown words dropped); local templates may leave facets empty, the gallery needs the minimum; devices derived from preset ids → platforms → device classes, banner targets → `banner`; sprites lossy WebP quality 80, 600 px page height (1× sprites ≤ 8000 px wide, so 2× ≤ 16000), `?v=<etag>` URLs cached a year, others an hour; `VITRINE_API_RENDER_CONCURRENCY` default 2; schema version via `PRAGMA user_version`; approve renders missing sprites; start-up backfill in the background; facet filters OR within a facet, AND across facets; `sample_screenshot` finding per language.
 - 2026-11-12 CI integrations (open question g): **CLI builds** add Linux arm64 (`vitrine-cli_linux_aarch64`) and static musl builds for Alpine (`…_x86_64-musl`, `…_aarch64-musl`). **Container image** `ghcr.io/vitrinestudio-app/vitrine-cli` built and pushed by `release.yml` from the release's Linux (musl) archives, multi-arch amd64 + arm64, Alpine-based (CI needs a shell), with third-party notices and OCI labels, only on tag releases, `GITHUB_TOKEN` with `packages: write`. **GitHub Action** repo `vitrinestudio-app/vitrine-github-action` (not `setup-vitrine`: sounds like a general setup; the owner created the empty public repo; `integrations/github-action/` is its self-contained root). **GitLab**: CI/CD Catalog components are GitLab-only and live in the gitlab.com project `vitrinestudio/vitrine-gitlab-ci` (only the `validate`/`export` component YAMLs running the image); the generic part for other CIs is the container image. **CI upload policy** stays plan → `execute --confirm <token> --yes` (no one-step `upload run`). **Licence of the integrations: MIT** (glue code that only calls the CLI as a separate program; app/CLI stay GPL-3.0-or-later; ADR 0022 amendment). Agent choices: musl via cargo-zigbuild + zig (pinned), native arm runners, Alpine 3.24 base, image tags `<version>`/`<major.minor>`/`latest`, image pushed at tag time (before the draft is published), GitLab components default image tag `0.1` (ADR 0026 amendment).
 - 2026-11-12 Apple device frames: never shipped in our packages, but a user may check the bezels into their **own private** repository. Option "Store used device frames in the project" for CI (only the bezels the project uses; option "all sizes"), resolution project copy → app store → parametric, clear licence warning, templates/gallery never carry them. Agent's choices (ADR 0027, to confirm): app-store layout under `frames/imported/<source>/` (not a frame pack), no `project.yaml` field (folder = option, `embed.yaml` for `all_sizes`), project copy wins over a newer local import (update offered, not automatic), no MCP tool for storing (user decision), CLI names `embed`/`unembed`.
 - 2026-11-11 Installer & signing (owner): build as much as possible on GitHub Actions; Apple Developer account exists (Developer ID + notarization); Windows: check free OSS signing via SignPath Foundation (researched, workflow prepared, unsigned until accepted); Tauri updater yes (signed manifests via GitHub secret, `latest.json` on GitHub Releases, user asked before installing, switchable in app settings, no background install). Agent choices (ADR 0026, to confirm): universal macOS build, NSIS only (no MSI), per-user Windows install, AppImage + deb + rpm, version-free asset names, `cargo tauri build` directly instead of tauri-action, min. macOS 11, app not sandboxed (empty entitlements), daily check on by default.

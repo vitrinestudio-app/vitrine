@@ -9,7 +9,7 @@ use vitrine_core::geometry::{Rect, Viewport};
 use vitrine_core::model::{Lang, StringKey, TargetKind, VariantId};
 use vitrine_core::ops::Op;
 use vitrine_core::resolve::{FsAssets, ResolvedScene, resolve};
-use vitrine_render::export::{gallery, scene_assets};
+use vitrine_render::export::{gallery_height_for_width, gallery_on, scene_assets};
 use vitrine_render::scene::{CanvasOptions, Quality, RenderOptions, Scale};
 
 use super::edit::{Gesture, ViewContext, double_option, preview_project};
@@ -138,8 +138,17 @@ pub struct RenderGalleryArgs {
     #[serde(default)]
     pub scope: Option<vitrine_core::edit::EditScope>,
     /// Image height in px (default 600, never above the target height).
+    /// Lowered when the gallery would be wider than `max_width`.
     #[serde(default)]
     pub height: Option<u32>,
+    /// Widest gallery in px (default and at most [`MAX_SIDE`]); a wider one
+    /// is rendered at a smaller height instead of failing.
+    #[serde(default)]
+    pub max_width: Option<u32>,
+    /// Page colour around the images: `light` (default: the gallery
+    /// profile's), `dark` (the store's dark mode) or `#RRGGBB`.
+    #[serde(default)]
+    pub background: Option<String>,
     #[serde(default)]
     pub interactive: bool,
     #[serde(default)]
@@ -563,22 +572,50 @@ pub fn render_gallery(app: &AppState, args: RenderGalleryArgs) -> CmdResult<Arc<
         height = ((f64::from(height) * INTERACTIVE_FACTOR).round() as u32).max(1);
     }
     too_large(0.0, f64::from(height))?;
+    // A wide gallery (many landscape images) is rendered lower instead of
+    // failing; the size is known before rendering.
+    let max_width = args
+        .max_width
+        .map_or(MAX_SIDE as u32, |w| w.clamp(64, MAX_SIDE as u32));
+    let height = gallery_height_for_width(&scene.frame, height, max_width);
+    let background = gallery_background(&scene, args.background.as_deref())?;
     let ctx = session.render_context();
     let key = PreviewKey {
         target,
         lang,
         view: View::Gallery,
-        size: format!("h{height}"),
+        size: match background {
+            Some([r, g, b]) => format!("h{height}-bg{r:02x}{g:02x}{b:02x}"),
+            None => format!("h{height}"),
+        },
         quality: "export".into(),
         format: args.format,
         scene_hash: scene_hash(&scene, &ctx),
     };
     cached(&session, key, &scene, || {
         let prepared = ctx.prepare(&scene);
-        let (pixmap, _) = gallery(&ctx, &prepared, height);
-        too_large(f64::from(pixmap.width()), 0.0)?;
+        let (pixmap, _) = gallery_on(&ctx, &prepared, height, background);
+        too_large(f64::from(pixmap.width()), f64::from(pixmap.height()))?;
         PreviewImage::encode(&pixmap, None, args.format)
     })
+}
+
+/// The page colour of a gallery preview: `None` = the profile's own
+/// (`light`), `dark` = the profile's dark-mode colour, or `#RRGGBB`.
+fn gallery_background(scene: &ResolvedScene, spec: Option<&str>) -> CmdResult<Option<[u8; 3]>> {
+    let rgb = |c: vitrine_core::model::Rgba| Some([c.r, c.g, c.b]);
+    match spec.map(str::trim) {
+        None | Some("" | "light") => Ok(None),
+        Some("dark") => Ok(scene
+            .frame
+            .gallery
+            .as_ref()
+            .and_then(|g| g.background_dark)
+            .map_or(Some([0, 0, 0]), rgb)),
+        Some(s) => vitrine_core::model::Rgba::parse(s).map(rgb).map_err(|e| {
+            CommandError::invalid(format!("`background` must be light, dark or #RRGGBB ({e})"))
+        }),
+    }
 }
 
 /// Preview cache statistics of the open project.
@@ -605,7 +642,7 @@ pub struct SceneReportArgs {
     pub page: Option<u32>,
 }
 
-/// Rendered geometry of a target × language (ADR 0028): gallery gap and
+/// Rendered geometry of a target × language (ADR 0029): gallery gap and
 /// corner radius, seams, device frames and screens in page coordinates
 /// with what covers them, pixel overlaps.
 pub fn scene_report(

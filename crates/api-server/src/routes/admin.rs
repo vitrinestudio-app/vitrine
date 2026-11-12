@@ -24,7 +24,7 @@ pub(super) fn routes() -> Router<Arc<AppState>> {
 async fn queue(axum::extract::State(state): St, headers: HeaderMap) -> ApiResult<Json<Value>> {
     auth::admin(&state, &headers)?;
     let db = state.db();
-    let pending = db::search(&db, PENDING, None, None, 100, 0)?;
+    let pending = db::search(&db, PENDING, &db::Filter::default(), 100, 0)?;
     let reports = db::open_reports(&db)?;
     Ok(Json(json!({ "pending": pending, "reports": reports })))
 }
@@ -42,16 +42,33 @@ async fn action(
     body: Option<Json<ModerationBody>>,
 ) -> ApiResult<Json<Value>> {
     auth::admin(&state, &headers)?;
+    if !vitrine_core::template::is_template_id(&id) {
+        return Err(ApiError::not_found("template"));
+    }
     let status = match action.as_str() {
         "approve" => APPROVED,
         "reject" => REJECTED,
+        "rerender" => {
+            if db::get(&state.db(), &id)?.is_none() {
+                return Err(ApiError::not_found("template"));
+            }
+            let sprites = crate::maintenance::rerender(&state, &id, true).await?;
+            return Ok(Json(json!({ "id": id, "sprites": sprites })));
+        }
         _ => return Err(ApiError::not_found("action")),
     };
     let note = body.map(|b| b.0.note).unwrap_or_default();
-    let db = state.db();
-    if !db::set_status(&db, &id, status, &note)? {
-        return Err(ApiError::not_found("template"));
+    let missing_sprites = {
+        let db = state.db();
+        if !db::set_status(&db, &id, status, &note)? {
+            return Err(ApiError::not_found("template"));
+        }
+        db::resolve_reports(&db, &id)?;
+        db::get(&db, &id)?.is_some_and(|t| t.sprites.as_array().is_none_or(Vec::is_empty))
+    };
+    // Templates from before the sprites get them when approved.
+    if status == APPROVED && missing_sprites {
+        crate::maintenance::rerender(&state, &id, false).await?;
     }
-    db::resolve_reports(&db, &id)?;
     Ok(Json(json!({ "id": id, "status": status })))
 }

@@ -143,11 +143,12 @@ pub fn resolve(
     let frame = frame::frame(target, canvas, options.catalog, &mut d);
     let styles = StyleResolver::new(&project.styles);
     let spans = styles.spans(&mut d);
-    let backgrounds = canvas
+    let backgrounds: Vec<ResolvedFill> = canvas
         .backgrounds
         .iter()
         .map(|f| styles.fill(f, &mut d))
         .collect();
+    hidden_backgrounds(canvas.id.as_str(), &backgrounds, &mut d);
     let (variant, elements) = elements::resolve_elements(
         &elements::Inputs {
             project,
@@ -188,6 +189,41 @@ pub fn resolve(
     })
 }
 
+/// Canvas `backgrounds` are layers over the whole canvas (bottom to top),
+/// not one fill per page: a layer below an opaque colour or gradient is
+/// never visible. Warns once per hidden layer.
+fn hidden_backgrounds(canvas: &str, layers: &[ResolvedFill], d: &mut Diags) {
+    let opaque = |f: &ResolvedFill| match f {
+        ResolvedFill::Color { color } => color.a == 255,
+        ResolvedFill::LinearGradient { stops, .. } => {
+            !stops.is_empty() && stops.iter().all(|s| s.color.a == 255)
+        }
+        // A radial gradient pads its last stop to the corners, but an
+        // image may be transparent or `contain`: not known here.
+        ResolvedFill::RadialGradient { stops, .. } => {
+            !stops.is_empty() && stops.iter().all(|s| s.color.a == 255)
+        }
+        ResolvedFill::Image { .. } => false,
+    };
+    let Some(top) = layers.iter().rposition(opaque) else {
+        return;
+    };
+    for i in 0..top {
+        d.warn(
+            DiagnosticCode::BackgroundHidden,
+            format!(
+                "canvas `{canvas}`: background layer {} of {} is hidden by the opaque layer {} \
+                 above it. Canvas `backgrounds` are layers over the whole canvas (bottom to \
+                 top), not one fill per page; for a colour per page add a `background` \
+                 element on each page",
+                i + 1,
+                layers.len(),
+                top + 1
+            ),
+        );
+    }
+}
+
 /// Diagnostics sink; `element` is attached to every diagnostic while set.
 #[derive(Debug, Default)]
 pub struct Diags {
@@ -214,5 +250,53 @@ impl Diags {
 
     pub fn warn(&mut self, code: DiagnosticCode, message: String) {
         self.push(Level::Warn, code, message);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::Rgba;
+
+    fn color(s: &str) -> ResolvedFill {
+        ResolvedFill::Color {
+            color: Rgba::parse(s).unwrap(),
+        }
+    }
+
+    #[test]
+    fn layers_below_an_opaque_background_are_reported() {
+        // Page colours as canvas backgrounds: only the last one shows.
+        let mut d = Diags::default();
+        let layers: Vec<_> = ["#111111", "#222222", "#333333"]
+            .iter()
+            .map(|c| color(c))
+            .collect();
+        hidden_backgrounds("phone", &layers, &mut d);
+        assert_eq!(d.items.len(), 2);
+        assert!(
+            d.items
+                .iter()
+                .all(|i| i.code == DiagnosticCode::BackgroundHidden)
+        );
+        assert!(d.items[0].message.contains("layer 1 of 3"), "{:?}", d.items);
+        // Translucent layers on top keep everything visible.
+        let mut d = Diags::default();
+        hidden_backgrounds(
+            "phone",
+            &[
+                color("#111111"),
+                color("#22222280"),
+                ResolvedFill::LinearGradient {
+                    angle: 0.0,
+                    stops: vec![ResolvedStop {
+                        color: Rgba::parse("#33333300").unwrap(),
+                        pos: 0.0,
+                    }],
+                },
+            ],
+            &mut d,
+        );
+        assert!(d.items.is_empty(), "{:?}", d.items);
     }
 }

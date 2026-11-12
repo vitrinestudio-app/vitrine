@@ -152,7 +152,7 @@ Elemente über Seitennähte sind das Alleinstellungsmerkmal – und die häufigs
 
 ### Status P1 (Coding-LLM, 12.11.2026)
 
-Umgesetzt in ADR 0028 (`docs/adr/0028-design-checks.md`). Alle Befunde gelten pro Target × Sprache, mit stabilem Code, Stufe, Element-ID und Seite, in CLI (`validate`, alle Formate), GUI-Befundliste und MCP (`validate`, `render_preview`-Issues). Gerenderte Prüfungen sind standardmäßig an (`--no-pixel-checks` / `pixel_checks: false` schaltet sie ab). Gewollte Fälle: Elementfeld `allow: [code]` (auch an Gruppen, auch in Varianten), projektweit `checks:` in `project.yaml` (Schwellwerte, `off: [codes]`, Op `set_checks`).
+Umgesetzt in ADR 0029 (`docs/adr/0029-design-checks.md`). Alle Befunde gelten pro Target × Sprache, mit stabilem Code, Stufe, Element-ID und Seite, in CLI (`validate`, alle Formate), GUI-Befundliste und MCP (`validate`, `render_preview`-Issues). Gerenderte Prüfungen sind standardmäßig an (`--no-pixel-checks` / `pixel_checks: false` schaltet sie ab). Gewollte Fälle: Elementfeld `allow: [code]` (auch an Gruppen, auch in Varianten), projektweit `checks:` in `project.yaml` (Schwellwerte, `off: [codes]`, Op `set_checks`).
 
 - **P1.1 Text am Gerät:** gab es nicht (nur Text-Box gegen Box in `layout_report`). Neu `text_near_device`: echte Glyphen-Maske gegen die gerenderte Rahmenkontur (gekippte Geräte, Apple-Bezels, Laptops exakt). Warnung, wenn Glyphen hinter dem Gerät liegen oder über die Rahmenkante laufen; Hinweis bei < 16 lu Abstand (`checks.device_distance`). Text ganz auf dem Gerät oder auf einer Karte über dem Gerät ist gewollt und wird nicht gemeldet; Riesen-Typo ≥ 240 lu ebenfalls nicht. Statt des Platzhalters `allow_clip` heißt das Opt-out `allow` und nimmt Codes (`allow: [text_clipped]` erledigt auch den `big-type`-Fall).
 - **P1.2 Screen-Box:** neu. `layout_report` liefert je Gerät `frame` (gedrehte Ecken) und `screen` (Box vor der Drehung, gedrehtes `quad`, Eckenradius, `header` = Höhe Statusleiste + Titel) in Seiten-lu, nach `device_map`, plus `screen_covered_by` (Anteil an Screen und Kopfzeile). Befunde `screen_header_covered` (Element über ≥ 25 % der Kopfzeile) und `screen_header_cut` (Seitenkante schneidet durch die Kopfzeile). Andere Geräte über einem Screen gelten als gewollter Stapel.
@@ -204,6 +204,64 @@ Nicht von Vitrine verursacht, aber für den Ablauf relevant:
 5. P3 nach Bedarf, zuerst „Pfad/Polyline“ und Span-Padding/Radius.
 
 **Nochmals:** Diese Reihenfolge ist eine Empfehlung aus Nutzersicht. Die Coding-LLM prüft gegen den bestehenden Code, entscheidet selbst oder spricht mit Thorsten.
+
+---
+
+## 8. Status / Antworten (Coding-Seite, 12.11.2026)
+
+Abschnitt 3 P1 (Qualitätsprüfungen P1.1–P1.8) bearbeitet ein anderer Agent; hier P2/P3, Bugs und Doku.
+
+### Bugs (Abschnitt 4)
+
+1. **`render_preview` gallery „preview too large (…×0)“ – Bug, behoben.** Die Breitenprüfung gab als Höhe 0 aus; eigentliche Ursache war eine Galerie breiter als 8192 px (6 Querformat-Seiten × 900 px Höhe ≈ 9850 px). Jetzt wird die Größe vor dem Rendern berechnet und die Höhe so verringert, dass die Galerie passt (MCP: max. 4096 px breit, mit `inline: false` 8192 px); das Ergebnis sagt es in `note`. Regressionstest in `crates/app/src/commands/tests.rs`.
+2. **Mehrere Farben in Canvas-`backgrounds` – kein Bug, aber stilles Fehlverhalten, jetzt gemeldet.** `backgrounds` sind laut Modell (KONZEPT, `Canvas::backgrounds`) *Ebenen über die ganze Leinwand* von unten nach oben; bei sechs deckenden Farben ist nur die **oberste (letzte)** sichtbar. Neu: Warnung `background_hidden` für jede verdeckte Ebene (mit Hinweis auf `background`-Elemente pro Seite). Doku in `docs_get` overview/project/elements und Website (FAQ). „Farbe pro Seite“ als eigenes Feld halte ich für unnötig – ein `background`-Element je Seite macht genau das und passt sich jeder Seitenhöhe an.
+3. **80-s-Timeouts bei `styles_get`/`styles_update`/erstem `validate` – Ursache gefunden, teilweise behoben.** Gemessen auf einer Kopie von `warm-stay` (12 Foto-Hintergründe, 136 Screens), headless: Release `styles_get` 10 ms, `validate` 60 ms, Galerie 0,6–1 s; **Debug-Build ≈ 6 s pro Galerie**. Das Owner-Setup lief mit `target/debug/vitrine-gui` (Debug, eigene Crates unoptimiert) und mit eingeschalteter System-Schriften-Fallback-Einstellung. Zwei echte Engpässe gefunden und behoben: (a) beim Speichern von Texten mit neuen Zeichen (✓, →, Emoji) wurden die System-Schriften **unter der Modell-Sperre** nachgeladen – alle anderen Tools (auch `styles_get`) warteten; (b) jeder Neuaufbau des Render-Kontexts (Schriften, Rahmen) **warf alle dekodierten Bilder weg**, GUI und MCP dekodierten danach alle großen Fotos neu. Jetzt: Nachladen nach dem Commit außerhalb der Sperre, dekodierte Bilder bleiben erhalten, plus 1,5-GiB-LRU-Budget für dekodierte Bilder. Empfehlung: die App für lange MCP-Sitzungen mit `--release` starten. Das Hängen direkt nach `project_create` im Pilot konnte ich headless nicht nachstellen (Release und Debug sofort).
+4. **`render_preview` hängt nach erstem großen `apply_ops` – gleiche Ursache wie 3** (Neu-Dekodieren aller Fotos nach Kontext-Neuaufbau, im Debug-Build, parallel zur GUI-Vorschau). Behoben wie oben; ein „Vorwärmen“ ist damit nicht nötig.
+
+### P2 – Export und Vorschau
+
+- **P2.4 Export-Timeouts – umgesetzt.** Ursache ist echte Arbeit: 84 Foto-Seiten brauchen auch im Release ~25 s (⅔ davon PNG-Kompression), im Debug ein Vielfaches. `export` wartet jetzt höchstens `wait_seconds` (Standard 45 s); dauert es länger, läuft der Export im Hintergrund weiter und das Ergebnis enthält `status: running` + `job`. Neues Tool `export_status {job, wait_seconds, cancel}` liefert Fortschritt bzw. am Ende dasselbe Ergebnis wie `export`. „Nur Galerie“: `export {pages: false}` / CLI `--gallery-only`. Inkrementell auf Dateiebene gab es schon (unveränderte Seiten werden nicht neu gerendert).
+- **P2.5 Store-Hintergrund – umgesetzt.** `render_preview {view: gallery, background: light|dark|#RRGGBB}`; `dark` nimmt `background_dark` aus dem Galerie-Profil (#000000 App Store, #131314 Play – Platzhalter, nicht gemessen). Die Galerie-Vorschau zeigt Lücken und abgerundete Ecken schon immer.
+- **P2.6 Vorschau-Größe – umgesetzt.** `format: jpeg`, automatische Verkleinerung breiter Galerien (s. Bug 1), `out_file` schreibt das Bild ins Projekt (`inline: false` = nur Datei).
+
+### P2 – Varianten, Gerätemaße, Sprach-Assets
+
+- **P2.1 Gruppen/Element-Sets in Varianten skalieren – teilweise vorhanden, Rest vorgeschlagen.** Vorhanden: Das `at` einer **Gruppe** ist ein Versatz für alle Kinder – ein einziger Varianten-Override auf `at` (oder `rotation`) verschiebt/dreht die ganze Gruppe. `element_move {ids: […], dx, dy, scope: variant}` verschiebt viele Elemente in einem Schritt. Nicht vorhanden: Skalieren. Vorschlag: Feld `scale` an Gruppen (Basis und Varianten-Override), Ursprung = Gruppen-Pivot (Mitte der Kinder + `pivot`, also mit `pivot` auch „linke Kante halten“); im Resolver werden Position, Größe, Schriftgröße, Kontur/Schatten der Kinder mitskaliert (wie `content_scale` heute für Geräte). Aufwand ~1–2 Tage (Resolver + Renderer für alle Element-Arten + Editor-Griffe). Nicht umgesetzt, weil es das Modell erweitert – **Frage an Thorsten**, ob gewünscht.
+- **P2.2 Rahmenmaße im Katalog – umgesetzt.** `catalog_devices` liefert je Modell und Orientierung `frame: {height, screen: [x, y, w, h], screen_radius, corner_radius}` für ein 1000 lu breites Element (linear skalieren); per Test identisch mit dem gezeichneten parametrischen Rahmen. Farben standen schon in `colors`. Importierte Apple-Bezels weichen leicht ab. Geräte-Anker („Oberkante Screen“) nicht umgesetzt – mit den Maßen rechenbar; Screen-Box platzierter Geräte gehört zu P1.2.
+- **P2.3 Sprach-Override für Bild-Assets – vorgeschlagen, nicht umgesetzt.** Sauberster Weg: Platzhalter `{lang}` im `asset`-Pfad (`assets/card-{lang}.png`), aufgelöst über die Sprach-Fallback-Kette wie bei Screenshots (de-AT → de → Standardsprache). Der Resolver-Teil ist klein, aber Vorlagen (Asset-Liste/Umbenennen beim Paketieren), die Asset-Verwendung im Editor und das Seitenverhältnis beim Skalieren müssen den Platzhalter kennen – Vorlagen bearbeitet gerade ein anderer Agent. Daher hier nur der Entwurf.
+
+### Doku-Lücken (Abschnitt 5) – alle beantwortet
+
+In `docs_get` (overview: neue Abschnitte „Layers and backgrounds“, „Groups, variants and anchors“, „Devices“, „Checking the result“; elements: `group.at`, `background.fill`, `tile`), `instructions.md` und Website (Konzepte, FAQ, Export, KI-Assistenten, en+de):
+
+- Mehrere `backgrounds` = Ebenen über die ganze Leinwand, nicht pro Seite (siehe Bug 2).
+- Sortierung: erst Canvas-`backgrounds`, dann alle Elemente nach `(z, Listenreihenfolge)`; ein `background`-Element ist eine normale Ebene. Daher liegen deckende Bilder später in der Liste darüber – niedriges `z` oder `index: 0` verwenden.
+- Gruppen: `at` = Versatz aller Kinder (kein Mittelpunkt), `width`/`height` ungenutzt. `at` im Varianten-Override gilt wie in der Basis für die Seitenhöhe des Canvas; `anchor_y` wird danach angewandt (bottom: +Δ Höhe, center: +Δ/2, stretch: skaliert).
+- `fill: tile`: Kachel in Naturgröße, 1 px (bzw. SVG-Einheit) = 1 lu, ab oben links.
+- `shadow` auf Texten: als Feld, im Textstil und als Sprach-Override (war in `elements` dokumentiert, jetzt auch in overview).
+- Gerätefarben: `catalog_devices` → `colors`.
+- `model: none`: rundet die Ecken selbst (10 % der kurzen Seite), kein Rahmen – erfüllt „kein iPhone-Rahmen im iPad-Set“.
+- **`content_scale` skaliert nur Geräte** (und deren Schatten), *nicht* Panorama-Hintergründe – die Beobachtung im Protokoll war vermutlich `fit: cover`, das der Seitenhöhe folgt.
+- Deckende Bilder über `background`-Elementen: Folge der Listenreihenfolge (s. o.), dokumentiert.
+
+---
+
+## 9. Triage (Coding-Seite) – P3
+
+| Wunsch | Stand im Code | Machbarkeit / Aufwand |
+|---|---|---|
+| Element „Pfad/Polyline“ | fehlt (Shapes: rect, ellipse, line) | Grundform (Punkte, Spline, Stroke, Dash, Fill, Pfeilspitzen) gut machbar mit tiny-skia: ~2–3 Tage inkl. Ops, Validierung, Editor-Punkte-Griffe. Text entlang Pfad, Dekor in Abständen, Verlauf entlang Pfad: je +1–3 Tage, Text-am-Pfad am teuersten (parley-Layout je Glyphe platzieren). |
+| Span `padding`, `radius` | Span-Stile haben `background` (Farbe), ohne Padding/Radius | klein (~½–1 Tag): Hintergrund-Rechteck pro Zeilenstück schon vorhanden, Padding/Radius sind Parameter. |
+| Span `scale`/`size`, `rotation` | fehlt (Spans: Schrift, Gewicht, Kursiv, Farbe, Effekte) | `size` mittel (~1 Tag, parley kann Größe pro Range; Auto-Fit muss mitskalieren). `rotation` pro Span teuer (eigene Zeilenbehandlung), eher nicht. |
+| Span-Deko „highlight/underline-image“ | fehlt | mittel (~1–2 Tage): Bild/Form über die gemessene Span-Box strecken; baut auf Span-Padding auf. |
+| `backdrop_blur` für Formen | fehlt | mittel (~1–2 Tage): Blur existiert (`render::blur`), nötig ist „Hintergrund bis hierhin rendern, ausschneiden, weichzeichnen“; Kosten pro Element im Export spürbar. |
+| `allow_clip`/„decorative“ für Texte | fehlt | klein (~½ Tag): Flag am Text, unterdrückt `text_clipped`/`text_in_gap`; überschneidet sich mit P1 (anderer Agent). |
+| „Card“-Element mit Padding und Kindern / Formen mit Auto-Breite | Gruppen ohne eigene Box | groß (~3–5 Tage): neues Layout-Konzept (Box um Kinder, Auto-Größe nach Text). Erst nach Produktentscheidung. |
+| Tab-Stopps/Leader | fehlt | mittel (~1–2 Tage) in Markup + Layout; selten gebraucht. |
+| `focus` für `image` mit `fit: cover` | `focus` gibt es nur für Bild-*Füllungen* (`fill: {kind: image, focus}`) | klein (~½ Tag): gleiches Feld am Image-Element. Workaround heute: `background`/`shape` mit Bild-Füllung + `focus`. |
+| Schatten-Offset relativ zur Schriftgröße | Schatten in lu, fest | klein–mittel: z. B. `shadow.relative: true` (Einheiten in em). |
+| Weitere Geräte (Wear OS rund/eckig), Farbvarianten | Apple Watch (`watch`, `watch-ultra`) vorhanden, Wear OS fehlt; Farben je Modell in `catalog_devices.colors` | Wear OS rund: ~1 Tag (Katalogdaten + runder Display-Ausschnitt im Rahmenzeichner). |
+| `catalog_fonts` mit Unicode-Abdeckung | `catalog_fonts` ohne Abdeckung; intern gibt es `FontLibrary::uncovered()` | klein (~½ Tag): Tool-Option „deckt diese Zeichen ab?“ (`chars: "✓αβ"`) statt kompletter Tabellen. |
 
 ---
 

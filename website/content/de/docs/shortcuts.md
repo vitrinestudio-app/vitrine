@@ -31,6 +31,7 @@ Mausrad.
 |---|---|
 | Klick | Element auswählen (eine Gruppe als Ganzes) |
 | Doppelklick | Element innerhalb seiner Gruppe auswählen (ein Text öffnet sich zum Bearbeiten) |
+| Doppelklick auf freie Seitenfläche | Hintergrund-Element der Seite auswählen |
 | <kbd>⌘</kbd> + Klick | Element unter dem Mauszeiger direkt auswählen, auch innerhalb einer Gruppe |
 | <kbd>Umschalt</kbd> + Klick | zur Auswahl hinzufügen oder aus ihr entfernen |
 | <kbd>Umschalt</kbd> + Ziehen auf einer leeren Fläche | mit einem Rahmen auswählen (ergänzt die Auswahl) |
@@ -88,6 +89,9 @@ Mausrad.
 | <kbd>↑</kbd> / <kbd>↓</kbd> | Ebenen: nächste / vorige Ebene auswählen |
 | Doppelklick, <kbd>Enter</kbd>, <kbd>F2</kbd> | Ebenen: umbenennen |
 | Ziehen | Ebenen: Reihenfolge ändern |
+| Ziehen, Doppelklick | Inspektor: linken Rand ziehen ändert die Breite (Doppelklick: Standard) |
+| Klick, <kbd>Enter</kbd> | Bilder und Screenshots: Klick öffnet die Vorschau |
+| <kbd>←</kbd> / <kbd>→</kbd> | Vorschau: vorheriges / nächstes Bild |
 
 ## App & Dialoge {#app--dialogs}
 

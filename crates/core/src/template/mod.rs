@@ -9,7 +9,8 @@
 //! template.yaml                  manifest (format vitrine-template/1)
 //! project.yaml                   a vitrine/1 project (no store/import settings)
 //! i18n/<lang>.yaml               texts of the canvases
-//! screenshots/<lang>/<key>.png   generated placeholders (never app screenshots)
+//! screenshots/<lang>/…           generated placeholders, or the author's own
+//!                                sample screenshots listed in `samples`
 //! assets/…                       PNG/JPEG/SVG images used by the canvases
 //! fonts/<file>.ttf|otf           OFL fonts only, each with fonts/<stem>-OFL.txt
 //! previews/<canvas>.png          preview images (rendered by Vitrine Studio)
@@ -36,6 +37,7 @@ pub mod insert;
 pub mod instantiate;
 pub mod placeholder;
 pub mod store;
+pub mod tags;
 mod walk;
 
 #[cfg(test)]
@@ -49,6 +51,7 @@ use crate::io::{I18N_DIR, PROJECT_FILE, from_yaml, project_from_yaml, strings_fr
 use crate::model::{Lang, Project};
 
 pub use archive::Limits;
+pub use tags::TemplateTags;
 
 /// `format:` of `template.yaml`.
 pub const TEMPLATE_FORMAT: &str = "vitrine-template/1";
@@ -62,6 +65,10 @@ pub const TEMPLATES_DIR: &str = "templates";
 pub const LICENSE: &str = "CC0-1.0";
 /// Licence of the fonts inside a template.
 pub const FONT_LICENSE: &str = "OFL-1.1";
+/// Largest sample screenshot (bytes).
+pub const SAMPLE_MAX_BYTES: usize = 10 * 1024 * 1024;
+/// Longest side of a sample screenshot (px).
+pub const SAMPLE_MAX_EDGE: u32 = 6000;
 
 /// Why a template could not be read, saved or used.
 #[derive(Debug, thiserror::Error)]
@@ -117,8 +124,9 @@ pub struct Manifest {
     pub description: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub author: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tags: Vec<String>,
+    /// Tags from the fixed taxonomy (`style`, `color`, `use`; [`tags`]).
+    #[serde(default, skip_serializing_if = "TemplateTags::is_empty")]
+    pub tags: TemplateTags,
     /// Version of the template (free form, e.g. `1.0.0`).
     pub version: String,
     /// Always [`LICENSE`] (`CC0-1.0`).
@@ -130,6 +138,11 @@ pub struct Manifest {
     /// Fonts shipped with the template (all OFL).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fonts: Vec<FontInfo>,
+    /// Sample screenshots: package paths (`screenshots/en/home.png`) of the
+    /// author's own app screenshots (CC0), copied into new projects and
+    /// marked as samples there; all other screenshots are placeholders.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub samples: Vec<String>,
     /// Program that wrote the package (`Vitrine Studio 0.1.0`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generator: Option<String>,
@@ -190,8 +203,8 @@ impl Manifest {
         if self.description.chars().count() > 2000 || self.author.chars().count() > 120 {
             return bad("`description` (2000) or `author` (120) is too long".into());
         }
-        if self.tags.len() > 12 || self.tags.iter().any(|t| !is_template_id(t) || t.len() > 32) {
-            return bad("at most 12 `tags`, each like an id and at most 32 characters".into());
+        if let Err(e) = self.tags.check(false) {
+            return bad(format!("tags: {e}"));
         }
         if self.version.trim().is_empty()
             || self.version.len() > 32
@@ -415,7 +428,54 @@ impl Package {
         let project = self.project()?;
         self.check_project(&project)?;
         self.check_fonts()?;
+        self.check_samples()?;
         Ok(())
+    }
+
+    /// Sample screenshots: listed once, present, under `screenshots/`,
+    /// PNG/JPEG within [`SAMPLE_MAX_BYTES`] and [`SAMPLE_MAX_EDGE`].
+    fn check_samples(&self) -> Result<(), TemplateError> {
+        let mut seen = BTreeSet::new();
+        for path in &self.manifest.samples {
+            if !seen.insert(path.as_str()) {
+                return Err(TemplateError::invalid(format!(
+                    "template.yaml lists the sample `{path}` twice"
+                )));
+            }
+            if FileKind::of(path) != Ok(FileKind::Screenshot) {
+                return Err(TemplateError::invalid(format!(
+                    "sample `{path}` is not a PNG/JPEG under screenshots/"
+                )));
+            }
+            let data = self.file(path).ok_or_else(|| {
+                TemplateError::invalid(format!("sample screenshot `{path}` is missing"))
+            })?;
+            if data.len() > SAMPLE_MAX_BYTES {
+                return Err(TemplateError::invalid(format!(
+                    "sample screenshot `{path}` is larger than {} MB",
+                    SAMPLE_MAX_BYTES / (1024 * 1024)
+                )));
+            }
+            let size = imagesize::blob_size(data).map_err(|_| {
+                TemplateError::invalid(format!(
+                    "sample screenshot `{path}` is not a readable image"
+                ))
+            })?;
+            if size.width.max(size.height) > SAMPLE_MAX_EDGE as usize
+                || size.width.min(size.height) == 0
+            {
+                return Err(TemplateError::invalid(format!(
+                    "sample screenshot `{path}` is {}x{} px (at most {SAMPLE_MAX_EDGE} px per side)",
+                    size.width, size.height
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    /// Has the package sample screenshots?
+    pub fn has_samples(&self) -> bool {
+        !self.manifest.samples.is_empty()
     }
 
     fn check_project(&self, project: &Project) -> Result<(), TemplateError> {
@@ -500,12 +560,22 @@ impl Package {
 
     /// Replaces every screenshot with a freshly generated placeholder (the
     /// gallery server does this so no uploaded app screenshot is ever
-    /// published).
-    pub fn regenerate_placeholders(&mut self) -> Result<(), TemplateError> {
-        self.files.retain(|p, _| !p.starts_with("screenshots/"));
+    /// published). With `keep_samples` the listed sample screenshots stay
+    /// (the uploader confirmed they are their own and CC0) and only the
+    /// other screenshots are regenerated; without it the samples are
+    /// dropped too.
+    pub fn regenerate_placeholders(&mut self, keep_samples: bool) -> Result<(), TemplateError> {
+        if !keep_samples {
+            self.manifest.samples.clear();
+        }
+        let samples: BTreeSet<String> = self.manifest.samples.iter().cloned().collect();
+        self.files
+            .retain(|p, _| !p.starts_with("screenshots/") || samples.contains(p));
         let project = self.project()?;
         for (path, png) in placeholder::for_project(&project) {
-            self.files.insert(path, png);
+            if !placeholder::shadowed(&path, &samples) {
+                self.files.insert(path, png);
+            }
         }
         Ok(())
     }
@@ -698,8 +768,14 @@ pub struct TemplateSummary {
     pub description: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub author: String,
+    #[serde(default, skip_serializing_if = "TemplateTags::is_empty")]
+    pub tags: TemplateTags,
+    /// Derived device tags (`phone`, `tablet`, … ; [`tags::devices`]).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tags: Vec<String>,
+    pub devices: Vec<String>,
+    /// Number of sample screenshots (0 = placeholders only).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub samples: usize,
     pub version: String,
     pub license: String,
     pub canvases: Vec<CanvasInfo>,
@@ -720,7 +796,22 @@ pub enum TemplateSource {
     Installed,
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde passes references
+fn is_zero(n: &usize) -> bool {
+    *n == 0
+}
+
 impl TemplateSummary {
+    /// Summary of a package (with the derived device tags).
+    pub fn of_package(pkg: &Package, source: TemplateSource) -> Self {
+        let mut s = Self::of(&pkg.manifest, source);
+        if let Ok(project) = pkg.project() {
+            s.devices = tags::devices(&project);
+        }
+        s
+    }
+
+    /// Summary from the manifest alone (no device tags).
     pub fn of(m: &Manifest, source: TemplateSource) -> Self {
         let mut fonts: Vec<String> = m.fonts.iter().map(|f| f.family.clone()).collect();
         fonts.dedup();
@@ -730,6 +821,8 @@ impl TemplateSummary {
             description: m.description.clone(),
             author: m.author.clone(),
             tags: m.tags.clone(),
+            devices: Vec::new(),
+            samples: m.samples.len(),
             version: m.version.clone(),
             license: m.license.clone(),
             canvases: m.canvases.clone(),

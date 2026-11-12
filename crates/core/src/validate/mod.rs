@@ -177,9 +177,16 @@ finding_codes! {
     ScreenshotUpscale = "screenshot_upscale",
     /// A page of a `screenshot_only` target has no device (empty image).
     ScreenshotOnlyEmpty = "screenshot_only_empty",
+    /// A canvas background layer lies under an opaque one and never shows
+    /// (canvas `backgrounds` are layers, not one fill per page).
+    BackgroundHidden = "background_hidden",
     /// The screenshot's embedded colour profile cannot be used (unreadable,
     /// CMYK, HDR …); it is rendered as if it were sRGB (info).
     ColorProfileUnsupported = "color_profile_unsupported",
+    /// The screenshot is an unchanged sample from a template
+    /// (`screenshots/samples.yaml`): replace it with your own (info; store
+    /// uploads refuse sets with samples).
+    SampleScreenshot = "sample_screenshot",
     // ---- store rules
     /// Target size not accepted for the store slot.
     StoreSize = "store_size",
@@ -208,7 +215,7 @@ finding_codes! {
     VariantSuggested = "variant_suggested",
     /// An element lies entirely outside every page.
     ElementOutside = "element_outside",
-    // ---- design checks (layout and pixels; ADR 0028)
+    // ---- design checks (layout and pixels; ADR 0029)
     /// The glyphs of a text touch, cross or come closer than
     /// [`Thresholds::device_distance`] to a device frame.
     TextNearDevice = "text_near_device",
@@ -451,7 +458,7 @@ pub struct SceneFinding {
 }
 
 /// Checks that need rendered geometry or pixels: device outlines and
-/// screens, glyph masks, the backdrop behind texts (ADR 0028). `core` has
+/// screens, glyph masks, the backdrop behind texts (ADR 0029). `core` has
 /// no renderer; front ends pass the renderer's implementation
 /// (`vitrine_render::quality::Inspector`). Without one these checks are
 /// skipped.

@@ -278,7 +278,7 @@ const COVER_MIN_STRIP: f64 = 2.0;
 
 /// Language-independent layout checks on the first resolved scene of a
 /// pages target: devices too small for their page, page-filling pictures
-/// or panels that leave a strip uncovered (ADR 0028).
+/// or panels that leave a strip uncovered (ADR 0029).
 pub(super) fn design_checks(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
     if scene.frame.kind != TargetKind::Pages || s.target.screenshot_only {
         return;
@@ -519,6 +519,7 @@ fn resolve_diagnostics(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mu
             D::ImportedBezelFallback => (C::ImportedBezelFallback, Severity::Info, false),
             D::ImportedColorFallback => (C::ImportedColorFallback, Severity::Info, false),
             D::ScreenshotOnlyEmpty => (C::ScreenshotOnlyEmpty, Severity::Warn, false),
+            D::BackgroundHidden => (C::BackgroundHidden, Severity::Warn, false),
         };
         let page = d.element.as_ref().and_then(|id| s.page_of(id));
         out.push(ctx.finding(
@@ -738,8 +739,9 @@ fn screenshot_checks(
     // language: findings name the file and are recorded without language,
     // so languages that fall back to the same file share one finding.
     let file = shot.path.as_deref().unwrap_or_default();
-    if let Some(message) = color_check(s, file) {
-        push(Severity::Info, C::ColorProfileUnsupported, false, message);
+    for (code, message) in file_notes(s, file) {
+        // A sample may serve only some languages: per language.
+        push(Severity::Info, code, code == C::SampleScreenshot, message);
     }
     let Some(size) = shot.size.filter(|p| p.w > 0 && p.h > 0) else {
         return;
@@ -796,6 +798,24 @@ fn color_check(s: &Scope<'_>, file: &str) -> Option<String> {
     }
     let note = s.options.assets.color_note(file)?;
     Some(format!("screenshot `{file}`: {note}"))
+}
+
+/// Info findings about the screenshot file itself: an unusable colour
+/// profile, a sample screenshot from a template.
+fn file_notes(s: &Scope<'_>, file: &str) -> Vec<(C, String)> {
+    let mut out = Vec::new();
+    if let Some(message) = color_check(s, file) {
+        out.push((C::ColorProfileUnsupported, message));
+    }
+    if !file.is_empty() && s.options.assets.is_sample(file) {
+        out.push((
+            C::SampleScreenshot,
+            format!(
+                "screenshot `{file}` is a sample from a template; replace it with your own (store uploads refuse samples)"
+            ),
+        ));
+    }
+    out
 }
 
 /// Size in lu of the area the screenshot fills: the display, minus the

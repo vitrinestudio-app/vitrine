@@ -278,8 +278,17 @@ const FIELD_DOCS: &[(&str, &str)] = &[
     // background
     (
         "background.fill",
-        "fill (see Value shapes) – fills the home page (canvas-wide backgrounds: canvas `backgrounds`, canvas_update)",
+        "fill (see Value shapes) – fills the home page at every target's page height. An ordinary layer in (z, list order): give it a low z (e.g. -30) so later images do not cover it. One per page for per-page colours (canvas `backgrounds` are layers over the whole canvas, canvas_update)",
     ),
+    (
+        "group.at",
+        "{x, y} lu – OFFSET added to all children (default {x: 0, y: 0}), not a centre; override it in a variant to move the whole group",
+    ),
+    (
+        "group.width",
+        "not used (the children have their own sizes)",
+    ),
+    ("group.height", "not used"),
     // group
     (
         "children",
@@ -347,7 +356,8 @@ const VALUE_SHAPES: &str = "
   - colour string `\"#0B3324\"` / `\"@primary\"` (= `{kind: color, color}`)
   - `{kind: linear-gradient, angle?: degrees (CSS: 0 = to top, 90 = to right, default 180 = to bottom), stops: [[colour, 0..1], …]}`
   - `{kind: radial-gradient, center?: {x, y} fractions of the area (default centre), radius?: fraction of the larger side (default 0.5), stops: [[colour, pos], …]}`
-  - `{kind: image, asset: assets/…, fit?: cover | contain | stretch | tile (default cover), focus?: {x, y} fractions of the image kept in view when cropping (default {x: 0.5, y: 0.5})}`
+  - `{kind: image, asset: assets/…, fit?: cover | contain | stretch | tile (default cover), focus?: {x, y} fractions of the image kept in view when cropping (default {x: 0.5, y: 0.5})}`; `tile` repeats the image at its natural size (1 px or SVG unit = 1 lu) from the top-left of the area
+- Canvas `backgrounds`: a list of layers over the whole canvas (bottom to top), not one fill per page; only layers above the last opaque one show.
 - Shadow presets: `soft`, `hard`, `none` built in; more in styles.shadows (`{layers: [{color, blur, x, y}]}`).
 ";
 

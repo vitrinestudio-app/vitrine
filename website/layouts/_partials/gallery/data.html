@@ -1,0 +1,43 @@
+{{- /* Build-time snapshot of the template gallery (docs/api/API.md):
+       every approved template (pages of `GET /v1/templates`, following
+       the server's own `limit`) and the tag taxonomy (`GET /v1/tags`).
+       API base: `params.galleryAPI` (env HUGO_PARAMS_GALLERYAPI for a
+       local server). Never fails the build: an unreachable API gives an
+       empty snapshot ("gallery opens soon"); the page refreshes live in
+       the browser anyway. Call it with partialCached (one fetch per build).
+
+       Returns: dict "api" "templates" (slice) "tags" (the /v1/tags facets)
+       "ok" (bool: the list could be read). */ -}}
+{{- $api := strings.TrimSuffix "/" (site.Params.galleryapi | default "https://api.vitrinestudio.app") -}}
+{{- $templates := slice -}}
+{{- $ok := false -}}
+{{- $done := false -}}
+{{- $offset := 0 -}}
+{{- range seq 20 -}}
+  {{- if not $done -}}
+    {{- $url := printf "%s/v1/templates?limit=200&offset=%d" $api $offset -}}
+    {{- $r := try (resources.GetRemote $url) -}}
+    {{- if $r.Err -}}
+      {{- warnidf "gallery-api" "template gallery: cannot read %s (%s); the page shows its empty state and loads live in the browser" $url $r.Err -}}
+      {{- $done = true -}}
+    {{- else if not $r.Value -}}
+      {{- $done = true -}}
+    {{- else -}}
+      {{- $page := $r.Value | transform.Unmarshal -}}
+      {{- $list := $page.templates | default slice -}}
+      {{- $ok = true -}}
+      {{- range $list }}{{ $templates = $templates | append . }}{{ end -}}
+      {{- $step := int ($page.limit | default 50) -}}
+      {{- if lt (len $list) $step }}{{ $done = true }}{{ end -}}
+      {{- $offset = add $offset $step -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $tags := slice -}}
+{{- if $ok -}}
+  {{- $r := try (resources.GetRemote (printf "%s/v1/tags" $api)) -}}
+  {{- if and (not $r.Err) $r.Value -}}
+    {{- $tags = ($r.Value | transform.Unmarshal).facets | default slice -}}
+  {{- end -}}
+{{- end -}}
+{{- return dict "api" $api "templates" $templates "tags" $tags "ok" $ok -}}

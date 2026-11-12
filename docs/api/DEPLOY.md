@@ -67,9 +67,97 @@ its position among the non-empty entries ("entry 2"), never by its value.
 | `VITRINE_API_GITHUB_CLIENT_SECRET` | – | OAuth App secret, web flow only (unset = web login 503) |
 | `VITRINE_API_SESSION_DAYS` | `90` | session token lifetime |
 | `VITRINE_API_WEB_LOGIN_RETURN_URL` | – | web flow: redirect here with the token in the URL fragment (unset = JSON answer) |
+| `VITRINE_API_CORS_ORIGINS` | – | browser origins allowed to read the public GET routes, e.g. `https://www.vitrinestudio.app,https://vitrinestudio.app` (the website gallery's live refresh) |
+| `VITRINE_API_RENDER_CONCURRENCY` | `2` | previews/sprites rendered at the same time (uploads, approvals, re-renders, start-up backfill) |
 
 `VITRINE_API_URL` is *not* a server variable: it is the client-side
 override of the API base URL (CLI/app, loopback URLs only).
+
+## Upgrade 2026-11-12 (website gallery): CORS, list limit 200, per-canvas devices
+
+- Add `VITRINE_API_CORS_ORIGINS: https://www.vitrinestudio.app,https://vitrinestudio.app`
+  to the stack (without it the website still works from its build-time
+  snapshot, but cannot refresh live or filter newer templates).
+- Schema version 2: on start the server marks every template for the
+  backfill again and stores `devices` per canvas from the stored package
+  (no re-render; a few seconds for 50 templates). Nothing to do.
+- `GET /v1/templates` accepts `limit` up to 200.
+- If nginx adds its own CORS headers for the API, remove them (the
+  server sends them; duplicates make browsers refuse the answer).
+
+## Upgrade 2026-11-12: tags, sample screenshots, gallery sprites
+
+What changes (ADR 0023 amendment, `docs/api/API.md`): fixed tag facets
+(`style`, `color`, `use`, derived `devices`) with list filters and `GET
+/v1/tags`; sample screenshots kept when the uploader confirms them
+(`?confirm_own_screenshots=true`); WebP gallery sprites per canvas
+(`/v1/templates/{id}/sprites/…`); admin `rerender`; uploads need complete
+tags. New optional variable `VITRINE_API_RENDER_CONCURRENCY` (default 2:
+renders at the same time – uploads, approvals, re-renders; lower it on a
+small server). The image now also compiles libwebp (C, BSD-3-Clause; the
+`rust` build image has the compiler).
+
+Database: **migrated automatically and idempotently** on start (`PRAGMA
+user_version` 0 → 1): the columns `devices`, `samples`, `sprites`,
+`backfilled` are added when missing, and the old free tag lists are
+sorted into the facets (unknown words such as `garden` are dropped). Then,
+in the background, the server reads every stored package once to fill
+devices, sample counts and tags, and renders the sprites of all approved
+templates (log lines `rendered sprites of …`). Templates already in the
+gallery stay online during this; their `sprite` is `null` until rendered.
+
+Steps:
+
+1. Back up the volume first (one file + the template folders):
+   `docker exec <api container> sqlite3 /data/api.sqlite ".backup /data/api-before-tags.sqlite"`
+   – or stop the stack and copy the volume.
+2. Pull, build: `docker build -f crates/api-server/Dockerfile -t vitrine-api .`
+3. Optional: add `VITRINE_API_RENDER_CONCURRENCY: 2` to the stack.
+4. "Update the stack" (redeploy). Check `docker logs <api container>`:
+   `vitrine-api listening …`, then `rendered sprites of <id>` per approved
+   template.
+5. Check: `curl https://api.vitrinestudio.app/v1/tags` and
+   `curl 'https://api.vitrinestudio.app/v1/templates?devices=phone'`;
+   each canvas has a `sprite` with URLs that answer `image/webp`.
+6. Templates uploaded before have the tags their packages had (often
+   none); re-upload them with tags (raise the version), or leave them.
+   A sprite can be re-rendered any time:
+   `VITRINE_API_ADMIN_TOKEN=… vitrine gallery admin rerender <id>`.
+7. nginx: nothing to change (`/v1/…` is proxied already). If nginx sets
+   its own cache headers for the API, let `Cache-Control`/`ETag` of the
+   sprite responses through.
+
+Rollback: the old image ignores the new columns, but reads the converted
+`tags` (a JSON object instead of a list) as given – it keeps working;
+restore the backup for an exact state.
+
+### Uploading the ~50 official templates
+
+On a workstation with the release CLI, from the project(s) holding the
+templates (each saved with tags and, where wanted, samples):
+
+```sh
+# once per template (or loop over the projects):
+vitrine --project <project> template save --name "<name>" --canvas <canvas> \
+  --style <style> --color <color> --use <use> --sample-screenshots \
+  --version 1.0.0 -o dist/<id>.vitrine-template
+# all checks, nothing sent (summary table; fix what it reports):
+vitrine gallery upload dist/*.vitrine-template --dry-run --confirm-own-screenshots
+# upload with the official static token (VITRINE_API_UPLOAD_TOKENS
+# `<token>:vitrinestudio-app`), continuing after errors:
+export VITRINE_OFFICIAL_TOKEN=<token>
+vitrine gallery upload dist/*.vitrine-template --confirm-own-screenshots \
+  --token-env VITRINE_OFFICIAL_TOKEN
+# review and publish:
+export VITRINE_API_ADMIN_TOKEN=<admin token>
+vitrine gallery admin queue
+vitrine gallery admin approve <id> <id> …
+```
+
+The upload rate limit (`VITRINE_API_RATE_LIMIT_PER_HOUR`, default 20 per
+client and hour) also applies to the owner: raise it for the bulk upload
+(e.g. 100) and set it back afterwards, or upload in batches – failed
+files are listed in the summary and can be uploaded again.
 
 ## Upgrade from the gallery-server deployment
 
@@ -135,15 +223,8 @@ Steps (Portainer stack, compose):
    (`docker exec <api container> rm -f /data/gallery.sqlite
    /data/gallery.sqlite-wal /data/gallery.sqlite-shm`).
 
-Uploading the official templates afterwards (from a workstation):
-
-```sh
-export VITRINE_OFFICIAL_TOKEN=<the token from VITRINE_API_UPLOAD_TOKENS>
-vitrine template export <id> -o <id>.vitrine-template
-vitrine gallery upload <id>.vitrine-template --token-env VITRINE_OFFICIAL_TOKEN
-# then approve: curl -X POST -H "Authorization: Bearer $ADMIN" \
-#   https://api.vitrinestudio.app/v1/admin/templates/<id>/approve
-```
+Uploading the official templates afterwards: see "Uploading the ~50
+official templates" above.
 
 ## GDPR / Impressum (to be done by the owner – notes, not legal advice)
 
@@ -168,7 +249,8 @@ vitrine gallery upload <id>.vitrine-template --token-env VITRINE_OFFICIAL_TOKEN
     login on request – today by hand in SQLite + `templates/<id>/`),
     objection.
 - **Terms of upload**: rights confirmation, CC0 grant, no third-party
-  screenshots/vendor graphics, OFL fonts only; notice-and-takedown via the
+  screenshots/vendor graphics, OFL fonts only; sample screenshots only
+  when the uploader confirms they are their own (`--confirm-own-screenshots`); notice-and-takedown via the
   report endpoint and an e-mail address (DSA: point of contact, statement
   of reasons when removing content).
 - **Cookies**: only the short-lived, strictly necessary login-state cookie

@@ -39,6 +39,15 @@ pub struct GalleryListArgs {
     pub query: Option<String>,
     #[serde(default)]
     pub tag: Option<String>,
+    /// Facet filters (any value within a facet, all facets).
+    #[serde(default)]
+    pub style: Vec<String>,
+    #[serde(default)]
+    pub color: Vec<String>,
+    #[serde(default, rename = "use")]
+    pub use_: Vec<String>,
+    #[serde(default)]
+    pub devices: Vec<String>,
     #[serde(default)]
     pub offset: Option<u32>,
     /// 1–100 (default 50).
@@ -69,6 +78,10 @@ pub fn gallery_list(app: &AppState, args: GalleryListArgs) -> CmdResult<GalleryL
     let q = ListQuery {
         query: args.query,
         tag: args.tag,
+        style: args.style,
+        color: args.color,
+        use_: args.use_,
+        devices: args.devices,
         limit: Some(args.limit.unwrap_or(GALLERY_PAGE).clamp(1, 100)),
         offset: args.offset,
     };

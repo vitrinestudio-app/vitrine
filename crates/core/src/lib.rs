@@ -51,6 +51,7 @@ pub mod markup;
 pub mod model;
 pub mod ops;
 pub mod resolve;
+pub mod samples;
 pub mod template;
 pub mod validate;
 

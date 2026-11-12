@@ -60,11 +60,46 @@ pub struct RenderPreviewParams {
     /// Show this variant instead of the target's own (`""` = base).
     #[serde(default)]
     pub variant: Option<String>,
-    /// Longer edge of the PNG in px (default 1200; gallery: image height
-    /// is half of it).
+    /// Longer edge of the image in px (default 1200, 64..4096). Gallery:
+    /// the image height is half of it; a gallery wider than 4096 px
+    /// (8192 px with `inline: false`) is rendered lower instead.
     #[serde(default = "default_max_edge")]
     pub max_edge: u32,
+    /// view gallery: page colour around the images – `light` (default:
+    /// the store's light page), `dark` (the store's dark mode) or
+    /// `#RRGGBB`. Use it to check that the pages stand out from the store.
+    #[serde(default)]
+    pub background: Option<String>,
+    /// `png` (default, lossless) or `jpeg` (much smaller for photos and
+    /// wide galleries; quality 85).
+    #[serde(default)]
+    pub format: Option<PreviewFormat>,
+    /// Also write the image to this file (relative to the project folder,
+    /// or absolute; folders are created), e.g. `preview/gallery.png` for a
+    /// README.
+    #[serde(default)]
+    pub out_file: Option<PathBuf>,
+    /// Return the image in the result (default true). `false` with
+    /// `out_file`: only write the file (saves transport for big images).
+    #[serde(default = "yes")]
+    pub inline: bool,
 }
+
+fn yes() -> bool {
+    true
+}
+
+/// Image encoding of `render_preview`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, serde::Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PreviewFormat {
+    #[default]
+    Png,
+    Jpeg,
+}
+
+/// Widest inline gallery preview (px); files may be twice as wide.
+pub const MAX_INLINE_GALLERY_WIDTH: u32 = 4096;
 
 #[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -126,6 +161,43 @@ pub struct ExportParams {
     /// Write the `index.html` overview of all exported files (default true).
     #[serde(default)]
     pub html: Option<bool>,
+    /// `false`: write only the `_gallery.png` previews, no page images
+    /// (fast check of whole sets; earlier page files are kept). Default true.
+    #[serde(default)]
+    pub pages: Option<bool>,
+    /// Seconds to wait for the export (default 45, 0..=600). A longer
+    /// export keeps running in the background: the result then has
+    /// `status: running` and a `job` id for `export_status`.
+    #[serde(default)]
+    pub wait_seconds: Option<u32>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ExportStatusParams {
+    /// Job id from `export` (default: the last export).
+    #[serde(default)]
+    pub job: Option<String>,
+    /// Seconds to wait for the export to finish (default 30, 0..=600).
+    #[serde(default)]
+    pub wait_seconds: Option<u32>,
+    /// Stop the running export (files already written stay).
+    #[serde(default)]
+    pub cancel: bool,
+}
+
+/// Default wait of `export` (s): below the usual client timeouts.
+pub const EXPORT_WAIT_SECONDS: u32 = 45;
+/// Default wait of `export_status` (s).
+pub const EXPORT_STATUS_WAIT_SECONDS: u32 = 30;
+
+/// `wait_seconds` checked (0..=600) with a default.
+fn wait_of(v: Option<u32>, default: u32) -> Result<std::time::Duration, CommandError> {
+    let s = v.unwrap_or(default);
+    if s > 600 {
+        return Err(CommandError::invalid("wait_seconds must be 0..600"));
+    }
+    Ok(std::time::Duration::from_secs(u64::from(s)))
 }
 
 /// Export folder structure.
@@ -279,7 +351,7 @@ fn issues(app: &AppState, target: &str, lang: &str) -> Result<Value, CommandErro
 #[tool_router(router = output_tools, vis = "pub(crate)")]
 impl VitrineMcp {
     #[tool(
-        description = "Render a PNG preview with the export renderer and return it as an image – look at it after every visual change. view: image (one output image as exported; pick `image` index or `page`), canvas (whole canvas with page borders and hatched gaps), gallery (all images with store gaps). Also returns size, the number of output images and errors/warnings of this target × language. Example: {\"target\": \"ios-iphone-69\", \"lang\": \"de\", \"page\": 2}.",
+        description = "Render a PNG preview with the export renderer and return it as an image – look at it after every visual change. view: image (one output image as exported; pick `image` index or `page`), canvas (whole canvas with page borders and hatched gaps), gallery (all images with store gaps and corner radius; background: dark shows the store's dark mode). format: jpeg for smaller transfers; out_file also writes the image into the project (inline: false = only the file). Also returns size, the number of output images and errors/warnings of this target × language. Example: {\"target\": \"ios-iphone-69\", \"lang\": \"de\", \"page\": 2}.",
         annotations(read_only_hint = true)
     )]
     async fn render_preview(
@@ -291,6 +363,17 @@ impl VitrineMcp {
             if !(64..=4096).contains(&p.max_edge) {
                 return Err(CommandError::invalid("max_edge must be 64..4096"));
             }
+            if !p.inline && p.out_file.is_none() {
+                return Err(CommandError::invalid(
+                    "inline: false needs out_file (else there is nothing to return)",
+                ));
+            }
+            if p.background.is_some() && p.view != PreviewView::Gallery {
+                return Err(CommandError::invalid(
+                    "background is only used with view: gallery",
+                ));
+            }
+            let format = p.format.unwrap_or_default();
             let (target, lang) = view_of(app, p.target.clone(), p.lang.clone())?;
             let mut base = json!({ "target": target, "lang": lang });
             match p.variant.as_deref() {
@@ -331,24 +414,62 @@ impl VitrineMcp {
                     }
                     info["image"] = json!(index);
                     let mut args = base.clone();
+                    args["format"] = json!(format);
                     args["image"] = json!(index);
                     args["max_edge"] = json!(p.max_edge);
                     image_cmd(app, "render_image", args)?
                 }
                 PreviewView::Canvas => {
                     let mut args = base.clone();
+                    args["format"] = json!(format);
                     args["max_edge"] = json!(p.max_edge);
                     args["overlay"] = json!(true);
                     image_cmd(app, "render_canvas", args)?
                 }
                 PreviewView::Gallery => {
                     let mut args = base.clone();
-                    args["height"] = json!((p.max_edge / 2).max(64));
-                    image_cmd(app, "render_gallery", args)?
+                    args["format"] = json!(format);
+                    let height = (p.max_edge / 2).max(64);
+                    args["height"] = json!(height);
+                    args["max_width"] = json!(if p.inline {
+                        MAX_INLINE_GALLERY_WIDTH
+                    } else {
+                        2 * MAX_INLINE_GALLERY_WIDTH
+                    });
+                    if let Some(bg) = &p.background {
+                        args["background"] = json!(bg);
+                        info["background"] = json!(bg);
+                    }
+                    let img = image_cmd(app, "render_gallery", args)?;
+                    if img.height + 1 < height {
+                        info["note"] = json!(format!(
+                            "the gallery is wide: rendered {} px high instead of {height} to stay within {} px width; look at single images (view: image) for details",
+                            img.height, img.width
+                        ));
+                    }
+                    img
                 }
             };
             info["width"] = json!(img.width);
             info["height"] = json!(img.height);
+            info["format"] = json!(format);
+            if let Some(out) = &p.out_file {
+                let dir = app.session()?.dir().to_owned();
+                let path = if out.is_absolute() {
+                    out.clone()
+                } else {
+                    dir.join(out)
+                };
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent).map_err(|e| {
+                        CommandError::io(format!("{}: {e}", parent.display()))
+                    })?;
+                }
+                std::fs::write(&path, &img.data)
+                    .map_err(|e| CommandError::io(format!("{}: {e}", path.display())))?;
+                info["file"] = json!(path);
+                info["bytes"] = json!(img.data.len());
+            }
             let found = issues(app, &target, &lang)?;
             let n = found.as_array().map_or(0, Vec::len);
             info["issues"] = found;
@@ -363,7 +484,12 @@ impl VitrineMcp {
                 img.width,
                 img.height
             );
-            Ok(ToolOutput::new(line, info).with_png(img.data.clone()))
+            let out = ToolOutput::new(line, info);
+            Ok(if p.inline {
+                out.with_image(img.data.clone(), img.format.content_type())
+            } else {
+                out
+            })
         })
         .await
     }
@@ -437,7 +563,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Export the store files (pages, page groups, banners, gallery previews) for targets × languages into <project>/export (incremental: unchanged files are skipped; files of the same targets × languages it no longer produces are removed; writes an index.html overview unless html: false). layout: \"fastlane\" writes fastlane-ready folders instead (<project>/export/fastlane: screenshots/<asc-locale>/ for deliver, metadata/android/<play-locale>/images/<type>/ for supply; targets without a store slot are left out, upload-set conflicts are errors, see `notes`). Sends progress notifications when the client asks for them. Returns the folder, counts, every file (path, size, skipped) and issues. Example: {\"targets\": [\"ios-iphone-69\"], \"langs\": [\"en\", \"de\"]}."
+        description = "Export the store files (pages, page groups, banners, gallery previews) for targets × languages into <project>/export (incremental: unchanged files are skipped; files of the same targets × languages it no longer produces are removed; writes an index.html overview unless html: false). layout: \"fastlane\" writes fastlane-ready folders instead (<project>/export/fastlane: screenshots/<asc-locale>/ for deliver, metadata/android/<play-locale>/images/<type>/ for supply; targets without a store slot are left out, upload-set conflicts are errors, see `notes`). pages: false writes only the _gallery.png previews (quick check of whole sets). Waits at most wait_seconds (default 45): a longer export continues in the background and the result says status: running with a `job` id – then call export_status {job} until it is finished. Sends progress notifications when the client asks for them. Returns the folder, counts, every file (path, size, skipped) and issues. Example: {\"targets\": [\"ios-iphone-69\"], \"langs\": [\"en\", \"de\"]}."
     )]
     async fn export(
         &self,
@@ -485,8 +611,12 @@ impl VitrineMcp {
             }
             _ => None,
         };
+        let jobs = self.exports().clone();
+        let relay = self.progress().cloned();
+        let owned = self.app().clone();
         let result = self
-            .run(&ctx, move |app| {
+            .run(&ctx, move |_| {
+                let wait = wait_of(p.wait_seconds, EXPORT_WAIT_SECONDS)?;
                 let mut args = json!({
                     "targets": p.targets, "langs": p.langs, "force": p.force,
                 });
@@ -502,36 +632,18 @@ impl VitrineMcp {
                 if let Some(h) = p.html {
                     args["html"] = json!(h);
                 }
-                let r = cmd(app, "export", args)?;
-                let files: Vec<Value> = r["files"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .map(|f| {
-                        json!({
-                            "path": f["path"], "target": f["target"], "lang": f["lang"],
-                            "size": format!("{}x{}", f["width"], f["height"]),
-                            "skipped": f["skipped"],
-                        })
-                    })
-                    .collect();
-                let written = files.iter().filter(|f| f["skipped"] == false).count();
-                let errors = r["errors"].as_array().map_or(0, Vec::len);
-                let line = format!(
-                    "exported {} file(s) to {} ({written} written, {} unchanged, {errors} error(s))",
-                    files.len(),
-                    r["out_dir"].as_str().unwrap_or_default(),
-                    files.len() - written,
-                );
-                Ok(ToolOutput::new(
-                    line,
-                    json!({
-                        "out_dir": r["out_dir"], "files": files, "written": written,
-                        "issues": r["issues"], "errors": r["errors"], "cancelled": r["cancelled"],
-                        "total_ms": r["total_ms"], "layout": r["layout"], "notes": r["notes"],
-                        "removed": r["removed"], "index": r["index"],
-                    }),
-                ))
+                if let Some(pages) = p.pages {
+                    args["pages"] = json!(pages);
+                }
+                // On its own thread: a long export outlives this call.
+                let actor = vitrine_app::Actor::current();
+                let job = jobs.start(relay.as_ref(), move || {
+                    actor.scope(|| export_output(&owned, args))
+                })?;
+                match job.wait(wait) {
+                    Some(r) => crate::jobs::finished_output(&job, r),
+                    None => Ok(job.running_output()),
+                }
             })
             .await;
         let _ = done_tx.send(());
@@ -541,6 +653,69 @@ impl VitrineMcp {
         }
         result
     }
+
+    #[tool(
+        description = "State of a background export (started by `export` when it took longer than its wait_seconds): progress (done/total files) while it runs, the full export result once finished. Waits up to wait_seconds (default 30) for the end. cancel: true stops it. Example: {\"job\": \"export-1\"}.",
+        annotations(read_only_hint = true)
+    )]
+    async fn export_status(
+        &self,
+        Parameters(p): Parameters<ExportStatusParams>,
+        ctx: RequestContext<RoleServer>,
+    ) -> CallToolResult {
+        let jobs = self.exports().clone();
+        self.run_unsynced(&ctx, move |app| {
+            let wait = wait_of(p.wait_seconds, EXPORT_STATUS_WAIT_SECONDS)?;
+            let Some(job) = jobs.get(p.job.as_deref()) else {
+                return Err(CommandError::not_found(match &p.job {
+                    Some(j) => format!("no export `{j}` (only the last export is kept)"),
+                    None => "no export was started in this session".to_owned(),
+                }));
+            };
+            if p.cancel && !job.is_finished() {
+                cmd(app, "export_cancel", Value::Null)?;
+            }
+            match job.wait(wait) {
+                Some(r) => crate::jobs::finished_output(&job, r),
+                None => Ok(job.running_output()),
+            }
+        })
+        .await
+    }
+}
+
+/// Runs the app's `export` command and shapes its report for the model.
+fn export_output(app: &AppState, args: Value) -> Result<ToolOutput, CommandError> {
+    let r = cmd(app, "export", args)?;
+    let files: Vec<Value> = r["files"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|f| {
+            json!({
+                "path": f["path"], "target": f["target"], "lang": f["lang"],
+                "size": format!("{}x{}", f["width"], f["height"]),
+                "skipped": f["skipped"],
+            })
+        })
+        .collect();
+    let written = files.iter().filter(|f| f["skipped"] == false).count();
+    let errors = r["errors"].as_array().map_or(0, Vec::len);
+    let line = format!(
+        "exported {} file(s) to {} ({written} written, {} unchanged, {errors} error(s))",
+        files.len(),
+        r["out_dir"].as_str().unwrap_or_default(),
+        files.len() - written,
+    );
+    Ok(ToolOutput::new(
+        line,
+        json!({
+            "out_dir": r["out_dir"], "files": files, "written": written,
+            "issues": r["issues"], "errors": r["errors"], "cancelled": r["cancelled"],
+            "total_ms": r["total_ms"], "layout": r["layout"], "notes": r["notes"],
+            "removed": r["removed"], "index": r["index"],
+        }),
+    ))
 }
 
 #[cfg(test)]

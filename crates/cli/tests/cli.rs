@@ -720,3 +720,94 @@ fn validate_ci_formats() {
     let o = vitrine_in(&dir, &["validate", "-o", xml.to_str().unwrap()]);
     assert_eq!(code(&o), 2);
 }
+
+/// `template tags`, `template save` with facet tags and sample screenshots,
+/// the removed `--tag`, and a new project carrying the samples.
+#[test]
+fn template_tags_and_sample_screenshots() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app = tmp.path().join("app");
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_vitrine"))
+            .args(args)
+            .env("NO_COLOR", "1")
+            .env("VITRINE_APP_DIR", &app)
+            .output()
+            .expect("run vitrine")
+    };
+    let o = run(&["template", "tags"]);
+    assert_eq!(code(&o), 0);
+    assert!(stdout(&o).contains("health-fitness"), "{}", stdout(&o));
+    let o = run(&["template", "tags", "--format", "json"]);
+    let v: Value = serde_json::from_slice(&o.stdout).unwrap();
+    assert_eq!(v["facets"][2]["id"], "use");
+
+    let example = repo_file("tests/fixtures/example");
+    let ex = example.to_str().unwrap();
+    let o = run(&[
+        "--project",
+        ex,
+        "template",
+        "save",
+        "--name",
+        "X",
+        "--tag",
+        "dark",
+    ]);
+    assert_eq!(code(&o), 2);
+    assert!(stderr(&o).contains("--color dark"), "{}", stderr(&o));
+    let o = run(&[
+        "--project",
+        ex,
+        "template",
+        "save",
+        "--name",
+        "X",
+        "--style",
+        "fancy",
+    ]);
+    assert_eq!(code(&o), 2);
+    assert!(stderr(&o).contains("minimal"), "{}", stderr(&o));
+
+    let file = tmp.path().join("samples.vitrine-template");
+    let o = run(&[
+        "--project",
+        ex,
+        "template",
+        "save",
+        "--name",
+        "Samples",
+        "--canvas",
+        "phone",
+        "--style",
+        "minimal",
+        "--color",
+        "light,gradient",
+        "--use",
+        "travel",
+        "--sample-screenshots",
+        "-o",
+        file.to_str().unwrap(),
+    ]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(stdout(&o).contains("packed as samples"), "{}", stdout(&o));
+
+    let dir = tmp.path().join("p");
+    let o = run(&[
+        "new",
+        dir.to_str().unwrap(),
+        "--template",
+        file.to_str().unwrap(),
+    ]);
+    assert_eq!(code(&o), 0, "{}", stderr(&o));
+    assert!(stdout(&o).contains("sample screenshot"), "{}", stdout(&o));
+    assert!(dir.join("screenshots/samples.yaml").is_file());
+    let o = run(&[
+        "--project",
+        dir.to_str().unwrap(),
+        "validate",
+        "--format",
+        "json",
+    ]);
+    assert!(stdout(&o).contains("sample_screenshot"), "{}", stdout(&o));
+}

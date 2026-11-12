@@ -14,11 +14,11 @@
 #   radius      corner radius of the images as shown; a number or {x, y}
 #               (elliptical, x along the width, y along the height)
 #   background  page colour behind the gallery (preview only)
-#   background_dark  page colour in dark mode (validation `page_blends_with_store`
-#               only). NOT YET MEASURED: assumed system colours - App Store
-#               #000000 (iOS systemBackground, dark), Google Play #131314
-#               (Material 3 dark surface). Checked 2026-11-12 against nothing
-#               but the platform design docs:
+#   background_dark  page colour in the store's dark mode (gallery preview
+#               `render_gallery {background: dark}`, validation
+#               `page_blends_with_store`). NOT YET MEASURED for any profile:
+#               placeholders from the platform colours (iOS systemBackground
+#               dark #000000, Material 3 dark surface #131314), added 2026-11-12:
 #               https://developer.apple.com/design/human-interface-guidelines/dark-mode
 #               https://m3.material.io/styles/color/static/baseline
 #   measured    false   = NOT YET MEASURED, placeholder guess
@@ -43,7 +43,7 @@ galleries:
     gap: 45
     radius: 125
     background: "#FFFFFF"
-    background_dark: "#000000"  # NOT YET MEASURED
+    background_dark: "#000000"
     measured: false  # NOT YET MEASURED – placeholder
     source: estimate, no official documentation
     note: >-
@@ -56,7 +56,7 @@ galleries:
     gap: 78
     radius: {x: 128, y: 124}
     background: "#FFFFFF"
-    background_dark: "#000000"  # NOT YET MEASURED
+    background_dark: "#000000"
     measured: web-css
     source: https://apps.apple.com/us/app/things-3/id904237743
     note: >-
@@ -71,7 +71,7 @@ galleries:
     gap: 69
     radius: {x: 128, y: 124}
     background: "#FFFFFF"
-    background_dark: "#000000"  # NOT YET MEASURED
+    background_dark: "#000000"
     measured: web-css
     source: https://apps.apple.com/us/app/things-3/id904237743
     note: Viewport < 1000 px - 10 px gap at 144 px screenshot width (6.9 %).
@@ -81,7 +81,7 @@ galleries:
     gap: 40
     radius: 20
     background: "#FFFFFF"
-    background_dark: "#000000"  # NOT YET MEASURED
+    background_dark: "#000000"
     measured: false  # NOT YET MEASURED – placeholder
     source: estimate, no official documentation
     note: Guess based on the web values (3.4-4.4 % gap, ~1.3-1.9 % radius).
@@ -91,7 +91,7 @@ galleries:
     gap: 44
     radius: {x: 13, y: 14}
     background: "#FFFFFF"
-    background_dark: "#000000"  # NOT YET MEASURED
+    background_dark: "#000000"
     measured: web-css
     source: apps.apple.com, Things 3 for iPad listing (CSS class `ScreenshotLarge`)
     note: >-
@@ -104,7 +104,7 @@ galleries:
     gap: 34
     radius: {x: 13, y: 14}
     background: "#FFFFFF"
-    background_dark: "#000000"  # NOT YET MEASURED
+    background_dark: "#000000"
     measured: web-css
     source: apps.apple.com, Things 3 for iPad listing (CSS class `ScreenshotLarge`)
     note: 298 px wide landscape images, 10 px gap (3.4 %).
@@ -114,7 +114,7 @@ galleries:
     gap: 30
     radius: 10
     background: "#FFFFFF"
-    background_dark: "#000000"  # NOT YET MEASURED
+    background_dark: "#000000"
     measured: false  # NOT YET MEASURED – placeholder
     source: estimate, no official documentation
     note: Neither the Mac App Store app nor the Mac listing on apps.apple.com has been measured.
@@ -126,7 +126,7 @@ galleries:
     gap: 40
     radius: 40
     background: "#FFFFFF"
-    background_dark: "#131314"  # NOT YET MEASURED
+    background_dark: "#131314"
     measured: false  # NOT YET MEASURED – placeholder
     source: estimate, no official documentation
     note: Guess - about 8 dp gap and 8 dp radius at roughly 200 dp screenshot height.
@@ -137,7 +137,7 @@ galleries:
     gap: 40
     radius: 40
     background: "#FFFFFF"
-    background_dark: "#131314"  # NOT YET MEASURED
+    background_dark: "#131314"
     measured: false  # NOT YET MEASURED – placeholder
     source: estimate, no official documentation
     note: Same guess as play-phone.
@@ -148,7 +148,7 @@ galleries:
     gap: 54
     radius: 27
     background: "#FFFFFF"
-    background_dark: "#131314"  # NOT YET MEASURED
+    background_dark: "#131314"
     measured: web-css
     source: https://play.google.com/store/apps/details?id=com.spotify.music
     note: >-
@@ -162,7 +162,7 @@ galleries:
     gap: 59
     radius: 39
     background: "#FFFFFF"
-    background_dark: "#131314"  # NOT YET MEASURED
+    background_dark: "#131314"
     measured: web-css
     source: https://play.google.com/store/apps/details?id=com.spotify.music
     note: Viewport 390 px - 204 px high, 12 px gap (5.9 %), 8 px radius (3.9 %).
@@ -173,6 +173,7 @@ galleries:
     gap: 0
     radius: 0
     background: "#FFFFFF"
+    background_dark: "#000000"
     measured: fixed
     source: by definition
     note: For banners and targets without a store gallery.
