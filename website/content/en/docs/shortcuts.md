@@ -31,6 +31,7 @@ trackpad, two-finger scrolling works like the scroll wheel.
 | Click | select an element (a group as a whole) |
 | Double-click | select the element inside its group (a text opens for editing) |
 | <kbd>⌘</kbd> + click | select the element under the pointer directly, even inside a group |
+| Double-click empty page space | select the page's background element |
 | <kbd>Shift</kbd> + click | add to or remove from the selection |
 | <kbd>Shift</kbd> + drag on an empty area | select with a frame (adds to the selection) |
 | <kbd>⌘</kbd><kbd>A</kbd> | select all elements of the canvas (not locked ones) |
@@ -87,6 +88,9 @@ trackpad, two-finger scrolling works like the scroll wheel.
 | <kbd>↑</kbd> / <kbd>↓</kbd> | layers: select the next / previous layer |
 | Double-click, <kbd>Enter</kbd>, <kbd>F2</kbd> | layers: rename |
 | Drag | layers: change the order |
+| Drag, double-click | inspector: drag its left edge to change the width (double-click: default) |
+| Click, <kbd>Enter</kbd> | images and screenshots: click opens the preview |
+| <kbd>←</kbd> / <kbd>→</kbd> | preview: previous / next image |
 
 ## App & dialogs
 

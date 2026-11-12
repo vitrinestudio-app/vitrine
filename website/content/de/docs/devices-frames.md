@@ -79,7 +79,8 @@ selbst herunter und importierst sie einmal. Danach funktionieren sie in jedem
 Projekt auf diesem Rechner.
 
 1. Lade das Bezel-Paket für deine Geräte herunter (z. B.
-   *Bezel-iPhone-18.dmg*) von developer.apple.com/design/resources.
+   *Bezel-iPhone-18.dmg*) von developer.apple.com/design/resources
+   (Hilfe-Menü → *Apple Product Bezels herunterladen* öffnet die Seite).
 2. **Öffne das DMG im Finder und akzeptiere die Lizenz.** Das Disk-Image
    enthält eine Lizenzvereinbarung; die `.dmg`-Datei direkt zu importieren
    schlägt fehl. Nach dem Akzeptieren ist das Volume eingebunden (z. B.

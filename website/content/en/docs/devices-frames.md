@@ -74,7 +74,8 @@ yourself and import them once – they then work in every project on that
 computer.
 
 1. Download the bezel package for your devices (e.g. *Bezel-iPhone-18.dmg*)
-   from developer.apple.com/design/resources.
+   from developer.apple.com/design/resources (Help menu → *Download Apple
+   Product Bezels* opens the page).
 2. **Open the DMG in Finder and accept the licence.** The disk image contains a
    licence agreement; importing the `.dmg` file directly fails. After
    accepting, the volume is mounted (e.g. `/Volumes/Bezel-iPhone-18`).

@@ -49,6 +49,12 @@ guide pages in both languages.
 - Also reachable: Canvases sidebar tab ("New canvas…", "Manage…", double-click a canvas) and the inspector's canvas settings (variants: duplicate, remove, "New variant…", "Manage…").
 - Undo/redo of canvas/target changes keeps the view valid (unknown canvas/target/variant falls back to the first one).
 
+### Editor details (owner feedback 2026-11-12)
+- ☰ menu: opens from the ☰ button, the app icon or the project name (one button; Enter/Space, ↑/↓ through the entries, Esc). Order: New, Open, Close project, …; Help part starts with "Download Apple Product Bezels" (opens developer.apple.com/design/resources/#product-bezels; also at the top of the native macOS Help menu).
+- Inspector: default width 340 px; drag its left edge to resize (260–640 px, never squeezing the canvas below ~420 px), double-click the edge = default; remembered per viewer (localStorage).
+- Image preview: click a thumbnail in Assets (screenshots and images) or the eye button next to an image element's asset → large image, file name, pixel size, file size, format, colour profile (warning text when the profile is ignored and the file renders as sRGB), "used by" chips (click selects the element). ←/→ step through the section's images, Esc / click outside closes. SVGs are drawn at the preview size.
+- Page backgrounds (elements of kind `background`, e.g. `{id: bg-parents, kind: background, page: 4, z: -20, fill: "@navy"}`) fill their home page and are not hit by canvas clicks or the selection frame. Select them by double-clicking empty page space, right-click → "Select background …", in Layers (they sit at the bottom: low z), or canvas settings (nothing selected) → "Page backgrounds" (also "Add page background"). Inspector: home page, fill (colour/style ref, linear/radial gradient, image + fit/focus), opacity, z, clip, visible, shown in targets/languages. No span: a page background always covers exactly its home page.
+
 ### Store sizes (verified in App Store Connect web app, 2026-11-10)
 - Required iPhone set: "iPhone with Dynamic Island (medium display)" = 6.3" = 1206×2622 → `APP_IPHONE_61`. All other iPhone sizes optional (scaled by Apple).
 - 6.9" 1320×2868 / 1290×2796 → `APP_IPHONE_67` (no `_69` type exists).

@@ -67,11 +67,20 @@ ungroups.
 Backgrounds that run across **all** pages belong to the canvas: deselect
 everything and edit **Canvas backgrounds** in the inspector.
 
+A **page background** fills its whole home page, so a click on the page
+selects the element in front of it, not the background. Select it by
+**double-clicking an empty spot** of the page, with right-click → *Select
+background "…"*, in **Layers**, or in the canvas settings (nothing selected)
+under **Page backgrounds**, which also has *Add page background*. The
+inspector then edits its *Home page*, *Fill* (colour, gradient or image),
+*Opacity*, *Layer (z)*, *Clip* and visibility.
+
 ## Selecting
 
 - **Click** selects an element (a group as a whole).
 - **Double-click** selects the element inside its group – on a text it opens
-  the text for editing.
+  the text for editing; on an empty spot of a page it selects the page's
+  background element.
 - <kbd>⌘</kbd> + click selects the element under the pointer directly, even
   inside a group.
 - <kbd>Shift</kbd> + click adds to or removes from the selection.
@@ -155,7 +164,7 @@ With an element selected, the inspector shows its settings. The most important:
   lines*), *Hyphenation*, *Colour*, *Font size*, *Outline*, *Glow*, *Shadow*.
   Below, *Laid out* shows the font size and line count the text actually got,
   or *Text overflows its box*.
-- **Image:** *Asset*, *Fit*, *Shadow*. **Shape:** *Shape*, *Radius*, *Fill*,
+- **Image:** *Asset* (the eye button opens the image preview), *Fit*, *Shadow*. **Shape:** *Shape*, *Radius*, *Fill*,
   *Stroke*. Fills can be a colour, a linear or radial gradient, or an image.
 
 Number fields: drag the label sideways to scrub the value (<kbd>Shift</kbd>
@@ -165,8 +174,11 @@ colour (`@accent`).
 
 With **nothing selected**, the inspector shows the **canvas settings**: page
 *Aspect* and *Page height*, number of *Pages* (add or remove at the end),
-*Page ids* (they name the exported files), *Canvas backgrounds* and the
-*Variants*.
+*Page ids* (they name the exported files), *Canvas backgrounds*, *Page
+backgrounds* and the *Variants*.
+
+The inspector is wider than before and **resizable**: drag its left edge
+(double-click it for the default width). The width is remembered.
 
 {{< shot src="images/inspector-text.jpg" alt="The inspector with a selected text element." caption="The inspector with a text selected." >}}
 
@@ -244,7 +256,13 @@ design (export still checks them strictly). Common findings are explained in
 
 ## Help in the app
 
+The ☰ menu opens from the ☰ button, the app icon or the project name in the
+top bar (also with <kbd>Enter</kbd>/<kbd>Space</kbd> when focused; arrow keys
+move through the entries).
+
 - **Keyboard & mouse…** (☰ → Help, the **?** button in the bottom bar, or
   <kbd>?</kbd>) – every shortcut and gesture. Also on
   [Keyboard & mouse](../shortcuts/).
 - **How Vitrine Studio is organised…** – the one-screen overview.
+- **Download Apple Product Bezels** (top of the Help menu) opens Apple's
+  Design Resources page – see [Devices & frames](../devices-frames/).
