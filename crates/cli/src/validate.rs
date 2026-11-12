@@ -1,15 +1,35 @@
 //! `vitrine validate`: the `core::validate` report, grouped by target and
-//! language (text) or as JSON.
+//! language (text), as JSON, or in a CI format (`github` annotations,
+//! `gitlab` Code Quality, `junit` XML; `crate::ci_report`).
 
-use clap::Args;
+use std::path::PathBuf;
+
+use anyhow::Context as _;
+use clap::{Args, ValueEnum};
 use serde::Serialize;
 use vitrine_core::resolve::FsAssets;
 use vitrine_core::validate::{
     Finding, Severity, ValidateMode, ValidateOptions, ValidationReport, validate,
 };
 
+use crate::ci_report::{self, Locator};
 use crate::term::{Style, plural};
-use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global, project};
+use crate::{EXIT_OK, EXIT_PROBLEMS, Global, project};
+
+/// Output format of `validate`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ValidateFormat {
+    /// Grouped by target and language.
+    Text,
+    /// The report with counts.
+    Json,
+    /// GitHub Actions annotations (workflow commands) plus the text report.
+    Github,
+    /// GitLab Code Quality report (JSON).
+    Gitlab,
+    /// `JUnit` XML (GitLab, Jenkins, Azure Pipelines, `CircleCI`, Bitrise).
+    Junit,
+}
 
 #[derive(Debug, Args)]
 pub struct ValidateArgs {
@@ -19,9 +39,13 @@ pub struct ValidateArgs {
     /// Only this language; repeat for more (default: each target's languages).
     #[arg(long = "lang", value_name = "LANG")]
     pub langs: Vec<String>,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = Format::Text)]
-    pub format: Format,
+    /// Output format (`github`, `gitlab`, `junit`: CI reports).
+    #[arg(long, value_enum, default_value_t = ValidateFormat::Text)]
+    pub format: ValidateFormat,
+    /// Write the `--format` report to this file and print the text report
+    /// (e.g. `--format junit -o validate.xml`).
+    #[arg(short, long, value_name = "FILE")]
+    pub output: Option<PathBuf>,
     /// Validate for previewing: missing screenshots are warnings, not errors.
     #[arg(long)]
     pub preview: bool,
@@ -62,8 +86,15 @@ pub fn run(args: &ValidateArgs, global: &Global) -> anyhow::Result<u8> {
     let warnings = report.count(Severity::Warn);
     let failed = errors > 0 || (args.strict && warnings > 0);
 
-    match args.format {
-        Format::Json => {
+    let checked: Vec<String> = project
+        .targets
+        .iter()
+        .map(|t| t.id.to_string())
+        .filter(|t| args.targets.is_empty() || args.targets.contains(t))
+        .collect();
+    let formatted = match args.format {
+        ValidateFormat::Text => None,
+        ValidateFormat::Json => {
             let json = JsonReport {
                 ok: !failed,
                 errors,
@@ -71,9 +102,43 @@ pub fn run(args: &ValidateArgs, global: &Global) -> anyhow::Result<u8> {
                 infos: report.count(Severity::Info),
                 findings: &report.findings,
             };
-            println!("{}", serde_json::to_string_pretty(&json)?);
+            Some(serde_json::to_string_pretty(&json)? + "\n")
         }
-        Format::Text => print_text(&report, global),
+        ValidateFormat::Github => Some(ci_report::github(
+            &report.findings,
+            &Locator::new(root),
+            global.verbose,
+        )),
+        ValidateFormat::Gitlab => Some(
+            serde_json::to_string_pretty(&ci_report::gitlab(
+                &report.findings,
+                &Locator::new(root),
+            ))? + "\n",
+        ),
+        ValidateFormat::Junit => Some(ci_report::junit(
+            &report.findings,
+            &checked,
+            &Locator::new(root),
+            args.strict,
+        )),
+    };
+    match (formatted, &args.output) {
+        (None, Some(_)) => {
+            anyhow::bail!("--output needs a report format (--format json|github|gitlab|junit)")
+        }
+        (None, None) => print_text(&report, global),
+        (Some(out), Some(file)) => {
+            std::fs::write(file, out)
+                .with_context(|| format!("cannot write {}", file.display()))?;
+            print_text(&report, global);
+        }
+        (Some(out), None) => {
+            print!("{out}");
+            // GitHub: the annotations plus the readable report in the log.
+            if args.format == ValidateFormat::Github {
+                print_text(&report, global);
+            }
+        }
     }
     Ok(if failed { EXIT_PROBLEMS } else { EXIT_OK })
 }

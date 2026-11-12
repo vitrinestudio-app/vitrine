@@ -29,6 +29,7 @@ use vitrine_app::upload::policy::{self, McpHost};
 use vitrine_app::upload::{UploadConfig, UploadPlan};
 use vitrine_app::{Actor, AppState, CommandError, ErrorCode, Reply, dispatch, dispatch_as};
 use vitrine_publish::credentials::SecretStore;
+use vitrine_publish::env_credentials::EnvCredentials;
 use vitrine_publish::{ClientOptions, PollPolicy, RetryPolicy};
 use wiremock::matchers::any;
 use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
@@ -938,17 +939,37 @@ fn fast_config(asc: &str, play: &str) -> UploadConfig {
 }
 
 async fn env_with(project: &str) -> Env {
+    env_setup(project, false).await
+}
+
+/// `from_env`: the keys come as CI environment credentials
+/// (`EnvCredentials`, ADR 0016 amendment) instead of imported accounts.
+async fn env_setup(project: &str, from_env: bool) -> Env {
     let tmp = tempfile::tempdir().unwrap();
     let events = Arc::new(RecordingSink::default());
-    let app = Arc::new(
-        AppState::new(
-            AppPaths::in_dir(&tmp.path().join("app")),
-            events.clone(),
-            Arc::new(NoDialogs),
-        )
-        .with_secret_store(SecretStore::mock())
-        .without_watcher(),
-    );
+    let apple_key = ec_pem();
+    let google_json =
+        json!({"type": "service_account", "project_id": "demo", "private_key_id": "k1",
+           "private_key": rsa_pem(), "client_email": "up@demo.iam.gserviceaccount.com"})
+        .to_string();
+    let mut state = AppState::new(
+        AppPaths::in_dir(&tmp.path().join("app")),
+        events.clone(),
+        Arc::new(NoDialogs),
+    )
+    .with_secret_store(SecretStore::mock())
+    .without_watcher();
+    if from_env {
+        let vars = BTreeMap::from([
+            ("VITRINE_ASC_KEY_ID", "ABCDE12345".to_owned()),
+            ("VITRINE_ASC_ISSUER_ID", ISSUER.to_owned()),
+            ("VITRINE_ASC_KEY", apple_key.clone()),
+            ("VITRINE_PLAY_SERVICE_ACCOUNT", google_json.clone()),
+        ]);
+        state = state
+            .with_env_credentials(EnvCredentials::from_lookup(|n| vars.get(n).cloned()).unwrap());
+    }
+    let app = Arc::new(state);
     let asc_server = MockServer::start().await;
     let play_server = MockServer::start().await;
     let asc = Arc::new(Mutex::new(Asc {
@@ -968,26 +989,22 @@ async fn env_with(project: &str) -> Env {
     app.upload()
         .set_config(fast_config(&asc_server.uri(), &play_server.uri()));
 
-    let p8 = tmp.path().join("AuthKey_ABCDE12345.p8");
-    std::fs::write(&p8, ec_pem()).unwrap();
-    call(
-        &app,
-        "store_account_import",
-        json!({"kind": "apple", "path": p8, "issuer_id": ISSUER, "label": "team"}),
-    );
-    let sa = tmp.path().join("sa.json");
-    std::fs::write(
-        &sa,
-        json!({"type": "service_account", "project_id": "demo", "private_key_id": "k1",
-               "private_key": rsa_pem(), "client_email": "up@demo.iam.gserviceaccount.com"})
-        .to_string(),
-    )
-    .unwrap();
-    call(
-        &app,
-        "store_account_import",
-        json!({"kind": "google", "path": sa, "label": "play"}),
-    );
+    if !from_env {
+        let p8 = tmp.path().join("AuthKey_ABCDE12345.p8");
+        std::fs::write(&p8, &apple_key).unwrap();
+        call(
+            &app,
+            "store_account_import",
+            json!({"kind": "apple", "path": p8, "issuer_id": ISSUER, "label": "team"}),
+        );
+        let sa = tmp.path().join("sa.json");
+        std::fs::write(&sa, &google_json).unwrap();
+        call(
+            &app,
+            "store_account_import",
+            json!({"kind": "google", "path": sa, "label": "play"}),
+        );
+    }
 
     let dir = tmp.path().join("project");
     std::fs::create_dir_all(dir.join("i18n")).unwrap();
@@ -1210,6 +1227,32 @@ async fn executes_both_stores_and_then_nothing_is_left() {
     );
     let forced = plan(&e.app, json!({ "force": true }));
     assert_eq!(forced["totals"]["upload_sets"], 4);
+}
+
+/// CI: credentials from the environment, no account in the app settings
+/// and nothing in the keychain – plan (readiness ready, account `env`) and
+/// execute upload to both stores exactly like imported accounts.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn environment_credentials_replace_the_accounts() {
+    let e = env_setup(PROJECT, true).await;
+    let accounts = call(&e.app, "store_accounts_list", json!({}));
+    assert!(
+        !accounts.to_string().contains("apple-team"),
+        "no account on this machine: {accounts}"
+    );
+    let p = plan(&e.app, json!({}));
+    assert_eq!(p["blocked"], false, "{p:#}");
+    assert_eq!(p["readiness"]["ready"], true, "{:#}", p["readiness"]);
+    assert_eq!(p["stores"][0]["account"], "env");
+    assert_eq!(p["stores"][1]["account"], "env");
+    let r = plan(&e.app, json!({ "remote": true }));
+    assert_eq!(r["blocked"], false, "{r:#}");
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    assert_eq!(run["images_done"], 8);
+    assert_eq!(e.play.lock().unwrap().commits, 1);
+    let ready = call(&e.app, "upload_readiness", json!({}));
+    assert_eq!(ready["ready"], true, "{ready:#}");
 }
 
 /// Phase 6.2: the Play feature graphic (banner target, `featureGraphic`)

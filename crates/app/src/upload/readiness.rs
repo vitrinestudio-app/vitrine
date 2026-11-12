@@ -117,11 +117,14 @@ fn slot_of(target: &Target, store: StoreKind) -> Option<&str> {
 }
 
 /// The checklist for `project` with the accounts of this machine; `only`
-/// limits it to one store (the upload dialog's tab).
+/// limits it to one store (the upload dialog's tab). `env`: stores with
+/// credentials from the environment (CLI in CI) – they need no account
+/// on this machine and no account choice in the project.
 #[allow(clippy::too_many_lines)]
 pub fn readiness(
     project: &Project,
     accounts: &[StoreAccount],
+    env: &[StoreKind],
     only: Option<StoreKind>,
 ) -> Readiness {
     let wanted = |s: &StoreKind| only.is_none_or(|o| o == *s);
@@ -143,10 +146,15 @@ pub fn readiness(
         });
     };
     let of_kind = |s: StoreKind| accounts.iter().filter(move |a| a.kind == s);
+    let from_env = |s: StoreKind| env.contains(&s);
 
     // 1. App settings: accounts on this machine.
     let relevant: Vec<StoreKind> = StoreKind::ALL.into_iter().filter(wanted).collect();
-    if relevant.iter().all(|s| of_kind(*s).next().is_none()) && mapped.is_empty() {
+    if relevant
+        .iter()
+        .all(|s| of_kind(*s).next().is_none() && !from_env(*s))
+        && mapped.is_empty()
+    {
         step(
             "no_account",
             only,
@@ -167,7 +175,7 @@ pub fn readiness(
             },
         );
     }
-    for &s in &mapped {
+    for &s in mapped.iter().filter(|s| !from_env(**s)) {
         match project.store.account(s) {
             Some(id) if !of_kind(s).any(|a| a.id == id) => step(
                 "account_missing_for_project",
@@ -215,7 +223,7 @@ pub fn readiness(
     }
     for &s in &mapped {
         let mut missing = Vec::new();
-        if project.store.account(s).is_none() {
+        if project.store.account(s).is_none() && !from_env(s) {
             missing.push("the account");
         }
         let app_known = match s {

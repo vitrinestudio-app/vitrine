@@ -84,6 +84,9 @@ scripts/release/        release helpers (licence files via cargo-about, CLI side
                         collect artifacts, latest.json/checksums/notes; ADR 0026)
 deny.toml, about.toml   licence allow-list (cargo deny, CI) / third-party notices
 .signpath/              SignPath artifact configuration drafts (Windows signing)
+docker/cli/             Dockerfile of the CLI container image for CI (draft)
+integrations/           unpublished CI drafts: GitHub Action, GitLab components,
+                        fastlane plugin (docs/research/2026-11-12-ci-integrations.md)
 .github/workflows/      ci.yml (fmt/clippy/test per OS + licences), release.yml
                         (tag v* → draft release; docs/dev/releasing.md)
 docs/example/           preview images of the example project (README)
@@ -366,7 +369,7 @@ CLI usage (`--project <DIR>`, default the current folder): `new <dir>
 [--canvas ID]… [--tag] [--id] [--version] [--replace] [-o file] | list |
 import <file> [--replace] | export <id> -o <file> | remove <id> | insert
 <template> [--canvas ID]… [--styles rename|use-project] [--dry-run] | new`, `validate [--target] [--lang]
-[--preview] [--strict] [--format json]`, `render [--target] [--lang]
+[--preview] [--strict] [--format text|json|github|gitlab|junit] [-o FILE]`, `render [--target] [--lang]
 [--page N | --image N | --canvas | --gallery] [--width|--max-edge|--scale]
 [-o file]`, `export [--target] [--lang] [--out dir] [--layout
 standard|fastlane] [--no-gallery] [--no-html] [--force] [--format json]`, `strings export [--format csv|xliff12|xliff20]
@@ -383,7 +386,9 @@ print to stdout there), `upload plan [--store apple|google] [--target]
 [--lang] [--remote] [--force] [--format json]`, `upload execute --confirm
 <token> [--yes] [--changes-not-sent-for-review]`, `upload log [--last]
 [--events]`, `upload refdata [--account] [--app] [--format json]`
-(`upload` takes `--app-dir`; ADR 0018, 0019), `gallery login|logout|list
+(`upload` takes `--app-dir`; ADR 0018, 0019; CI credentials
+`VITRINE_ASC_KEY_ID|_ISSUER_ID|_KEY|_KEY_PATH`,
+`VITRINE_PLAY_SERVICE_ACCOUNT[_PATH]`, read by `upload` only, ADR 0016), `gallery login|logout|list
 [--query] [--tag] [--format json]|upload <file> [--token-env VAR]|download
 <id> [-o FILE]` (`--api URL`; ADR 0025), `install-cli [--remove] [--status]
 [--yes]` (`vitrine` on PATH; ADR 0026). Exit codes: 0 ok, 1 project

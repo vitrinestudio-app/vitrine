@@ -117,6 +117,9 @@ pub struct AppState {
     connection_tester: OnceLock<Arc<dyn ConnectionTester>>,
     /// Store upload: config, running run, MCP confirmations (ADR 0018).
     upload: crate::upload::UploadState,
+    /// Store credentials from `VITRINE_ASC_*` / `VITRINE_PLAY_*` (CLI only;
+    /// they win over the project's app-wide account).
+    env_credentials: Option<Arc<vitrine_publish::env_credentials::EnvCredentials>>,
     /// Apple apps per account id for the app picker (this app session).
     store_apps: Mutex<std::collections::HashMap<String, Vec<vitrine_publish::apple::AppSummary>>>,
 }
@@ -151,6 +154,7 @@ impl AppState {
             secrets: OnceLock::new(),
             connection_tester: OnceLock::new(),
             upload: crate::upload::UploadState::default(),
+            env_credentials: None,
             store_apps: Mutex::new(std::collections::HashMap::new()),
         }
     }
@@ -175,6 +179,38 @@ impl AppState {
         #[cfg(not(test))]
         let store = SecretStore::from_env().map_err(keychain_error)?;
         Ok(self.secrets.get_or_init(|| Arc::new(store)).clone())
+    }
+
+    /// Uses store credentials from the environment (CI; the CLI reads
+    /// them with `EnvCredentials::from_env`). A store with environment
+    /// credentials uses them instead of the project's app-wide account, and
+    /// never touches the keychain. Empty credentials change nothing.
+    #[must_use]
+    pub fn with_env_credentials(
+        mut self,
+        credentials: vitrine_publish::env_credentials::EnvCredentials,
+    ) -> Self {
+        self.env_credentials = (!credentials.is_empty()).then(|| Arc::new(credentials));
+        self
+    }
+
+    /// The environment account of `kind` and its secret, if installed.
+    pub fn env_account(
+        &self,
+        kind: vitrine_core::model::StoreKind,
+    ) -> Option<(
+        crate::stores::StoreAccount,
+        vitrine_publish::credentials::Secret,
+    )> {
+        crate::stores::env_account(self.env_credentials.as_deref()?, kind)
+    }
+
+    /// Stores with environment credentials.
+    pub fn env_stores(&self) -> Vec<vitrine_core::model::StoreKind> {
+        vitrine_core::model::StoreKind::ALL
+            .into_iter()
+            .filter(|k| self.env_account(*k).is_some())
+            .collect()
     }
 
     /// Registers the store clients' connection test (once).

@@ -1,0 +1,223 @@
+# DRAFT – not published. Planned home: its own repository (proposal:
+# vitrinestudio-app/setup-vitrine) so it can be listed on the GitHub
+# Marketplace (one action.yml at the repository root). See README.md.
+name: Setup Vitrine Studio CLI
+description: >-
+  Install the vitrine CLI (App Store / Play Store screenshots) from the
+  GitHub release with checksum verification, and optionally validate the
+  project with annotations and export the images.
+author: Vitrine Studio
+branding:
+  icon: image
+  color: purple
+
+inputs:
+  version:
+    description: "CLI version: `latest` or a release such as `0.2.0` / `v0.2.0`."
+    default: latest
+  repository:
+    description: Repository with the releases (forks, mirrors).
+    default: vitrinestudio-app/vitrine
+  cache:
+    description: Cache the downloaded CLI with actions/cache (`true`/`false`).
+    default: "true"
+  project:
+    description: Project folder (the folder with `project.yaml`) for `validate` / `export` / `args`.
+    default: "."
+  validate:
+    description: "Run `vitrine validate --format github` (errors and warnings become annotations; errors fail the step)."
+    default: "false"
+  strict:
+    description: "With `validate`: fail on warnings too (`--strict`)."
+    default: "false"
+  preview:
+    description: "With `validate`: missing screenshots are warnings (`--preview`)."
+    default: "false"
+  export:
+    description: "Run `vitrine export` (`--format json`; the report path is the `export-report` output)."
+    default: "false"
+  layout:
+    description: "With `export`: `standard` or `fastlane` (deliver/supply folders)."
+    default: standard
+  out:
+    description: "With `export`: output folder (default: `<project>/export`, with `fastlane` `<project>/export/fastlane`)."
+    default: ""
+  args:
+    description: >-
+      Extra `vitrine` command run last, e.g. `render --target ios-iphone-69 --gallery -o gallery.png`
+      (split at spaces; `--project` is added). Use a normal `run:` step for quoting.
+    default: ""
+
+outputs:
+  version:
+    description: The installed version (without `v`).
+    value: ${{ steps.resolve.outputs.version }}
+  bin-dir:
+    description: Folder that holds the `vitrine` binary (also added to PATH).
+    value: ${{ steps.install.outputs.bin-dir }}
+  export-dir:
+    description: The export folder (with `export`).
+    value: ${{ steps.export.outputs.export-dir }}
+  export-report:
+    description: Path of the export report JSON (files, sizes, issues; with `export`).
+    value: ${{ steps.export.outputs.export-report }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve version and asset
+      id: resolve
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        REPO: ${{ inputs.repository }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS/$RUNNER_ARCH" in
+          Linux/X64)     asset=vitrine-cli_linux_x86_64.tar.gz ;;
+          macOS/*)       asset=vitrine-cli_macos_universal.tar.gz ;;
+          # Windows on ARM runs the x64 build (emulation).
+          Windows/*)     asset=vitrine-cli_windows_x64.zip ;;
+          *)
+            echo "::error title=setup-vitrine::no vitrine CLI build for $RUNNER_OS/$RUNNER_ARCH yet (Linux arm64: use an x64 runner)"
+            exit 1 ;;
+        esac
+        if [ "$VERSION" = "latest" ]; then
+          # The /releases/latest redirect names the tag (no API rate limit).
+          url="$(curl -sSfL --retry 3 -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest")"
+          tag="${url##*/}"
+          case "$tag" in v[0-9]*) ;; *)
+            echo "::error title=setup-vitrine::no published release found in $REPO"
+            exit 1 ;;
+          esac
+        else
+          tag="v${VERSION#v}"
+        fi
+        echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+        echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        echo "asset=$asset" >> "$GITHUB_OUTPUT"
+        dir="$RUNNER_TOOL_CACHE/vitrine/${tag#v}/${asset%%.*}"
+        echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+    - name: Restore the CLI from the cache
+      if: inputs.cache == 'true'
+      # Pin to a commit SHA when publishing.
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.resolve.outputs.dir }}
+        key: vitrine-cli-${{ steps.resolve.outputs.version }}-${{ steps.resolve.outputs.asset }}
+
+    - name: Download and verify the CLI
+      id: install
+      shell: bash
+      env:
+        REPO: ${{ inputs.repository }}
+        TAG: ${{ steps.resolve.outputs.tag }}
+        ASSET: ${{ steps.resolve.outputs.asset }}
+        DIR: ${{ steps.resolve.outputs.dir }}
+      run: |
+        set -euo pipefail
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          dir="$(cygpath -u "$DIR")"; exe=vitrine.exe
+        else
+          dir="$DIR"; exe=vitrine
+        fi
+        if [ ! -x "$dir/bin/$exe" ]; then
+          tmp="$(mktemp -d)"
+          base="https://github.com/$REPO/releases/download/$TAG"
+          curl -sSfL --retry 3 -o "$tmp/$ASSET" "$base/$ASSET"
+          curl -sSfL --retry 3 -o "$tmp/SHA256SUMS.txt" "$base/SHA256SUMS.txt"
+          want="$(awk -v f="$ASSET" '$2 == f || $2 == "*" f { print $1 }' "$tmp/SHA256SUMS.txt")"
+          if [ -z "$want" ]; then
+            echo "::error title=setup-vitrine::$ASSET is not listed in SHA256SUMS.txt of $TAG"
+            exit 1
+          fi
+          if command -v sha256sum > /dev/null; then
+            got="$(sha256sum "$tmp/$ASSET" | cut -d' ' -f1)"
+          else
+            got="$(shasum -a 256 "$tmp/$ASSET" | cut -d' ' -f1)"
+          fi
+          if [ "$got" != "$want" ]; then
+            echo "::error title=setup-vitrine::checksum mismatch for $ASSET ($got, expected $want)"
+            exit 1
+          fi
+          mkdir -p "$tmp/x" "$dir/bin"
+          case "$ASSET" in
+            *.zip) if command -v unzip > /dev/null; then unzip -q "$tmp/$ASSET" -d "$tmp/x"; else 7z x -y -bso0 "-o$tmp/x" "$tmp/$ASSET"; fi ;;
+            *) tar -xzf "$tmp/$ASSET" -C "$tmp/x" ;;
+          esac
+          # Archive layout: vitrine-cli_<version>/{vitrine[.exe],licenses/}
+          src="$(find "$tmp/x" -maxdepth 2 -name "$exe" -type f | head -n 1)"
+          [ -n "$src" ] || { echo "::error title=setup-vitrine::$exe not found in $ASSET"; exit 1; }
+          cp "$src" "$dir/bin/$exe"
+          cp -R "$(dirname "$src")/licenses" "$dir/licenses" 2> /dev/null || true
+          chmod +x "$dir/bin/$exe"
+          rm -rf "$tmp"
+        fi
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          bin="$(cygpath -w "$dir/bin")"
+        else
+          bin="$dir/bin"
+        fi
+        echo "$bin" >> "$GITHUB_PATH"
+        echo "bin-dir=$bin" >> "$GITHUB_OUTPUT"
+        # For the next steps of this action (bash path, also on Windows).
+        echo "exe=$dir/bin/$exe" >> "$GITHUB_OUTPUT"
+        "$dir/bin/$exe" --version
+
+    - name: Validate
+      if: inputs.validate == 'true'
+      shell: bash
+      env:
+        VITRINE: ${{ steps.install.outputs.exe }}
+        PROJECT: ${{ inputs.project }}
+        STRICT: ${{ inputs.strict }}
+        PREVIEW: ${{ inputs.preview }}
+      run: |
+        set -euo pipefail
+        flags=()
+        [ "$STRICT" = "true" ] && flags+=(--strict)
+        [ "$PREVIEW" = "true" ] && flags+=(--preview)
+        "$VITRINE" --project "$PROJECT" validate --format github ${flags[@]+"${flags[@]}"}
+
+    - name: Export
+      id: export
+      if: inputs.export == 'true'
+      shell: bash
+      env:
+        VITRINE: ${{ steps.install.outputs.exe }}
+        PROJECT: ${{ inputs.project }}
+        LAYOUT: ${{ inputs.layout }}
+        OUT: ${{ inputs.out }}
+      run: |
+        set -euo pipefail
+        report="$RUNNER_TEMP/vitrine-export.json"
+        args=(--project "$PROJECT" export --layout "$LAYOUT" --format json)
+        [ -n "$OUT" ] && args+=(--out "$OUT")
+        status=0
+        "$VITRINE" "${args[@]}" > "$report" || status=$?
+        echo "export-report=$report" >> "$GITHUB_OUTPUT"
+        if [ -s "$report" ]; then
+          dir="$(jq -r .out_dir "$report")"
+          echo "export-dir=$dir" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Vitrine Studio export"
+            jq -r '"\(.files | map(select(.skipped | not)) | length) files written, \(.files | map(select(.skipped)) | length) unchanged → `\(.out_dir)`"' "$report"
+            jq -r '.errors[]? | "- error: \(.)"' "$report"
+          } >> "$GITHUB_STEP_SUMMARY"
+          jq -r '.errors[]? | "::error title=vitrine export::\(.)"' "$report"
+        fi
+        exit "$status"
+
+    - name: vitrine ${{ inputs.args }}
+      if: inputs.args != ''
+      shell: bash
+      env:
+        VITRINE: ${{ steps.install.outputs.exe }}
+        PROJECT: ${{ inputs.project }}
+        ARGS: ${{ inputs.args }}
+      run: |
+        set -euo pipefail
+        # Word splitting on purpose (no quoting support).
+        # shellcheck disable=SC2086
+        "$VITRINE" --project "$PROJECT" $ARGS

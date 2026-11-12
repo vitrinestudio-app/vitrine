@@ -50,10 +50,14 @@ vitrine validate --target play-phone --lang de
 vitrine validate --preview                # missing screenshots are warnings
 vitrine validate --strict                 # fail on warnings too (CI)
 vitrine validate --format json
+vitrine validate --format github          # GitHub Actions annotations
+vitrine validate --format junit -o validate.xml   # report to a file, text to the log
 ```
 
 Findings are listed per target and language as `error`, `warn` or `info` with a
-code (see [Troubleshooting](../troubleshooting/#validation-findings)).
+code (see [Troubleshooting](../troubleshooting/#validation-findings)). The CI
+formats `github`, `gitlab` (Code Quality) and `junit` are described in
+[CI/CD](../ci/).
 
 {{< cli-help "vitrine validate" >}}
 
@@ -178,7 +182,9 @@ vitrine upload log --last --events
 vitrine upload refdata                      # App Store asset types, read-only
 ```
 
-See [Store upload](../store-upload/#on-the-command-line).
+See [Store upload](../store-upload/#on-the-command-line). In CI the keys come
+from environment variables instead of the keychain – see
+[CI/CD](../ci/#uploading-from-ci).
 
 {{< cli-help "vitrine upload plan" >}}
 {{< cli-help "vitrine upload execute" >}}
@@ -211,3 +217,5 @@ Windows: user PATH). The app's *Install command line tool…* does the same.
 | `VITRINE_APP_DIR` | use this folder for the app data (settings, store accounts, frames, templates) instead of the platform folder |
 | `NO_COLOR` | no colours in the output |
 | `VITRINE_KEYRING=mock` | keep store keys in memory only (tests) – never touches the system keychain |
+| `VITRINE_ASC_KEY_ID`, `VITRINE_ASC_ISSUER_ID`, `VITRINE_ASC_KEY` / `VITRINE_ASC_KEY_PATH` | `upload` only: App Store Connect key from the environment (CI), instead of the project's account – see [CI/CD](../ci/#uploading-from-ci) |
+| `VITRINE_PLAY_SERVICE_ACCOUNT` / `VITRINE_PLAY_SERVICE_ACCOUNT_PATH` | `upload` only: Google Play service account from the environment (CI) |

@@ -567,3 +567,86 @@ fn fonts_lists_bundled_and_project_families() {
     let o = vitrine_in(&dir, &["fonts"]);
     assert!(stdout(&o).contains("Caveat"), "{}", stdout(&o));
 }
+
+/// CI formats of `validate`: GitHub annotations pointing at `project.yaml`
+/// lines, GitLab Code Quality JSON, `JUnit` XML written with `-o` (the text
+/// report stays on stdout); exit codes unchanged.
+#[test]
+fn validate_ci_formats() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = new_project(&tmp, &["--lang", "en"]);
+    let yaml_lines = std::fs::read_to_string(dir.join("project.yaml"))
+        .unwrap()
+        .lines()
+        .count();
+
+    let o = vitrine_in(&dir, &["validate", "--format", "github"]);
+    assert_eq!(code(&o), 1, "{}", stdout(&o));
+    let out = stdout(&o);
+    let first = out.lines().next().unwrap();
+    assert!(first.starts_with("::error file="), "{out}");
+    assert!(first.contains("project.yaml,line="), "{out}");
+    assert!(
+        first.contains("title=vitrine%3A screenshot_missing"),
+        "{out}"
+    );
+    let line: usize = first
+        .split(",line=")
+        .nth(1)
+        .and_then(|r| r.split(',').next())
+        .and_then(|n| n.parse().ok())
+        .unwrap();
+    assert!(line >= 1 && line <= yaml_lines, "{first}");
+    assert!(out.contains("Invalid:"), "text report too: {out}");
+
+    let o = vitrine_in(&dir, &["validate", "--format", "gitlab"]);
+    assert_eq!(code(&o), 1);
+    let cq: Value = serde_json::from_str(&stdout(&o)).expect("Code Quality JSON");
+    let issues = cq.as_array().unwrap();
+    assert_ne!(issues.len(), 0);
+    assert!(issues.iter().all(|i| {
+        i["severity"] == "critical"
+            && i["check_name"] == "vitrine/screenshot_missing"
+            && i["location"]["path"]
+                .as_str()
+                .unwrap()
+                .ends_with("project.yaml")
+    }));
+
+    let xml = tmp.path().join("validate.xml");
+    let o = vitrine_in(
+        &dir,
+        &["validate", "--format", "junit", "-o", xml.to_str().unwrap()],
+    );
+    assert_eq!(code(&o), 1);
+    assert!(stdout(&o).contains("screenshot_missing"), "text on stdout");
+    let x = std::fs::read_to_string(&xml).unwrap();
+    assert!(x.starts_with("<?xml"), "{x}");
+    assert!(x.contains("<testsuite name=\"ios-iphone-69\""), "{x}");
+    assert!(x.contains("<failure type=\"screenshot_missing\""), "{x}");
+
+    // Preview mode: warnings → skipped, exit 0; --strict → failures, exit 1.
+    let o = vitrine_in(
+        &dir,
+        &[
+            "validate",
+            "--preview",
+            "--format",
+            "junit",
+            "-o",
+            xml.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(code(&o), 0);
+    assert!(std::fs::read_to_string(&xml).unwrap().contains("<skipped "));
+    let o = vitrine_in(
+        &dir,
+        &["validate", "--preview", "--strict", "--format", "github"],
+    );
+    assert_eq!(code(&o), 1);
+    assert!(stdout(&o).starts_with("::warning file="), "{}", stdout(&o));
+
+    // `-o` needs a report format.
+    let o = vitrine_in(&dir, &["validate", "-o", xml.to_str().unwrap()]);
+    assert_eq!(code(&o), 2);
+}

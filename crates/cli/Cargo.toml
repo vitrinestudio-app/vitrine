@@ -27,6 +27,8 @@ clap.workspace = true
 directories.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# Fingerprints of the GitLab Code Quality report (`validate --format gitlab`).
+sha2.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

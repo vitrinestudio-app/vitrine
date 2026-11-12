@@ -152,6 +152,7 @@ the current folder):
 ```sh
 vitrine new my-app --lang en --lang de      # project from a template (--template phone|minimal)
 vitrine validate --project my-app           # findings by target/language; --format json, --preview, --strict
+vitrine validate --format github            # CI: GitHub annotations; gitlab (Code Quality), junit; -o FILE
 vitrine render --project my-app --canvas    # preview PNG: --page N | --image N | --canvas | --gallery
 vitrine render --project my-app --target play-phone --page 2 --width 400 -o page.png
 vitrine export --project my-app             # all targets × languages into my-app/export/
@@ -183,6 +184,11 @@ command could not run (usage error, project not loadable, IO error).
 `render` prints the path of the written PNG (default
 `<project>/.cache/render/`). Colours are used on a terminal unless
 `NO_COLOR` is set.
+
+In CI, `vitrine upload` takes the store keys from `VITRINE_ASC_*` /
+`VITRINE_PLAY_*` environment variables instead of the keychain; see
+[CI/CD](https://www.vitrinestudio.app/docs/ci/) and the integration drafts in
+`integrations/`.
 
 Store accounts (App Store Connect API key, Google Play service account)
 are set up once in the desktop app (App settings → *Stores*; secrets go
