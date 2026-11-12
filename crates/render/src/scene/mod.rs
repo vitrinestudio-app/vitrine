@@ -216,7 +216,7 @@ impl PreparedScene<'_> {
 /// Shared rendering state: asset cache, fonts, text layouters. `Send +
 /// Sync`; use one per project and share it between threads.
 pub struct RenderContext {
-    assets: AssetCache,
+    assets: Arc<AssetCache>,
     fonts: FontLibrary,
     layouters: Mutex<Vec<TextLayouter>>,
     /// Installed vendor frames and frame packs with their decoded/scaled
@@ -245,7 +245,7 @@ impl RenderContext {
     /// Context with an explicit font library (tests: bundled fonts only).
     pub fn with_fonts(root: impl Into<PathBuf>, fonts: FontLibrary) -> Self {
         Self {
-            assets: AssetCache::new(root),
+            assets: Arc::new(AssetCache::new(root)),
             fonts,
             layouters: Mutex::new(Vec::new()),
             frames: None,
@@ -284,6 +284,22 @@ impl RenderContext {
 
     pub fn assets(&self) -> &AssetCache {
         &self.assets
+    }
+
+    /// The asset cache, to hand on to a rebuilt context of the same
+    /// project ([`Self::with_assets`]).
+    pub fn shared_assets(&self) -> Arc<AssetCache> {
+        self.assets.clone()
+    }
+
+    /// The same context using `assets` (decoded images survive a context
+    /// rebuild for new fonts or frames; they do not depend on either).
+    /// `assets` must belong to the same project folder.
+    #[must_use]
+    pub fn with_assets(mut self, assets: Arc<AssetCache>) -> Self {
+        debug_assert_eq!(assets.root(), self.assets.root());
+        self.assets = assets;
+        self
     }
 
     pub fn fonts(&self) -> &FontLibrary {
