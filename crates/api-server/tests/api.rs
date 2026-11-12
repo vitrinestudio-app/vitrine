@@ -274,6 +274,134 @@ async fn public_reads_need_no_login_but_are_rate_limited() {
     assert_eq!(send(&app, get("/health")).await.0, StatusCode::OK);
 }
 
+#[tokio::test]
+async fn list_limit_goes_up_to_200() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app = app(tmp.path(), true);
+    for (q, want) in [
+        ("", 50),
+        ("?limit=150", 150),
+        ("?limit=500", 200),
+        ("?limit=0", 1),
+    ] {
+        let (s, v) = json_of(&app, get(&format!("/v1/templates{q}"))).await;
+        assert_eq!(
+            (s, v["limit"].as_u64()),
+            (StatusCode::OK, Some(want)),
+            "{q}"
+        );
+    }
+}
+
+/// Response headers of a request with an `Origin`.
+async fn headers_of(app: &Router, req: Request<Body>) -> (StatusCode, axum::http::HeaderMap) {
+    let res = app.clone().oneshot(req).await.unwrap();
+    (res.status(), res.headers().clone())
+}
+
+#[tokio::test]
+async fn cors_only_for_listed_origins_and_public_reads() {
+    const SITE: &str = "https://www.vitrinestudio.app";
+    let tmp = tempfile::tempdir().unwrap();
+    let config = Config {
+        data_dir: tmp.path().to_owned(),
+        upload_tokens: vec![StaticToken {
+            token: "up-1".into(),
+            login: "octocat".into(),
+            github_id: None,
+        }],
+        auto_approve: true,
+        cors_origins: vec![SITE.into(), "http://localhost:1313".into()],
+        ..Config::default()
+    };
+    let app = router(AppState::open(config).unwrap());
+    let with_origin = |method: &str, uri: &str, origin: &str| {
+        Request::builder()
+            .method(method)
+            .uri(uri)
+            .header("origin", origin)
+            .body(Body::empty())
+            .unwrap()
+    };
+    let acao = |h: &axum::http::HeaderMap| {
+        h.get("access-control-allow-origin")
+            .map(|v| v.to_str().unwrap().to_owned())
+    };
+
+    // Allowed origin: echoed on the public reads, with Vary.
+    for uri in ["/v1/templates?limit=200", "/v1/tags", "/health"] {
+        let (s, h) = headers_of(&app, with_origin("GET", uri, SITE)).await;
+        assert_eq!(s, StatusCode::OK, "{uri}");
+        assert_eq!(acao(&h).as_deref(), Some(SITE), "{uri}");
+        assert!(h.get_all("vary").iter().any(|v| v == "Origin"), "{uri}");
+        assert!(h.get("access-control-allow-credentials").is_none());
+    }
+    // Also on errors of those routes (the page shows "not found").
+    let (s, h) = headers_of(&app, with_origin("GET", "/v1/templates/nope", SITE)).await;
+    assert_eq!(
+        (s, acao(&h).as_deref()),
+        (StatusCode::NOT_FOUND, Some(SITE))
+    );
+    // Other origins get nothing.
+    let (_, h) = headers_of(
+        &app,
+        with_origin("GET", "/v1/templates", "https://evil.example"),
+    )
+    .await;
+    assert_eq!(acao(&h), None);
+
+    // Preflight of a GET: 204; of a POST (upload, report): not answered.
+    let preflight = |uri: &str, method: &str| {
+        Request::builder()
+            .method("OPTIONS")
+            .uri(uri)
+            .header("origin", SITE)
+            .header("access-control-request-method", method)
+            .body(Body::empty())
+            .unwrap()
+    };
+    let (s, h) = headers_of(&app, preflight("/v1/templates", "GET")).await;
+    assert_eq!(
+        (s, acao(&h).as_deref()),
+        (StatusCode::NO_CONTENT, Some(SITE))
+    );
+    assert_eq!(h.get("access-control-allow-methods").unwrap(), "GET, HEAD");
+    let (s, h) = headers_of(&app, preflight("/v1/templates", "POST")).await;
+    assert_ne!(s, StatusCode::NO_CONTENT);
+    assert_eq!(acao(&h), None);
+
+    // Writes and non-public areas never carry CORS headers.
+    let mut up = upload(Some("up-1"), package("1.0.0"));
+    up.headers_mut().insert("origin", SITE.parse().unwrap());
+    let (s, h) = headers_of(&app, up).await;
+    assert_eq!((s, acao(&h)), (StatusCode::CREATED, None));
+    for uri in ["/v1/auth/me", "/v1/admin/queue"] {
+        let (_, h) = headers_of(&app, with_origin("GET", uri, SITE)).await;
+        assert_eq!(acao(&h), None, "{uri}");
+    }
+    let mut report = Request::post("/v1/templates/fernwood-mac/report")
+        .header("origin", SITE)
+        .header("content-type", "application/json")
+        .body(Body::from(r#"{"reason":"other","message":"x"}"#))
+        .unwrap();
+    report.headers_mut().insert("origin", SITE.parse().unwrap());
+    let (_, h) = headers_of(&app, report).await;
+    assert_eq!(acao(&h), None);
+
+    // Without an allow list: no CORS headers at all.
+    let tmp2 = tempfile::tempdir().unwrap();
+    let plain = router(
+        AppState::open(Config {
+            data_dir: tmp2.path().to_owned(),
+            ..Config::default()
+        })
+        .unwrap(),
+    );
+    let (_, h) = headers_of(&plain, with_origin("GET", "/v1/templates", SITE)).await;
+    assert_eq!(acao(&h), None);
+    assert!(h.get("vary").is_none());
+}
+
 fn upload_to(uri: &str, token: &str, body: Vec<u8>) -> Request<Body> {
     Request::post(uri)
         .header("content-type", "application/zip")
@@ -292,6 +420,7 @@ async fn tags_filters_and_taxonomy() {
     assert_eq!(v["tags"]["style"], json!(["minimal"]));
     assert_eq!(v["tags"]["use"], json!(["home-garden", "productivity"]));
     assert_eq!(v["devices"], json!(["mac"]));
+    assert_eq!(v["canvases"][0]["devices"], json!(["mac"]), "{v}");
     assert_eq!(v["samples"], 0);
 
     let count = |v: &Value| v["templates"].as_array().unwrap().len();
@@ -527,6 +656,7 @@ async fn an_old_database_is_migrated_and_backfilled() {
     let (_, v) = json_of(&app, get("/v1/templates/fernwood-mac")).await;
     assert_eq!(v["tags"]["color"], json!(["light"]));
     assert_eq!(v["devices"], json!(["mac"]));
+    assert_eq!(v["canvases"][0]["devices"], json!(["mac"]), "{v}");
     assert!(v["canvases"][0]["sprite"]["url"].is_string(), "{v}");
     let (s, v) = json_of(&app, get("/v1/templates?style=minimal&devices=mac")).await;
     assert_eq!(s, StatusCode::OK);

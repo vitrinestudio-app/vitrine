@@ -67,10 +67,23 @@ its position among the non-empty entries ("entry 2"), never by its value.
 | `VITRINE_API_GITHUB_CLIENT_SECRET` | – | OAuth App secret, web flow only (unset = web login 503) |
 | `VITRINE_API_SESSION_DAYS` | `90` | session token lifetime |
 | `VITRINE_API_WEB_LOGIN_RETURN_URL` | – | web flow: redirect here with the token in the URL fragment (unset = JSON answer) |
+| `VITRINE_API_CORS_ORIGINS` | – | browser origins allowed to read the public GET routes, e.g. `https://www.vitrinestudio.app,https://vitrinestudio.app` (the website gallery's live refresh) |
 | `VITRINE_API_RENDER_CONCURRENCY` | `2` | previews/sprites rendered at the same time (uploads, approvals, re-renders, start-up backfill) |
 
 `VITRINE_API_URL` is *not* a server variable: it is the client-side
 override of the API base URL (CLI/app, loopback URLs only).
+
+## Upgrade 2026-11-12 (website gallery): CORS, list limit 200, per-canvas devices
+
+- Add `VITRINE_API_CORS_ORIGINS: https://www.vitrinestudio.app,https://vitrinestudio.app`
+  to the stack (without it the website still works from its build-time
+  snapshot, but cannot refresh live or filter newer templates).
+- Schema version 2: on start the server marks every template for the
+  backfill again and stores `devices` per canvas from the stored package
+  (no re-render; a few seconds for 50 templates). Nothing to do.
+- `GET /v1/templates` accepts `limit` up to 200.
+- If nginx adds its own CORS headers for the API, remove them (the
+  server sends them; duplicates make browsers refuse the answer).
 
 ## Upgrade 2026-11-12: tags, sample screenshots, gallery sprites
 

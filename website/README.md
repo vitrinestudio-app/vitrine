@@ -17,15 +17,17 @@ ignored by Git.
 
 | Path | Content |
 |---|---|
-| `hugo.toml` | site config: languages (en default at `/`, de at `/de/`), params (GitHub URL, `downloads_available` + download URLs) |
+| `hugo.toml` | site config: languages (en default at `/`, de at `/de/`), params (GitHub URL, `galleryAPI`, `downloads_available` + download URLs), no cache for remote resources |
 | `content/en/`, `content/de/` | pages per language (`contentDir`); same file name = translation |
 | `content/*/_index.md` | the home page: **all landing-page texts live in its front matter** (hero, features, FAQ, …) |
 | `content/*/docs/` | documentation (`weight` = order, `icon` = sidebar icon, `untranslated: true` shows the "translation follows" note) |
 | `content/*/impressum.md`, `datenschutz.md` | legal pages – **placeholders, see TODO** |
 | `i18n/en.yaml`, `de.yaml` | UI strings |
 | `layouts/` | `baseof.html`, `home.html`, `page.html`, `docs/{section,page}.html`, `404.html`, `_partials/`, `_shortcodes/` (Hugo ≥ 0.146 template layout) |
-| `assets/css/` | `base.css` (tokens, fonts, light/dark), `layout.css`, `components.css`, `home.css`, `docs.css` – concatenated, minified and fingerprinted by Hugo Pipes |
+| `assets/css/` | `base.css` (tokens, fonts, light/dark), `layout.css`, `components.css`, `home.css`, `docs.css`, `gallery.css` – concatenated, minified and fingerprinted by Hugo Pipes |
 | `assets/js/site.js` | nav toggle, theme switch, scroll reveal, tabs, hero tilt |
+| `assets/js/gallery.js` | template gallery: live refresh, filters (FLIP), detail view, floating/tilting cards; also the live cards on the home page |
+| `content/*/gallery.md`, `layouts/gallery.html`, `layouts/_partials/gallery/` | template gallery page (`/gallery/`, `/de/galerie/`): `data.html` (build-time snapshot), `labels.html` (tag labels), `card.html` (one card, mirrored by the script) |
 | `assets/images/` | screenshots (resized to WebP/JPEG `srcset` by `_partials/picture.html`) |
 | `assets/brand/` | logo files copied from `/assets/brand/` (© Looking4Cache UG, not GPL) |
 | `static/fonts/` | self-hosted WOFF2 subsets (Latin) of Inter, Inter Display and JetBrains Mono (SIL OFL, licence files next to them) |
@@ -58,6 +60,61 @@ done
 pyftsubset "../assets/fonts/jetbrainsmono/JetBrainsMono[wght].ttf" --unicodes="$U" --flavor=woff2 --output-file=static/fonts/JetBrainsMono.woff2
 ```
 
+## Template gallery (`/gallery/`, `/de/galerie/`)
+
+Data source: the API server (`crates/api-server`, `docs/api/API.md`) at
+`params.galleryAPI` (default `https://api.vitrinestudio.app`).
+
+- **Build time:** `layouts/_partials/gallery/data.html` reads every
+  approved template (`GET /v1/templates?limit=200&offset=…`, following the
+  `limit` the server answers) and the tag taxonomy (`GET /v1/tags`) with
+  `resources.GetRemote` (not cached: `[caches.getresource] maxAge = 0`),
+  renders static cards (readable without JavaScript, indexable) and embeds
+  the snapshot as JSON. **The build never fails because of the API:**
+  unreachable → warning `gallery-api` and the "gallery opens soon" state;
+  empty gallery → the same state without warning. Rebuild/deploy the site
+  to refresh the snapshot (e.g. after approving templates).
+- **In the browser:** `assets/js/gallery.js` refreshes the list from the
+  API (all pages) and replaces the snapshot when it changed (new
+  templates fly in). This needs CORS on the server:
+  `VITRINE_API_CORS_ORIGINS=https://www.vitrinestudio.app,https://vitrinestudio.app`
+  (`docs/api/DEPLOY.md`). Without it the page silently keeps the snapshot.
+- Sprites (one WebP per canvas, the `?v=` URLs from the API, cached for
+  good) load lazily from the API; there are no other third-party requests.
+  No cookies; the filters live in the URL query, the detail view in the
+  hash (`/gallery/#<id>`).
+- Home page: the templates section shows the 3 most downloaded templates
+  of the snapshot as live cards (and the illustrations while it is empty).
+
+**Development against a local API** (the live API may have no templates):
+
+```sh
+# 1. API server with a scratch data folder, a static upload token and auto-approve
+VITRINE_API_DATA_DIR=/tmp/vapi VITRINE_API_BIND=127.0.0.1:8787 \
+VITRINE_API_PUBLIC_URL=http://127.0.0.1:8787 VITRINE_API_AUTO_APPROVE=1 \
+VITRINE_API_UPLOAD_TOKENS=dev-token:vitrinestudio-app \
+VITRINE_API_CORS_ORIGINS=http://localhost:1313 \
+VITRINE_API_READ_RATE_LIMIT_PER_HOUR=100000 \
+  cargo run --release -p vitrine-api-server
+
+# 2. templates: save copies of projects with tags (+ own screenshots as samples)
+vitrine --project <copy> template save --name "…" --style bold --color dark \
+  --use games --sample-screenshots -o /tmp/t/<id>.vitrine-template
+DEV=dev-token vitrine gallery upload /tmp/t/*.vitrine-template \
+  --api http://127.0.0.1:8787 --token-env DEV --confirm-own-screenshots
+
+# 3. the site against it (env var: Hugo lowercases the param `galleryAPI`)
+HUGO_PARAMS_GALLERYAPI=http://127.0.0.1:8787 hugo server
+```
+
+Packages are limited to 50 MB (server and app): templates with many
+full-size sample screenshots may be too large – check with `vitrine gallery
+upload --dry-run`.
+
+Build checks while `hugo server` runs: build into a temporary folder and
+point the link checker at it: `hugo --minify -d /tmp/site && python3
+scripts/check-links.py /tmp/site`.
+
 ## Deployment (not set up yet)
 
 The owner's other Hugo sites are deployed as static files: `hugo --minify`
@@ -82,7 +139,7 @@ New screenshots will be generated once templates exist. Today's images:
 | `assets/images/editor-dark.jpg` | home "The editor" | a current editor screenshot (this one still says "Strip" instead of "Canvas"), ideally 2× (≥ 2400 px wide), light and dark versions |
 | `assets/images/inspector-text.jpg` | home, floating over the editor | a 2× crop of the inspector with a selected text (today cut from `/docs/gui/text-editing.jpg`, only 359 px wide) |
 | `assets/images/iphone-gallery-en.jpg`, `iphone-gallery-fr.jpg`, `ipad-gallery-de.jpg`, `mac-gallery-en.jpg`, `web-gallery-en.jpg`, `blog-header-de.jpg` | home showcase tabs; `iphone-gallery-en.jpg` is also the Open Graph image (cropped to 1200×630) | galleries rendered from the new templates (`vitrine render --gallery`), 2× width; a dedicated 1200×630 OG image |
-| CSS/SVG mock-ups: hero canvas, language × device matrix, AI chat, terminal, upload plan, template cards | home | may stay as illustrations; template cards → real template previews once the gallery exists |
+| CSS/SVG mock-ups: hero canvas, language × device matrix, AI chat, terminal, upload plan, template cards | home | may stay as illustrations; the template cards are replaced automatically by live gallery cards once the snapshot has templates |
 
 ### Docs screenshots (placeholders today)
 
@@ -138,6 +195,7 @@ Used today: `editor-dark.jpg` (getting started, outdated: says "Strip"),
 - **Docs:** review the user guide (en + de), replace the screenshot
   placeholders (list above); once installers exist, update the "pre-release"
   callouts (`install.md`, docs `_index.md`).
-- **Gallery pages:** browsing templates from `api.vitrinestudio.app` on the
-  website (phase 6.3/6.6) – not built yet.
+- **Gallery:** set `VITRINE_API_CORS_ORIGINS` on the API server (above);
+  rebuild the site after approving templates (snapshot for no-JS/SEO and
+  the home page cards).
 - Domain, hosting and deployment (see above).

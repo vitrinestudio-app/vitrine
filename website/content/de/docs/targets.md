@@ -13,7 +13,7 @@ auswählst).
 
 ## Ein Ziel hinzufügen {#adding-a-target}
 
-Öffne **Leinwände & Ausgabeziele …** (☰-Menü oder der Knopf neben der
+Öffne **Leinwände & Ziele …** (☰-Menü oder der Knopf neben der
 Ziel-Auswahl) → eine Leinwand → **Ziel hinzufügen**. Wähle ein Preset – das
 Filterfeld hilft – und **Mit dieser Größe hinzufügen**, wenn ein Preset mehrere
 Größen anbietet. Jedes Preset bringt die exakten Größen des Stores mit, den
@@ -21,7 +21,7 @@ Store-Slot, ein passendes Gerät und das Galerie-Profil. Plaketten zeigen, ob
 der Store den Satz **verlangt** (*Pflicht*, *bedingt*, *optional*) und wie gut
 die Daten geprüft sind.
 
-{{< placeholder "Leinwände & Ausgabeziele: die Liste Ziel hinzufügen mit Presets, Plaketten und Größen." >}}
+{{< placeholder "Leinwände & Ziele: die Liste Ziel hinzufügen mit Presets, Plaketten und Größen." >}}
 
 ### Presets {#presets}
 
@@ -114,7 +114,7 @@ App-Store-Creatives, einen Blog-Header, ein Open-Graph-Bild.
 
 ### Banner aus dieser Leinwand {#banner-from-this-canvas}
 
-Am schnellsten geht es über **Leinwände & Ausgabeziele** → eine Leinwand →
+Am schnellsten geht es über **Leinwände & Ziele** → eine Leinwand →
 **Banner aus dieser Leinwand**. Angeboten werden:
 
 - **Google-Play-Feature-Grafik** (1024×500)

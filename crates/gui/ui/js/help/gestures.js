@@ -58,6 +58,7 @@ export const GESTURES = [
       { keys: ['click'], text: 'help.g.select' },
       { keys: ['dblclick'], text: 'help.g.select_deeper' },
       { keys: ['mod+click'], text: 'help.g.select_direct' },
+      { keys: ['dblclick'], text: 'help.g.select_background' },
       { keys: ['shift+click'], text: 'help.g.select_toggle' },
       { keys: ['drag'], text: 'help.g.marquee', unless: 'canvasDragPans' },
       { keys: ['shift+drag'], text: 'help.g.marquee_add', unless: 'canvasDragPans' },
@@ -119,6 +120,9 @@ export const GESTURES = [
       { keys: ['up', 'down'], text: 'help.g.layers_walk' },
       { keys: ['dblclick', 'enter', 'f2'], text: 'help.g.layers_rename' },
       { keys: ['drag'], text: 'help.g.layers_reorder' },
+      { keys: ['drag', 'dblclick'], text: 'help.g.inspector_resize' },
+      { keys: ['click', 'enter'], text: 'help.g.asset_preview' },
+      { keys: ['left', 'right'], text: 'help.g.preview_step' },
     ],
   },
   {

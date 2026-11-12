@@ -7,6 +7,7 @@
 import { openTargets } from '../dialogs/targets.js';
 import { openNewVariant, removeVariant } from '../dialogs/variants.js';
 import { h, icon } from '../dom.js';
+import { currentCanvas, viewArgs } from '../store.js';
 import { fillCss, fillEditor, numberInput, selectInput, textInput } from './fields.js';
 
 const gcd = (a, b) => (b ? gcd(b, a % b) : a);
@@ -132,6 +133,51 @@ export async function renderCanvasSettings(ctx, ui) {
       t('canvas.backgrounds'),
       bgRows.length ? bgRows : h('p', { class: 'insp-note muted small' }, t('canvas.backgrounds.none')),
       h('div', { class: 'insp-actions' }, h('button', { type: 'button', class: 'btn btn-small', onclick: () => setBgs([...bgs, '#FFFFFF']) }, icon('plus'), t('canvas.background.add'))),
+    ),
+  );
+
+  // ----- page backgrounds (elements of kind `background`) -----
+  // They fill their home page and are not hit by clicks on the canvas:
+  // listed here (click selects → inspector), also in the layers panel,
+  // by double-click on a page and in the canvas context menu.
+  const st = store.get();
+  const pageIds = currentCanvas(st)?.page.ids ?? [];
+  const pageBgs = (currentCanvas(st)?.elements ?? []).filter((e) => e.kind === 'background');
+  const pageLabel = (i) => `${i + 1} · ${pageIds[i] ?? ''}`;
+  const visiblePage = () => {
+    const sel = st.overlay?.elements.find((e) => st.selection.includes(e.id));
+    return sel?.page ?? 0;
+  };
+  nodes.push(
+    section(
+      'canvas.page_backgrounds',
+      t('canvas.page_backgrounds'),
+      h('p', { class: 'insp-note muted small' }, t('canvas.page_backgrounds.hint')),
+      pageBgs.length
+        ? h(
+            'div',
+            { class: 'page-bg-list' },
+            ...pageBgs.map((e) =>
+              h(
+                'button',
+                { type: 'button', class: 'page-bg-item', title: t('ctx.select_background').replace('{id}', e.id), onclick: () => store.set({ selection: [e.id] }) },
+                icon('background'),
+                h('span', { class: 'mono grow' }, e.id),
+                h('span', { class: 'muted small' }, pageLabel(e.page ?? 0)),
+              ),
+            ),
+          )
+        : h('p', { class: 'insp-note muted small' }, t('canvas.page_backgrounds.none')),
+      h(
+        'div',
+        { class: 'insp-actions' },
+        h(
+          'button',
+          { type: 'button', class: 'btn btn-small', onclick: () => editor.apply(api.elementAdd(viewArgs(), 'background', visiblePage()), { select: 'created' }) },
+          icon('plus'),
+          t('canvas.page_backgrounds.add'),
+        ),
+      ),
     ),
   );
 

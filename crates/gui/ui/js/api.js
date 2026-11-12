@@ -217,6 +217,8 @@ export const api = {
   assetsProbe: ({ paths = [], sizes = [] }) => invoke('assets_probe', { paths, sizes }),
   assetsRemove: (paths) => invoke('assets_remove', { paths }),
   assetThumbnail: (path, maxEdge) => invoke('asset_thumbnail', { path, max_edge: maxEdge }),
+  /** `{path, bytes, width, height, format, color_space, color_note}` of a screenshot or image asset. */
+  assetInfo: (path) => invoke('asset_info', { path }),
   pickFiles: (args = {}) => invoke('dialog_pick_files', args),
   /** Native save dialog (`null` when cancelled); `filters`: [{ name, extensions }]. */
   saveFile: (title, defaultName, filters = []) => invoke('dialog_save_file', { title, default_name: defaultName, filters }),

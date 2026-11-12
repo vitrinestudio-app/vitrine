@@ -39,6 +39,10 @@ pub(super) fn routes(max_upload: usize) -> Router<Arc<AppState>> {
         .route("/v1/tags", get(tag_list))
 }
 
+/// Largest `limit` of `GET /v1/templates` (the website loads the whole
+/// gallery with a few requests).
+pub(crate) const MAX_LIST_LIMIT: u32 = 200;
+
 /// Facets that can filter the list.
 const FILTER_FACETS: [&str; 4] = ["style", "color", "use", "devices"];
 
@@ -87,7 +91,7 @@ fn parse_list_query(pairs: &[(String, String)]) -> ApiResult<(db::Filter, u32, u
             _ => {}
         }
     }
-    Ok((filter, limit.clamp(1, 100), offset))
+    Ok((filter, limit.clamp(1, MAX_LIST_LIMIT), offset))
 }
 
 pub(super) fn with_links(state: &AppState, t: &TemplateRow) -> Value {
@@ -252,6 +256,8 @@ struct Checked {
     pkg: Package,
     sprites: Vec<CanvasSprites>,
     devices: Vec<String>,
+    /// The manifest's canvases with per-canvas `devices`.
+    canvases: Value,
     /// Sample screenshots dropped because the uploader did not confirm.
     samples_removed: usize,
 }
@@ -284,14 +290,14 @@ fn validate_upload(bytes: &[u8], max: usize, confirm_samples: bool) -> Result<Ch
         .map_err(|e| invalid(format!("cannot render previews: {e:#}")))?;
     let sprites =
         sprites::render(&pkg).map_err(|e| invalid(format!("cannot render sprites: {e:#}")))?;
-    let devices = pkg
-        .project()
-        .map(|p| tags::devices(&p))
-        .map_err(|e| invalid(e.to_string()))?;
+    let project = pkg.project().map_err(|e| invalid(e.to_string()))?;
+    let devices = tags::devices(&project);
+    let canvases = crate::maintenance::canvases_json(&project, &pkg.manifest.canvases);
     Ok(Checked {
         pkg,
         sprites,
         devices,
+        canvases,
         samples_removed: if confirm_samples { 0 } else { samples },
     })
 }
@@ -360,7 +366,7 @@ async fn upload(
         uploader: who.login,
         uploader_id: who.github_id,
         status: status.to_owned(),
-        canvases: serde_json::to_value(&m.canvases).unwrap_or(Value::Null),
+        canvases: checked.canvases.clone(),
         fonts: json!(fonts),
         size: i64::try_from(size).unwrap_or(i64::MAX),
         downloads: 0,

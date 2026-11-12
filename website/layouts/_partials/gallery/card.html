@@ -1,0 +1,51 @@
+{{- /* One gallery card, server-rendered (no-JS, SEO, first paint). The
+       script (assets/js/gallery.js) adopts it by `data-id` and builds the
+       same markup for templates it loads live – keep both in sync.
+       Context: dict "t" (template object of the API), "labels"
+       (partial gallery/labels.html), "href" (detail link), "i" (index), "anchor" (id = template id). */ -}}
+{{- $t := .t -}}
+{{- $labels := .labels -}}
+{{- /* The phone canvas (fallback: the first one). */ -}}
+{{- $canvas := index ($t.canvases | default slice) 0 -}}
+{{- $found := false -}}
+{{- range $t.canvases -}}
+  {{- if and (not $found) (in (.devices | default slice) "phone") }}{{ $canvas = . }}{{ $found = true }}{{ end -}}
+{{- end -}}
+{{- if not $found -}}
+  {{- range $t.canvases -}}
+    {{- if and (not $found) (or (eq .id "phone") (in (delimit (.targets | default slice) ",") "phone")) }}{{ $canvas = . }}{{ $found = true }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+<article class="gcard"{{ if .anchor }} id="{{ $t.id }}"{{ end }} data-id="{{ $t.id }}" style="--k:{{ .i }}">
+  {{- with $canvas }}
+  {{- $n := int (.pages | default 1) -}}
+  {{- $s := .sprite -}}
+  {{- $ratio := replace (.page_aspect | default .aspect | default "1:2") ":" " / " -}}
+  {{- if $s }}{{ $ratio = printf "%v / %v" $s.page_width $s.page_height }}{{ end }}
+  <a class="gcard__stage" href="{{ $.href }}" data-canvas="{{ .id }}"{{ with $s }} data-sprite="{{ .url }}"{{ end }} aria-label="{{ replace (T "galOpen") "{name}" $t.name }}"
+     style="{{ printf "--n:%d;--ar:%s;" $n $ratio | safeCSS }}{{ with $s }}{{ printf "--spr:url(%q);" .url | safeCSS }}{{ end }}">
+    <span class="gcard__strip">
+      {{- range $i := seq 0 (sub $n 1) }}
+      <span class="gp" style="--i:{{ $i }};--x:{{ cond (gt $n 1) (div (mul $i 100.0) (sub $n 1)) 0 }}%"></span>
+      {{- end }}
+    </span>
+  </a>
+  {{- end }}
+  <div class="gcard__body">
+    <h3 class="gcard__title"><a href="{{ .href }}">{{ $t.name }}</a>{{ if $t.official }} <span class="gbadge" title="{{ T "galOfficial" }}">{{ T "galOfficial" }}</span>{{ end }}</h3>
+    {{- with $t.description }}<p class="gcard__desc">{{ . }}</p>{{ end }}
+    <ul class="gcard__tags">
+      {{- range $f := slice "style" "color" "use" }}
+      {{- range index $t.tags $f }}
+      <li class="gtag gtag--{{ $f }}">{{ index (index (index $labels $f | default dict) "values" | default dict) . | default . }}</li>
+      {{- end }}
+      {{- end }}
+    </ul>
+    <p class="gcard__meta">
+      {{- with $canvas }}<span>{{ if eq (int .pages) 1 }}{{ T "galPagesOne" }}{{ else }}{{ replace (T "galPages") "{n}" (string .pages) }}{{ end }}</span>{{ end }}
+      {{- $dl := index (index $labels "devices" | default dict) "values" | default dict -}}
+      <span>{{ range $i, $d := $t.devices }}{{ if $i }} · {{ end }}{{ index $dl $d | default $d }}{{ end }}</span>
+      <a class="gcard__dl" href="{{ $t.download_url }}" rel="nofollow" download>{{ partial "icon.html" "download" }}<span>{{ T "galDownloadShort" }}</span></a>
+    </p>
+  </div>
+</article>

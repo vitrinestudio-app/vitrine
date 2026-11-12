@@ -61,6 +61,7 @@ fn mcp_session_creates_designs_translates_and_exports() {
         "layout_report",
         "validate",
         "export",
+        "export_status",
         "history_undo",
     ] {
         assert!(names.contains(&want), "tool {want} missing: {names:?}");
@@ -208,6 +209,48 @@ fn mcp_session_creates_designs_translates_and_exports() {
         let p = out.join(f["path"].as_str().unwrap());
         assert!(p.is_file(), "{} missing", p.display());
     }
+
+    // A background export: the call returns at once, export_status waits
+    // for the same result.
+    let started = c.call(
+        "export",
+        json!({"langs": ["en"], "force": true, "wait_seconds": 0}),
+    );
+    let job = started["job"].as_str().unwrap().to_owned();
+    assert!(
+        started["status"] == "running" || started["status"] == "finished",
+        "{started}"
+    );
+    let done = c.call("export_status", json!({"job": job, "wait_seconds": 120}));
+    assert_eq!(done["status"], "finished", "{done}");
+    assert!(done["files"].as_array().unwrap().len() >= 2, "{done}");
+    // Only the gallery previews.
+    let g = c.call(
+        "export",
+        json!({"langs": ["en"], "pages": false, "force": true}),
+    );
+    let gfiles = g["files"].as_array().unwrap();
+    assert!(!gfiles.is_empty(), "{g}");
+    assert!(
+        gfiles
+            .iter()
+            .all(|f| f["path"].as_str().unwrap().ends_with("_gallery.png")),
+        "{g}"
+    );
+    // The page files of the earlier export are kept.
+    for f in files {
+        assert!(out.join(f["path"].as_str().unwrap()).is_file());
+    }
+
+    // Gallery on the store's dark page, as JPEG, also written to a file.
+    let raw = c.request(
+        "tools/call",
+        json!({"name": "render_preview", "arguments": {"view": "gallery", "background": "dark", "format": "jpeg", "out_file": "preview/gallery.jpg"}}),
+    );
+    assert_eq!(raw["isError"], false, "{raw}");
+    assert_eq!(raw["content"][1]["mimeType"], "image/jpeg", "{raw}");
+    let file = PathBuf::from(raw["structuredContent"]["file"].as_str().unwrap());
+    assert!(std::fs::read(&file).unwrap().starts_with(&[0xFF, 0xD8]));
 
     // History: the assistant's steps carry its display name; undo works.
     let h = c.call("history_state", json!({}));

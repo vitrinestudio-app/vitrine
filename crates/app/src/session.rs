@@ -365,10 +365,13 @@ impl Session {
             .read()
             .unwrap_or_else(PoisonError::into_inner)
             .clone();
+        // Decoded images do not depend on fonts or frames: keep them.
+        let assets = self.render_context().shared_assets();
         let on = self.system_fonts.load(Ordering::Relaxed);
         RenderContext::for_project(&self.dir, project, on)
             .0
             .with_frames(frames)
+            .with_assets(assets)
     }
 
     fn replace_context(&self, ctx: RenderContext) {
@@ -555,6 +558,7 @@ impl Session {
         }
         let r = r.with_history(inner.history_state());
         drop(inner);
+        self.after_commit(&r);
         self.emit_edited("apply", options.actor, label, &r);
         Ok(r)
     }
@@ -576,6 +580,7 @@ impl Session {
         }
         let r = r.with_history(inner.history_state());
         drop(inner);
+        self.after_commit(&r);
         self.emit_edited("undo", actor, label, &r);
         Ok(r)
     }
@@ -597,8 +602,21 @@ impl Session {
         }
         let r = r.with_history(inner.history_state());
         drop(inner);
+        self.after_commit(&r);
         self.emit_edited("redo", actor, label, &r);
         Ok(r)
+    }
+
+    /// Work after a committed step, outside the model lock (loading system
+    /// fonts can take seconds; other tools must not wait for it).
+    fn after_commit(&self, r: &ApplyResult) {
+        if r.applied
+            && (!r.changes.strings.is_empty() || r.changes.styles)
+            && self.system_fonts.load(Ordering::Relaxed)
+        {
+            let project = self.snapshot();
+            self.check_system_fonts(&project, &r.changes);
+        }
     }
 
     /// Emits `project-edited` for an applied step (nothing for a no-op).
@@ -646,7 +664,6 @@ impl Session {
             return Err(err);
         }
         let changes = Changes::between(&inner.project, &project);
-        self.check_system_fonts(&project, &changes);
         inner.project = project;
         inner.history = history;
         let r = ApplyResult {

@@ -12,6 +12,7 @@ use crate::term::{Style, plural};
 use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global, project};
 
 #[derive(Debug, Args)]
+#[allow(clippy::struct_excessive_bools)] // CLI flags
 pub struct ExportArgs {
     /// Only this target; repeat for more (default: all targets).
     #[arg(long = "target", value_name = "ID")]
@@ -32,8 +33,12 @@ pub struct ExportArgs {
     #[arg(long)]
     pub no_html: bool,
     /// Do not write `_gallery.png` store gallery previews.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "gallery_only")]
     pub no_gallery: bool,
+    /// Write only the `_gallery.png` previews (no page images; files of
+    /// earlier exports are kept). Standard layout only.
+    #[arg(long)]
+    pub gallery_only: bool,
     /// Render every file, ignoring the incremental export cache.
     #[arg(long)]
     pub force: bool,
@@ -47,6 +52,9 @@ pub fn run(args: &ExportArgs, global: &Global) -> anyhow::Result<u8> {
     let project = project::load(root)?;
     project::check_targets(&project, &args.targets)?;
     project::check_langs(&args.langs)?;
+    if args.gallery_only && args.layout != ExportLayout::Standard {
+        anyhow::bail!("--gallery-only needs the standard layout");
+    }
     let (ctx, fonts) = crate::frames::render_context(root, &project, global);
     if !global.quiet {
         project::report_font_errors(&fonts.errors);
@@ -61,6 +69,7 @@ pub fn run(args: &ExportArgs, global: &Global) -> anyhow::Result<u8> {
             targets: args.targets.clone(),
             langs: args.langs.clone(),
             gallery: !args.no_gallery,
+            pages: !args.gallery_only,
             incremental: !args.force,
             ..ExportOptions::default()
         },

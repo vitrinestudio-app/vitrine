@@ -35,7 +35,9 @@ Details: [Project file format](../file-format/).
 A **canvas** is a row of pages that you design as **one picture**. Each page
 becomes one store screenshot. Because it is one picture:
 
-- a background can run continuously across all pages;
+- a background can run continuously across all pages (the canvas
+  backgrounds are layers over the whole canvas; for a colour or photo per
+  page, put a *Background* element on each page);
 - a device can sit across the border between two pages and still exists only
   once – in the store it looks like one phone spanning two screenshots;
 - you can see the whole set as it will appear in the store while you work.

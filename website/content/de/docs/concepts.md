@@ -36,7 +36,9 @@ Details: [Projektdateiformat](../file-format/).
 Eine **Leinwand** ist eine Reihe von Seiten, die du als **ein Bild**
 gestaltest. Jede Seite wird zu einem Store-Screenshot. Weil es ein Bild ist,
 
-- kann ein Hintergrund durchgehend über alle Seiten laufen;
+- kann ein Hintergrund durchgehend über alle Seiten laufen (die Hintergründe
+  der Leinwand sind Ebenen über der ganzen Leinwand; für eine Farbe oder ein
+  Foto pro Seite legst du auf jede Seite ein *Hintergrund*-Element);
 - kann ein Gerät über der Grenze zwischen zwei Seiten liegen und existiert
   trotzdem nur einmal – im Store sieht es aus wie ein Smartphone über zwei
   Screenshots;

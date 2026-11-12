@@ -65,7 +65,7 @@ App-Einstellungen (*Frame-Stil neuer Projekte*).
 ## Geräte-Tausch pro Ziel {#device-swap-per-target}
 
 Eine Leinwand, je Store andere Geräte: Der **Geräte-Tausch** eines Ziels
-(*Leinwände & Ausgabeziele* → Ziel) ersetzt Modelle nur für dieses Ziel. Das
+(*Leinwände & Ziele* → Ziel) ersetzt Modelle nur für dieses Ziel. Das
 Google-Play-Ziel der Vorlage *Phone* tauscht das iPhone gegen das
 Android-Smartphone; ein iPad-Ziel kann es gegen ein Tablet tauschen. Variante,
 Screenshots und Layout bleiben gleich.
@@ -79,7 +79,8 @@ selbst herunter und importierst sie einmal. Danach funktionieren sie in jedem
 Projekt auf diesem Rechner.
 
 1. Lade das Bezel-Paket für deine Geräte herunter (z. B.
-   *Bezel-iPhone-18.dmg*) von developer.apple.com/design/resources.
+   *Bezel-iPhone-18.dmg*) von developer.apple.com/design/resources
+   (Hilfe-Menü → *Apple Product Bezels herunterladen* öffnet die Seite).
 2. **Öffne das DMG im Finder und akzeptiere die Lizenz.** Das Disk-Image
    enthält eine Lizenzvereinbarung; die `.dmg`-Datei direkt zu importieren
    schlägt fehl. Nach dem Akzeptieren ist das Volume eingebunden (z. B.

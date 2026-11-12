@@ -160,8 +160,10 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
 - [x] macOS: Developer ID signing + notarization via Tauri (hardened
       runtime, entitlements file – empty on purpose, app not sandboxed,
       see ADR 0026; App Store Connect API key; stapling), sidecar signed
-      too; unsigned builds still succeed – [ ] owner: certificate + key as
-      secrets, first signed `workflow_dispatch` run
+      too; unsigned builds still succeed – [x] owner: certificate + key as
+      secrets in the GitHub environment `release` (2026-11-11); tag run
+      `v0.1.0`: macOS signed + notarized OK, Windows OK (unsigned), Linux
+      AppImage bundling fails (linuxdeploy) – see STATUS hand-off
 - [~] Windows: SignPath Foundation researched
       (`docs/research/2026-11-11-windows-signing.md`), SignPath path in the
       workflow (two requests, re-signed updater artifact), switched on by
@@ -177,8 +179,9 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
       `latest.json`, `requireSignedVersion`; "Check for updates…" (menus +
       app settings), daily automatic check (setting, default on), user
       confirms install + restart; off while the public key is the
-      placeholder – [ ] owner: `cargo tauri signer generate`, public key in
-      `tauri.conf.json`, private key + password as secrets
+      placeholder – [x] owner: key generated, public key committed
+      (5389895), private key + password as secrets (2026-11-11); backup in
+      the owner's password manager advised
 - [x] Version scheme: workspace version is the single source (0.1.0);
       release job checks tag = `v<version>`; release steps in
       `docs/dev/releasing.md`. App icon set exists (`crates/gui/icons/`).
@@ -212,7 +215,16 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
       `website/README.md`), review of texts and design
 - [ ] Screenshots made with Vitrine Studio itself / from the new templates
       (list of images to replace in `website/README.md`)
-- [ ] Hosts the template (and frame pack) gallery from 6.3/6.4
+- [x] Template gallery page (2026-11-12): `/gallery/` + `/de/galerie/`,
+      build-time snapshot + live refresh from the API (CORS allow list
+      `VITRINE_API_CORS_ORIGINS`, list limit 200, per-canvas `devices`),
+      store-gallery cards from the sprites (floating pages, pointer tilt/pan,
+      lazy), local filters style/colour/use/device + search with FLIP
+      animation and URL query, detail view `#<id>` (canvases, pages,
+      download, how to use), home page live cards (`website/README.md`)
+- [ ] Owner: set `VITRINE_API_CORS_ORIGINS` on the server, upload/approve
+      templates, rebuild + deploy the site
+- [ ] Frame pack gallery (6.4) on the website
 
 ## 6.7 Documentation (own step)
 - [x] User guide from `docs/guide/NOTES.md` and the code (2026-11-11):

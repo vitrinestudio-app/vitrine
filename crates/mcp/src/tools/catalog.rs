@@ -38,7 +38,7 @@ fn matches(v: &Value, key: &str, want: Option<&str>) -> bool {
 #[tool_router(router = catalog_tools, vis = "pub(crate)")]
 impl VitrineMcp {
     #[tool(
-        description = "Device models for device elements (`model`): id, label, class, orientations, colour variants (`color`), display aspect and typical screenshot sizes.",
+        description = "Device models for device elements (`model`): id, label, class, orientations, colour variants (`color`), display aspect, typical screenshot sizes and `frame`: per orientation the parametric frame of an element 1000 lu wide – height, screen rect [x, y, w, h] from the element's top-left corner, screen and body corner radius (scale linearly with `width`; the element's `at` is the box centre; imported Apple frames differ slightly; layout_report gives the boxes of placed elements).",
         annotations(read_only_hint = true)
     )]
     async fn catalog_devices(
@@ -60,6 +60,7 @@ impl VitrineMcp {
                         "default_color": d["default_color"],
                         "display_aspect": d["display_aspect"],
                         "screenshot_sizes": d["screenshot_sizes"],
+                        "frame": d["frame"],
                     })
                 })
                 .collect();

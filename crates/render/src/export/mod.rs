@@ -50,7 +50,7 @@ use vitrine_core::Project;
 use vitrine_core::fastlane::{self, Claim, LayoutNote, NoteLevel, Placement};
 use vitrine_core::model::{ImageFormat, TargetKind};
 use vitrine_core::resolve::{
-    Diagnostic, FsAssets, ResolvedFill, ResolvedKind, ResolvedScene, resolve,
+    Diagnostic, Frame, FsAssets, ResolvedFill, ResolvedKind, ResolvedScene, resolve,
 };
 
 use crate::paint::{round_rect_xy, shader_paint, solid};
@@ -111,6 +111,7 @@ impl std::str::FromStr for ExportLayout {
 
 /// What to export.
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)] // independent switches
 pub struct ExportOptions {
     /// Export folder; default [`ExportLayout::default_dir`].
     pub out_dir: Option<PathBuf>,
@@ -124,6 +125,10 @@ pub struct ExportOptions {
     pub langs: Vec<String>,
     /// Write `_gallery.png` previews for pages targets.
     pub gallery: bool,
+    /// Write the page / page group / banner images (default true). `false`
+    /// with `gallery` = only the gallery previews (a quick look at a whole
+    /// set; standard layout only). Files of earlier exports are kept.
+    pub pages: bool,
     /// Gallery preview height limit in px.
     pub gallery_height: u32,
     /// Skip files whose inputs did not change.
@@ -172,6 +177,7 @@ impl Default for ExportOptions {
             targets: Vec::new(),
             langs: Vec::new(),
             gallery: true,
+            pages: true,
             gallery_height: 1200,
             incremental: true,
             hooks: ExportHooks::default(),
@@ -445,7 +451,7 @@ fn standard_tasks(jobs: &[Job], opts: &ExportOptions) -> Vec<Task> {
     let mut tasks = Vec::new();
     for (i, j) in jobs.iter().enumerate() {
         let dir = format!("{}/{}", j.target, j.lang);
-        for img in &j.scene.frame.images {
+        for img in j.scene.frame.images.iter().filter(|_| opts.pages) {
             tasks.push(Task {
                 job: i,
                 kind: TaskKind::Image(img.index),
@@ -628,6 +634,7 @@ fn remove_stale(
             || produced.contains(path)
             || !scope.contains(&(e.target.as_str(), e.lang.as_str()))
             || (kind == FileKind::Gallery && !galleries)
+            || (kind != FileKind::Gallery && !opts.pages)
         {
             continue;
         }
@@ -856,24 +863,72 @@ pub fn gallery(
     prepared: &PreparedScene<'_>,
     max_height: u32,
 ) -> (Pixmap, Vec<RenderIssue>) {
+    gallery_on(ctx, prepared, max_height, None)
+}
+
+/// Pixel size of the [`gallery`] preview of `frame` at `max_height`,
+/// computed without rendering (the height may differ by a pixel).
+pub fn gallery_size(frame: &Frame, max_height: u32) -> (u32, u32) {
+    let (Some(first), Some(last)) = (frame.images.first(), frame.images.last()) else {
+        return (1, 1);
+    };
+    let (factor, px_per_lu, pad) = gallery_metrics(frame, max_height);
+    let width = ((last.source.right() - first.source.x) * px_per_lu).round() as u32 + 2 * pad;
+    let ih = (f64::from(first.viewport.height_px) * factor).round() as u32;
+    (width.max(1), ih.max(1) + 2 * pad)
+}
+
+/// The largest gallery height (≤ `max_height`, ≥ 16) whose preview is at
+/// most `max_width` px wide.
+pub fn gallery_height_for_width(frame: &Frame, max_height: u32, max_width: u32) -> u32 {
+    let (w, _) = gallery_size(frame, max_height);
+    if w <= max_width {
+        return max_height;
+    }
+    // The width grows almost linearly with the height: estimate, then step
+    // down until it fits (the padding has a minimum).
+    let estimate = f64::from(max_height) * f64::from(max_width) / f64::from(w);
+    let mut h = (estimate.floor() as u32).clamp(16, max_height);
+    while h > 16 && gallery_size(frame, h).0 > max_width {
+        h = ((f64::from(h) * 0.97).floor() as u32).max(16);
+    }
+    h
+}
+
+/// Scale factor, px per lu and padding (px) of the gallery preview.
+fn gallery_metrics(frame: &Frame, max_height: u32) -> (f64, f64, u32) {
+    let factor = (f64::from(max_height) / f64::from(frame.size.h)).min(1.0);
+    let px_per_lu = frame.images.first().map_or(0.0, |i| i.viewport.scale) * factor;
+    let gap_px = frame.gallery.as_ref().map_or(0.0, |g| g.gap * px_per_lu);
+    (factor, px_per_lu, gap_px.max(24.0).round() as u32)
+}
+
+/// [`gallery`] on `background` (RGB) instead of the gallery profile's page
+/// colour, e.g. a store's dark mode.
+pub fn gallery_on(
+    ctx: &RenderContext,
+    prepared: &PreparedScene<'_>,
+    max_height: u32,
+    background: Option<[u8; 3]>,
+) -> (Pixmap, Vec<RenderIssue>) {
     let frame = &prepared.scene.frame;
     let (Some(first), Some(last)) = (frame.images.first(), frame.images.last()) else {
         return (Pixmap::new(1, 1).expect("1x1"), Vec::new());
     };
-    let factor = (f64::from(max_height) / f64::from(frame.size.h)).min(1.0);
-    let px_per_lu = first.viewport.scale * factor;
+    let (factor, px_per_lu, pad) = gallery_metrics(frame, max_height);
     let info = frame.gallery.as_ref();
-    let gap_px = info.map_or(0.0, |g| g.gap * px_per_lu);
-    let pad = gap_px.max(24.0).round() as u32;
     let (rx, ry) = info.map_or((0.0, 0.0), |g| {
         (
             (g.radius.x * px_per_lu) as f32,
             (g.radius.y * px_per_lu) as f32,
         )
     });
-    let bg = info
-        .and_then(|g| g.background)
-        .map_or(GALLERY_BACKGROUND, |c| [c.r, c.g, c.b, 255]);
+    let bg = match background {
+        Some([r, g, b]) => [r, g, b, 255],
+        None => info
+            .and_then(|g| g.background)
+            .map_or(GALLERY_BACKGROUND, |c| [c.r, c.g, c.b, 255]),
+    };
     let opts = RenderOptions {
         scale: Scale::Factor(factor),
         quality: Quality::Export,

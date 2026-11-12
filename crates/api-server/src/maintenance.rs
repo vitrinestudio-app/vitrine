@@ -1,12 +1,14 @@
 //! Maintenance of stored templates: re-rendering previews and sprites
 //! (admin `rerender`, approvals of templates without sprites) and the
-//! start-up [`backfill`] of rows from before schema version 1 (derived
-//! device tags, sample counts, missing sprites of approved templates).
+//! start-up [`backfill`] of rows from before schema version 2 (derived
+//! device tags overall and per canvas, sample counts, missing sprites of
+//! approved templates).
 
 use std::sync::Arc;
 
 use serde_json::{Value, json};
-use vitrine_core::template::{Limits, Package, tags};
+use vitrine_core::Project;
+use vitrine_core::template::{CanvasInfo, Limits, Package, tags};
 use vitrine_render::template::{PREVIEW_HEIGHT, add_previews};
 
 use crate::AppState;
@@ -22,6 +24,21 @@ fn stored_package(state: &AppState, id: &str) -> anyhow::Result<Package> {
         ..Limits::default()
     };
     Ok(Package::from_zip_bytes(&bytes, limits)?)
+}
+
+/// The manifest's canvases as the API stores them: each with the derived
+/// `devices` of that canvas alone.
+pub(crate) fn canvases_json(project: &Project, canvases: &[CanvasInfo]) -> Value {
+    Value::Array(
+        canvases
+            .iter()
+            .map(|c| {
+                let mut v = serde_json::to_value(c).unwrap_or(Value::Null);
+                v["devices"] = json!(tags::devices_of(project, &[c.id.as_str()]));
+                v
+            })
+            .collect(),
+    )
 }
 
 /// Renders the sprites of a stored template again (and its previews when
@@ -58,19 +75,20 @@ pub async fn backfill(state: Arc<AppState>) {
     for id in ids {
         let st = state.clone();
         let id2 = id.clone();
-        let res = tokio::task::spawn_blocking(move || -> anyhow::Result<(Value, i64, Value)> {
+        let res = tokio::task::spawn_blocking(move || -> anyhow::Result<db::Derived> {
             let pkg = stored_package(&st, &id2)?;
             let project = pkg.project()?;
-            Ok((
-                json!(tags::devices(&project)),
-                i64::try_from(pkg.manifest.samples.len()).unwrap_or(0),
-                db::tags_json(&pkg.manifest.tags),
-            ))
+            Ok(db::Derived {
+                devices: json!(tags::devices(&project)),
+                samples: i64::try_from(pkg.manifest.samples.len()).unwrap_or(0),
+                tags: db::tags_json(&pkg.manifest.tags),
+                canvases: canvases_json(&project, &pkg.manifest.canvases),
+            })
         })
         .await;
         match res {
-            Ok(Ok((devices, samples, tag_map))) => {
-                if let Err(e) = db::set_derived(&state.db(), &id, &devices, samples, &tag_map) {
+            Ok(Ok(derived)) => {
+                if let Err(e) = db::set_derived(&state.db(), &id, &derived) {
                     eprintln!("backfill `{id}`: {e}");
                 }
             }

@@ -467,6 +467,7 @@ command_table! {
         validate, export, export_cancel,
         strings_get, strings_missing,
         assets_list, assets_import, assets_remove,
+        asset_info,
         catalog_devices, catalog_targets, catalog_galleries, catalog_fonts,
         settings_get, settings_set,
         dialog_open_project, dialog_pick_files,

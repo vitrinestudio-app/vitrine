@@ -398,7 +398,7 @@ import <file> [--replace] | export <id> -o <file> | remove <id> | insert
 [--preview] [--strict] [--format text|json|github|gitlab|junit] [-o FILE]`, `render [--target] [--lang]
 [--page N | --image N | --canvas | --gallery] [--width|--max-edge|--scale]
 [-o file]`, `export [--target] [--lang] [--out dir] [--layout
-standard|fastlane] [--no-gallery] [--no-html] [--force] [--format json]`, `strings export [--format csv|xliff12|xliff20]
+standard|fastlane] [--no-gallery|--gallery-only] [--no-html] [--force] [--format json]`, `strings export [--format csv|xliff12|xliff20]
 [--lang] [-o] [--missing-only] [--context]`, `strings import <file>…
 [--dry-run] [--create-keys] [--empty keep|remove]`, `import screenshots
 <dir> [--format auto|vitrine|fastlane|flat] [--device-map|--lang-map|--key-map

@@ -19,7 +19,7 @@ Every template is CC0-1.0; fonts inside keep the OFL.
 | Method | Path | Description |
 |---|---|---|
 | GET | `/health` | `{"status": "ok", "version": "…"}` |
-| GET | `/v1/templates?q=&tag=&style=&color=&use=&devices=&limit=&offset=` | approved templates, newest first; `q` searches name, description, tags; `tag` matches any tag or device; facet filters below; `limit` 1–100 (default 50) |
+| GET | `/v1/templates?q=&tag=&style=&color=&use=&devices=&limit=&offset=` | approved templates, newest first; `q` searches name, description, tags; `tag` matches any tag or device; facet filters below; `limit` 1–200 (default 50; the answer's `limit` is the one used – page with `offset += limit` until fewer come back) |
 | GET | `/v1/templates/{id}` | one approved template |
 | GET | `/v1/templates/{id}/download` | the `.vitrine-template` (`application/zip`, `Content-Disposition: attachment`); counts a download |
 | GET | `/v1/templates/{id}/previews/{canvas}` | preview PNG of a canvas (rendered by the server; store gallery look with gaps) |
@@ -63,6 +63,7 @@ Template object:
   "status": "approved",
   "canvases": [{"id": "phone", "aspect": "1320:2868", "page_aspect": "1320:2868",
                 "pages": 5, "targets": ["ios-iphone-69", "play-phone"],
+                "devices": ["phone"],
                 "preview": "previews/phone.png",
                 "preview_url": "https://api.vitrinestudio.app/v1/templates/bold-gradient/previews/phone",
                 "sprite": {"url": "https://api.vitrinestudio.app/v1/templates/bold-gradient/sprites/phone.webp?v=3f0c9a1b2c4d5e6f7a8b",
@@ -76,7 +77,9 @@ Template object:
 ```
 
 - `tags` always has the three keys (empty lists for templates without
-  tags); `devices` is derived; `samples` = number of sample screenshots
+  tags); `devices` is derived; `canvases[].devices` are the derived devices
+  of that canvas alone (schema 2, 2026-11-12; the website shows the canvas
+  of the device a visitor filters by – older servers lack the field); `samples` = number of sample screenshots
   in the package (0 = placeholders only).
 - `sprite` (per canvas; `null` while not rendered): `width` × `height`
   is the 1× image, `page_width` × `page_height` one page (`width =
@@ -101,6 +104,18 @@ Template object:
 `official` is `true` when the uploader is one of
 `VITRINE_API_OFFICIAL_LOGINS` (default `vitrinestudio-app`, the org that
 publishes the official templates; compared case-insensitively).
+
+### CORS (website)
+
+`VITRINE_API_CORS_ORIGINS` (comma-separated origins, e.g.
+`https://www.vitrinestudio.app`; empty = no CORS headers) lets those
+browser origins `fetch` the public reads: `GET`/`HEAD` of `/health`,
+`/v1/tags`, `/v1/templates` and everything below it except `…/report`
+get `Access-Control-Allow-Origin: <the origin>` (echoed, never `*`, no
+credentials) and `Vary: Origin`; a preflight (`OPTIONS` with
+`Access-Control-Request-Method: GET|HEAD`) is answered 204. Uploads,
+reports, login and moderation never carry CORS headers. Sprites and
+downloads used as `<img>`/CSS backgrounds or links need no CORS.
 
 ## Upload (login required)
 

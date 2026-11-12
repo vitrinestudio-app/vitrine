@@ -187,6 +187,9 @@ finding_codes! {
     ScreenshotUpscale = "screenshot_upscale",
     /// A page of a `screenshot_only` target has no device (empty image).
     ScreenshotOnlyEmpty = "screenshot_only_empty",
+    /// A canvas background layer lies under an opaque one and never shows
+    /// (canvas `backgrounds` are layers, not one fill per page).
+    BackgroundHidden = "background_hidden",
     /// The screenshot's embedded colour profile cannot be used (unreadable,
     /// CMYK, HDR …); it is rendered as if it were sRGB (info).
     ColorProfileUnsupported = "color_profile_unsupported",
