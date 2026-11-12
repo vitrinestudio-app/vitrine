@@ -18,16 +18,15 @@ pub fn load(dir: &Path) -> anyhow::Result<Project> {
     Project::load(dir).context("cannot load project")
 }
 
-/// Bundled fonts plus the project's `fonts/` folder; unreadable font files
-/// are reported on stderr unless `quiet`.
-pub fn fonts(dir: &Path, quiet: bool) -> FontLibrary {
-    let mut fonts = FontLibrary::bundled();
-    let fonts_dir = dir.join("fonts");
-    if fonts_dir.is_dir() {
-        let report = fonts.load_dir(&fonts_dir);
-        if !quiet {
-            report_font_errors(&report.errors);
-        }
+/// Bundled fonts, the project's `fonts/` folder (with stored system
+/// fonts) and – unless `--no-system-fonts` – the installed system fonts
+/// the project needs; unreadable font files are reported on stderr unless
+/// `--quiet`.
+pub fn fonts(dir: &Path, project: &Project, global: &crate::Global) -> FontLibrary {
+    let (fonts, report) =
+        vitrine_core::layout::setup::project_library(dir, Some(project), global.system_fonts());
+    if !global.quiet {
+        report_font_errors(&report.errors);
     }
     fonts
 }

@@ -93,11 +93,9 @@ pub fn run(args: &RenderArgs, global: &Global) -> anyhow::Result<u8> {
         bail!("--scale must be a positive number");
     }
 
-    let (ctx, fonts) = crate::frames::render_context(root);
-    if !global.quiet
-        && let Some(r) = &fonts
-    {
-        project::report_font_errors(&r.errors);
+    let (ctx, fonts) = crate::frames::render_context(root, &project, global);
+    if !global.quiet {
+        project::report_font_errors(&fonts.errors);
     }
     let fs = FsAssets::new(root);
     let scene = resolve(&project, &target, &lang, &ctx.resolve_options(&fs))?;

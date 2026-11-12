@@ -233,12 +233,27 @@ impl std::fmt::Debug for RenderContext {
 }
 
 impl RenderContext {
-    /// Context for the project in `root`: bundled fonts plus `root/fonts/`.
+    /// Context for the project in `root`: bundled fonts plus `root/fonts/`
+    /// (with the stored system fonts `fonts/system/`); no installed system
+    /// fonts.
     pub fn new(root: impl Into<PathBuf>) -> (Self, Option<FontDirReport>) {
         let root = root.into();
-        let mut fonts = FontLibrary::bundled();
-        let dir = root.join("fonts");
-        let report = dir.is_dir().then(|| fonts.load_dir(&dir));
+        let has_fonts = root.join("fonts").is_dir();
+        let (fonts, report) = layout::setup::project_library(&root, None, false);
+        (Self::with_fonts(root, fonts), has_fonts.then_some(report))
+    }
+
+    /// Context for `project` in `root` like [`Self::new`], plus – with
+    /// `system_fonts` – the installed system families it names and system
+    /// fallbacks for characters no other font has (ADR 0028). The GUI, the
+    /// CLI and MCP build their contexts here.
+    pub fn for_project(
+        root: impl Into<PathBuf>,
+        project: &vitrine_core::Project,
+        system_fonts: bool,
+    ) -> (Self, FontDirReport) {
+        let root = root.into();
+        let (fonts, report) = layout::setup::project_library(&root, Some(project), system_fonts);
         (Self::with_fonts(root, fonts), report)
     }
 

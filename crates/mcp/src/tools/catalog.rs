@@ -152,7 +152,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Font families usable in text styles: bundled (always available, no files needed: Inter, Inter Display, Montserrat, Nunito, Oswald – sans serif; Playfair Display, Lora – serif; Bebas Neue – all-caps display; Caveat, Dancing Script – handwriting; JetBrains Mono – monospace; `bundled_info` gives category, weight range (variable fonts: any weight in it) and whether a real italic exists), from the project's fonts/ folder, and system fallbacks (`system`: families loaded for characters no other font covers; `system_enabled`: the app setting).",
+        description = "Font families usable in text styles. Resolution order: bundled → project fonts/ → installed on this computer. Bundled (always available, no files needed: Inter, Inter Display, Montserrat, Nunito, Oswald – sans serif; Playfair Display, Lora – serif; Bebas Neue – all-caps display; Caveat, Dancing Script – handwriting; JetBrains Mono – monospace; Noto Sans Arabic/Hebrew/Devanagari/Bengali/Tamil/Thai – script fonts, used automatically for those scripts; `bundled_info` gives category, weight range (variable fonts: any weight in it) and whether a real italic exists); `project`: the project's fonts/ folder (`stored`: system fonts stored in fonts/system/); `installed`: family names installed on this computer, usable by name when `system_enabled` (the app setting) – but other machines may lack them (validation `system_font_used`), so prefer bundled families unless the user asks; `system_named`/`system`: installed families the project uses by name / as fallback for missing characters (e.g. CJK, which is not bundled).",
         annotations(read_only_hint = true)
     )]
     async fn catalog_fonts(
@@ -161,7 +161,15 @@ impl VitrineMcp {
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
-            let v = cmd(app, "catalog_fonts", Value::Null)?;
+            let mut v = cmd(app, "catalog_fonts", Value::Null)?;
+            // Installed families as names only (hundreds of entries).
+            if let Some(list) = v.get_mut("installed").and_then(Value::as_array_mut) {
+                let names: Vec<Value> = list
+                    .iter()
+                    .filter_map(|f| f.get("family").cloned())
+                    .collect();
+                *list = names;
+            }
             Ok(ToolOutput::new("font families", v))
         })
         .await

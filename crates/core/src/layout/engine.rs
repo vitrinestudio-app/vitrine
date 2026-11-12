@@ -58,6 +58,8 @@ struct RangeStyle {
 #[derive(Debug)]
 struct Prepared {
     text: String,
+    /// Shaping locale (the text's language).
+    locale: Option<parley::fontique::Language>,
     base: RangeStyle,
     ranges: Vec<(std::ops::Range<usize>, RangeStyle)>,
     /// Effect sets: `[0]` from the text style, more from span styles.
@@ -107,13 +109,17 @@ fn prepare(
             })
             .unwrap_or(&[])
     };
+    // Bundled script fonts (Arabic, Hebrew, Indic, Thai) for the scripts
+    // the text uses (ADR 0028).
+    let plain: String = parsed.spans.iter().map(|s| parsed.span_text(s)).collect();
+    let scripts = super::script::bundled_fallbacks(&plain);
     // Missing fallback families are reported once per project by
     // `core::validate`, not per text.
     let mut chain = |family: &str| {
         if !fonts.has_family(family) {
             unknown_fonts.insert(family.to_owned());
         }
-        fonts.family_chain_with(family, extra(family))
+        fonts.family_chain_for(family, extra(family), input.lang, &scripts)
     };
     let base = RangeStyle {
         family: chain(&style.font),
@@ -187,6 +193,9 @@ fn prepare(
     let finite_pos = |v: f32, d: f32| if v.is_finite() && v > 0.0 { v } else { d };
     Prepared {
         text,
+        locale: input
+            .lang
+            .and_then(|l| parley::fontique::Language::parse(l).ok()),
         base,
         ranges,
         effects,
@@ -227,6 +236,7 @@ fn hyphenate_prepared(
     (
         Prepared {
             text,
+            locale: p.locale,
             base: p.base.clone(),
             ranges,
             effects: p.effects.clone(),
@@ -474,6 +484,9 @@ impl TextLayouter {
             .ranged_builder(&mut self.font_cx, &p.text, 1.0, false);
         b.push_default(family_property(&p.base.family));
         b.push_default(StyleProperty::FontSize(size));
+        if let Some(l) = &p.locale {
+            b.push_default(StyleProperty::Locale(Some(*l)));
+        }
         b.push_default(StyleProperty::FontWeight(FontWeight::new(f32::from(
             p.base.weight,
         ))));
@@ -590,7 +603,7 @@ impl TextLayouter {
                 None => break,
             }
         }
-        layout.align(Alignment::Start, AlignmentOptions::default());
+        layout.align(Alignment::Left, AlignmentOptions::default());
 
         let factor = match align {
             Align::Left => 0.0,

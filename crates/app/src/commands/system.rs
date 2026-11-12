@@ -42,7 +42,7 @@ pub fn settings_get(app: &AppState, _: NoArgs) -> CmdResult<SettingsInfo> {
 pub fn settings_set(app: &AppState, args: SettingsSetArgs) -> CmdResult<Settings> {
     let settings = app.settings_store().update(&args.settings)?;
     if let Ok(session) = app.session() {
-        session.set_system_font_fallback(settings.system_font_fallback);
+        session.set_system_fonts(settings.system_fonts);
     }
     Ok(settings)
 }

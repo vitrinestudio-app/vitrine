@@ -18,7 +18,7 @@ Text markup (inside translations)
 Units and geometry
 - lu = layout units; x grows to the right, y downward. Rotation in degrees, positive = clockwise.
 - element_move/resize take page-relative lu (x, y of the element centre relative to the top-left of page `page`), or dx/dy deltas.
-- Colours `#RRGGBB[AA]` or `@name` (styles.colors). Text styles (styles.text) carry font, weight, size (lu), line height, colour. Bundled families (catalog_fonts, no files needed): Inter, Inter Display, Montserrat, Nunito, Oswald, Playfair Display, Lora, Bebas Neue (caps only), Caveat, Dancing Script (handwriting, short texts), JetBrains Mono; other fonts go into the project's fonts/ folder (assets_import kind font).
+- Colours `#RRGGBB[AA]` or `@name` (styles.colors). Text styles (styles.text) carry font, weight, size (lu), line height, colour. Bundled families (catalog_fonts, no files needed): Inter, Inter Display, Montserrat, Nunito, Oswald, Playfair Display, Lora, Bebas Neue (caps only), Caveat, Dancing Script (handwriting, short texts), JetBrains Mono; Noto Sans Arabic/Hebrew/Devanagari/Bengali/Tamil/Thai are used automatically for those scripts. Fonts installed on the user's computer can be named too (catalog_fonts `installed`), but other machines may not have them – prefer bundled ones unless the user asks; other fonts go into the project's fonts/ folder (assets_import kind font). Chinese, Japanese and Korean have no bundled font: they use an installed system font.
 
 Reference: docs_get {topic} returns markdown for overview, elements (all fields, types, defaults), ops, project, markup, targets, scopes. Call it instead of guessing field names.
 
