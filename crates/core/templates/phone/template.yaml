@@ -5,7 +5,9 @@ id: phone
 name: Phone
 description: Three phone pages with gradient, headlines and devices; iPhone 6.9″, Google Play phone, blog banner
 author: Vitrine Studio
-tags: [phone, gradient]
+tags:
+  style: [bold]
+  color: [gradient]
 version: 1.0.0
 license: CC0-1.0
 project_format: vitrine/1

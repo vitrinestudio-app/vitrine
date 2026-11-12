@@ -5,7 +5,9 @@ id: minimal
 name: Minimal
 description: One page with a headline and a device; iPhone 6.9″
 author: Vitrine Studio
-tags: [phone, minimal]
+tags:
+  style: [minimal]
+  color: [light]
 version: 1.0.0
 license: CC0-1.0
 project_format: vitrine/1

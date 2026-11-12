@@ -21,7 +21,11 @@ fn save_opts(name: &str, canvases: Option<Vec<&str>>) -> SaveOptions {
         name: name.into(),
         description: "A test".into(),
         author: "Tester".into(),
-        tags: vec!["Garden".into()],
+        tags: TemplateTags {
+            style: vec!["Minimal".into()],
+            use_: vec!["home-garden".into()],
+            ..TemplateTags::default()
+        },
         canvases: canvases.map(|c| c.into_iter().map(String::from).collect()),
         ..SaveOptions::default()
     }
@@ -46,7 +50,9 @@ fn extract_whole_project_round_trips_through_zip() {
     let p = example();
     let (pkg, report) = extract(&p, &example_dir(), &save_opts("Fernwood set", None)).unwrap();
     assert_eq!(pkg.manifest.id, "fernwood-set");
-    assert_eq!(pkg.manifest.tags, ["garden"]);
+    assert_eq!(pkg.manifest.tags.style, ["minimal"]);
+    assert_eq!(pkg.manifest.tags.use_, ["home-garden"]);
+    assert_eq!(pkg.manifest.samples.len(), 0);
     assert_eq!(pkg.manifest.license, LICENSE);
     assert_eq!(pkg.manifest.canvases.len(), p.canvases.len());
     assert!(report.placeholders > 0);
@@ -408,9 +414,159 @@ fn server_side_placeholders_replace_uploaded_screenshots() {
     let shot = pkg.screenshots().next().unwrap().to_owned();
     let real = std::fs::read(example_dir().join("screenshots/en/ios-phone/planner.png")).unwrap();
     pkg.put(&shot, real.clone()).unwrap();
-    pkg.regenerate_placeholders().unwrap();
+    pkg.regenerate_placeholders(false).unwrap();
     assert_ne!(pkg.file(&shot), Some(real.as_slice()));
     pkg.check().unwrap();
+}
+
+fn with_samples(canvases: Option<Vec<&str>>) -> Package {
+    let mut opts = save_opts("Fernwood samples", canvases);
+    opts.sample_screenshots = true;
+    let (pkg, report) = extract(&example(), &example_dir(), &opts).unwrap();
+    assert_ne!(report.samples.len(), 0);
+    assert_eq!(report.samples, pkg.manifest.samples);
+    pkg
+}
+
+#[test]
+fn sample_screenshots_are_packed_and_listed() {
+    let pkg = with_samples(Some(vec!["phone"]));
+    // The project's own files, byte for byte.
+    for s in &pkg.manifest.samples {
+        let real = std::fs::read(example_dir().join(s)).unwrap();
+        assert_eq!(pkg.file(s), Some(real.as_slice()), "{s}");
+    }
+    assert!(
+        pkg.manifest
+            .samples
+            .contains(&"screenshots/en/ios-phone/planner.png".to_owned()),
+        "{:?}",
+        pkg.manifest.samples
+    );
+    let bytes = pkg.to_zip_bytes().unwrap();
+    let back = Package::from_zip_bytes(&bytes, Limits::default()).unwrap();
+    assert_eq!(back.manifest.samples, pkg.manifest.samples);
+    let yaml = manifest_to_yaml(&pkg.manifest).unwrap();
+    assert!(yaml.contains("samples:"), "{yaml}");
+
+    // The server keeps confirmed samples and drops unconfirmed ones.
+    let mut kept = pkg.clone();
+    kept.regenerate_placeholders(true).unwrap();
+    assert_eq!(kept.manifest.samples, pkg.manifest.samples);
+    for s in &pkg.manifest.samples {
+        assert_eq!(kept.file(s), pkg.file(s));
+    }
+    kept.check().unwrap();
+    let mut dropped = pkg.clone();
+    dropped.regenerate_placeholders(false).unwrap();
+    assert_eq!(dropped.manifest.samples.len(), 0);
+    assert!(
+        dropped.screenshots().all(
+            |s| !pkg.manifest.samples.contains(&s.to_owned()) || dropped.file(s) != pkg.file(s)
+        )
+    );
+    dropped.check().unwrap();
+}
+
+#[test]
+fn listed_samples_must_exist_and_be_screenshots() {
+    let mut pkg = with_samples(Some(vec!["phone"]));
+    pkg.manifest.samples.push("assets/icon-good.svg".into());
+    assert!(
+        pkg.check()
+            .unwrap_err()
+            .to_string()
+            .contains("not a PNG/JPEG")
+    );
+    pkg.manifest.samples.pop();
+    pkg.manifest.samples.push("screenshots/en/none.png".into());
+    assert!(pkg.check().unwrap_err().to_string().contains("missing"));
+}
+
+#[test]
+fn new_project_copies_and_marks_samples() {
+    let pkg = with_samples(Some(vec!["phone"]));
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("p");
+    let langs = parse_langs(&["de".into(), "en".into()]).unwrap();
+    let created = create_project(&pkg, &dir, "P", &langs).unwrap();
+    assert_ne!(created.samples.len(), 0);
+    let marks = crate::samples::SampleMarks::load(&dir);
+    assert_eq!(marks.template, pkg.manifest.id);
+    for s in &created.samples {
+        assert!(marks.is_sample(&dir, s), "{s}");
+    }
+    // English samples stay English; the default language `de` gets the
+    // samples of the template language serving it.
+    assert!(
+        created
+            .samples
+            .iter()
+            .any(|s| s.starts_with("screenshots/en/"))
+    );
+    assert!(
+        created
+            .samples
+            .iter()
+            .any(|s| s.starts_with("screenshots/de/"))
+    );
+    // Validation reports them as info.
+    let fs = crate::resolve::FsAssets::new(&dir);
+    let report = crate::validate::validate(
+        &created.project,
+        &crate::validate::ValidateOptions::new(&fs),
+    );
+    let found: Vec<_> = report
+        .with_code(crate::validate::FindingCode::SampleScreenshot)
+        .collect();
+    assert_ne!(found.len(), 0);
+    assert!(
+        found
+            .iter()
+            .all(|f| f.level == crate::validate::Severity::Info)
+    );
+    // Replacing a file un-marks it.
+    let first = &created.samples[0];
+    std::fs::write(dir.join(first), b"\x89PNG\r\n\x1a\nmine").unwrap();
+    assert!(!crate::samples::SampleMarks::load(&dir).is_sample(&dir, first));
+}
+
+#[test]
+fn insert_copies_samples_without_replacing_screenshots() {
+    let pkg = with_samples(Some(vec!["phone"]));
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("p");
+    let langs = parse_langs(&["en".into()]).unwrap();
+    let minimal = builtin::package("minimal").unwrap();
+    let created = create_project(&minimal, &dir, "P", &langs).unwrap();
+    // The project already has its own `planner` screenshot.
+    std::fs::create_dir_all(dir.join("screenshots/en/ios-phone")).unwrap();
+    std::fs::write(dir.join("screenshots/en/ios-phone/planner.jpg"), b"mine").unwrap();
+    let plan = plan_insert(&created.project, &dir, &pkg, &InsertOptions::default()).unwrap();
+    assert_ne!(plan.report.samples.len(), 0);
+    assert!(
+        !plan
+            .report
+            .samples
+            .contains(&"screenshots/en/ios-phone/planner.png".to_owned())
+    );
+    for f in &plan.files {
+        let dest = dir.join(&f.to);
+        std::fs::create_dir_all(dest.parent().unwrap()).unwrap();
+        std::fs::write(dest, pkg.file(&f.from).unwrap()).unwrap();
+    }
+    insert::mark_samples(&dir, &pkg, &plan).unwrap();
+    let marks = crate::samples::SampleMarks::load(&dir);
+    assert_eq!(marks.files.len(), plan.report.samples.len());
+}
+
+#[test]
+fn manifest_tags_are_checked() {
+    let mut pkg = builtin::package("phone").unwrap();
+    pkg.manifest.tags.style = vec!["fancy".into()];
+    let e = pkg.check().unwrap_err().to_string();
+    assert!(e.contains("unknown style tag `fancy`"), "{e}");
+    assert!(e.contains("minimal, bold"), "{e}");
 }
 
 #[test]

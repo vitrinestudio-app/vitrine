@@ -567,8 +567,8 @@ fn screenshot_checks(
     // language: findings name the file and are recorded without language,
     // so languages that fall back to the same file share one finding.
     let file = shot.path.as_deref().unwrap_or_default();
-    if let Some(message) = color_check(s, file) {
-        push(Severity::Info, C::ColorProfileUnsupported, false, message);
+    for (code, message) in file_notes(s, file) {
+        push(Severity::Info, code, false, message);
     }
     let Some(size) = shot.size.filter(|p| p.w > 0 && p.h > 0) else {
         return;
@@ -625,6 +625,24 @@ fn color_check(s: &Scope<'_>, file: &str) -> Option<String> {
     }
     let note = s.options.assets.color_note(file)?;
     Some(format!("screenshot `{file}`: {note}"))
+}
+
+/// Info findings about the screenshot file itself: an unusable colour
+/// profile, a sample screenshot from a template.
+fn file_notes(s: &Scope<'_>, file: &str) -> Vec<(C, String)> {
+    let mut out = Vec::new();
+    if let Some(message) = color_check(s, file) {
+        out.push((C::ColorProfileUnsupported, message));
+    }
+    if !file.is_empty() && s.options.assets.is_sample(file) {
+        out.push((
+            C::SampleScreenshot,
+            format!(
+                "screenshot `{file}` is a sample from a template; replace it with your own (store uploads refuse samples)"
+            ),
+        ));
+    }
+    out
 }
 
 /// Size in lu of the area the screenshot fills: the display, minus the

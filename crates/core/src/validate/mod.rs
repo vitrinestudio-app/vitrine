@@ -180,6 +180,10 @@ finding_codes! {
     /// The screenshot's embedded colour profile cannot be used (unreadable,
     /// CMYK, HDR …); it is rendered as if it were sRGB (info).
     ColorProfileUnsupported = "color_profile_unsupported",
+    /// The screenshot is an unchanged sample from a template
+    /// (`screenshots/samples.yaml`): replace it with your own (info; store
+    /// uploads refuse sets with samples).
+    SampleScreenshot = "sample_screenshot",
     // ---- store rules
     /// Target size not accepted for the store slot.
     StoreSize = "store_size",
