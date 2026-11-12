@@ -29,7 +29,7 @@ pub(super) struct Scope<'a> {
 }
 
 impl Scope<'_> {
-    fn page_of(&self, id: &ElementId) -> Option<u32> {
+    pub(super) fn page_of(&self, id: &ElementId) -> Option<u32> {
         self.canvas.element(id.as_str()).map(|e| e.page)
     }
 }
@@ -269,6 +269,177 @@ fn decoration_checks(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mut 
 
 fn px(s: PixelSize) -> String {
     format!("{}x{}", s.w, s.h)
+}
+
+// ------------------------------------------------- design (per target)
+
+/// Smallest uncovered strip (lu) [`page_cover_checks`] reports.
+const COVER_MIN_STRIP: f64 = 2.0;
+
+/// Language-independent layout checks on the first resolved scene of a
+/// pages target: devices too small for their page, page-filling pictures
+/// or panels that leave a strip uncovered (ADR 0028).
+pub(super) fn design_checks(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
+    if scene.frame.kind != TargetKind::Pages || s.target.screenshot_only {
+        return;
+    }
+    device_size_checks(s, scene, ctx, out);
+    page_cover_checks(scene, ctx, out);
+    seam_split_checks(scene, ctx, out);
+}
+
+/// `seam_split`: an element clipped at the right edge of page `n` and one
+/// of the same kind and size clipped at the left edge of page `n + 1`,
+/// at the same height – one shape built as two halves. In the store the
+/// gap pulls the halves apart; one element with `clip: none` stays
+/// continuous behind the gap in every target.
+fn seam_split_checks(scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
+    let pages = &scene.frame.pages;
+    let near = |a: f64, b: f64, tol: f64| (a - b).abs() <= tol;
+    for a in &scene.elements {
+        if a.clip.is_none() || matches!(a.props, ResolvedKind::Background { .. }) {
+            continue;
+        }
+        let (Some(pa), Some(pb)) = (pages.get(a.page as usize), pages.get(a.page as usize + 1))
+        else {
+            continue;
+        };
+        // Only where the store shows a gap between the two pages.
+        if pa.image == pb.image || (pb.rect.x - pa.rect.right()).abs() < 0.5 {
+            continue;
+        }
+        if !near(a.center.x, pa.rect.right(), a.size.x * 0.25) {
+            continue;
+        }
+        let twin = scene.elements.iter().find(|b| {
+            b.page == a.page + 1
+                && b.clip.is_some()
+                && std::mem::discriminant(&b.props) == std::mem::discriminant(&a.props)
+                && near(b.center.x, pb.rect.x, b.size.x * 0.25)
+                && near(b.center.y, a.center.y, a.size.y * 0.1)
+                && near(b.size.x, a.size.x, a.size.x * 0.05)
+                && near(b.size.y, a.size.y, a.size.y * 0.05)
+        });
+        if let Some(b) = twin {
+            out.push(ctx.finding(
+                Severity::Info,
+                C::SeamSplit,
+                false,
+                Some(a.page),
+                Some(&a.id),
+                format!(
+                    "`{}` and `{}` are two halves of one shape at the border of pages {} and {}: \
+                     the store gap ({:.0} lu here) pulls them apart; use one element with \
+                     `clip: none` across the border – it stays continuous behind the gap in \
+                     every target",
+                    a.id,
+                    b.id,
+                    a.page + 1,
+                    b.page + 1,
+                    pb.rect.x - pa.rect.right()
+                ),
+            ));
+        }
+    }
+}
+
+/// `device_small`: the largest device whose home page is `p` fills less
+/// than [`super::Thresholds::device_small`] of the page height (or width,
+/// for wide devices). Pages with several devices count their largest one.
+fn device_size_checks(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
+    let min = s.options.thresholds.device_small;
+    if min <= 0.0 {
+        return;
+    }
+    for page in &scene.frame.pages {
+        let largest = scene
+            .elements
+            .iter()
+            .filter(|e| e.page == page.index && matches!(e.props, ResolvedKind::Device(_)))
+            .map(|e| {
+                let b = rotated_bounds(Rect::centered(e.center, e.size.x, e.size.y), e);
+                (e, (b.h / page.rect.h).max(b.w / page.rect.w))
+            })
+            .max_by(|a, b| a.1.total_cmp(&b.1));
+        if let Some((e, share)) = largest
+            && share < min
+        {
+            out.push(ctx.finding(
+                Severity::Info,
+                C::DeviceSmall,
+                false,
+                Some(e.page),
+                Some(&e.id),
+                format!(
+                    "the largest device of page {} fills only {:.0} % of the page (≥ {:.0} % \
+                     reads better in the store's small thumbnails)",
+                    page.index + 1,
+                    share * 100.0,
+                    min * 100.0
+                ),
+            ));
+        }
+    }
+}
+
+/// `page_not_covered`: an unrotated picture or panel covering ≥ 85 % of
+/// its home page and reaching three page edges misses the fourth by a
+/// strip of at most 15 % of the page (typical after a variant changed the
+/// page height).
+fn page_cover_checks(scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
+    for e in &scene.elements {
+        if !matches!(e.props, ResolvedKind::Image(_) | ResolvedKind::Shape(_))
+            || e.rotation.rem_euclid(360.0) != 0.0
+            || e.opacity < 0.99
+        {
+            continue;
+        }
+        let Some(page) = scene.frame.pages.get(e.page as usize) else {
+            continue;
+        };
+        let p = page.rect;
+        let r = Rect::centered(e.center, e.size.x, e.size.y);
+        let r = match e.clip {
+            Some(c) => match intersection(&r, &c) {
+                Some(r) => r,
+                None => continue,
+            },
+            None => r,
+        };
+        let Some(i) = intersection(&r, &p) else {
+            continue;
+        };
+        if i.w * i.h < 0.85 * p.w * p.h {
+            continue;
+        }
+        let strips = [
+            ("left", i.x - p.x, p.w),
+            ("top", i.y - p.y, p.h),
+            ("right", p.right() - i.right(), p.w),
+            ("bottom", p.bottom() - i.bottom(), p.h),
+        ];
+        let open: Vec<_> = strips
+            .iter()
+            .filter(|(_, gap, _)| *gap > COVER_MIN_STRIP)
+            .collect();
+        if let [(side, gap, len)] = open[..]
+            && *gap <= 0.15 * len
+        {
+            out.push(ctx.finding(
+                Severity::Info,
+                C::PageNotCovered,
+                false,
+                Some(e.page),
+                Some(&e.id),
+                format!(
+                    "covers page {} except a {gap:.0} lu strip at the {side}; the canvas \
+                     background shows there (resize it in this target's variant, or set \
+                     anchor_y: stretch)",
+                    e.page + 1
+                ),
+            ));
+        }
+    }
 }
 
 // ---------------------------------------------------- per target × lang

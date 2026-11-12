@@ -208,7 +208,9 @@ frame:
     y: 0
   gallery:
     background: "#FFFFFF"
+    background_dark: "#000000"
     gap: 80
+    measured: "no"
     preset: appstore-ipad
     radius:
       x: 40

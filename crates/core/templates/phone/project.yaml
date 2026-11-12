@@ -13,7 +13,7 @@ languages:
   available: [en, de]
 styles:
   colors:
-    accent: "#FF7A45"
+    accent: "#C2410C"
     text: "#14213D"
   text:
     headline: {font: Inter, weight: 800, size: 76, line_height: 1.08, color: "@text"}

@@ -36,6 +36,17 @@ pub enum Measured {
     Fixed,
 }
 
+impl Measured {
+    /// `no`, `web_css` or `fixed`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::No => "no",
+            Self::WebCss => "web_css",
+            Self::Fixed => "fixed",
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Measured {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct V;
@@ -134,6 +145,10 @@ pub struct GalleryProfile {
     pub radius: CornerRadius,
     /// Page colour behind the gallery (preview only).
     pub background: Rgba,
+    /// Page colour behind the gallery in dark mode (design check
+    /// `page_blends_with_store`; not yet measured, see the YAML).
+    #[serde(default)]
+    pub background_dark: Option<Rgba>,
     pub measured: Measured,
     pub source: String,
     #[serde(default)]
