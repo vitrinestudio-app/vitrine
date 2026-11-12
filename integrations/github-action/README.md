@@ -1,18 +1,28 @@
-# setup-vitrine (GitHub Action) – DRAFT
+# Vitrine Studio CLI – GitHub Action
 
-> **Draft, not published.** This action works only once Vitrine Studio has a
-> published GitHub release with the CLI archives (`vitrine-cli_*.tar.gz|zip`
-> and `SHA256SUMS.txt`, ADR 0026). For the Marketplace it has to move to its
-> own public repository with `action.yml` at the root – proposed name
-> `vitrinestudio-app/setup-vitrine` (owner decision). The examples below use
-> that name.
+Install the [`vitrine`](https://vitrinestudio.app) command line tool in a
+GitHub Actions workflow, validate a Vitrine Studio project with annotations
+and export the App Store / Play Store screenshots.
 
-A composite action (runs on Linux x64, macOS arm64/x64 and Windows runners)
-that
+> **Status: draft.** The action needs a published Vitrine Studio release
+> with the CLI archives (`vitrine-cli_*.tar.gz|zip` and `SHA256SUMS.txt` on
+> [GitHub Releases](https://github.com/vitrinestudio-app/vitrine/releases)).
+> Its home is the repository
+> [`vitrinestudio-app/vitrine-github-action`](https://github.com/vitrinestudio-app/vitrine-github-action)
+> (GitHub Marketplace); the source is maintained in
+> [`integrations/github-action/`](https://github.com/vitrinestudio-app/vitrine/tree/main/integrations/github-action)
+> of the main repository and copied there.
+
+A composite action (bash only, no Node runtime) for Linux x64 and arm64
+(also in Alpine containers), macOS (arm64/x64) and Windows runners. It
 
 1. downloads the `vitrine` CLI of the requested release from GitHub
    Releases, **verifies its SHA-256** against the release's
-   `SHA256SUMS.txt`, caches it (`actions/cache`) and puts it on `PATH`;
+   `SHA256SUMS.txt`, caches it (`actions/cache`) and puts it on `PATH`.
+   Linux picks the build that fits the runner: `vitrine-cli_linux_x86_64` /
+   `_aarch64` (glibc 2.35+, e.g. the Ubuntu runners) or the static
+   `…-musl` build (Alpine and other non-glibc containers, older glibc);
+   input `libc` overrides it;
 2. optionally runs `vitrine validate --format github` – errors and warnings
    become annotations on the run and on the pull request's `project.yaml`
    lines;
@@ -26,6 +36,7 @@ that
 | `version` | `latest` | release version (`0.2.0` or `v0.2.0`); pin it for reproducible builds |
 | `repository` | `vitrinestudio-app/vitrine` | where the releases are |
 | `cache` | `true` | cache the downloaded CLI |
+| `libc` | `auto` | Linux: `auto`, `gnu` or `musl` (static build) |
 | `project` | `.` | project folder (with `project.yaml`) |
 | `validate` | `false` | validate with annotations; errors fail the step |
 | `strict` | `false` | with `validate`: warnings fail too |
@@ -52,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: vitrinestudio-app/setup-vitrine@v1
+      - uses: vitrinestudio-app/vitrine-github-action@v1
         with:
           version: 0.2.0
           project: store-screens
@@ -66,7 +77,7 @@ full report is in the step log.
 ### Export and keep the images as an artifact
 
 ```yaml
-      - uses: vitrinestudio-app/setup-vitrine@v1
+      - uses: vitrinestudio-app/vitrine-github-action@v1
         id: vitrine
         with:
           project: store-screens
@@ -84,7 +95,7 @@ full report is in the step log.
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: vitrinestudio-app/setup-vitrine@v1
+      - uses: vitrinestudio-app/vitrine-github-action@v1
         with:
           project: store-screens
           export: true
@@ -109,7 +120,7 @@ environment that needs a reviewer if you want a human in the loop.
     environment: store            # e.g. with required reviewers
     steps:
       - uses: actions/checkout@v5
-      - uses: vitrinestudio-app/setup-vitrine@v1
+      - uses: vitrinestudio-app/vitrine-github-action@v1
       - name: Upload screenshots
         working-directory: store-screens
         env:
@@ -129,9 +140,20 @@ environment that needs a reviewer if you want a human in the loop.
   Projects that use `imported:apple` frames fall back to the parametric
   frame (info `imported_frame_missing`). Use built-in frames or a frame pack
   inside the project (`frames/`) for CI renders.
-- Linux arm64 runners: no CLI build yet (owner decision); use an x64 runner.
+- Linux arm64 runners (`ubuntu-24.04-arm`) get the aarch64 build.
+- Alpine (or other musl) containers: the action's steps use `bash`, `curl`,
+  `tar` and (for `export`) `jq`; install them first, e.g.
+  `apk add --no-cache bash curl tar jq`. The static musl build is chosen
+  automatically. A container job can also use the image
+  `ghcr.io/vitrinestudio-app/vitrine-cli` instead of this action.
 - Security: the action passes inputs through environment variables, never
   into the script text. Pin `actions/cache` (and this action) to a commit
   SHA when publishing.
-- Local test of the scripts: they were run against a fake release
-  (`file://` URLs) on macOS, including a checksum mismatch.
+- Tests: `.github/workflows/test.yml` runs the action on Linux x64/arm64,
+  macOS, Windows and in an Alpine container against a published release.
+
+## Licence
+
+MIT (see `LICENSE`). The action only downloads and calls the `vitrine`
+program; Vitrine Studio itself is licensed under the GNU GPL v3 or later,
+and its release archives carry their own licence files.
