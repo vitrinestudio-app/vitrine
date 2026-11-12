@@ -257,7 +257,11 @@ aktuelle Sprache: **OK** oder die Zahl der Fehler und Warnungen. Ein Klick
 zeigt die Liste – filtern nach Stufe oder Code, zwischen Sprachen wechseln,
 **Auf der Leinwand zeigen** springt zum Element. Der **Vorschau-Modus**
 behandelt fehlende Screenshots beim Gestalten als Warnungen (der Export prüft
-sie trotzdem streng). Häufige Befunde erklärt
+sie trotzdem streng). Die Prüfung schaut auch auf die gerenderten Seiten:
+Textkontrast gegen das, was wirklich dahinter liegt, Text am Gerät,
+verdeckte oder angeschnittene Bildschirm-Kopfzeilen, Überlappungen über
+Seitengrenzen, die abgerundeten Ecken des Stores. Häufige Befunde – und wie
+man einen gewollten mit `allow` markiert – erklärt
 [Fehlerbehebung](../troubleshooting/).
 
 ## Projekteinstellungen und App-Einstellungen {#project-settings-and-app-settings}

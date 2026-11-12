@@ -232,8 +232,11 @@ The badge in the top bar checks the current target and language continuously:
 **OK**, or the number of errors and warnings. Click it for the list – filter by
 level or code, switch between languages, **Show on the canvas** jumps to the
 element. **Preview mode** treats missing screenshots as warnings while you
-design (export still checks them strictly). Common findings are explained in
-[Troubleshooting](../troubleshooting/).
+design (export still checks them strictly). The check also looks at the
+rendered pages: text contrast against what is really behind it, text touching
+devices, covered or cut screen top bars, overlaps across page borders, the
+store's rounded corners. Common findings, and how to mark a deliberate one
+with `allow`, are explained in [Troubleshooting](../troubleshooting/).
 
 ## Project settings and app settings
 

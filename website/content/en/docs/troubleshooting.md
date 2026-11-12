@@ -25,6 +25,15 @@ common ones:
 | `text_missing` | error | the key exists in no language – nothing is drawn. |
 | `text_in_gap`, `text_clipped` | warning | text reaches into a store gap or past its page and is cut off. |
 | `text_outside_safe_area` | warning | text outside the target's safe area. |
+| `low_contrast` | warning | the text's contrast against what is actually drawn behind it (colour, gradient, photo, pattern) is below WCAG AA – 4.5:1, large text (from 80 lu, bold from 62 lu) 3:1. The message names the ratio and where; change the colour, add a scrim, shadow or outline. |
+| `text_near_device` | warning / info | glyphs hidden behind or running over a device frame (warning), or closer than 16 lu to it (info). Text lying completely on a device, or on a card over it, is fine. |
+| `screen_header_covered`, `screen_header_cut` | info | an element covers the top bar (status bar, app title) of a device's screen, or the page edge cuts through it so half a bar shows. |
+| `seam_overlap` | info | an element reaching across a page border is drawn over an element of the next page – check the gallery. |
+| `seam_split` | info | one shape built as two halves at a page border: the store gap pulls them apart. Use **one** element with *Clip: none* across the border – it stays continuous behind the gap in every target. |
+| `element_in_corner` | info | an element reaches into an image corner the store rounds off. |
+| `device_small` | info | the largest device of a page fills less than half of it. |
+| `page_not_covered` | info | a picture or panel covers almost the whole page but leaves a thin strip (typical after a variant changed the page height). |
+| `page_blends_with_store` | info | the edges of the images are hardly distinguishable from the store's light or dark background. |
 | `missing_glyphs` | warning | characters no font can draw – add a [fallback font](../styles-fonts/#other-scripts-fallback-fonts). |
 | `variant_suggested` | info | the target's page aspect differs a lot from the canvas – consider a variant. |
 | `store_size`, `store_count`, `store_format` | error | the size, number of images or format is not accepted by the store slot (too few images is a warning). |
@@ -35,6 +44,20 @@ common ones:
 | `color_profile_unsupported` | info | an image's colour profile can't be used (CMYK, HDR) – it is drawn as sRGB. |
 
 In the app, **Show on the canvas** jumps to the element.
+
+The design checks (`low_contrast` to `page_blends_with_store`) render the
+images; `vitrine validate --no-pixel-checks` skips them. When a design means
+it – giant clipped type, a label pointing at a device – list the code in the
+element's `allow` (`allow: [text_clipped, low_contrast]`, also on a group).
+Project-wide thresholds and codes switched off go into `project.yaml`:
+
+```yaml
+checks:
+  device_distance: 16      # lu between glyphs and a device frame
+  min_contrast: 4.5
+  min_contrast_large: 3
+  off: [page_blends_with_store]
+```
 
 ## Questions
 
