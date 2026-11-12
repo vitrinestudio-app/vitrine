@@ -109,6 +109,16 @@ finding_codes! {
     /// The colour is not installed for the imported frame; another
     /// installed colour is drawn.
     ImportedColorFallback = "imported_color_fallback",
+    /// A target draws imported frames that are only in this computer's
+    /// frame store, not stored in the project: a build server (CI) draws
+    /// the parametric frame instead (ADR 0027).
+    ImportedFrameNotStored = "imported_frame_not_stored",
+    /// The project stores imported vendor frames (`frames/imported/`):
+    /// licence reminder (keep the repository private).
+    ImportedFramesStored = "imported_frames_stored",
+    /// Stored frames are no longer used, or this computer has a newer
+    /// import of them: update the stored frames.
+    StoredFramesStale = "stored_frames_stale",
     UnsupportedOrientation = "unsupported_orientation",
     /// Unknown `@colour` (rendered magenta).
     UnknownColor = "unknown_color",
@@ -467,6 +477,7 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
         });
     }
     store::store_checks(project, &mut out);
+    let mut used = std::collections::BTreeSet::new();
     for target in &project.targets {
         if options
             .targets
@@ -475,7 +486,11 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
         {
             continue;
         }
-        validate_target(project, target, options, &layouter, &mut out);
+        validate_target(project, target, options, &layouter, &mut used, &mut out);
+    }
+    if let Some(index) = options.frames {
+        let full = options.targets.is_none() && options.langs.is_none();
+        stored_frame_checks(index, &used, full, &root, &mut out);
     }
     ValidationReport {
         findings: out.findings,
@@ -506,11 +521,98 @@ fn target_langs(project: &Project, target: &Target, options: &ValidateOptions<'_
     }
 }
 
+/// Project copies of imported frames (ADR 0027): the licence reminder,
+/// and – when every target and language was checked – unused or outdated
+/// copies.
+fn stored_frame_checks(
+    index: &crate::frame_import::FrameIndex,
+    used: &std::collections::BTreeSet<crate::frame_import::embed::UseKey>,
+    full: bool,
+    root: &Ctx,
+    out: &mut Sink,
+) {
+    use crate::frame_import::embed;
+    let stored: usize = index
+        .sources()
+        .filter(|s| !s.contains(':'))
+        .map(|s| index.project_frames(s).len())
+        .sum();
+    if stored == 0 {
+        return;
+    }
+    out.push(root.finding(
+        Severity::Info,
+        FindingCode::ImportedFramesStored,
+        false,
+        None,
+        None,
+        format!(
+            "the project stores {stored} imported device frame{} in `{}` (Apple Product \
+             Bezels): their licence allows mock-ups but not redistribution – keep the \
+             repository private and never publish the project, a template or an archive \
+             with them",
+            if stored == 1 { "" } else { "s" },
+            embed::embed_dir_display()
+        ),
+    ));
+    if !full {
+        return;
+    }
+    let label = |f: &crate::frame_import::InstalledFrame| {
+        format!(
+            "{} ({}, {})",
+            f.apple_model,
+            f.color_label,
+            crate::frame_import::orientation_name(f.orientation)
+        )
+    };
+    let unused = embed::unused_copies(index, used);
+    if !unused.is_empty() {
+        out.push(root.finding(
+            Severity::Info,
+            FindingCode::StoredFramesStale,
+            false,
+            None,
+            None,
+            format!(
+                "stored frames no longer used: {}; update the stored frames (Project settings \
+                 → Frames, `vitrine frames embed`)",
+                unused
+                    .iter()
+                    .map(|(_, f)| label(f))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        ));
+    }
+    let outdated = embed::outdated_copies(index);
+    if !outdated.is_empty() {
+        out.push(root.finding(
+            Severity::Info,
+            FindingCode::StoredFramesStale,
+            false,
+            None,
+            None,
+            format!(
+                "this computer has a newer import of stored frames: {}; the project copy is \
+                 drawn – update the stored frames (Project settings → Frames, `vitrine frames \
+                 embed`)",
+                outdated
+                    .iter()
+                    .map(|(_, f)| label(f))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        ));
+    }
+}
+
 fn validate_target(
     project: &Project,
     target: &Target,
     options: &ValidateOptions<'_>,
     layouter: &std::cell::RefCell<TextLayouter>,
+    used: &mut std::collections::BTreeSet<crate::frame_import::embed::UseKey>,
     out: &mut Sink,
 ) {
     let mut ctx = Ctx {
@@ -545,6 +647,7 @@ fn validate_target(
         frames: options.frames,
     };
     let mut frame_checked = false;
+    let mut app_only = std::collections::BTreeSet::new();
     for lang in target_langs(project, target, options) {
         ctx.lang = Lang::parse(&lang).ok();
         let scene = match resolve(project, target.id.as_str(), &lang, &resolve_options) {
@@ -568,5 +671,41 @@ fn validate_target(
             frame_checked = true;
         }
         checks::scene_checks(&scope, &scene, &mut layouter.borrow_mut(), &ctx, out);
+        for e in &scene.elements {
+            if let crate::resolve::ResolvedKind::Device(d) = &e.props
+                && let crate::model::FrameStyle::Imported(_) = &d.frame
+                && let Some(f) = &d.imported
+            {
+                used.insert(crate::frame_import::embed::use_key(
+                    &d.model,
+                    d.orientation,
+                    f,
+                ));
+                if f.origin == crate::frame_import::FrameOrigin::App {
+                    app_only.insert(format!(
+                        "{} ({}, {})",
+                        f.bezel,
+                        f.color,
+                        crate::frame_import::orientation_name(d.orientation)
+                    ));
+                }
+            }
+        }
+    }
+    if !app_only.is_empty() {
+        ctx.lang = None;
+        out.push(ctx.finding(
+            Severity::Info,
+            FindingCode::ImportedFrameNotStored,
+            false,
+            None,
+            None,
+            format!(
+                "imported frames drawn from this computer's frame store only: {}; a build \
+                 server (CI) without them draws the parametric frame – store the used frames \
+                 in the project (Project settings → Frames, `vitrine frames embed`)",
+                app_only.into_iter().collect::<Vec<_>>().join(", ")
+            ),
+        ));
     }
 }

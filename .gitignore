@@ -52,3 +52,6 @@ Desktop.ini
 *.dmg
 **/Bezel-*/
 **/*Product Bezels*/
+# Project copies of imported vendor frames ("Store used device frames in the
+# project", ADR 0027) are for private project repositories, never this one.
+**/frames/imported/

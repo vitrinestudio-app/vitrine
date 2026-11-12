@@ -433,6 +433,7 @@ fn compile(
                 license: m.license.clone(),
                 imported: date.clone(),
                 swatch: Some(hex_rgb(c.swatch)),
+                origin: crate::frame_import::FrameOrigin::App,
             });
         }
     }
@@ -644,7 +645,8 @@ fn pack_dirs(dir: &Path) -> Vec<(String, PathBuf)> {
         .filter(|e| e.path().join(PACK_FILE).is_file())
         .filter_map(|e| {
             let id = e.file_name().to_string_lossy().into_owned();
-            crate::model::is_valid_id(&id).then(|| (id, e.path()))
+            (crate::model::is_valid_id(&id) && id != super::embed::EMBED_DIR)
+                .then(|| (id, e.path()))
         })
         .collect();
     out.sort();
@@ -917,6 +919,11 @@ fn import_in(
     if !crate::model::is_valid_id(&id) {
         return Err(format!(
             "`{id}` is not a valid pack id (letters, digits, `-`)"
+        ));
+    }
+    if id == super::embed::EMBED_DIR {
+        return Err(format!(
+            "`{id}` is reserved (stored vendor frames live in `frames/{id}/`); choose another id"
         ));
     }
     let files = pack_files(&src)?;

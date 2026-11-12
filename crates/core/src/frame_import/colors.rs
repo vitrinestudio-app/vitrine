@@ -239,6 +239,7 @@ mod tests {
             license: None,
             imported: String::new(),
             swatch: swatch.map(Into::into),
+            origin: crate::frame_import::FrameOrigin::App,
         }
     }
 

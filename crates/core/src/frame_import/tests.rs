@@ -371,6 +371,7 @@ fn frame(apple_model: &str, screen: (u32, u32), priority: i32) -> InstalledFrame
         license: None,
         imported: String::new(),
         swatch: None,
+        origin: FrameOrigin::App,
     }
 }
 

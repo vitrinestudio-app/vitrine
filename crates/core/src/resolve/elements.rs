@@ -591,6 +591,7 @@ impl Walker<'_, '_> {
             bezels,
             swatch: f.swatch.clone(),
             colors: installed,
+            origin: f.origin,
         })
     }
 

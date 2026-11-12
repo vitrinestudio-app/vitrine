@@ -28,6 +28,8 @@ use crate::model::{Orientation, PixelSize};
 
 pub const INDEX_FILE: &str = "index.yaml";
 pub const USER_MAPPING_FILE: &str = "user-mapping.yaml";
+/// Folder of the packages' licence files inside a source folder.
+pub const LICENSES_DIR: &str = "licenses";
 
 /// One installed frame.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -70,6 +72,33 @@ pub struct InstalledFrame {
     /// ([`FrameStore::fill_swatches`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub swatch: Option<String>,
+    /// Where the files are: the app-wide store or the project's copy
+    /// (`frames/imported/<source>/`, ADR 0027). Never written to an index.
+    #[serde(skip)]
+    pub origin: FrameOrigin,
+}
+
+/// Where an imported frame's files live (ADR 0027).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FrameOrigin {
+    /// The app-wide store of this computer.
+    #[default]
+    App,
+    /// A copy stored in the project (`frames/imported/<source>/`).
+    Project,
+}
+
+impl FrameOrigin {
+    pub fn is_app(&self) -> bool {
+        *self == Self::App
+    }
+}
+
+/// Key of the project copies of `source` in a [`FrameIndex`]
+/// (`project:apple`): their folder and asset cache.
+pub fn project_source_key(source: &str) -> String {
+    format!("project:{source}")
 }
 
 #[allow(
@@ -116,6 +145,16 @@ impl InstalledFrame {
     /// Screen area in px².
     pub fn screen_area(&self) -> u64 {
         u64::from(self.screen.w) * u64::from(self.screen.h)
+    }
+
+    /// Key of the folder `file` / `mask` are relative to in a
+    /// [`FrameIndex`] of `source` (`apple`, or `project:apple` for a
+    /// project copy).
+    pub fn files_key(&self, source: &str) -> String {
+        match self.origin {
+            FrameOrigin::App => source.to_owned(),
+            FrameOrigin::Project => project_source_key(source),
+        }
     }
 }
 
@@ -188,8 +227,14 @@ pub const ANY_MODEL: &str = "*";
 pub struct FrameIndex {
     root: PathBuf,
     sources: BTreeMap<String, FrameSourceIndex>,
-    /// Folders of sources outside `root/<source>` (frame packs).
+    /// Folders of sources outside `root/<source>` (frame packs, project
+    /// copies `project:<source>`).
     dirs: BTreeMap<String, PathBuf>,
+    /// App-wide frames hidden by a project copy of the same slot
+    /// ([`Self::add_project_copies`]), per source.
+    shadowed: BTreeMap<String, Vec<InstalledFrame>>,
+    /// The project copies keep every size of a used model (ADR 0027).
+    project_all_sizes: bool,
 }
 
 impl FrameIndex {
@@ -213,6 +258,8 @@ impl FrameIndex {
             root: root.to_owned(),
             sources,
             dirs: BTreeMap::new(),
+            shadowed: BTreeMap::new(),
+            project_all_sizes: false,
         }
     }
 
@@ -222,6 +269,8 @@ impl FrameIndex {
             root: root.to_owned(),
             sources,
             dirs: BTreeMap::new(),
+            shadowed: BTreeMap::new(),
+            project_all_sizes: false,
         }
     }
 
@@ -244,11 +293,71 @@ impl FrameIndex {
             .unwrap_or_else(|| self.root.join(source))
     }
 
-    /// Every source with its folder (also empty ones).
+    /// Every source with its folder (also empty ones), plus the folders
+    /// of project copies (`project:<source>`).
     pub fn source_dirs(&self) -> Vec<(String, PathBuf)> {
-        self.sources
-            .keys()
+        let mut keys: Vec<&String> = self.sources.keys().chain(self.dirs.keys()).collect();
+        keys.sort();
+        keys.dedup();
+        keys.into_iter()
             .map(|k| (k.clone(), self.source_dir(k)))
+            .collect()
+    }
+
+    /// Merges the project's copies of `source` (an index read from
+    /// `dir` = `<project>/frames/imported/<source>`, ADR 0027) into the
+    /// source: a project copy wins over the app-wide frame of the same
+    /// model × colour × orientation × vendor model (which is kept in
+    /// [`Self::shadowed`]); its files are found below `dir` (key
+    /// `project:<source>`).
+    pub fn add_project_copies(&mut self, source: &str, dir: &Path, index: FrameSourceIndex) {
+        let key = project_source_key(source);
+        self.dirs.insert(key, dir.to_owned());
+        let merged = self.sources.entry(source.to_owned()).or_default();
+        let shadowed = self.shadowed.entry(source.to_owned()).or_default();
+        for mut f in index.frames {
+            f.origin = FrameOrigin::Project;
+            if let Some(i) = merged.frames.iter().position(|x| x.same_slot(&f)) {
+                let old = merged.frames.remove(i);
+                if old.origin == FrameOrigin::App {
+                    shadowed.push(old);
+                }
+            }
+            merged.frames.push(f);
+        }
+        merged.sort();
+    }
+
+    /// Records the `all_sizes` option of the project copies.
+    pub fn set_project_all_sizes(&mut self, all: bool) {
+        self.project_all_sizes = all;
+    }
+
+    /// Do the project copies keep every size of a used model?
+    pub fn project_all_sizes(&self) -> bool {
+        self.project_all_sizes
+    }
+
+    /// App-wide frames of `source` hidden by a project copy.
+    pub fn shadowed(&self, source: &str) -> &[InstalledFrame] {
+        self.shadowed.get(source).map_or(&[], Vec::as_slice)
+    }
+
+    /// The app-wide frames of `source`, also those hidden by a project
+    /// copy.
+    pub fn app_frames(&self, source: &str) -> Vec<&InstalledFrame> {
+        self.frames(source)
+            .iter()
+            .filter(|f| f.origin == FrameOrigin::App)
+            .chain(self.shadowed(source))
+            .collect()
+    }
+
+    /// The project copies of `source`.
+    pub fn project_frames(&self, source: &str) -> Vec<&InstalledFrame> {
+        self.frames(source)
+            .iter()
+            .filter(|f| f.origin == FrameOrigin::Project)
             .collect()
     }
 
@@ -405,6 +514,41 @@ impl FrameStore {
         fs::create_dir_all(&dir).map_err(err(&dir))?;
         let yaml = to_yaml(mapping).map_err(|e| e.to_string())?;
         write_atomic(&dir.join(USER_MAPPING_FILE), yaml.as_bytes()).map_err(|e| e.to_string())
+    }
+
+    /// Where the licence file `name` of `package` is kept
+    /// (`<source>/licenses/<package slug>/<name>`); `None` for names that
+    /// are not a plain file name.
+    pub fn license_path(&self, source: &str, package: &str, name: &str) -> Option<PathBuf> {
+        let plain = !name.is_empty() && !name.starts_with('.') && !name.contains(['/', '\\']);
+        let dir = match slug(package) {
+            s if s.is_empty() => "package".to_owned(),
+            s => s,
+        };
+        plain.then(|| {
+            self.source_dir(source)
+                .join(LICENSES_DIR)
+                .join(dir)
+                .join(name)
+        })
+    }
+
+    /// Stores a licence file of an imported package
+    /// ([`Self::license_path`]).
+    pub fn save_license(
+        &self,
+        source: &str,
+        package: &str,
+        name: &str,
+        bytes: &[u8],
+    ) -> Result<(), String> {
+        let Some(path) = self.license_path(source, package, name) else {
+            return Ok(());
+        };
+        if let Some(dir) = path.parent() {
+            fs::create_dir_all(dir).map_err(err(dir))?;
+        }
+        write_atomic(&path, bytes).map_err(|e| e.to_string())
     }
 
     /// Relative folder and file stem of a frame in the current layout

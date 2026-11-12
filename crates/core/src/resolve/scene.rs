@@ -211,6 +211,22 @@ pub struct ImportedFrame {
     pub swatch: Option<String>,
     /// Installed colours of this model (the inspector's swatches).
     pub colors: Vec<crate::frame_import::InstalledColor>,
+    /// Where the drawn bezel comes from: this computer's frame store
+    /// (`app`) or the project's copy (`project`, ADR 0027).
+    pub origin: crate::frame_import::FrameOrigin,
+}
+
+impl ImportedFrame {
+    /// Frame-index key of the folder `file` / `mask` are relative to
+    /// (`apple`, or `project:apple` for a project copy).
+    pub fn files_key(&self) -> String {
+        match self.origin {
+            crate::frame_import::FrameOrigin::App => self.source.clone(),
+            crate::frame_import::FrameOrigin::Project => {
+                crate::frame_import::project_source_key(&self.source)
+            }
+        }
+    }
 }
 
 /// Colour of a device frame.
