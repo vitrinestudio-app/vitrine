@@ -266,7 +266,9 @@ export const api = {
   // ----- templates (6.3, ADR 0023) -----
   /** Built-in and installed templates (`source`: builtin | installed). */
   templateList: () => invoke('template_list'),
-  /** `{ name, id?, description?, author?, tags?, canvases?, replace?, file? }` → `{ template, report, file? }`. */
+  /** Tag taxonomy: `{ facets: [{ id, label: {en, de}, min, max, derived, values: [{ id, label }] }] }`. */
+  templateTags: () => invoke('template_tags'),
+  /** `{ name, id?, description?, author?, tags?: {style, color, use}, sample_screenshots?, canvases?, replace?, file? }` → `{ template, report, file? }`. */
   templateSave: (args) => invoke('template_save', args),
   templateImport: (path, replace = false) => invoke('template_import', { path, replace }),
   templateExport: (id, path) => invoke('template_export', { id, path }),

@@ -137,10 +137,61 @@ export function templatePicker({ value, onchange, allowImport = true, onerror })
   return { el, reload, get selected() { return list.find((x) => x.id === selected); } };
 }
 
+/** UI language for labels from the tag taxonomy (`en` | `de`). */
+const uiLang = () => (document.documentElement.lang === 'de' ? 'de' : 'en');
+
+/**
+ * Chip pickers for the author-set tag facets (style, color, use) from
+ * `template_tags`; each facet keeps at most its `max` values.
+ */
+function tagPickers(chosen) {
+  const el = h('div', { class: 'stack tpl-tags' });
+  api
+    .templateTags()
+    .then((tax) => {
+      const facets = tax.facets.filter((f) => !f.derived);
+      el.replaceChildren(
+        ...facets.map((f) => {
+          chosen[f.id] ??= [];
+          const chips = h('div', { class: 'insp-chips' });
+          const draw = () =>
+            chips.replaceChildren(
+              ...f.values.map((v) => {
+                const on = chosen[f.id].includes(v.id);
+                return h(
+                  'button',
+                  {
+                    type: 'button',
+                    class: `toggle-chip${on ? ' on' : ''}`,
+                    'aria-pressed': String(on),
+                    title: v.id,
+                    onclick: () => {
+                      const list = chosen[f.id];
+                      if (on) list.splice(list.indexOf(v.id), 1);
+                      else if (list.length < f.max) list.push(v.id);
+                      else list.splice(0, 1, v.id);
+                      draw();
+                    },
+                  },
+                  v.label[uiLang()] ?? v.id,
+                );
+              }),
+            );
+          draw();
+          const range = f.min === f.max ? String(f.max) : `${f.min}–${f.max}`;
+          return h('div', { class: 'tpl-facet' }, h('div', { class: 'small muted' }, `${f.label[uiLang()] ?? f.id} (${range})`), chips);
+        }),
+        h('p', { class: 'form-hint' }, tt('templates.save.tags_hint')),
+      );
+    })
+    .catch(() => el.replaceChildren(h('p', { class: 'form-hint' }, tt('templates.save.tags_unavailable'))));
+  return el;
+}
+
 /** "Save as template…": selected canvases (default: all) of the open project. */
 export function openSaveTemplate({ canvases, current }) {
   const err = errorLine();
-  const st = { name: '', id: '', description: '', author: '', tags: '', selected: new Set(canvases.map((c) => c.id)), file: false };
+  const st = { name: '', id: '', description: '', author: '', tags: {}, samples: false, selected: new Set(canvases.map((c) => c.id)), file: false };
   if (current && canvases.length > 1) st.selected = new Set([current]);
   const saveBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => save() }, tt('templates.save.button'));
   const result = h('div', { class: 'tpl-result small' });
@@ -152,7 +203,8 @@ export function openSaveTemplate({ canvases, current }) {
       name: st.name.trim(),
       description: st.description,
       author: st.author,
-      tags: st.tags.split(/[\s,]+/).filter(Boolean),
+      tags: { style: st.tags.style ?? [], color: st.tags.color ?? [], use: st.tags.use ?? [] },
+      sample_screenshots: st.samples,
       canvases: canvases.map((c) => c.id).filter((id) => st.selected.has(id)),
     };
     if (st.id.trim()) args.id = st.id.trim();
@@ -176,6 +228,8 @@ export function openSaveTemplate({ canvases, current }) {
       err.show(null);
       const notes = [tt('templates.save.done', { id: r.template.id })];
       if (r.report.placeholders) notes.push(tt('templates.save.placeholders', { n: r.report.placeholders }));
+      if (r.report.samples?.length) notes.push(tt('templates.save.samples_done', { n: r.report.samples.length }));
+      for (const [path, why] of r.report.samples_skipped ?? []) notes.push(tt('templates.save.sample_skipped', { file: path, why }));
       for (const f of r.report.licenses_generated ?? []) notes.push(tt('templates.save.licence', { file: f }));
       for (const f of r.report.fonts_missing ?? []) notes.push(tt('templates.save.font_missing', { font: f }));
       if (r.file) notes.push(r.file);
@@ -200,7 +254,7 @@ export function openSaveTemplate({ canvases, current }) {
         row(tt('templates.id'), input({ placeholder: tt('templates.id.placeholder'), cls: 'mono', oninput: (v) => (st.id = v) }), tt('templates.id.hint')),
         row(tt('templates.description'), input({ oninput: (v) => (st.description = v) })),
         row(tt('templates.author'), input({ oninput: (v) => (st.author = v) })),
-        row(tt('templates.tags'), input({ placeholder: 'gradient, phone', oninput: (v) => (st.tags = v) })),
+        row(tt('templates.tags'), tagPickers(st.tags)),
         row(
           tt('templates.save.canvases'),
           h(
@@ -215,6 +269,7 @@ export function openSaveTemplate({ canvases, current }) {
             ),
           ),
         ),
+        row('', checkbox({ label: tt('templates.save.samples'), checked: false, onchange: (v) => (st.samples = v) }), tt('templates.save.samples_hint')),
         row('', checkbox({ label: tt('templates.save.file'), checked: false, onchange: (v) => (st.file = v) })),
         h('p', { class: 'form-hint' }, tt('templates.save.hint')),
         result,
