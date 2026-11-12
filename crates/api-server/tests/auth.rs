@@ -55,6 +55,12 @@ fn package(version: &str) -> Vec<u8> {
         name: "Fernwood Mac".into(),
         version: Some(version.into()),
         canvases: Some(vec!["mac".into()]),
+        tags: vitrine_core::template::TemplateTags {
+            style: vec!["minimal".into()],
+            color: vec!["light".into()],
+            use_: vec!["productivity".into()],
+            ..Default::default()
+        },
         ..SaveOptions::default()
     };
     extract(&project, &root, &opts)
