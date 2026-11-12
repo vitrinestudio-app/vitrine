@@ -444,7 +444,7 @@ mod tests {
             c.cors_origins,
             ["https://www.vitrinestudio.app", "http://localhost:1313"]
         );
-        assert!(Config::default().cors_origins.is_empty());
+        assert_eq!(Config::default().cors_origins, Vec::<String>::new());
         for bad in [
             "*",
             "www.vitrinestudio.app",
