@@ -52,6 +52,12 @@ pub fn run(args: &NewArgs, global: &Global) -> anyhow::Result<u8> {
         for (lang, from) in &created.copied_texts {
             println!("  texts for {lang} copied from {from} – translate them in i18n/{lang}.yaml");
         }
+        if !created.samples.is_empty() {
+            println!(
+                "  {} copied from the template (listed in screenshots/samples.yaml) – replace them with your own; store uploads refuse samples",
+                crate::term::plural(created.samples.len(), "sample screenshot")
+            );
+        }
         let mut shots: Vec<String> = Vec::new();
         for s in project.targets.iter().filter_map(|t| t.screenshots.clone()) {
             if !shots.contains(&s) {

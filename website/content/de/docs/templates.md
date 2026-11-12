@@ -32,6 +32,13 @@ Sprachen → **Erstellen**.
 - **Screenshots bleiben leer.** Die Platzhalter-Screens der Vorlage werden
   nicht kopiert, damit die Prüfung weiter nach deinen echten Screenshots fragt
   und kein Platzhalter im Store landen kann.
+- **Beispiel-Screenshots:** Manche Vorlagen bringen eigene Dummy-Screenshots
+  ihres Autors mit, damit du das Design sofort ausprobieren kannst. Sie werden
+  nach `screenshots/` kopiert und in `screenshots/samples.yaml` vermerkt. Die
+  Prüfung zeigt den Hinweis `sample_screenshot` („durch eigenen ersetzen“), der
+  Export funktioniert, aber ein **Store-Upload lehnt** jeden Satz ab, der noch
+  ein Beispiel enthält. Ersetze eine Datei durch deinen eigenen Screenshot
+  (gleicher Name) – dann ist sie kein Beispiel mehr, sonst ist nichts zu tun.
 
 ```sh
 vitrine new my-app --template phone --lang en --lang de
@@ -42,7 +49,8 @@ vitrine new my-app --template ./bold-gradient.vitrine-template
 
 **Leinwände & Ausgabeziele** → eine Leinwand → **Als Vorlage speichern…**:
 wähle die *Leinwände*, gib einen *Namen* (die *Id* ergibt sich daraus),
-*Beschreibung*, *Autor* und *Schlagwörter* an und optional **Auch als Datei
+*Beschreibung* und *Autor* an, wähle die *Schlagwörter*, optional **Meine
+Screenshots als Beispiel-Screenshots mitnehmen** und **Auch als Datei
 speichern**, um sie weiterzugeben. Erneutes Speichern mit derselben Id ersetzt
 die Vorlage.
 
@@ -53,8 +61,28 @@ Was hineinkommt:
 - die verwendeten Bilder und Schriften aus dem Ordner `fonts/` des Projekts,
   die ein Stil nennt;
 - **nicht** deine Screenshots (ersetzt durch erzeugte Platzhalter-Screens im
-  Seitenverhältnis des Geräts), Store-Einstellungen, Import-Zuordnungen oder
-  importierte Hersteller-Rahmen (Vorschauen nutzen die eingebauten Rahmen).
+  Seitenverhältnis des Geräts) – außer du nimmst sie als
+  **Beispiel-Screenshots** mit: Dann kommen die Screenshots, die die
+  Leinwände verwenden (PNG/JPEG, höchstens 10 MB und 6000 px je Seite),
+  unverändert hinein. Mach das nur mit Screenshots, die dir gehören (z. B.
+  einer Demo-App); in der Galerie werden sie als CC0 veröffentlicht;
+- **nicht** Store-Einstellungen, Import-Zuordnungen oder importierte
+  Hersteller-Rahmen (Vorschauen nutzen die eingebauten Rahmen).
+
+**Schlagwörter** stammen aus einer festen Liste in drei Gruppen – keine
+freien Wörter –, damit die Galerie zuverlässig filtern kann:
+
+| Gruppe | Anzahl | Werte |
+|---|---|---|
+| Stil (`--style`) | 1–2 | minimal, bold, playful, elegant, realistic, illustrated, editorial, retro, futuristic, organic |
+| Farbe (`--color`) | 1–2 | light, dark, colorful, pastel, monochrome, gradient, neon, earthy |
+| App-Kategorie (`--use`) | 1–3 | games, productivity, business, finance, health-fitness, sports, education, kids, food-drink, travel, navigation, social, lifestyle, shopping, entertainment, music, photo-video, news, weather, utilities, developer-tools, medical, home-garden, books, events |
+
+In der App erscheinen sie mit deutschen Namen (z. B. „Minimalistisch“,
+„Farbverlauf“, „Gesundheit & Fitness“). Eine lokale Vorlage darf Gruppen leer
+lassen; die Galerie braucht je Gruppe mindestens eines. Die Geräte (phone,
+tablet, watch, mac, web, tv, banner) ergeben sich aus den Ausgabezielen – du
+setzt sie nicht selbst. `vitrine template tags` listet alles auf.
 
 **Schriften:** Nur Schriften, die die SIL Open Font License angeben, dürfen in
 eine Vorlage; andere werden abgelehnt („darf nicht weitergegeben werden“ oder
@@ -62,7 +90,11 @@ eine Vorlage; andere werden abgelehnt („darf nicht weitergegeben werden“ ode
 (`fonts/<name>-OFL.txt`). Mitgelieferte Schriften brauchen nichts.
 
 ```sh
-vitrine template save --name "Bold gradient" --canvas phone --tag dark -o bold.vitrine-template
+vitrine template save --name "Bold gradient" --canvas phone \
+  --style bold --color gradient,dark --use travel -o bold.vitrine-template
+vitrine template save --name "Demo set" --style minimal --color light --use productivity \
+  --sample-screenshots                     # mit eigenen Screenshots als Beispiele
+vitrine template tags                      # alle Schlagwörter
 ```
 
 ## Aus Vorlage einfügen {#insert-from-template}
@@ -117,10 +149,17 @@ du schon auflisten, herunterladen und hochladen.
 {{< /callout >}}
 
 - **Durchsuchen und Herunterladen** brauchen kein Konto.
-- **Veröffentlichen** braucht eine GitHub-Anmeldung. Der Server prüft jeden
-  Upload noch einmal, ersetzt alle Screenshots durch eigene Platzhalter,
-  rendert die Vorschauen selbst und stellt die Vorlage zur Moderation ein.
-  Vorlagen des offiziellen Kontos sind als *official* markiert.
+- **Veröffentlichen** braucht eine GitHub-Anmeldung und vollständige
+  Schlagwörter. Der Server prüft jeden Upload noch einmal, ersetzt alle
+  Screenshots durch eigene Platzhalter, rendert die Vorschauen selbst und
+  stellt die Vorlage zur Moderation ein. Vorlagen des offiziellen Kontos sind
+  als *official* markiert.
+- **Beispiel-Screenshots** bleiben nur in der Vorlage, wenn du bestätigst,
+  dass es deine eigenen sind und sie als CC0 veröffentlicht werden dürfen
+  (`--confirm-own-screenshots`); ohne Bestätigung ersetzt der Server sie
+  durch Platzhalter.
+- Die Galerie filtert nach Stil, Farbe, App-Kategorie und Gerät
+  (`vitrine gallery list --style bold --use games,kids --devices phone`).
 
 ```sh
 vitrine gallery list --query garden              # freigegebene Vorlagen
@@ -131,6 +170,17 @@ vitrine gallery login                            # GitHub-Anmeldung per Gerätec
 vitrine template export bold-gradient -o bold.vitrine-template
 vitrine gallery upload bold.vitrine-template     # Status „pending“ bis zur Freigabe
 vitrine gallery logout
+```
+
+**Viele Vorlagen auf einmal:** `vitrine gallery upload` nimmt mehrere Dateien.
+`--dry-run` führt alle lokalen Prüfungen aus (Paket, Schlagwörter,
+Beispiel-Screenshots) und zeigt eine Übersichtstabelle, ohne etwas zu senden;
+ein echter Lauf macht nach einer fehlerhaften Datei weiter und endet mit
+derselben Übersicht (Exit-Code 1, wenn eine Datei scheiterte).
+
+```sh
+vitrine gallery upload dist/*.vitrine-template --dry-run --confirm-own-screenshots
+vitrine gallery upload dist/*.vitrine-template --confirm-own-screenshots
 ```
 
 `gallery login` zeigt einen Code und die Adresse

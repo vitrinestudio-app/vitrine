@@ -2489,3 +2489,39 @@ async fn auto_sends_only_library_only_sets_through_the_library() {
             .is_empty()
     );
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn sample_screenshots_block_their_sets() {
+    let project = PROJECT.replace(
+        "  - id: t2\n",
+        "  - id: phone\n    kind: device\n    page: 0\n    at: {x: 500, y: 1400}\n    width: 600\n    model: iphone-island\n    screenshot: home\n  - id: t2\n",
+    );
+    let e = env_with(&project).await;
+    let sample = vitrine_core::template::placeholder::render(480, 1043, "home");
+    let own = vitrine_core::template::placeholder::render(480, 1043, "other");
+    for (lang, data) in [("en", &sample), ("de", &own)] {
+        std::fs::create_dir_all(e.dir.join("screenshots").join(lang)).unwrap();
+        std::fs::write(e.dir.join("screenshots").join(lang).join("home.png"), data).unwrap();
+    }
+    let mut marks = vitrine_core::samples::SampleMarks::default();
+    marks.add("screenshots/en/home.png", &sample);
+    marks.save(&e.dir).unwrap();
+
+    let p = plan(&e.app, json!({}));
+    assert_eq!(p["blocked"], true);
+    let blocked = |s: &Value| {
+        s["problems"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x["code"] == "sample_screenshot" && x["blocking"] == true)
+    };
+    let en = set(&p, "iphone", "en");
+    assert!(blocked(en), "{en:#}");
+    assert!(!blocked(set(&p, "iphone", "de")));
+
+    // Replaced by an own screenshot: no longer a sample.
+    std::fs::write(e.dir.join("screenshots/en/home.png"), &own).unwrap();
+    let p = plan(&e.app, json!({}));
+    assert!(!blocked(set(&p, "iphone", "en")));
+}

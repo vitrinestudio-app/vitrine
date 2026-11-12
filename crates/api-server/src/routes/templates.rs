@@ -1,5 +1,6 @@
-//! Template gallery: list/search, detail, download, previews, upload,
-//! abuse reports (`docs/api/API.md`).
+//! Template gallery: list/search with tag filters, detail, download,
+//! previews, sprites, the tag taxonomy, upload, abuse reports
+//! (`docs/api/API.md`).
 
 use std::sync::Arc;
 
@@ -12,6 +13,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use vitrine_core::template::tags::{self, taxonomy};
 use vitrine_core::template::{Limits, Package, is_template_id};
 use vitrine_render::template::{PREVIEW_HEIGHT, add_previews};
 
@@ -20,6 +22,7 @@ use crate::AppState;
 use crate::auth;
 use crate::db::{self, APPROVED, PENDING, TemplateRow};
 use crate::error::{ApiError, ApiResult};
+use crate::sprites::{self, CanvasSprites};
 
 pub(super) fn routes(max_upload: usize) -> Router<Arc<AppState>> {
     Router::new()
@@ -31,15 +34,60 @@ pub(super) fn routes(max_upload: usize) -> Router<Arc<AppState>> {
         .route("/v1/templates/{id}", get(detail))
         .route("/v1/templates/{id}/download", get(download))
         .route("/v1/templates/{id}/previews/{canvas}", get(preview))
+        .route("/v1/templates/{id}/sprites/{file}", get(sprite))
         .route("/v1/templates/{id}/report", post(report))
+        .route("/v1/tags", get(tag_list))
 }
 
-#[derive(Debug, Deserialize)]
-struct ListQuery {
-    q: Option<String>,
-    tag: Option<String>,
-    limit: Option<u32>,
-    offset: Option<u32>,
+/// Facets that can filter the list.
+const FILTER_FACETS: [&str; 4] = ["style", "color", "use", "devices"];
+
+/// `GET /v1/templates` parameters: `q`, `tag`, `limit`, `offset` and the
+/// facets (repeated and/or comma-separated: `style=bold&style=retro`,
+/// `use=games,kids`).
+fn parse_list_query(pairs: &[(String, String)]) -> ApiResult<(db::Filter, u32, u32)> {
+    let mut filter = db::Filter::default();
+    let (mut limit, mut offset) = (50u32, 0u32);
+    let number = |k: &str, v: &str| {
+        v.trim().parse::<u32>().map_err(|_| {
+            ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "invalid_filter",
+                format!("`{k}` must be a number"),
+            )
+        })
+    };
+    for (k, v) in pairs {
+        match k.as_str() {
+            "q" => filter.q = Some(v.clone()),
+            "tag" => filter.tag = Some(v.trim().to_lowercase()),
+            "limit" => limit = number(k, v)?,
+            "offset" => offset = number(k, v)?,
+            facet if FILTER_FACETS.contains(&facet) => {
+                let Some(f) = taxonomy().facet(facet) else {
+                    continue;
+                };
+                for value in v.split(',').map(|s| s.trim().to_lowercase()) {
+                    if value.is_empty() {
+                        continue;
+                    }
+                    if !f.has(&value) {
+                        return Err(ApiError::new(
+                            StatusCode::BAD_REQUEST,
+                            "invalid_filter",
+                            format!("unknown {facet} `{value}`; allowed: {}", f.allowed()),
+                        ));
+                    }
+                    match filter.facets.iter_mut().find(|(n, _)| n == facet) {
+                        Some((_, list)) => list.push(value),
+                        None => filter.facets.push((facet.to_owned(), vec![value])),
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok((filter, limit.clamp(1, 100), offset))
 }
 
 pub(super) fn with_links(state: &AppState, t: &TemplateRow) -> Value {
@@ -48,10 +96,18 @@ pub(super) fn with_links(state: &AppState, t: &TemplateRow) -> Value {
     v["download_url"] = json!(format!("{base}/download"));
     if let Some(list) = v["canvases"].as_array_mut() {
         for c in list {
-            if let Some(id) = c["id"].as_str() {
-                c["preview_url"] = json!(format!("{base}/previews/{id}"));
-            }
+            let Some(id) = c["id"].as_str().map(str::to_owned) else {
+                continue;
+            };
+            c["preview_url"] = json!(format!("{base}/previews/{id}"));
+            c["page_aspect"] = c["aspect"].clone();
+            c["sprite"] = sprites::meta_of(&t.sprites, &id)
+                .map_or(Value::Null, |m| sprites::api_object(&base, &m));
         }
+    }
+    if !v["tags"].is_object() {
+        // Rows not migrated yet.
+        v["tags"] = json!({ "style": [], "color": [], "use": [] });
     }
     v["official"] = json!(state.config.is_official(&t.uploader));
     v
@@ -60,19 +116,11 @@ pub(super) fn with_links(state: &AppState, t: &TemplateRow) -> Value {
 async fn list(
     State(state): St,
     client: Client,
-    Query(q): Query<ListQuery>,
+    Query(pairs): Query<Vec<(String, String)>>,
 ) -> ApiResult<Json<Value>> {
     read_limit(&state, &client)?;
-    let limit = q.limit.unwrap_or(50).clamp(1, 100);
-    let offset = q.offset.unwrap_or(0);
-    let rows = db::search(
-        &state.db(),
-        APPROVED,
-        q.q.as_deref().filter(|s| !s.is_empty()),
-        q.tag.as_deref().filter(|s| !s.is_empty()),
-        limit,
-        offset,
-    )?;
+    let (filter, limit, offset) = parse_list_query(&pairs)?;
+    let rows = db::search(&state.db(), APPROVED, &filter, limit, offset)?;
     let items: Vec<Value> = rows.iter().map(|t| with_links(&state, t)).collect();
     Ok(Json(
         json!({ "templates": items, "limit": limit, "offset": offset }),
@@ -134,32 +182,141 @@ async fn preview(
     Ok(([(header::CONTENT_TYPE, "image/png")], png).into_response())
 }
 
-/// Server-side check of an upload: the same checks as the app, screenshots
-/// replaced by generated placeholders, previews rendered here.
-fn validate_upload(bytes: &[u8], max: usize) -> Result<Package, String> {
+async fn sprite(
+    State(state): St,
+    client: Client,
+    headers: HeaderMap,
+    Path((id, file)): Path<(String, String)>,
+    Query(q): Query<Vec<(String, String)>>,
+) -> ApiResult<Response> {
+    read_limit(&state, &client)?;
+    let t = approved(&state, &id)?;
+    let (canvas, double) =
+        sprites::parse_file_name(&file).ok_or_else(|| ApiError::not_found("sprite"))?;
+    let meta = sprites::meta_of(&t.sprites, canvas).ok_or_else(|| ApiError::not_found("sprite"))?;
+    let tag = if double { &meta.etag_2x } else { &meta.etag };
+    let etag = format!("\"{tag}\"");
+    // A `?v=` naming the current content may be cached for good; plain
+    // URLs revalidate after an hour.
+    let versioned = q.iter().any(|(k, v)| k == "v" && v == tag);
+    let cache = if versioned {
+        "public, max-age=31536000, immutable"
+    } else {
+        "public, max-age=3600"
+    };
+    let mut out = HeaderMap::new();
+    out.insert(header::CACHE_CONTROL, HeaderValue::from_static(cache));
+    if let Ok(v) = HeaderValue::from_str(&etag) {
+        out.insert(header::ETAG, v);
+    }
+    let matches = headers
+        .get(header::IF_NONE_MATCH)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.split(',').any(|e| e.trim() == etag || e.trim() == "*"));
+    if matches {
+        return Ok((StatusCode::NOT_MODIFIED, out).into_response());
+    }
+    let bytes = state
+        .storage
+        .sprite(&t.id, canvas, double)
+        .map_err(|_| ApiError::not_found("sprite"))?;
+    out.insert(header::CONTENT_TYPE, HeaderValue::from_static("image/webp"));
+    Ok((out, bytes).into_response())
+}
+
+/// `GET /v1/tags`: the taxonomy (facets, values, labels en/de, counts).
+async fn tag_list(State(state): St, client: Client) -> ApiResult<Json<Value>> {
+    read_limit(&state, &client)?;
+    let facets: Vec<Value> = taxonomy()
+        .facets
+        .iter()
+        .map(|f| {
+            json!({
+                "id": f.id,
+                "label": f.label,
+                "min": f.min,
+                "max": f.max,
+                "derived": f.derived,
+                "values": f.values.iter().map(|v| json!({"id": v.id, "label": v.label})).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    Ok(Json(json!({ "facets": facets })))
+}
+
+/// Why an upload was refused: `(code, message)`.
+type Refusal = (&'static str, String);
+
+/// What the server made of an upload.
+struct Checked {
+    pkg: Package,
+    sprites: Vec<CanvasSprites>,
+    devices: Vec<String>,
+    /// Sample screenshots dropped because the uploader did not confirm.
+    samples_removed: usize,
+}
+
+/// Server-side check of an upload: the same checks as the app, complete
+/// tags, screenshots replaced by generated placeholders (confirmed sample
+/// screenshots kept), previews and sprites rendered here.
+fn validate_upload(bytes: &[u8], max: usize, confirm_samples: bool) -> Result<Checked, Refusal> {
     let limits = Limits {
         max_package: max as u64,
         ..Limits::default()
     };
-    let mut pkg = Package::from_zip_bytes(bytes, limits).map_err(|e| e.to_string())?;
-    pkg.regenerate_placeholders().map_err(|e| e.to_string())?;
-    add_previews(&mut pkg, PREVIEW_HEIGHT).map_err(|e| format!("cannot render previews: {e:#}"))?;
-    Ok(pkg)
+    let invalid = |e: String| ("invalid_template", e);
+    let mut pkg = Package::from_zip_bytes(bytes, limits).map_err(|e| invalid(e.to_string()))?;
+    let t = &pkg.manifest.tags;
+    if !t.dropped.is_empty() {
+        return Err((
+            "invalid_tags",
+            format!(
+                "unknown tags {:?}: use the facets style, color and use (`vitrine template tags`)",
+                t.dropped
+            ),
+        ));
+    }
+    t.check(true).map_err(|e| ("invalid_tags", e.0))?;
+    let samples = pkg.manifest.samples.len();
+    pkg.regenerate_placeholders(confirm_samples)
+        .map_err(|e| invalid(e.to_string()))?;
+    add_previews(&mut pkg, PREVIEW_HEIGHT)
+        .map_err(|e| invalid(format!("cannot render previews: {e:#}")))?;
+    let sprites =
+        sprites::render(&pkg).map_err(|e| invalid(format!("cannot render sprites: {e:#}")))?;
+    let devices = pkg
+        .project()
+        .map(|p| tags::devices(&p))
+        .map_err(|e| invalid(e.to_string()))?;
+    Ok(Checked {
+        pkg,
+        sprites,
+        devices,
+        samples_removed: if confirm_samples { 0 } else { samples },
+    })
 }
 
 async fn upload(
     State(state): St,
     client: Client,
     headers: HeaderMap,
+    Query(q): Query<Vec<(String, String)>>,
     body: Bytes,
 ) -> ApiResult<(StatusCode, Json<Value>)> {
     let who = auth::uploader(&state, &headers)?;
     limit(&state, &client, "upload")?;
     let max = state.config.max_upload;
-    let pkg = tokio::task::spawn_blocking(move || validate_upload(&body, max))
-        .await
-        .map_err(ApiError::internal)?
-        .map_err(|e| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "invalid_template", e))?;
+    let confirm = q
+        .iter()
+        .any(|(k, v)| k == "confirm_own_screenshots" && matches!(v.trim(), "1" | "true" | "yes"));
+    let checked = {
+        let _slot = state.render_slot().await;
+        tokio::task::spawn_blocking(move || validate_upload(&body, max, confirm))
+            .await
+            .map_err(ApiError::internal)?
+            .map_err(|(code, e)| ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, code, e))?
+    };
+    let pkg = &checked.pkg;
     let m = &pkg.manifest;
     if let Some(existing) = db::get(&state.db(), &m.id)? {
         if !who.owns(&existing.uploader, existing.uploader_id) {
@@ -180,7 +337,11 @@ async fn upload(
             ));
         }
     }
-    let size = state.storage.put(&pkg).map_err(ApiError::internal)?;
+    let size = state.storage.put(pkg).map_err(ApiError::internal)?;
+    state
+        .storage
+        .put_sprites(&m.id, &checked.sprites)
+        .map_err(ApiError::internal)?;
     let status = if state.config.auto_approve {
         APPROVED
     } else {
@@ -193,7 +354,7 @@ async fn upload(
         name: m.name.clone(),
         description: m.description.clone(),
         author: m.author.clone(),
-        tags: json!(m.tags),
+        tags: db::tags_json(&m.tags),
         version: m.version.clone(),
         license: vitrine_core::template::LICENSE,
         uploader: who.login,
@@ -205,11 +366,20 @@ async fn upload(
         downloads: 0,
         created_at: now,
         updated_at: now,
+        devices: json!(checked.devices),
+        samples: i64::try_from(m.samples.len()).unwrap_or(0),
+        sprites: sprites::metas_json(&checked.sprites),
     };
     db::upsert(&state.db(), &row)?;
     Ok((
         StatusCode::CREATED,
-        Json(json!({ "id": row.id, "version": row.version, "status": status })),
+        Json(json!({
+            "id": row.id,
+            "version": row.version,
+            "status": status,
+            "samples": row.samples,
+            "samples_removed": checked.samples_removed,
+        })),
     ))
 }
 

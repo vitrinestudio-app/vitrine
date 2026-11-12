@@ -213,6 +213,16 @@ pub fn for_project(project: &Project) -> BTreeMap<String, Vec<u8>> {
     out
 }
 
+/// Is the placeholder `screenshots/<lang>/<key>.png` hidden by a sample
+/// screenshot at the same place (any extension; the lookup would find the
+/// placeholder first)?
+pub fn shadowed(path: &str, samples: &std::collections::BTreeSet<String>) -> bool {
+    let stem = path.rsplit_once('.').map_or(path, |(s, _)| s);
+    crate::resolve::SCREENSHOT_EXTENSIONS
+        .iter()
+        .any(|ext| samples.contains(&format!("{stem}.{ext}")))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

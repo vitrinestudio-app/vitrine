@@ -13,8 +13,9 @@ use crate::layout::FontLibrary;
 use crate::model::Project;
 
 use super::{
-    CanvasInfo, FONT_LICENSE, FontInfo, LICENSE, Manifest, Package, TEMPLATE_FORMAT, TemplateError,
-    archive, fonts, is_template_id, placeholder, walk,
+    CanvasInfo, FONT_LICENSE, FontInfo, LICENSE, Manifest, Package, SAMPLE_MAX_BYTES,
+    SAMPLE_MAX_EDGE, TEMPLATE_FORMAT, TemplateError, TemplateTags, archive, fonts, is_template_id,
+    placeholder, walk,
 };
 
 /// What to save and the template's metadata.
@@ -29,14 +30,20 @@ pub struct SaveOptions {
     pub description: String,
     #[serde(default)]
     pub author: String,
+    /// Tags from the fixed taxonomy (`style`, `color`, `use`).
     #[serde(default)]
-    pub tags: Vec<String>,
+    pub tags: TemplateTags,
     /// Default `1.0.0`.
     #[serde(default)]
     pub version: Option<String>,
     /// Canvas ids to save (default: all canvases of the project).
     #[serde(default)]
     pub canvases: Option<Vec<String>>,
+    /// Pack the project's screenshots used by the canvases as sample
+    /// screenshots (the author's own, CC0); keys without a screenshot get
+    /// placeholders. Default: placeholders only.
+    #[serde(default)]
+    pub sample_screenshots: bool,
 }
 
 /// Remarks about a saved template (nothing here blocks saving).
@@ -54,6 +61,13 @@ pub struct SaveReport {
     pub assets_moved: Vec<(String, String)>,
     /// Number of generated placeholder screenshots.
     pub placeholders: usize,
+    /// Package paths of the packed sample screenshots.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub samples: Vec<String>,
+    /// Screenshots not packed as samples, with the reason (too large,
+    /// not PNG/JPEG …).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub samples_skipped: Vec<(String, String)>,
 }
 
 /// A path inside the project's stored vendor frames (`frames/imported/…`,
@@ -197,8 +211,20 @@ pub fn extract(
         .filter(|f| !found.contains(&f.to_lowercase()) && !bundled.has_family(f))
         .collect();
 
-    // Placeholders instead of the project's screenshots.
-    let shots = placeholder::for_project(&tpl);
+    // Sample screenshots (opt-in), then placeholders for the rest.
+    let samples: BTreeSet<String> = if opts.sample_screenshots {
+        let found = sample_files(&tpl, root, &mut report);
+        let set = found.keys().cloned().collect();
+        files.extend(found);
+        set
+    } else {
+        BTreeSet::new()
+    };
+    report.samples = samples.iter().cloned().collect();
+    let shots: BTreeMap<String, Vec<u8>> = placeholder::for_project(&tpl)
+        .into_iter()
+        .filter(|(p, _)| !placeholder::shadowed(p, &samples))
+        .collect();
     report.placeholders = shots.len();
     files.extend(shots);
 
@@ -218,16 +244,96 @@ pub fn extract(
         name: opts.name.trim().to_owned(),
         description: opts.description.trim().to_owned(),
         author: opts.author.trim().to_owned(),
-        tags: opts.tags.iter().map(|t| super::slug(t)).collect(),
+        tags: opts.tags.normalized(),
         version: opts.version.clone().unwrap_or_else(|| "1.0.0".to_owned()),
         license: LICENSE.to_owned(),
         project_format: crate::PROJECT_FORMAT.to_owned(),
         canvases: canvas_infos(&tpl),
         fonts: font_infos,
+        samples: report.samples.clone(),
         generator: None,
     };
     let pkg = Package::new(manifest, files)?;
     Ok((pkg, report))
+}
+
+/// The project's screenshots for the keys the canvases use, in every
+/// language of the template: `screenshots/<lang>/<key>.<ext>` and
+/// `screenshots/<lang>/<variant>/<key>.<ext>` (PNG/JPEG within the sample
+/// limits; others are reported as skipped).
+fn sample_files(tpl: &Project, root: &Path, report: &mut SaveReport) -> BTreeMap<String, Vec<u8>> {
+    let keys: BTreeSet<String> = tpl
+        .canvases
+        .iter()
+        .flat_map(walk::screenshots)
+        .map(|u| u.key)
+        .collect();
+    let mut out = BTreeMap::new();
+    for lang in &tpl.languages.available {
+        let base = format!("screenshots/{lang}");
+        let mut dirs = vec![base.clone()];
+        let mut subs: Vec<String> = std::fs::read_dir(root.join(&base))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+            .map(|e| format!("{base}/{}", e.file_name().to_string_lossy()))
+            .collect();
+        subs.sort();
+        dirs.extend(subs);
+        for dir in dirs {
+            for key in &keys {
+                for ext in crate::resolve::SCREENSHOT_EXTENSIONS {
+                    let path = format!("{dir}/{key}.{ext}");
+                    if archive::check_path(&path).is_err() {
+                        continue;
+                    }
+                    let src = archive::join(root, &path);
+                    if !src.is_file() {
+                        continue;
+                    }
+                    match read_sample(&src) {
+                        Ok(data) => {
+                            out.insert(path, data);
+                        }
+                        Err(why) => report.samples_skipped.push((path, why)),
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// A screenshot file if it may be a sample.
+fn read_sample(path: &Path) -> Result<Vec<u8>, String> {
+    let data = std::fs::read(path).map_err(|e| e.to_string())?;
+    let ext = path
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default();
+    let ok = if ext == "png" {
+        data.starts_with(b"\x89PNG\r\n\x1a\n")
+    } else {
+        data.starts_with(&[0xFF, 0xD8, 0xFF])
+    };
+    if !ok {
+        return Err("content does not match the file type".into());
+    }
+    if data.len() > SAMPLE_MAX_BYTES {
+        return Err(format!(
+            "larger than {} MB",
+            SAMPLE_MAX_BYTES / (1024 * 1024)
+        ));
+    }
+    let size = imagesize::blob_size(&data).map_err(|_| "not a readable image".to_owned())?;
+    if size.width.max(size.height) > SAMPLE_MAX_EDGE as usize {
+        return Err(format!(
+            "{}x{} px (at most {SAMPLE_MAX_EDGE} px per side)",
+            size.width, size.height
+        ));
+    }
+    Ok(data)
 }
 
 /// Manifest entries of the canvases (no previews yet).

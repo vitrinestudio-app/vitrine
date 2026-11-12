@@ -41,7 +41,7 @@ impl TemplateStore {
         let mut out: Vec<TemplateSummary> = builtin::ids()
             .iter()
             .filter_map(|id| builtin::package(id).ok())
-            .map(|p| TemplateSummary::of(&p.manifest, TemplateSource::Builtin))
+            .map(|p| TemplateSummary::of_package(&p, TemplateSource::Builtin))
             .collect();
         let mut installed: Vec<TemplateSummary> = fs::read_dir(&self.root)
             .into_iter()
@@ -51,9 +51,18 @@ impl TemplateStore {
             .filter_map(|e| {
                 let text = fs::read_to_string(e.path().join(MANIFEST_FILE)).ok()?;
                 let m = manifest_from_yaml(&text).ok()?;
-                (m.id == e.file_name().to_string_lossy()).then_some(m)
+                if m.id != e.file_name().to_string_lossy() {
+                    return None;
+                }
+                let mut s = TemplateSummary::of(&m, TemplateSource::Installed);
+                if let Some(project) = fs::read_to_string(e.path().join(crate::io::PROJECT_FILE))
+                    .ok()
+                    .and_then(|t| crate::io::project_from_yaml(&t).ok())
+                {
+                    s.devices = super::tags::devices(&project);
+                }
+                Some(s)
             })
-            .map(|m| TemplateSummary::of(&m, TemplateSource::Installed))
             .collect();
         installed.sort_by_key(|t| t.name.to_lowercase());
         out.extend(installed);
@@ -130,10 +139,7 @@ impl TemplateStore {
             return Err(TemplateError::io(&dir)(e));
         }
         let _ = fs::remove_dir_all(&old);
-        Ok(TemplateSummary::of(
-            &pkg.manifest,
-            TemplateSource::Installed,
-        ))
+        Ok(TemplateSummary::of_package(pkg, TemplateSource::Installed))
     }
 
     /// Removes an installed template.

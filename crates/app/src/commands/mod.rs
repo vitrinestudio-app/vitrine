@@ -488,7 +488,7 @@ command_table! {
         project_store_get, project_store_patch, store_config_get,
         upload_readiness, upload_plan, upload_execute, upload_status, upload_cancel, upload_log, upload_confirm,
         upload_refdata,
-        template_list, template_save, template_import, template_export, template_remove,
+        template_list, template_tags, template_save, template_import, template_export, template_remove,
         template_insert_plan, template_insert,
         gallery_list, gallery_download,
     ],

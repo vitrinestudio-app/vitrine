@@ -14,6 +14,8 @@ fn main() -> anyhow::Result<()> {
     rt.block_on(async move {
         let listener = tokio::net::TcpListener::bind(bind).await?;
         eprintln!("vitrine-api listening on {bind}");
+        // Fill derived fields and missing sprites of older templates.
+        tokio::spawn(vitrine_api_server::backfill(state.clone()));
         serve(listener, state, shutdown()).await?;
         Ok(())
     })

@@ -103,6 +103,19 @@ pub fn keychain_user(api: &Url) -> String {
     }
 }
 
+/// The gallery sprite of a canvas: all pages side by side without gaps
+/// (`width` × `height` px; the `url_2x` image is exactly twice as large).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RemoteSprite {
+    pub url: String,
+    pub url_2x: String,
+    pub width: u32,
+    pub height: u32,
+    pub page_width: u32,
+    pub page_height: u32,
+}
+
 /// A canvas of a gallery template.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -112,6 +125,9 @@ pub struct RemoteCanvas {
     pub pages: u32,
     pub targets: Vec<String>,
     pub preview_url: Option<String>,
+    /// Page aspect `w:h`.
+    pub page_aspect: Option<String>,
+    pub sprite: Option<RemoteSprite>,
 }
 
 /// A template as the gallery lists it.
@@ -122,7 +138,13 @@ pub struct RemoteTemplate {
     pub name: String,
     pub description: String,
     pub author: String,
-    pub tags: Vec<String>,
+    /// Facet tags (`style`, `color`, `use`); an old server's flat list is
+    /// sorted into facets.
+    pub tags: vitrine_core::template::TemplateTags,
+    /// Derived device tags (`phone`, `tablet`, …).
+    pub devices: Vec<String>,
+    /// Number of sample screenshots (0 = placeholders only).
+    pub samples: u32,
     pub version: String,
     pub license: String,
     pub uploader: String,
@@ -146,11 +168,16 @@ pub struct TemplatePage {
     pub offset: u32,
 }
 
-/// Query of [`GalleryClient::list`].
+/// Query of [`GalleryClient::list`]. Within a facet any value matches,
+/// across facets all must.
 #[derive(Debug, Clone, Default)]
 pub struct ListQuery {
     pub query: Option<String>,
     pub tag: Option<String>,
+    pub style: Vec<String>,
+    pub color: Vec<String>,
+    pub use_: Vec<String>,
+    pub devices: Vec<String>,
     pub limit: Option<u32>,
     pub offset: Option<u32>,
 }
@@ -161,6 +188,39 @@ pub struct UploadResult {
     pub id: String,
     pub version: String,
     pub status: String,
+    /// Sample screenshots kept by the server.
+    #[serde(default)]
+    pub samples: u32,
+    /// Sample screenshots replaced by placeholders (not confirmed).
+    #[serde(default)]
+    pub samples_removed: u32,
+}
+
+/// `GET /v1/admin/queue`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AdminQueue {
+    pub pending: Vec<RemoteTemplate>,
+    pub reports: Vec<serde_json::Value>,
+}
+
+/// A moderation action of [`GalleryClient::admin_action`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdminAction {
+    Approve,
+    Reject,
+    /// Render previews and sprites again.
+    Rerender,
+}
+
+impl AdminAction {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Approve => "approve",
+            Self::Reject => "reject",
+            Self::Rerender => "rerender",
+        }
+    }
 }
 
 /// Answer of `POST /v1/auth/github/device`.
@@ -335,6 +395,16 @@ impl GalleryClient {
             if let Some(v) = q.tag.as_deref().filter(|s| !s.is_empty()) {
                 p.append_pair("tag", v);
             }
+            for (facet, values) in [
+                ("style", &q.style),
+                ("color", &q.color),
+                ("use", &q.use_),
+                ("devices", &q.devices),
+            ] {
+                for v in values.iter().filter(|v| !v.is_empty()) {
+                    p.append_pair(facet, v);
+                }
+            }
             if let Some(v) = q.limit {
                 p.append_pair("limit", &v.to_string());
             }
@@ -378,11 +448,27 @@ impl GalleryClient {
         self.bytes(self.http.get(url), MAX_PREVIEW).await
     }
 
-    /// `POST /v1/templates` with a bearer token.
-    pub async fn upload(&self, token: &str, package: Vec<u8>) -> Result<UploadResult> {
+    /// `GET /v1/tags`: the tag taxonomy with labels.
+    pub async fn tags(&self) -> Result<serde_json::Value> {
+        self.json(self.http.get(self.url("v1/tags")?)).await
+    }
+
+    /// `POST /v1/templates` with a bearer token. `confirm_own_screenshots`:
+    /// the uploader confirms the package's sample screenshots are their
+    /// own and CC0 (else the server replaces them with placeholders).
+    pub async fn upload(
+        &self,
+        token: &str,
+        package: Vec<u8>,
+        confirm_own_screenshots: bool,
+    ) -> Result<UploadResult> {
+        let mut url = self.url("v1/templates")?;
+        if confirm_own_screenshots {
+            url.set_query(Some("confirm_own_screenshots=true"));
+        }
         let req = self
             .http
-            .post(self.url("v1/templates")?)
+            .post(url)
             .bearer_auth(token)
             .header(reqwest::header::CONTENT_TYPE, "application/zip")
             .body(package);
@@ -414,6 +500,38 @@ impl GalleryClient {
                 _ => Err(e),
             },
         }
+    }
+
+    /// `GET /v1/admin/queue` (admin token).
+    pub async fn admin_queue(&self, admin_token: &str) -> Result<AdminQueue> {
+        self.json(
+            self.http
+                .get(self.url("v1/admin/queue")?)
+                .bearer_auth(admin_token),
+        )
+        .await
+    }
+
+    /// `POST /v1/admin/templates/{id}/{approve|reject|rerender}` (admin
+    /// token) with an optional moderation note.
+    pub async fn admin_action(
+        &self,
+        admin_token: &str,
+        id: &str,
+        action: AdminAction,
+        note: &str,
+    ) -> Result<serde_json::Value> {
+        if !vitrine_core::template::is_template_id(id) {
+            return Err(GalleryError::Invalid(format!("invalid template id `{id}`")));
+        }
+        let url = self.url(&format!("v1/admin/templates/{id}/{}", action.as_str()))?;
+        self.json(
+            self.http
+                .post(url)
+                .bearer_auth(admin_token)
+                .json(&serde_json::json!({ "note": note })),
+        )
+        .await
     }
 
     /// `GET /v1/auth/me`.
