@@ -568,7 +568,8 @@ fn screenshot_checks(
     // so languages that fall back to the same file share one finding.
     let file = shot.path.as_deref().unwrap_or_default();
     for (code, message) in file_notes(s, file) {
-        push(Severity::Info, code, false, message);
+        // A sample may serve only some languages: per language.
+        push(Severity::Info, code, code == C::SampleScreenshot, message);
     }
     let Some(size) = shot.size.filter(|p| p.w > 0 && p.h > 0) else {
         return;
