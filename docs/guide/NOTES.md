@@ -40,7 +40,7 @@ guide pages in both languages.
 ## 3. How-to notes
 
 ### Canvases, targets and variants in the GUI (2026-11-10)
-- One place: menu → "Canvases & targets…" ("Leinwände & Ausgabeziele …", also the targets button next to the target picker). Left: every canvas with its targets; click a canvas header for the canvas pane, a target for its form.
+- One place: menu → "Canvases & targets…" ("Leinwände & Ziele …", also the targets button next to the target picker). Left: every canvas with its targets; click a canvas header for the canvas pane, a target for its form.
 - New canvas ("+ New canvas"): start with *Empty* (one light background), *Headline + device* (per page a text with placeholder "Your headline" in the default language under key `<canvas>.<page>.title`, plus a device whose screenshot key is the page id) or *Copy of a canvas*. Page format = a store preset size (or a custom aspect); "Also add this target" creates the matching target in the same undo step (a canvas without targets cannot be shown or exported). Page count default 3 for portrait pages, 1 for landscape.
 - Copy of a canvas = KONZEPT "duplicate canvas": pages, backgrounds, elements (new unique ids, e.g. `title-plan-2`; element ids are unique across the project), variants with re-keyed overrides. Options: also copy its targets (ids `<target>-<new canvas>`), own copies of the texts (new keys `<new canvas>.<key>` with all translations; off = both canvases share the translations).
 - Canvas pane: rename (targets follow), Duplicate…, Remove (confirmation lists elements, variants and the targets that go with it; refused for the last canvas; one undo step), "Show in editor", targets of the canvas + "Add target", variants.

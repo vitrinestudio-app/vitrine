@@ -210,20 +210,20 @@ z. B. die Smartphones im iPad-Querformat-Set etwas tiefer – als
   zurücksetzen*.
 - Stell die Auswahl auf **Basis**, um das gemeinsame Layout zu bearbeiten.
 - **Neue Variante …** (Auswahl Variante, Einstellungen der Leinwand oder
-  *Leinwände & Ausgabeziele*): *Name*, *Basiert auf* (das Basis-Layout oder
+  *Leinwände & Ziele*): *Name*, *Basiert auf* (das Basis-Layout oder
   eine Kopie einer anderen Variante), *Inhalts-Skalierung* (skaliert Geräte
   und Bilder in dieser Variante) und *Gezeigt von* (Ziele, die sie ab jetzt
   verwenden).
 
 Welche Variante ein Ziel **exportiert**, steht im Ziel (*Leinwände &
-Ausgabeziele* → Ziel → *Variante*). Siehe
+Ziele* → Ziel → *Variante*). Siehe
 [Ziele & Store-Formate](../targets/).
 
 ## Leinwände {#canvases}
 
 Der Tab **Leinwände** listet die Leinwände des Projekts mit ihren Seiten und
 Zielen; **Neue Leinwand …** und **Verwalten …** öffnen *Leinwände &
-Ausgabeziele* (auch im ☰-Menü). Dort kannst du
+Ziele* (auch im ☰-Menü). Dort kannst du
 
 - eine Leinwand anlegen – *Leer*, *Überschrift + Gerät* (eine Überschrift und
   ein Gerät auf jeder Seite) oder als *Kopie einer Leinwand* – mit einem

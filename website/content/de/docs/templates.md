@@ -47,7 +47,7 @@ vitrine new my-app --template ./bold-gradient.vitrine-template
 
 ## Als Vorlage speichern {#save-as-template}
 
-**Leinwände & Ausgabeziele** → eine Leinwand → **Als Vorlage speichern…**:
+**Leinwände & Ziele** → eine Leinwand → **Als Vorlage speichern…**:
 wähle die *Leinwände*, gib einen *Namen* (die *Id* ergibt sich daraus),
 *Beschreibung* und *Autor* an, wähle die *Schlagwörter*, optional **Meine
 Screenshots als Beispiel-Screenshots mitnehmen** und **Auch als Datei
@@ -100,7 +100,7 @@ vitrine template tags                      # alle Schlagwörter
 ## Aus Vorlage einfügen {#insert-from-template}
 
 Leinwände einer Vorlage in ein **bestehendes** Projekt übernehmen:
-**Leinwände & Ausgabeziele → Neue Leinwand … → Aus Vorlage**. Wähle die
+**Leinwände & Ziele → Neue Leinwand … → Aus Vorlage**. Wähle die
 Vorlage und ihre Leinwände; der Dialog zeigt, was passieren wird. Das Ganze ist
 ein Rückgängig-Schritt.
 

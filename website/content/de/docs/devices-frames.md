@@ -65,7 +65,7 @@ App-Einstellungen (*Frame-Stil neuer Projekte*).
 ## Geräte-Tausch pro Ziel {#device-swap-per-target}
 
 Eine Leinwand, je Store andere Geräte: Der **Geräte-Tausch** eines Ziels
-(*Leinwände & Ausgabeziele* → Ziel) ersetzt Modelle nur für dieses Ziel. Das
+(*Leinwände & Ziele* → Ziel) ersetzt Modelle nur für dieses Ziel. Das
 Google-Play-Ziel der Vorlage *Phone* tauscht das iPhone gegen das
 Android-Smartphone; ein iPad-Ziel kann es gegen ein Tablet tauschen. Variante,
 Screenshots und Layout bleiben gleich.

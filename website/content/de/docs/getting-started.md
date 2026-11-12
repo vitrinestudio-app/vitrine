@@ -39,7 +39,7 @@ du sie jederzeit wieder.
 
 - **Obere Leiste:** das ☰-Menü; die Auswahlen **Leinwand**, **Ziel**,
   **Sprache** und **Variante** bestimmen, was du siehst und bearbeitest; der
-  Button neben der Ziel-Auswahl öffnet *Leinwände & Ausgabeziele*;
+  Button neben der Ziel-Auswahl öffnet *Leinwände & Ziele*;
   **Hinzufügen** setzt ein neues Element auf die sichtbare Seite; rechts die
   Assistenten-Anzeige, **Export**, das Prüf-Abzeichen (**OK** oder die Zahl
   der Probleme) und Rückgängig/Wiederholen.

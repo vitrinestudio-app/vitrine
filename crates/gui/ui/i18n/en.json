@@ -1157,6 +1157,7 @@
   "native.zoom": "Zoom",
   "native.close_window": "Close Window",
   "native.help": "Help",
+  "native.help.apple_bezels": "Download Apple Product Bezels",
   "native.help.apple_keys": "Creating App Store Connect API keys (Apple)",
   "native.help.google_api": "Google Play Developer API: getting started (Google)",
   "assets.fallback_for": "fallback for {langs}",
