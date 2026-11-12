@@ -457,7 +457,7 @@ command_table! {
         project_new, project_open, project_close, project_summary, project_get,
         recent_projects, recent_remove,
         apply_ops, undo, redo, history_state,
-        overlay,
+        overlay, scene_report,
         edit_move, edit_move_by, edit_resize, edit_rotate, edit_set_page,
         edit_reorder, edit_duplicate, edit_remove, edit_group, edit_ungroup,
         edit_copy, edit_cut, edit_paste, edit_clipboard,

@@ -28,7 +28,7 @@ pub use patch::{CanvasPatch, TargetPatch};
 
 use crate::catalog;
 use crate::model::{
-    Canvas, CanvasId, ColorRef, DeviceProps, Element, ElementId, ElementKind, ElementPatch,
+    Canvas, CanvasId, Checks, ColorRef, DeviceProps, Element, ElementId, ElementKind, ElementPatch,
     FrameStyle, ImportSettings, Lang, Languages, Project, Region, StoreKind, StoreSettings,
     StoreSlot, StringKey, StyleKind, Styles, Target, TargetId, Variant, VariantId, is_valid_id,
 };
@@ -52,6 +52,10 @@ pub enum Op {
     /// Replace the screenshot import mappings (`import:` in `project.yaml`).
     SetImport {
         import: ImportSettings,
+    },
+    /// Replace the design-check settings (`checks:` in `project.yaml`).
+    SetChecks {
+        checks: Checks,
     },
     /// Replace the store mapping (`store:` in `project.yaml`).
     SetStore {
@@ -407,6 +411,11 @@ impl Project {
                 import.check().map_err(invalid)?;
                 let old = std::mem::replace(&mut self.import, import);
                 Ok(Op::SetImport { import: old })
+            }
+            Op::SetChecks { checks } => {
+                checks.check().map_err(invalid)?;
+                let old = std::mem::replace(&mut self.checks, checks);
+                Ok(Op::SetChecks { checks: old })
             }
             Op::SetStore { store } => {
                 check_store(&store)?;

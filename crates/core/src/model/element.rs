@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use super::color::{ColorRef, Rgba};
 use super::common::{AnchorY, Clip, FitMode, Point, VisibleIn};
 use super::fill::Fill;
-use super::fmt::{double_option, flow_style, num};
+use super::fmt::{double_option, flow_seq, flow_style, num};
 use super::ids::{ElementId, Lang, StringKey, is_valid_id};
 use super::style::{FrameStyle, Glow};
 
@@ -62,6 +62,11 @@ pub struct Element {
     /// `false` hides the element (useful in variant overrides).
     pub visible: bool,
     pub visible_in: Option<VisibleIn>,
+    /// Finding codes the design means on purpose for this element
+    /// (`allow: [text_near_device, low_contrast]`): validation does not
+    /// report them for it (only codes in
+    /// `validate::ALLOWABLE`; others are reported as `unknown_allow`).
+    pub allow: Vec<String>,
     pub kind: ElementKind,
 }
 
@@ -285,7 +290,7 @@ impl ElementKindTag {
 }
 
 /// Fields every element kind has.
-pub const COMMON_FIELDS: [&str; 14] = [
+pub const COMMON_FIELDS: [&str; 15] = [
     "page",
     "lock_page",
     "locked",
@@ -300,6 +305,7 @@ pub const COMMON_FIELDS: [&str; 14] = [
     "clip",
     "visible",
     "visible_in",
+    "allow",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -729,6 +735,8 @@ element_fields! {
     clip: Clip,
     visible: bool,
     visible_in: VisibleIn,
+    #[serde(serialize_with = "flow_seq")]
+    allow: Vec<String>,
 }
 flow_style!(ElementPatch);
 
@@ -929,6 +937,7 @@ impl TryFrom<ElementWire> for Element {
             visible_in: w
                 .visible_in
                 .filter(|v| !v.targets.is_empty() || !v.langs.is_empty()),
+            allow: w.allow.unwrap_or_default(),
             kind: props,
         })
     }
@@ -979,6 +988,7 @@ impl From<Element> for ElementWire {
             clip: e.clip,
             visible: (!e.visible).then_some(false),
             visible_in: e.visible_in,
+            allow: (!e.allow.is_empty()).then_some(e.allow),
             langs: None,
             children: None,
         };

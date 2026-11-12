@@ -6,6 +6,7 @@
 //! `#RRGGBB[AA]` or `@name` references into `styles.colors`.
 
 mod canvas;
+mod checks;
 mod color;
 mod common;
 mod element;
@@ -22,6 +23,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 pub use canvas::{Canvas, PageSpec, Variant};
+pub use checks::Checks;
 pub use color::{ColorRef, Rgba};
 pub use common::{AnchorY, Aspect, Clip, FitMode, PixelSize, Point, VisibleIn};
 pub use element::{
@@ -75,6 +77,9 @@ pub struct Project {
     /// Screenshot import mappings (`core::import`).
     #[serde(default, skip_serializing_if = "ImportSettings::is_empty")]
     pub import: ImportSettings,
+    /// Design-check thresholds and codes switched off (`checks:`).
+    #[serde(default, skip_serializing_if = "Checks::is_empty")]
+    pub checks: Checks,
     /// Translations, stored in `i18n/<lang>.yaml`, not in `project.yaml`.
     #[serde(skip)]
     pub strings: Strings,
@@ -150,6 +155,7 @@ impl Project {
             targets: Vec::new(),
             store: StoreSettings::default(),
             import: ImportSettings::default(),
+            checks: Checks::default(),
             strings: Strings::new(),
             dropped_override_nulls: Vec::new(),
         }

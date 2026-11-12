@@ -98,8 +98,14 @@ pub struct GalleryInfo {
     /// Corner radius of the images in canvas lu (`x` along the width).
     pub radius: Vec2,
     pub background: Option<Rgba>,
-    /// The store's page colour in dark mode (gallery preview on `dark`).
+    /// The store's page colour in dark mode (gallery preview on `dark`,
+    /// design check `page_blends_with_store`), if known.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub background_dark: Option<Rgba>,
+    /// How the preset's values were obtained (`no` = not yet measured,
+    /// `web_css`, `fixed`); `None` without preset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub measured: Option<&'static str>,
 }
 
 /// A concrete element on the canvas.
@@ -125,6 +131,10 @@ pub struct ResolvedElement {
     pub opacity: f64,
     /// Clip rectangle on the canvas (`clip: page` → home page / column).
     pub clip: Option<Rect>,
+    /// Finding codes allowed for this element (own `allow` plus its
+    /// groups'; validation skips them).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub allow: Vec<String>,
     pub props: ResolvedKind,
 }
 

@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize};
 use crate::catalog::{ASPECT_TOLERANCE, Catalog};
 use crate::layout::{FontLibrary, TextLayouter};
 use crate::model::{ElementId, Lang, Project, Target, TargetId};
-use crate::resolve::{AssetLookup, ResolveError, ResolveOptions, resolve};
+use crate::resolve::{AssetLookup, ResolveError, ResolveOptions, ResolvedScene, resolve};
 
 /// Default for [`Thresholds::max_upscale`]: a screenshot may be enlarged by
 /// up to 15 % before it is reported as blurry. Store screenshots are
@@ -225,6 +225,76 @@ finding_codes! {
     VariantSuggested = "variant_suggested",
     /// An element lies entirely outside every page.
     ElementOutside = "element_outside",
+    // ---- design checks (layout and pixels; ADR 0029)
+    /// The glyphs of a text touch, cross or come closer than
+    /// [`Thresholds::device_distance`] to a device frame.
+    TextNearDevice = "text_near_device",
+    /// Text contrast against what is rendered behind it is below the WCAG
+    /// ratio ([`Thresholds::min_contrast`], large text
+    /// [`Thresholds::min_contrast_large`]).
+    LowContrast = "low_contrast",
+    /// An element drawn over a device covers the top of its screen (status
+    /// bar, app title).
+    ScreenHeaderCovered = "screen_header_covered",
+    /// The page edge cuts a device's screen through its top bar: half a
+    /// status bar or title stays visible.
+    ScreenHeaderCut = "screen_header_cut",
+    /// An element reaching across a page border overlaps an element of the
+    /// neighbouring page.
+    SeamOverlap = "seam_overlap",
+    /// Two clipped halves of one shape sit on both sides of a page border:
+    /// the store gap pulls them apart (use one element with `clip: none`).
+    SeamSplit = "seam_split",
+    /// An element reaches into a rounded corner of a store image and is
+    /// cut off in the store gallery.
+    ElementInCorner = "element_in_corner",
+    /// The largest device of a page fills less than
+    /// [`Thresholds::device_small`] of the page.
+    DeviceSmall = "device_small",
+    /// An element that covers almost the whole page (a background picture
+    /// or panel) leaves a thin strip uncovered.
+    PageNotCovered = "page_not_covered",
+    /// The edges of a page are hardly distinguishable from the store's
+    /// background (light or dark).
+    PageBlendsWithStore = "page_blends_with_store",
+    /// `allow` of an element or `checks.off` names an unknown code or one
+    /// that cannot be switched off.
+    UnknownAllow = "unknown_allow",
+}
+
+/// Codes an element's `allow` list or the project's `checks.off` may
+/// switch off: design findings that can be intended. Errors and missing
+/// content are never switched off.
+pub const ALLOWABLE: &[FindingCode] = &[
+    FindingCode::TextInGap,
+    FindingCode::TextClipped,
+    FindingCode::TextOutsideSafeArea,
+    FindingCode::ElementOutside,
+    FindingCode::Hyphenated,
+    FindingCode::VariantSuggested,
+    FindingCode::ScreenshotUpscale,
+    FindingCode::TextNearDevice,
+    FindingCode::LowContrast,
+    FindingCode::ScreenHeaderCovered,
+    FindingCode::ScreenHeaderCut,
+    FindingCode::SeamOverlap,
+    FindingCode::SeamSplit,
+    FindingCode::ElementInCorner,
+    FindingCode::DeviceSmall,
+    FindingCode::PageNotCovered,
+    FindingCode::PageBlendsWithStore,
+];
+
+impl FindingCode {
+    /// The code with this snake-case name.
+    pub fn parse(name: &str) -> Option<FindingCode> {
+        Self::ALL.iter().copied().find(|c| c.as_str() == name)
+    }
+
+    /// May `allow` / `checks.off` switch it off?
+    pub fn is_allowable(self) -> bool {
+        ALLOWABLE.contains(&self)
+    }
 }
 
 impl std::fmt::Display for FindingCode {
@@ -294,6 +364,29 @@ pub enum ValidateMode {
     Preview,
 }
 
+/// Default for [`Thresholds::device_distance`] (lu): glyphs closer to a
+/// device frame than this look cramped in the store's small thumbnails.
+pub const DEFAULT_DEVICE_DISTANCE: f64 = 16.0;
+
+/// Default for [`Thresholds::min_contrast`]: WCAG 2.x AA for normal text.
+pub const DEFAULT_MIN_CONTRAST: f64 = 4.5;
+
+/// Default for [`Thresholds::min_contrast_large`]: WCAG 2.x AA for large
+/// text.
+pub const DEFAULT_MIN_CONTRAST_LARGE: f64 = 3.0;
+
+/// Default for [`Thresholds::large_text`] (lu): WCAG "large" is 24 px
+/// (18.66 px bold). A store shows a 1000 lu page about 300 pt wide, so
+/// 24 pt ≈ 80 lu (bold 62 lu, [`Thresholds::large_text_bold`]).
+pub const DEFAULT_LARGE_TEXT: f64 = 80.0;
+
+/// Default for [`Thresholds::large_text_bold`] (lu, weight ≥ 700).
+pub const DEFAULT_LARGE_TEXT_BOLD: f64 = 62.0;
+
+/// Default for [`Thresholds::device_small`]: the largest device of a page
+/// should fill at least half of the page height (or width).
+pub const DEFAULT_DEVICE_SMALL: f64 = 0.5;
+
 /// Configurable limits.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Thresholds {
@@ -304,6 +397,19 @@ pub struct Thresholds {
     /// Max relative page height deviation target vs canvas without a variant
     /// ([`DEFAULT_VARIANT_ASPECT`]).
     pub variant_aspect: f64,
+    /// Min distance glyphs ↔ device frame, lu ([`DEFAULT_DEVICE_DISTANCE`]).
+    pub device_distance: f64,
+    /// Min contrast ratio of normal text ([`DEFAULT_MIN_CONTRAST`]).
+    pub min_contrast: f64,
+    /// Min contrast ratio of large text ([`DEFAULT_MIN_CONTRAST_LARGE`]).
+    pub min_contrast_large: f64,
+    /// Font size from which text counts as large, lu ([`DEFAULT_LARGE_TEXT`]).
+    pub large_text: f64,
+    /// … for bold text ([`DEFAULT_LARGE_TEXT_BOLD`]).
+    pub large_text_bold: f64,
+    /// Min share of the page the largest device fills
+    /// ([`DEFAULT_DEVICE_SMALL`]).
+    pub device_small: f64,
 }
 
 impl Default for Thresholds {
@@ -312,8 +418,70 @@ impl Default for Thresholds {
             screenshot_aspect: ASPECT_TOLERANCE,
             max_upscale: DEFAULT_MAX_UPSCALE,
             variant_aspect: DEFAULT_VARIANT_ASPECT,
+            device_distance: DEFAULT_DEVICE_DISTANCE,
+            min_contrast: DEFAULT_MIN_CONTRAST,
+            min_contrast_large: DEFAULT_MIN_CONTRAST_LARGE,
+            large_text: DEFAULT_LARGE_TEXT,
+            large_text_bold: DEFAULT_LARGE_TEXT_BOLD,
+            device_small: DEFAULT_DEVICE_SMALL,
         }
     }
+}
+
+impl Thresholds {
+    /// These thresholds with the project's `checks:` values applied.
+    #[must_use]
+    pub fn with_checks(mut self, c: &crate::model::Checks) -> Self {
+        if let Some(d) = c.device_distance {
+            self.device_distance = d;
+        }
+        if let Some(r) = c.min_contrast {
+            self.min_contrast = r;
+        }
+        if let Some(r) = c.min_contrast_large {
+            self.min_contrast_large = r;
+        }
+        self
+    }
+
+    /// Contrast a text of `size` lu and `weight` needs.
+    pub fn required_contrast(&self, size: f64, weight: u16) -> f64 {
+        let large = size >= self.large_text || (weight >= 700 && size >= self.large_text_bold);
+        if large {
+            self.min_contrast_large
+        } else {
+            self.min_contrast
+        }
+    }
+}
+
+/// A finding of a [`SceneInspector`] (target and language are filled in by
+/// `validate`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SceneFinding {
+    pub level: Severity,
+    pub code: FindingCode,
+    pub element: Option<ElementId>,
+    /// Depends on the language (texts); else reported once per target.
+    pub lang_dependent: bool,
+    pub message: String,
+}
+
+/// Checks that need rendered geometry or pixels: device outlines and
+/// screens, glyph masks, the backdrop behind texts (ADR 0029). `core` has
+/// no renderer; front ends pass the renderer's implementation
+/// (`vitrine_render::quality::Inspector`). Without one these checks are
+/// skipped.
+pub trait SceneInspector {
+    /// Findings of one resolved target × language. `first` is true for the
+    /// first language of the target: language-independent checks
+    /// (devices, pages) only need to run then.
+    fn inspect(
+        &self,
+        scene: &ResolvedScene,
+        thresholds: &Thresholds,
+        first: bool,
+    ) -> Vec<SceneFinding>;
 }
 
 /// Inputs besides the project.
@@ -332,6 +500,8 @@ pub struct ValidateOptions<'a> {
     pub thresholds: Thresholds,
     /// Installed vendor frames (ADR 0012); `None` = none installed.
     pub frames: Option<&'a crate::frame_import::FrameIndex>,
+    /// Pixel and device-geometry checks (`None` = skipped).
+    pub inspector: Option<&'a dyn SceneInspector>,
 }
 
 impl<'a> ValidateOptions<'a> {
@@ -347,6 +517,7 @@ impl<'a> ValidateOptions<'a> {
             mode: ValidateMode::default(),
             thresholds: Thresholds::default(),
             frames: None,
+            inspector: None,
         }
     }
 }
@@ -358,6 +529,7 @@ impl std::fmt::Debug for ValidateOptions<'_> {
             .field("langs", &self.langs)
             .field("mode", &self.mode)
             .field("thresholds", &self.thresholds)
+            .field("inspector", &self.inspector.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -415,6 +587,9 @@ impl Ctx {
 /// Validate `project` for all targets × languages (or the filters in
 /// `options`).
 pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationReport {
+    let mut options = options.clone();
+    options.thresholds = options.thresholds.with_checks(&project.checks);
+    let options = &options;
     let mut out = Sink::default();
     let layouter = std::cell::RefCell::new(TextLayouter::new(options.fonts.clone()));
     let root = Ctx::default();
@@ -459,6 +634,75 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
             ),
         ));
     }
+    project_text_checks(project, options, &root, &mut out);
+    allow_checks(project, &root, &mut out);
+    store::store_checks(project, &mut out);
+    let mut used = std::collections::BTreeSet::new();
+    let mut allowed = AllowMap::new();
+    for target in &project.targets {
+        if options
+            .targets
+            .as_ref()
+            .is_some_and(|f| !f.iter().any(|t| t == target.id.as_str()))
+        {
+            continue;
+        }
+        validate_target(
+            project,
+            target,
+            options,
+            &layouter,
+            &mut used,
+            &mut allowed,
+            &mut out,
+        );
+    }
+    if let Some(index) = options.frames {
+        let full = options.targets.is_none() && options.langs.is_none();
+        stored_frame_checks(index, &used, full, &root, &mut out);
+    }
+    ValidationReport {
+        findings: switched_off(project, &allowed, out.findings),
+    }
+}
+
+/// `findings` without the design findings switched off by `checks.off`
+/// or an element's `allow`.
+fn switched_off(project: &Project, allowed: &AllowMap, findings: Vec<Finding>) -> Vec<Finding> {
+    let off: HashSet<FindingCode> = project
+        .checks
+        .off
+        .iter()
+        .filter_map(|c| FindingCode::parse(c))
+        .filter(|c| c.is_allowable())
+        .collect();
+    findings
+        .into_iter()
+        .filter(|f| {
+            if !f.code.is_allowable() {
+                return true;
+            }
+            if off.contains(&f.code) {
+                return false;
+            }
+            !matches!((&f.target, &f.element), (Some(t), Some(e))
+                if allowed.get(&(t.clone(), e.clone())).is_some_and(|a| a.contains(&f.code)))
+        })
+        .collect()
+}
+
+/// Codes allowed per target × element (from the resolved scenes, so
+/// variant overrides and groups count).
+type AllowMap = std::collections::HashMap<(TargetId, ElementId), HashSet<FindingCode>>;
+
+/// Font fallbacks that are not available, language overrides naming
+/// languages the project does not have.
+fn project_text_checks(
+    project: &Project,
+    options: &ValidateOptions<'_>,
+    root: &Ctx,
+    out: &mut Sink,
+) {
     for (family, f) in &project.styles.fonts {
         for fb in &f.fallback {
             if !options.fonts.has_family(fb) {
@@ -475,7 +719,7 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
             }
         }
     }
-    system_font_checks(project, &options.fonts, &root, &mut out);
+    system_font_checks(project, &options.fonts, root, out);
     for s in &project.canvases {
         s.walk_elements(&mut |e| {
             for l in e.text_props().into_iter().flat_map(|t| t.langs.keys()) {
@@ -494,24 +738,51 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
             }
         });
     }
-    store::store_checks(project, &mut out);
-    let mut used = std::collections::BTreeSet::new();
-    for target in &project.targets {
-        if options
-            .targets
-            .as_ref()
-            .is_some_and(|f| !f.iter().any(|t| t == target.id.as_str()))
-        {
-            continue;
+}
+
+/// `allow` lists and `checks.off` naming unknown or non-allowable codes.
+fn allow_checks(project: &Project, root: &Ctx, out: &mut Sink) {
+    let problem = |name: &str| match FindingCode::parse(name) {
+        None => Some(format!("unknown finding code `{name}`")),
+        Some(c) if !c.is_allowable() => Some(format!("`{name}` cannot be switched off")),
+        Some(_) => None,
+    };
+    for name in &project.checks.off {
+        if let Some(why) = problem(name) {
+            out.push(root.finding(
+                Severity::Warn,
+                FindingCode::UnknownAllow,
+                false,
+                None,
+                None,
+                format!("checks.off: {why}"),
+            ));
         }
-        validate_target(project, target, options, &layouter, &mut used, &mut out);
     }
-    if let Some(index) = options.frames {
-        let full = options.targets.is_none() && options.langs.is_none();
-        stored_frame_checks(index, &used, full, &root, &mut out);
-    }
-    ValidationReport {
-        findings: out.findings,
+    for s in &project.canvases {
+        let mut check = |id: &ElementId, page: u32, list: &[String], place: &str| {
+            for name in list {
+                if let Some(why) = problem(name) {
+                    out.push(root.finding(
+                        Severity::Warn,
+                        FindingCode::UnknownAllow,
+                        false,
+                        Some(page),
+                        Some(id),
+                        format!("{place}: {why}"),
+                    ));
+                }
+            }
+        };
+        s.walk_elements(&mut |e| check(&e.id, e.page, &e.allow, "allow"));
+        for (vid, v) in &s.variants {
+            for (id, patch) in &v.overrides {
+                if let Some(Some(list)) = &patch.allow {
+                    let page = s.element(id.as_str()).map_or(0, |e| e.page);
+                    check(id, page, list, &format!("variant `{vid}` allow"));
+                }
+            }
+        }
     }
 }
 
@@ -639,6 +910,47 @@ fn target_langs(project: &Project, target: &Target, options: &ValidateOptions<'_
     }
 }
 
+/// The renderer's design checks of one scene (if an inspector is set).
+fn inspect(
+    scope: &checks::Scope<'_>,
+    scene: &ResolvedScene,
+    first: bool,
+    ctx: &Ctx,
+    out: &mut Sink,
+) {
+    let Some(inspector) = scope.options.inspector else {
+        return;
+    };
+    for f in inspector.inspect(scene, &scope.options.thresholds, first) {
+        let page = f.element.as_ref().and_then(|id| scope.page_of(id));
+        out.push(ctx.finding(
+            f.level,
+            f.code,
+            f.lang_dependent,
+            page,
+            f.element.as_ref(),
+            f.message,
+        ));
+    }
+}
+
+/// Remembers the `allow` lists of a resolved scene's elements.
+fn record_allowed(scene: &ResolvedScene, allowed: &mut AllowMap) {
+    for e in &scene.elements {
+        let codes: HashSet<FindingCode> = e
+            .allow
+            .iter()
+            .filter_map(|c| FindingCode::parse(c))
+            .collect();
+        if !codes.is_empty() {
+            allowed
+                .entry((scene.target.clone(), e.id.clone()))
+                .or_default()
+                .extend(codes);
+        }
+    }
+}
+
 /// Project copies of imported frames (ADR 0027): the licence reminder,
 /// and – when every target and language was checked – unused or outdated
 /// copies.
@@ -731,6 +1043,7 @@ fn validate_target(
     options: &ValidateOptions<'_>,
     layouter: &std::cell::RefCell<TextLayouter>,
     used: &mut std::collections::BTreeSet<crate::frame_import::embed::UseKey>,
+    allowed: &mut AllowMap,
     out: &mut Sink,
 ) {
     let mut ctx = Ctx {
@@ -784,11 +1097,15 @@ fn validate_target(
             // Target and canvas exist (checked above).
             Err(e) => unreachable!("{e}"),
         };
-        if !frame_checked {
+        let first = !frame_checked;
+        if first {
             checks::frame_checks(&scope, &scene, &ctx, out);
+            checks::design_checks(&scope, &scene, &ctx, out);
             frame_checked = true;
         }
         checks::scene_checks(&scope, &scene, &mut layouter.borrow_mut(), &ctx, out);
+        record_allowed(&scene, allowed);
+        inspect(&scope, &scene, first, &ctx, out);
         for e in &scene.elements {
             if let crate::resolve::ResolvedKind::Device(d) = &e.props
                 && let crate::model::FrameStyle::Imported(_) = &d.frame

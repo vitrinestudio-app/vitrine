@@ -60,7 +60,16 @@ import:                     # screenshot import mappings (screenshots_import sav
     devices: {"iPhone 16 Pro Max": ios-phone}
     locales: {de-DE: de}
     keys: {01_home: home}
+checks:                     # design-check settings (op set_checks); all optional
+  device_distance: 16       # lu glyphs ↔ device frame (text_near_device)
+  min_contrast: 4.5         # WCAG ratio, normal text (low_contrast)
+  min_contrast_large: 3     # large text (≥ 80 lu, bold ≥ 62 lu)
+  off: [page_blends_with_store]   # codes not reported for this project
 ```
+
+Per element, `allow: [code]` switches design findings off for that element
+(and a group's children) – for designs that mean it (giant clipped type,
+labels pointing at a device).
 
 Translations: `i18n/<lang>.yaml` is a flat map `key: text` (keys may contain
 dots: `hero.title: Plan your garden **in minutes**`).

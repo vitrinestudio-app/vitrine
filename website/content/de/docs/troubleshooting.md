@@ -25,6 +25,15 @@ häufigsten:
 | `text_missing` | Fehler | den Schlüssel gibt es in keiner Sprache – es wird nichts gezeichnet. |
 | `text_in_gap`, `text_clipped` | Warnung | Text ragt in eine Store-Lücke oder über seine Seite hinaus und wird abgeschnitten. |
 | `text_outside_safe_area` | Warnung | Text außerhalb des sicheren Bereichs des Ziels. |
+| `low_contrast` | Warnung | der Kontrast des Texts gegen das, was tatsächlich dahinter gezeichnet ist (Farbe, Verlauf, Foto, Muster), liegt unter WCAG AA – 4,5:1, große Schrift (ab 80 lu, fett ab 62 lu) 3:1. Die Meldung nennt Verhältnis und Stelle; Farbe ändern, Scrim, Schatten oder Kontur ergänzen. |
+| `text_near_device` | Warnung / Hinweis | Glyphen liegen hinter einem Geräterahmen oder laufen über ihn (Warnung) oder kommen ihm näher als 16 lu (Hinweis). Text ganz auf dem Gerät oder auf einer Karte darüber ist in Ordnung. |
+| `screen_header_covered`, `screen_header_cut` | Hinweis | ein Element verdeckt die obere Leiste (Statusleiste, App-Titel) eines Gerätebildschirms, oder der Seitenrand schneidet sie, sodass eine halbe Leiste stehen bleibt. |
+| `seam_overlap` | Hinweis | ein Element, das über eine Seitengrenze reicht, liegt über einem Element der Nachbarseite – Galerie prüfen. |
+| `seam_split` | Hinweis | eine Form als zwei Hälften an einer Seitengrenze gebaut: die Store-Lücke zieht sie auseinander. Nimm **ein** Element mit *Beschnitt: Keiner* über die Grenze – es läuft in jedem Ziel hinter der Lücke durch. |
+| `element_in_corner` | Hinweis | ein Element ragt in eine Bildecke, die der Store abrundet. |
+| `device_small` | Hinweis | das größte Gerät einer Seite füllt weniger als die Hälfte. |
+| `page_not_covered` | Hinweis | ein Bild oder eine Fläche deckt fast die ganze Seite, lässt aber einen schmalen Streifen frei (typisch, wenn eine Variante die Seitenhöhe ändert). |
+| `page_blends_with_store` | Hinweis | die Ränder der Bilder heben sich kaum vom hellen oder dunklen Store-Hintergrund ab. |
 | `missing_glyphs` | Warnung | Zeichen, die keine Schrift darstellen kann – füge eine [Fallback-Schrift](../styles-fonts/#other-scripts-fallback-fonts) hinzu. |
 | `variant_suggested` | Hinweis | das Seitenverhältnis des Ziels weicht stark von der Leinwand ab – überleg dir eine Variante. |
 | `store_size`, `store_count`, `store_format` | Fehler | Größe, Bildanzahl oder Format passt nicht zum Store-Slot (zu wenige Bilder sind eine Warnung). |
@@ -36,6 +45,21 @@ häufigsten:
 | `background_hidden` | Warnung | eine Hintergrund-Ebene der Leinwand liegt unter einer deckenden und ist nie zu sehen – Leinwand-Hintergründe sind Ebenen, nicht einer pro Seite (siehe unten). |
 
 In der App springt **Auf der Leinwand zeigen** zum Element.
+
+Die Gestaltungsprüfungen (`low_contrast` bis `page_blends_with_store`)
+rendern die Bilder; `vitrine validate --no-pixel-checks` lässt sie weg. Ist
+ein Befund gewollt – riesige angeschnittene Schrift, eine Beschriftung, die
+auf ein Gerät zeigt –, trag den Code in `allow` des Elements ein
+(`allow: [text_clipped, low_contrast]`, auch an einer Gruppe). Schwellwerte
+und abgeschaltete Codes für das ganze Projekt stehen in `project.yaml`:
+
+```yaml
+checks:
+  device_distance: 16      # lu zwischen Glyphen und Geräterahmen
+  min_contrast: 4.5
+  min_contrast_large: 3
+  off: [page_blends_with_store]
+```
 
 ## Fragen {#questions}
 

@@ -45,7 +45,8 @@ Element kinds and their fields:
 - background: `fill` (a per-page background; canvas backgrounds are canvas `backgrounds`)
 - group: `children: [elements]`
 - common: `page`, `at`, `rotation` (degrees, clockwise), `pivot`, `anchor_y`,
-  `opacity`, `z`, `clip` (none|page), `visible`, `visible_in: {targets, langs}`, `lock_page`, `locked`
+  `opacity`, `z`, `clip` (none|page), `visible`, `visible_in: {targets, langs}`, `lock_page`, `locked`,
+  `allow: [finding codes]` (design findings meant on purpose, see validate)
 
 ## Variants and language overrides
 `update_element` always changes the base element (all targets and
@@ -93,3 +94,5 @@ Several languages in one step:
 - `{"op": "set_styles", "styles": {…complete styles object…}}` (prefer styles_update)
 - `{"op": "rename_style", "kind": "color" | "text" | "span" | "shadow", "from": "accent", "to": "highlight"}`
 - `{"op": "set_import", "import": {…screenshot import mappings…}}`
+- `{"op": "set_checks", "checks": {"device_distance"?: 16, "min_contrast"?: 4.5, "min_contrast_large"?: 3, "off"?: ["page_blends_with_store"]}}`
+  (design-check thresholds and codes switched off for the whole project; replaces `checks:`)
