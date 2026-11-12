@@ -129,7 +129,7 @@ apps not measured; `measured: no` in reports).
 - Validation of a project costs a few seconds more; `--no-pixel-checks` /
   `pixel_checks: false` keep the old speed. Export does not run them.
 - Tuned on 14 of the 50 templates: findings per template dropped from
-  60–190 (first version) to 0–40, most of the rest are WCAG contrast
+  5–200 (first version) to 4–57 per template (median ~12), most of the rest are WCAG contrast
   misses of small eyebrows and deliberate layouts the author can `allow`.
 - Thresholds are code defaults plus `checks:`; new stores' dark
   backgrounds are data.

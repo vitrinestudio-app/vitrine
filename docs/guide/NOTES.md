@@ -195,7 +195,7 @@ guide pages in both languages.
 - Store dark backgrounds are data (`galleries.yaml` `background_dark`, NOT YET MEASURED: App Store #000000, Play #131314).
 - Seams: an element with `clip: none` across a page border stays continuous behind the store gap in every target (home-page-relative positions); never place two halves by hand. `layout_report.seams[].next_page_offset` (= −(1000 + gap)) converts canvas points; the gap itself is `gallery.gap_lu/gap_px` with `measured` (`no` = estimate).
 - `layout_report` (MCP) / command `scene_report`: devices with rotated `frame` corners and `screen` (x/y/w/h before rotation, `quad`, `radius`, `header`), `screen_covered_by` (shares of screen and header), `gallery`, `seams`, `overlaps` measured on drawn pixels (page backgrounds left out; `seam: true` for non-text elements across a border).
-- Tuning (14 of the 50 templates, see ADR 0028 / research doc): first version 60–190 findings per template, tuned 0–40; remaining are mostly WCAG misses of small eyebrows (real) and deliberate layouts to `allow`.
+- Tuning (14 of the 50 templates, see ADR 0028 / research doc): first version 5–200 new findings per template (all targets × en/de), tuned 4–57 (median ~12; big-type 86 incl. its 48 old clip warnings); remaining are mostly WCAG misses of small eyebrows (real) and deliberate layouts to `allow`.
 
 ### AI assistants / MCP (Phase 4)
 - Vitrine Studio is a plain MCP server: any MCP-capable client works. App settings → "AI assistants (MCP)": generic part first (switch, status, fixed port, start on demand, "Other MCP clients" with the stdio command and the HTTP URL + bearer header), then the client-specific setup ("Claude Desktop", "Claude Code").
