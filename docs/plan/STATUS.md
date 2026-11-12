@@ -50,6 +50,16 @@ read-only for agents) with the `vitrinestudio-app` token, approve via
 gallery page** on the sprite API (floating rounded pages reacting to the
 mouse, like the hero; filters by style/color/use/devices).
 
+**Website gallery page done (2026-11-12, worktree agent):** `/gallery/`,
+`/de/galerie/`, nav "Templates/Vorlagen", home teaser with live cards;
+API server: CORS allow list `VITRINE_API_CORS_ORIGINS`, list `limit` up to
+200, `canvases[].devices` (schema 2, backfilled on start). Owner steps:
+upgrade the server and set `VITRINE_API_CORS_ORIGINS=https://www.vitrinestudio.app,https://vitrinestudio.app`;
+rebuild the site after approving templates. Finding: templates with
+`--sample-screenshots` from the owner's projects are 80–210 MB (limit 50 MB)
+– needs a decision (smaller samples: one language / JPEG / fewer canvases,
+or a higher limit).
+
 **Open owner decisions (collected):**
 - CJK font pack (download on demand?) – after the fonts agent's proposal.
 - Gallery defaults to confirm (sample limits 10 MB/6000 px, WebP q80, local

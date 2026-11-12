@@ -135,9 +135,10 @@ may share this way.
 ## The template gallery
 
 {{< callout status >}}
-The gallery at `api.vitrinestudio.app` is being set up. Browsing it from the
-app and the website is not built yet; the command line can already list,
-download and upload.
+The gallery is being filled. Browse it on the website ([template
+gallery](/gallery/)) or with `vitrine gallery list`; browsing it inside the
+app is not built yet – download a template and use **Import file…** in the
+*New project* dialog.
 {{< /callout >}}
 
 - **Browsing and downloading** need no account.

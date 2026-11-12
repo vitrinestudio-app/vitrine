@@ -2,6 +2,7 @@
 """Checks internal links and #fragments of the built site (website/public).
 
     cd website && hugo --minify && python3 scripts/check-links.py
+    hugo --minify -d /tmp/site && python3 scripts/check-links.py /tmp/site
 
 Every href/src that points into the site must exist; a #fragment must match
 an id on the target page. External links (http…, mailto:) are not fetched.
@@ -13,7 +14,9 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urljoin, urlparse
 
-ROOT = Path(__file__).resolve().parent.parent / "public"
+# The built site: website/public, or the folder given as the first argument
+# (e.g. a temporary build while `hugo server` runs).
+ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "public"
 BASE = "https://www.vitrinestudio.app/"
 
 

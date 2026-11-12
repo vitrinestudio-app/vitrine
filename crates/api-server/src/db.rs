@@ -10,6 +10,10 @@
 //!   are sorted into facets, unknown words dropped). Devices and sample
 //!   counts of existing rows are filled from the stored packages by
 //!   `crate::backfill`.
+//! - 2 (2026-11-12): each canvas object in `canvases` gets `devices` (the
+//!   derived device tags of that canvas alone; the website shows the
+//!   canvas of the device a visitor filters by). Existing rows are marked
+//!   for the backfill again.
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -20,7 +24,7 @@ use serde_json::{Value, json};
 use vitrine_core::template::TemplateTags;
 
 /// Current schema version.
-pub const SCHEMA_VERSION: i64 = 1;
+pub const SCHEMA_VERSION: i64 = 2;
 
 /// Moderation state of a template.
 pub const PENDING: &str = "pending";
@@ -118,6 +122,10 @@ fn migrate(db: &Connection) -> rusqlite::Result<()> {
                 params![id, map.to_string()],
             )?;
         }
+    }
+    if version < 2 {
+        // Per-canvas devices come from the stored packages.
+        db.execute_batch("UPDATE templates SET backfilled = 0")?;
     }
     db.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION}"))
 }
@@ -298,24 +306,34 @@ pub fn set_sprites(db: &Connection, id: &str, sprites: &Value) -> rusqlite::Resu
 }
 
 /// Ids of rows whose derived fields were not filled from the package yet
-/// (rows from before schema version 1).
+/// (rows from before schema version 2).
 pub fn not_backfilled(db: &Connection) -> rusqlite::Result<Vec<String>> {
     let mut stmt = db.prepare("SELECT id FROM templates WHERE backfilled = 0 ORDER BY id")?;
     stmt.query_map([], |r| r.get(0))?.collect()
 }
 
+/// Fields derived from a stored package (see [`set_derived`]).
+#[derive(Debug)]
+pub struct Derived {
+    pub devices: Value,
+    pub samples: i64,
+    pub tags: Value,
+    /// The manifest's canvases with `devices` per canvas.
+    pub canvases: Value,
+}
+
 /// Stores the fields derived from the package (devices, sample count,
-/// tags) and marks the row as backfilled.
-pub fn set_derived(
-    db: &Connection,
-    id: &str,
-    devices: &Value,
-    samples: i64,
-    tags: &Value,
-) -> rusqlite::Result<()> {
+/// tags, per-canvas devices) and marks the row as backfilled.
+pub fn set_derived(db: &Connection, id: &str, d: &Derived) -> rusqlite::Result<()> {
     db.execute(
-        "UPDATE templates SET devices = ?2, samples = ?3, tags = ?4, backfilled = 1 WHERE id = ?1",
-        params![id, devices.to_string(), samples, tags.to_string()],
+        "UPDATE templates SET devices = ?2, samples = ?3, tags = ?4, canvases = ?5, backfilled = 1 WHERE id = ?1",
+        params![
+            id,
+            d.devices.to_string(),
+            d.samples,
+            d.tags.to_string(),
+            d.canvases.to_string()
+        ],
     )?;
     Ok(())
 }

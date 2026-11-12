@@ -143,9 +143,10 @@ nur aus Material, das du so weitergeben darfst.
 ## Die Vorlagen-Galerie {#the-template-gallery}
 
 {{< callout status >}}
-Die Galerie unter `api.vitrinestudio.app` wird gerade aufgebaut. Durchsuchen
-in der App und auf der Website gibt es noch nicht; auf der Kommandozeile kannst
-du schon auflisten, herunterladen und hochladen.
+Die Galerie wird gerade gefüllt. Durchsuchen kannst du sie auf der Website
+([Vorlagen-Galerie](/de/galerie/)) oder mit `vitrine gallery list`; in der App
+selbst gibt es das Durchsuchen noch nicht – Vorlage herunterladen und im
+Dialog *Neues Projekt* **Datei importieren…** wählen.
 {{< /callout >}}
 
 - **Durchsuchen und Herunterladen** brauchen kein Konto.

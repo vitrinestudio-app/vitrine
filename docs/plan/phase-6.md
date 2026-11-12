@@ -215,7 +215,16 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
       `website/README.md`), review of texts and design
 - [ ] Screenshots made with Vitrine Studio itself / from the new templates
       (list of images to replace in `website/README.md`)
-- [ ] Hosts the template (and frame pack) gallery from 6.3/6.4
+- [x] Template gallery page (2026-11-12): `/gallery/` + `/de/galerie/`,
+      build-time snapshot + live refresh from the API (CORS allow list
+      `VITRINE_API_CORS_ORIGINS`, list limit 200, per-canvas `devices`),
+      store-gallery cards from the sprites (floating pages, pointer tilt/pan,
+      lazy), local filters style/colour/use/device + search with FLIP
+      animation and URL query, detail view `#<id>` (canvases, pages,
+      download, how to use), home page live cards (`website/README.md`)
+- [ ] Owner: set `VITRINE_API_CORS_ORIGINS` on the server, upload/approve
+      templates, rebuild + deploy the site
+- [ ] Frame pack gallery (6.4) on the website
 
 ## 6.7 Documentation (own step)
 - [x] User guide from `docs/guide/NOTES.md` and the code (2026-11-11):

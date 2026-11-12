@@ -17,6 +17,7 @@
 
 mod auth;
 mod config;
+mod cors;
 mod db;
 mod error;
 mod maintenance;
