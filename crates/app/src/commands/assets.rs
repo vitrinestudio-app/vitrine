@@ -748,9 +748,10 @@ pub struct AssetThumbnailArgs {
     pub max_edge: Option<u32>,
 }
 
-/// Default and largest thumbnail edge (px).
+/// Default and largest thumbnail edge (px; the largest also serves the
+/// assets panel's image preview).
 pub const THUMBNAIL_EDGE: u32 = 160;
-const THUMBNAIL_MAX_EDGE: u32 = 1024;
+const THUMBNAIL_MAX_EDGE: u32 = 2048;
 /// Thumbnails kept in memory (oldest dropped first).
 const THUMBNAIL_CACHE_LEN: usize = 512;
 
@@ -765,13 +766,10 @@ fn thumbnail_cache() -> &'static ThumbCache {
     CACHE.get_or_init(|| Mutex::new((HashMap::new(), Vec::new())))
 }
 
-/// A small PNG of a screenshot or image asset (aspect kept), cached by
-/// path, modification time and size. Raster files are decoded on their
-/// own (not kept in the render cache); SVGs go through the render
-/// context's asset cache.
-pub fn asset_thumbnail(app: &AppState, args: AssetThumbnailArgs) -> CmdResult<Arc<PreviewImage>> {
-    let session = app.session()?;
-    let p = Path::new(&args.path);
+/// The absolute path of a project-relative file below `screenshots/` or
+/// `assets/` (no `..`, no absolute paths).
+fn media_file(root: &Path, path: &str) -> CmdResult<PathBuf> {
+    let p = Path::new(path);
     let ok = p.components().all(|c| matches!(c, Component::Normal(_)))
         && matches!(
             p.components().next(),
@@ -779,11 +777,83 @@ pub fn asset_thumbnail(app: &AppState, args: AssetThumbnailArgs) -> CmdResult<Ar
         );
     if !ok {
         return Err(CommandError::invalid(format!(
-            "`{}` is not a file below screenshots/ or assets/",
+            "`{path}` is not a file below screenshots/ or assets/"
+        )));
+    }
+    Ok(root.join(p))
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AssetInfoArgs {
+    /// Project-relative path below `screenshots/` or `assets/`.
+    pub path: String,
+}
+
+/// File facts of a screenshot or image asset for the image preview.
+#[derive(Debug, Clone, Serialize)]
+pub struct AssetInfo {
+    pub path: String,
+    /// File size in bytes.
+    pub bytes: u64,
+    /// Pixel size (`None` for SVG or unreadable files).
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    /// Lower-case file extension (`png`, `jpg`, `svg` …).
+    pub format: Option<String>,
+    /// Source colour space as the renderer reads it ("Display P3",
+    /// "sRGB (untagged)" …); `None` for formats without colour tags.
+    pub color_space: Option<String>,
+    /// Why the colour information is ignored (renders as sRGB), if so.
+    pub color_note: Option<String>,
+}
+
+/// File size, pixel size and colour profile of a screenshot or image asset
+/// (the assets panel's image preview).
+pub fn asset_info(app: &AppState, args: AssetInfoArgs) -> CmdResult<AssetInfo> {
+    let session = app.session()?;
+    let abs = media_file(session.dir(), &args.path)?;
+    let meta = std::fs::metadata(&abs)
+        .map_err(|e| CommandError::not_found(format!("`{}`: {e}", args.path)))?;
+    if !meta.is_file() {
+        return Err(CommandError::not_found(format!(
+            "`{}` is not a file",
             args.path
         )));
     }
-    let abs = session.dir().join(p);
+    let format = ext_of(&abs);
+    let (width, height) = dims(&abs).map_or((None, None), |(w, h)| (Some(w), Some(h)));
+    let tag = std::fs::File::open(&abs)
+        .ok()
+        .and_then(|f| vitrine_core::colorspace::sniff(std::io::BufReader::new(f)).ok())
+        .unwrap_or_default();
+    let (color_space, color_note) = if tag.kind == vitrine_core::colorspace::ImageKind::Other {
+        (None, None)
+    } else {
+        let conv = vitrine_core::colorspace::ToSrgb::new(&tag);
+        (
+            Some(conv.label().to_owned()),
+            conv.note().map(str::to_owned),
+        )
+    };
+    Ok(AssetInfo {
+        path: args.path,
+        bytes: meta.len(),
+        width,
+        height,
+        format,
+        color_space,
+        color_note,
+    })
+}
+
+/// A small PNG of a screenshot or image asset (aspect kept), cached by
+/// path, modification time and size. Raster files are decoded on their
+/// own (not kept in the render cache); SVGs go through the render
+/// context's asset cache.
+pub fn asset_thumbnail(app: &AppState, args: AssetThumbnailArgs) -> CmdResult<Arc<PreviewImage>> {
+    let session = app.session()?;
+    let abs = media_file(session.dir(), &args.path)?;
     let meta = std::fs::metadata(&abs)
         .map_err(|e| CommandError::not_found(format!("`{}`: {e}", args.path)))?;
     let edge = args
@@ -800,8 +870,11 @@ pub fn asset_thumbnail(app: &AppState, args: AssetThumbnailArgs) -> CmdResult<Ar
     {
         return Ok(hit.clone());
     }
-    let fit = |w: f64, h: f64| -> (u32, u32) {
-        let k = (f64::from(edge) / w.max(h)).min(1.0);
+    // Raster images are never upscaled; SVGs are drawn at the requested edge
+    // (a small natural size would leave the image preview tiny).
+    let fit = |w: f64, h: f64, upscale: bool| -> (u32, u32) {
+        let k = f64::from(edge) / w.max(h);
+        let k = if upscale { k } else { k.min(1.0) };
         (
             ((w * k).round() as u32).max(1),
             ((h * k).round() as u32).max(1),
@@ -814,14 +887,14 @@ pub fn asset_thumbnail(app: &AppState, args: AssetThumbnailArgs) -> CmdResult<Ar
         let (w, h) = assets
             .natural_size(&args.path)
             .map_err(|e| render_err(e.to_string()))?;
-        let (tw, th) = fit(w.max(1.0), h.max(1.0));
+        let (tw, th) = fit(w.max(1.0), h.max(1.0), true);
         let pm = assets
             .pixmap(&args.path, tw, th, Resample::Stretch, Filter::Bilinear)
             .map_err(|e| render_err(e.to_string()))?;
         (*pm).clone()
     } else {
         let img = SourceImage::load(&abs).map_err(|e| render_err(format!("{}: {e}", args.path)))?;
-        let (tw, th) = fit(f64::from(img.width), f64::from(img.height));
+        let (tw, th) = fit(f64::from(img.width), f64::from(img.height), false);
         img.resample(tw, th, None, Filter::Bilinear)
             .map_err(|e| render_err(e.to_string()))?
     };

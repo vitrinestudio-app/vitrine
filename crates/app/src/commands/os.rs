@@ -59,9 +59,14 @@ pub const HELP_URLS: &[&str] = &[
     "https://console.cloud.google.com/iam-admin/serviceaccounts",
     "https://play.google.com/console",
     "https://developers.google.com/android-publisher/getting_started",
+    // Apple Design Resources: Product Bezels to import as device frames (Help menu).
+    APPLE_BEZELS_URL,
     // Updates (ADR 0026): release notes / manual download (deb/rpm installs).
     RELEASES_URL,
 ];
+
+/// Apple Design Resources, Product Bezels section (Help menu).
+pub const APPLE_BEZELS_URL: &str = "https://developer.apple.com/design/resources/#product-bezels";
 
 /// The latest release on GitHub (update notice, manual download).
 pub const RELEASES_URL: &str = "https://github.com/vitrinestudio-app/vitrine/releases/latest";

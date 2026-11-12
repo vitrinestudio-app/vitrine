@@ -55,10 +55,15 @@ export function mountShell(app = {}) {
   const addMenu = createAddMenu(() => shell.canvas);
   const undo = h('button', { class: 'icon-btn', type: 'button', onclick: () => actions.undo() }, icon('undo'));
   const redo = h('button', { class: 'icon-btn', type: 'button', onclick: () => actions.redo() }, icon('redo'));
+  // The ☰ button, the app icon and the project name form one menu button
+  // (one large click target; Enter/Space open it too).
+  const logo = h('img', { class: 'logo', src: 'img/logo.svg', alt: '' });
+  if (app.menu) {
+    app.menu.classList.add('menu-trigger');
+    app.menu.append(logo, name);
+  }
   topbar.append(
-    app.menu ?? '',
-    h('img', { class: 'logo', src: 'img/logo.svg', alt: '' }),
-    name,
+    ...(app.menu ? [app.menu] : [logo, name]),
     h('span', { class: 'sep' }),
     canvas.el,
     target.el,
@@ -167,7 +172,9 @@ export function mountShell(app = {}) {
   renderTabs();
 
   // ----- inspector ------------------------------------------------------------------
-  inspector.mount(document.getElementById('inspector'), ctx);
+  const inspectorEl = document.getElementById('inspector');
+  inspector.mount(inspectorEl, ctx);
+  inspectorEl.append(inspectorResizer());
 
   // ----- centre view + bottom bar ---------------------------------------------------
   const viewEl = document.getElementById('view');
@@ -197,7 +204,7 @@ export function mountShell(app = {}) {
     const id = store.get().view;
     segmented.replaceChildren(
       ...VIEWS.map((v) =>
-        h('button', { type: 'button', 'aria-pressed': String(v.id === id), onclick: () => store.set({ view: v.id }) }, icon(v.icon), t(`view.${v.id}`)),
+        h('button', { type: 'button', title: t(`view.${v.id}`), 'aria-pressed': String(v.id === id), onclick: () => store.set({ view: v.id }) }, icon(v.icon), h('span', { class: 'seg-label' }, t(`view.${v.id}`))),
       ),
     );
     current?.unmount();
@@ -235,4 +242,100 @@ export function mountShell(app = {}) {
   renderTop();
   renderStatus();
   return shell;
+}
+
+// ----- inspector width -------------------------------------------------------------------
+
+const INSPECTOR_KEY = 'vitrine.inspector.width';
+const INSPECTOR_DEFAULT = 340;
+const INSPECTOR_MIN = 260;
+const INSPECTOR_MAX = 640;
+/** Room the centre view keeps when the inspector grows. */
+const CENTRE_MIN = 420;
+
+/**
+ * Drag handle on the inspector's left edge: sets `--inspector-w` on `.app`
+ * (min/max, never squeezing the centre below `CENTRE_MIN`), remembered per
+ * viewer in localStorage. Double-click resets; arrow keys step 16 px.
+ */
+function inspectorResizer() {
+  const app = document.getElementById('app');
+  const read = () => {
+    try {
+      return Number(localStorage.getItem(INSPECTOR_KEY)) || INSPECTOR_DEFAULT;
+    } catch {
+      return INSPECTOR_DEFAULT;
+    }
+  };
+  let width = read();
+  const clamp = (w) => {
+    const left = document.getElementById('sidebar')?.getBoundingClientRect().width || 232;
+    const max = Math.min(INSPECTOR_MAX, window.innerWidth - left - CENTRE_MIN);
+    return Math.round(Math.max(INSPECTOR_MIN, Math.min(max, w)));
+  };
+  const handle = h('div', {
+    class: 'inspector-resizer',
+    role: 'separator',
+    tabindex: '0',
+    'aria-orientation': 'vertical',
+    'aria-label': t('inspector.resize'),
+    'aria-valuemin': String(INSPECTOR_MIN),
+    'aria-valuemax': String(INSPECTOR_MAX),
+    title: t('inspector.resize'),
+  });
+  const apply = () => {
+    const w = clamp(width);
+    app.style.setProperty('--inspector-w', `${w}px`);
+    handle.setAttribute('aria-valuenow', String(w));
+  };
+  const save = () => {
+    try {
+      if (width === INSPECTOR_DEFAULT) localStorage.removeItem(INSPECTOR_KEY);
+      else localStorage.setItem(INSPECTOR_KEY, String(width));
+    } catch {
+      /* private mode */
+    }
+  };
+  handle.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    const x0 = e.clientX;
+    const w0 = clamp(width);
+    handle.classList.add('dragging');
+    document.body.classList.add('resizing-inspector');
+    const move = (ev) => {
+      width = clamp(w0 + (x0 - ev.clientX));
+      apply();
+    };
+    const up = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', up);
+      handle.classList.remove('dragging');
+      document.body.classList.remove('resizing-inspector');
+      save();
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  });
+  handle.addEventListener('dblclick', () => {
+    width = INSPECTOR_DEFAULT;
+    apply();
+    save();
+  });
+  handle.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? 64 : 16;
+    if (e.key === 'ArrowLeft') width = clamp(clamp(width) + step);
+    else if (e.key === 'ArrowRight') width = clamp(clamp(width) - step);
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+    apply();
+    save();
+  });
+  window.addEventListener('resize', apply);
+  requestAnimationFrame(apply);
+  return handle;
 }

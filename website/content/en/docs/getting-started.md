@@ -34,7 +34,8 @@ is organised* appears. It's worth a look; it's always in the Help menu.
 
 {{< shot src="images/editor-dark.jpg" alt="The Vitrine Studio editor in dark mode: sidebar on the left, canvas in the middle, inspector on the right." caption="The editor (an earlier version – the left tab now says *Canvases*)." >}}
 
-- **Top bar:** the ☰ menu; the pickers **Canvas**, **Target**, **Language**
+- **Top bar:** the ☰ menu (also opens from the app icon and the project
+  name); the pickers **Canvas**, **Target**, **Language**
   and **Variant** decide what you see and edit; the targets button next to
   the target picker opens *Canvases & targets*; **Add** puts a new element on
   the visible page; on the right the assistant indicator, **Export**, the

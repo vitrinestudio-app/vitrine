@@ -141,4 +141,20 @@ fn probe_upload_thumbnail_and_usage() {
     let svg = image(&app, "asset_thumbnail", json!({"path": "assets/logo.svg"}));
     assert!(svg.width.max(svg.height) <= THUMBNAIL_EDGE);
     assert!(dispatch(&app, "asset_thumbnail", json!({"path": "../x.png"})).is_err());
+
+    // asset_info: file facts for the image preview.
+    let info = call(
+        &app,
+        "asset_info",
+        json!({"path": "screenshots/en/ios-phone/home.png"}),
+    );
+    assert!(info["bytes"].as_u64().unwrap() > 0);
+    assert!(info["width"].as_u64().unwrap() > 0);
+    assert_eq!(info["format"], "png");
+    assert!(info["color_space"].as_str().unwrap().starts_with("sRGB"));
+    let svg = call(&app, "asset_info", json!({"path": "assets/logo.svg"}));
+    assert_eq!(svg["format"], "svg");
+    assert!(svg["color_space"].is_null());
+    assert!(dispatch(&app, "asset_info", json!({"path": "../x.png"})).is_err());
+    assert!(dispatch(&app, "asset_info", json!({"path": "assets/missing.png"})).is_err());
 }

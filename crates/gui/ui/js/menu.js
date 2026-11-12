@@ -26,6 +26,7 @@ import { invoke, isTauri } from './transport.js';
 const ITEMS = [
   { id: 'newProject', label: 'project.menu.new', key: 'mod+n' },
   { id: 'openProject', label: 'project.menu.open', key: 'mod+o' },
+  { id: 'closeProject', label: 'project.menu.close', project: true },
   { sep: true },
   { id: 'projectSettings', label: 'project.menu.project_settings', project: true },
   { id: 'targets', label: 'project.menu.targets', project: true },
@@ -35,8 +36,6 @@ const ITEMS = [
   { sep: true },
   { id: 'appSettings', label: 'project.menu.app_settings', key: 'mod+,' },
   { id: 'checkUpdates', label: 'update.menu', app: true },
-  { sep: true },
-  { id: 'closeProject', label: 'project.menu.close', project: true },
 ];
 
 /**
@@ -49,8 +48,19 @@ const HELP_ITEMS = [
   { id: 'gestures', label: 'help.gestures.menu', hint: '?' },
 ];
 
-/** Links of the native Help menu (must be allow-listed in `open_url`). */
+/**
+ * Link at the top of the Help menu (in-app help section and native Help
+ * menu; allow-listed in `open_url` as `APPLE_BEZELS_URL`).
+ */
+const BEZELS_LINK = {
+  id: 'help:apple-bezels',
+  label: 'native.help.apple_bezels',
+  url: 'https://developer.apple.com/design/resources/#product-bezels',
+};
+
+/** Store docs links of the native Help menu (must be allow-listed in `open_url`). */
 const HELP_LINKS = [
+  BEZELS_LINK,
   {
     id: 'help:apple-keys',
     label: 'native.help.apple_keys',
@@ -65,13 +75,14 @@ const HELP_LINKS = [
  */
 export function createMenu(handlers) {
   // "Check for updates…" only in the app (the dev bridge cannot update).
-  const items = [...ITEMS.filter((it) => !it.app || isTauri), { sep: true }, ...HELP_ITEMS];
-  const button = h('button', { class: 'icon-btn menu-btn', type: 'button', title: t('project.menu.title'), 'aria-haspopup': 'menu' }, icon('menu'));
+  const items = [...ITEMS.filter((it) => !it.app || isTauri), { sep: true }, { ...BEZELS_LINK, link: true }, ...HELP_ITEMS];
+  const button = h('button', { class: 'icon-btn menu-btn', type: 'button', title: t('project.menu.title'), 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('menu'));
   let popup = null;
 
   function close() {
     popup?.remove();
     popup = null;
+    button.setAttribute('aria-expanded', 'false');
     document.removeEventListener('mousedown', onDown, true);
     document.removeEventListener('keydown', onKey, true);
   }
@@ -82,6 +93,14 @@ export function createMenu(handlers) {
     if (e.key === 'Escape') {
       e.stopPropagation();
       close();
+      button.focus({ preventScroll: true });
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      // Step through the enabled entries (wrapping).
+      e.preventDefault();
+      const all = [...popup.querySelectorAll('.menu-item:not(:disabled)')];
+      const i = all.indexOf(document.activeElement);
+      const next = e.key === 'ArrowDown' ? (i + 1) % all.length : (i <= 0 ? all.length : i) - 1;
+      all[next]?.focus();
     }
   }
   button.addEventListener('click', () => {
@@ -102,7 +121,8 @@ export function createMenu(handlers) {
                 disabled: it.project && !hasProject,
                 onclick: () => {
                   close();
-                  handlers[it.id]?.();
+                  if (it.link) api.openUrl(it.url).catch((e) => console.warn('open_url', e));
+                  else handlers[it.id]?.();
                 },
               },
               h('span', { class: 'grow' }, t(it.label)),
@@ -111,6 +131,8 @@ export function createMenu(handlers) {
       ),
     );
     document.body.append(popup);
+    button.setAttribute('aria-expanded', 'true');
+    popup.querySelector('.menu-item:not(:disabled)')?.focus({ preventScroll: true });
     const r = button.getBoundingClientRect();
     popup.style.top = `${r.bottom + 4}px`;
     popup.style.left = `${r.left}px`;
@@ -148,7 +170,7 @@ function nativeSpec(hasProject) {
   // File = the in-app entries; App settings and Check for updates move to
   // the application menu.
   const file = ITEMS.filter((it) => it.id !== 'appSettings' && it.id !== 'checkUpdates')
-    .filter((it, i, all) => !(it.sep && all[i - 1]?.sep))
+    .filter((it, i, all) => !(it.sep && (all[i - 1]?.sep || i === all.length - 1)))
     .map((it) => (it.sep ? sep : item(it.id, t(it.label), it.key, !it.project || hasProject)));
   const settings = ITEMS.find((it) => it.id === 'appSettings');
   return {
@@ -191,7 +213,13 @@ function nativeSpec(hasProject) {
       {
         label: t('native.help'),
         role: 'help',
-        items: [...HELP_ITEMS.map((it) => item(it.id, t(it.label))), sep, ...HELP_LINKS.map((l) => item(l.id, t(l.label)))],
+        items: [
+          item(BEZELS_LINK.id, t(BEZELS_LINK.label)),
+          sep,
+          ...HELP_ITEMS.map((it) => item(it.id, t(it.label))),
+          sep,
+          ...HELP_LINKS.filter((l) => l !== BEZELS_LINK).map((l) => item(l.id, t(l.label))),
+        ],
       },
     ],
   };

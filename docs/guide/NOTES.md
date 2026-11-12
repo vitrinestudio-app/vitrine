@@ -40,7 +40,7 @@ guide pages in both languages.
 ## 3. How-to notes
 
 ### Canvases, targets and variants in the GUI (2026-11-10)
-- One place: menu → "Canvases & targets…" ("Leinwände & Ausgabeziele …", also the targets button next to the target picker). Left: every canvas with its targets; click a canvas header for the canvas pane, a target for its form.
+- One place: menu → "Canvases & targets…" ("Leinwände & Ziele …", also the targets button next to the target picker). Left: every canvas with its targets; click a canvas header for the canvas pane, a target for its form.
 - New canvas ("+ New canvas"): start with *Empty* (one light background), *Headline + device* (per page a text with placeholder "Your headline" in the default language under key `<canvas>.<page>.title`, plus a device whose screenshot key is the page id) or *Copy of a canvas*. Page format = a store preset size (or a custom aspect); "Also add this target" creates the matching target in the same undo step (a canvas without targets cannot be shown or exported). Page count default 3 for portrait pages, 1 for landscape.
 - Copy of a canvas = KONZEPT "duplicate canvas": pages, backgrounds, elements (new unique ids, e.g. `title-plan-2`; element ids are unique across the project), variants with re-keyed overrides. Options: also copy its targets (ids `<target>-<new canvas>`), own copies of the texts (new keys `<new canvas>.<key>` with all translations; off = both canvases share the translations).
 - Canvas pane: rename (targets follow), Duplicate…, Remove (confirmation lists elements, variants and the targets that go with it; refused for the last canvas; one undo step), "Show in editor", targets of the canvas + "Add target", variants.
@@ -48,6 +48,12 @@ guide pages in both languages.
 - Top-bar pickers (canvas, target, language, variant) end with "+ …" entries: new canvas → canvases & targets dialog (new canvas form), add target → dialog in add mode for the current canvas, add language → project settings → Languages with the input focused, new variant → New variant dialog (afterwards the editor shows the new variant, so edits become its overrides).
 - Also reachable: Canvases sidebar tab ("New canvas…", "Manage…", double-click a canvas) and the inspector's canvas settings (variants: duplicate, remove, "New variant…", "Manage…").
 - Undo/redo of canvas/target changes keeps the view valid (unknown canvas/target/variant falls back to the first one).
+
+### Editor details (owner feedback 2026-11-12)
+- ☰ menu: opens from the ☰ button, the app icon or the project name (one button; Enter/Space, ↑/↓ through the entries, Esc). Order: New, Open, Close project, …; Help part starts with "Download Apple Product Bezels" (opens developer.apple.com/design/resources/#product-bezels; also at the top of the native macOS Help menu).
+- Inspector: default width 340 px; drag its left edge to resize (260–640 px, never squeezing the canvas below ~420 px), double-click the edge = default; remembered per viewer (localStorage).
+- Image preview: click a thumbnail in Assets (screenshots and images) or the eye button next to an image element's asset → large image, file name, pixel size, file size, format, colour profile (warning text when the profile is ignored and the file renders as sRGB), "used by" chips (click selects the element). ←/→ step through the section's images, Esc / click outside closes. SVGs are drawn at the preview size.
+- Page backgrounds (elements of kind `background`, e.g. `{id: bg-parents, kind: background, page: 4, z: -20, fill: "@navy"}`) fill their home page and are not hit by canvas clicks or the selection frame. Select them by double-clicking empty page space, right-click → "Select background …", in Layers (they sit at the bottom: low z), or canvas settings (nothing selected) → "Page backgrounds" (also "Add page background"). Inspector: home page, fill (colour/style ref, linear/radial gradient, image + fit/focus), opacity, z, clip, visible, shown in targets/languages. No span: a page background always covers exactly its home page.
 
 ### Store sizes (verified in App Store Connect web app, 2026-11-10)
 - Required iPhone set: "iPhone with Dynamic Island (medium display)" = 6.3" = 1206×2622 → `APP_IPHONE_61`. All other iPhone sizes optional (scaled by Apple).

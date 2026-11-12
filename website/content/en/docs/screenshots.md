@@ -51,6 +51,10 @@ screenshots/
 
 **Assets → Screenshots** lists every key per language and variant, marks
 *missing* and *unused* ones, and which are borrowed from a fallback language.
+Click a thumbnail (screenshots and images) for the **preview**: the image
+large with file name, pixel size, file size, format, colour profile (with a
+warning when it is ignored) and the elements using it; <kbd>←</kbd>/<kbd>→</kbd>
+step through the list, <kbd>Esc</kbd> or a click outside closes it.
 
 ## Importing a folder (and fastlane)
 

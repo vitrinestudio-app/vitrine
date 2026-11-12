@@ -1,10 +1,5 @@
 /* Inspector, its form controls and the canvas settings (task 2.6). */
 
-/* A little more room for the inspector than the shell default. */
-.app {
-  grid-template-columns: 232px minmax(0, 1fr) 288px;
-}
-
 .insp-sub {
   font-weight: 500;
   max-width: 140px;
@@ -359,7 +354,7 @@ body.scrubbing * {
 
 .insp-select {
   padding: 0 2px;
-  /* Long option labels must not widen the 288 px panel. */
+  /* Long option labels must not widen the panel. */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -799,4 +794,43 @@ body.scrubbing * {
 
 .insp-row.is-lang-overridden .mini-btn.reset {
   color: var(--lang-override);
+}
+
+/* Canvas settings: background elements of the canvas (click selects). */
+.page-bg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 12px 4px;
+}
+
+.page-bg-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--fg);
+  text-align: left;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  outline: none;
+}
+
+.page-bg-item:hover {
+  background: var(--bg-hover);
+}
+
+.page-bg-item:focus-visible {
+  box-shadow: var(--focus);
+}
+
+.page-bg-item .grow {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
