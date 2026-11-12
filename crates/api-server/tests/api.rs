@@ -662,3 +662,29 @@ async fn an_old_database_is_migrated_and_backfilled() {
     assert_eq!(s, StatusCode::OK);
     assert_eq!(v["templates"].as_array().unwrap().len(), 1);
 }
+
+#[tokio::test]
+async fn too_large_uploads_name_the_server_limit() {
+    let tmp = tempfile::tempdir().unwrap();
+    let config = Config {
+        data_dir: tmp.path().to_owned(),
+        upload_tokens: vec![StaticToken {
+            token: "up-1".into(),
+            login: "octocat".into(),
+            github_id: None,
+        }],
+        max_upload: 1024 * 1024,
+        ..Config::default()
+    };
+    let app = router(AppState::open(config).unwrap());
+    let (s, v) = json_of(&app, get("/health")).await;
+    assert_eq!((s, v["max_upload_mb"].as_u64()), (StatusCode::OK, Some(1)));
+    let (s, v) = json_of(&app, upload(Some("up-1"), vec![0u8; 2 * 1024 * 1024])).await;
+    assert_eq!(s, StatusCode::PAYLOAD_TOO_LARGE, "{v}");
+    assert_eq!(v["code"], "too_large");
+    assert_eq!(v["max_upload_mb"], 1);
+    assert!(
+        v["error"].as_str().unwrap().contains("upload limit of 1 MB"),
+        "{v}"
+    );
+}

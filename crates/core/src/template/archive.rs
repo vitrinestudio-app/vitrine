@@ -23,17 +23,41 @@ pub struct Limits {
     pub max_depth: usize,
 }
 
-impl Default for Limits {
-    /// 50 MB packed, 150 MB unpacked, 25 MB per file, 500 files, depth 6.
-    fn default() -> Self {
+const MB: u64 = 1024 * 1024;
+
+impl Limits {
+    /// Largest package the app, the CLI and the gallery client read (MB):
+    /// generous, so a local pre-check never refuses what a gallery server
+    /// with a raised `VITRINE_API_MAX_UPLOAD_MB` accepts. The server
+    /// enforces its own limit ([`Self::for_package`]).
+    pub const CLIENT_PACKAGE_MB: u64 = 250;
+
+    /// The limits for packages of at most `max_package` bytes: unpacked at
+    /// most twice that (at least 150 MB) – images and fonts barely
+    /// compress, so more points to a zip bomb –, 50 MB per file, 1000
+    /// files, depth 6.
+    pub fn for_package(max_package: u64) -> Self {
         Self {
-            max_package: 50 * 1024 * 1024,
-            max_total: 150 * 1024 * 1024,
-            max_file: 25 * 1024 * 1024,
-            max_files: 500,
+            max_package,
+            max_total: max_package.saturating_mul(2).max(150 * MB),
+            max_file: 50 * MB,
+            max_files: 1000,
             max_depth: 6,
         }
     }
+}
+
+impl Default for Limits {
+    /// The client limits: [`Limits::for_package`] of
+    /// [`Limits::CLIENT_PACKAGE_MB`] (250 MB packed, 500 MB unpacked).
+    fn default() -> Self {
+        Self::for_package(Self::CLIENT_PACKAGE_MB * MB)
+    }
+}
+
+/// `12.3 MB`.
+fn mb(bytes: u64) -> String {
+    format!("{:.1} MB", bytes as f64 / MB as f64)
 }
 
 /// Checks a package path: relative, `/`-separated, no empty, `.`, `..` or
@@ -118,8 +142,8 @@ impl Collector {
         self.total += data.len() as u64;
         if self.total > self.limits.max_total {
             return Err(TemplateError::invalid(format!(
-                "the template unpacks to more than {} MB",
-                self.limits.max_total / (1024 * 1024)
+                "the template unpacks to more than {} (limit for unpacked files)",
+                mb(self.limits.max_total)
             )));
         }
         if path == MANIFEST_FILE {
@@ -145,10 +169,7 @@ impl Collector {
 }
 
 fn too_big(path: &str, max: u64) -> TemplateError {
-    TemplateError::invalid(format!(
-        "`{path}` is larger than {} MB",
-        max / (1024 * 1024)
-    ))
+    TemplateError::invalid(format!("`{path}` is larger than {}", mb(max)))
 }
 
 impl Package {
@@ -157,8 +178,9 @@ impl Package {
     pub fn from_zip_bytes(bytes: &[u8], limits: Limits) -> Result<Self, TemplateError> {
         if bytes.len() as u64 > limits.max_package {
             return Err(TemplateError::invalid(format!(
-                "the template file is larger than {} MB",
-                limits.max_package / (1024 * 1024)
+                "the template file is {}, larger than the limit of {}",
+                mb(bytes.len() as u64),
+                mb(limits.max_package)
             )));
         }
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes))
@@ -204,9 +226,10 @@ impl Package {
         let meta = fs::metadata(path).map_err(TemplateError::io(path))?;
         if meta.len() > limits.max_package {
             return Err(TemplateError::invalid(format!(
-                "{}: larger than {} MB",
+                "{}: the template file is {}, larger than the limit of {}",
                 path.display(),
-                limits.max_package / (1024 * 1024)
+                mb(meta.len()),
+                mb(limits.max_package)
             )));
         }
         let bytes = fs::read(path).map_err(TemplateError::io(path))?;
