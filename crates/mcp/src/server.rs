@@ -54,6 +54,8 @@ pub enum Host {
 pub struct VitrineMcp {
     app: Arc<AppState>,
     progress: Option<Arc<ProgressRelay>>,
+    /// Exports running in the background (`export`, `export_status`).
+    exports: Arc<crate::jobs::ExportJobs>,
     host: Host,
     tool_router: ToolRouter<Self>,
     /// One MCP session of a GUI-hosted server (see [`Self::for_session`]).
@@ -135,6 +137,7 @@ impl VitrineMcp {
         Self {
             app,
             progress,
+            exports: Arc::default(),
             host,
             tool_router,
             session: None,
@@ -165,6 +168,10 @@ impl VitrineMcp {
 
     pub(crate) fn progress(&self) -> Option<&Arc<ProgressRelay>> {
         self.progress.as_ref()
+    }
+
+    pub(crate) fn exports(&self) -> &Arc<crate::jobs::ExportJobs> {
+        &self.exports
     }
 
     /// All tool definitions (for tests and docs).

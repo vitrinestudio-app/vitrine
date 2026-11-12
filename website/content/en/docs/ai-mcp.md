@@ -96,8 +96,12 @@ to keep the port.
 - **See the result:** `render_preview` returns the rendered image – one
   exported image, the whole canvas with gaps, or the store gallery – plus the
   problems of that target and language. `layout_report` shows how each text
-  was fitted.
-- **Check and produce:** validate, export, import screenshots and fonts.
+  was fitted. The gallery can be shown on the store's dark page
+  (`background: dark`), sent as JPEG for big sets, or saved into the project
+  (`out_file`, e.g. for a README).
+- **Check and produce:** validate, export, import screenshots and fonts. An
+  export that takes longer than about 45 seconds keeps running in the
+  background; the assistant asks `export_status` until it is done.
 - **Templates:** list, save, insert.
 - **Uploads:** plan, and execute with your confirmation (below).
 

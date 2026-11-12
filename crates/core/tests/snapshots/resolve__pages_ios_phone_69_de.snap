@@ -282,6 +282,7 @@ frame:
     y: 0
   gallery:
     background: "#FFFFFF"
+    background_dark: "#000000"
     gap: 45
     preset: appstore-iphone
     radius:

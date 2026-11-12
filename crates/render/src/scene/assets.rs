@@ -82,12 +82,66 @@ struct DecodedEntry {
     data: Arc<Decoded>,
     /// Raster image without any transparent pixel (SVGs never count).
     opaque: bool,
+    /// Memory held (raster pixels; SVG trees count as small).
+    bytes: usize,
+    /// Access counter value of the last use (least recently used goes
+    /// first when the budget is exceeded).
+    used: u64,
 }
+
+/// Decoded assets with a memory budget (a project with hundreds of
+/// full-size screenshots and photos must not keep all of them decoded).
+#[derive(Default)]
+struct DecodedCache {
+    map: HashMap<String, DecodedEntry>,
+    bytes: usize,
+    clock: u64,
+}
+
+impl DecodedCache {
+    fn get(&mut self, rel: &str, mtime: Option<SystemTime>) -> Option<&DecodedEntry> {
+        self.clock += 1;
+        let clock = self.clock;
+        let e = self.map.get_mut(rel).filter(|e| e.mtime == mtime)?;
+        e.used = clock;
+        Some(e)
+    }
+
+    fn insert(&mut self, rel: String, mut entry: DecodedEntry, budget: usize) {
+        if let Some(old) = self.map.remove(&rel) {
+            self.bytes -= old.bytes;
+        }
+        while self.bytes + entry.bytes > budget && !self.map.is_empty() {
+            let oldest = self
+                .map
+                .iter()
+                .min_by_key(|(_, e)| e.used)
+                .map(|(k, _)| k.clone())
+                .expect("not empty");
+            if let Some(e) = self.map.remove(&oldest) {
+                self.bytes -= e.bytes;
+            }
+        }
+        self.clock += 1;
+        entry.used = self.clock;
+        self.bytes += entry.bytes;
+        self.map.insert(rel, entry);
+    }
+
+    fn clear(&mut self) {
+        self.map.clear();
+        self.bytes = 0;
+    }
+}
+
+/// Budget of the decoded-asset cache; least recently used images are
+/// dropped beyond it (they are decoded again when needed).
+const DECODED_BUDGET_BYTES: usize = 1536 * 1024 * 1024;
 
 /// Decoded and resampled assets below one project folder.
 pub struct AssetCache {
     root: PathBuf,
-    decoded: Mutex<HashMap<String, DecodedEntry>>,
+    decoded: Mutex<DecodedCache>,
     scaled: Mutex<(HashMap<ScaledKey, Arc<Pixmap>>, usize)>,
 }
 
@@ -103,7 +157,7 @@ impl AssetCache {
     pub fn new(root: impl Into<PathBuf>) -> Self {
         Self {
             root: root.into(),
-            decoded: Mutex::new(HashMap::new()),
+            decoded: Mutex::new(DecodedCache::default()),
             scaled: Mutex::new((HashMap::new(), 0)),
         }
     }
@@ -132,6 +186,11 @@ impl AssetCache {
 
     /// Decoded asset, re-read when its mtime changed.
     pub fn decoded(&self, rel: &str) -> Result<(Arc<Decoded>, Option<SystemTime>), AssetError> {
+        self.entry(rel).map(|(data, mtime, _)| (data, mtime))
+    }
+
+    /// Decoded asset, its mtime and whether it is opaque.
+    fn entry(&self, rel: &str) -> Result<(Arc<Decoded>, Option<SystemTime>, bool), AssetError> {
         let path = self.resolve_path(rel)?;
         let mtime = std::fs::metadata(&path)
             .map_err(|e| AssetError::Read {
@@ -140,15 +199,16 @@ impl AssetCache {
             })?
             .modified()
             .ok();
-        if let Some(e) = lock(&self.decoded).get(rel)
-            && e.mtime == mtime
-        {
-            return Ok((e.data.clone(), mtime));
+        if let Some(e) = lock(&self.decoded).get(rel, mtime) {
+            return Ok((e.data.clone(), mtime, e.opaque));
         }
         let data = Arc::new(decode(&path, rel)?);
-        let opaque = match &*data {
-            Decoded::Raster(r) => r.rgba.as_chunks::<4>().0.iter().all(|p| p[3] == 255),
-            Decoded::Svg(_) => false,
+        let (opaque, bytes) = match &*data {
+            Decoded::Raster(r) => (
+                r.rgba.as_chunks::<4>().0.iter().all(|p| p[3] == 255),
+                r.rgba.len(),
+            ),
+            Decoded::Svg(_) => (false, 64 * 1024),
         };
         lock(&self.decoded).insert(
             rel.to_owned(),
@@ -156,19 +216,19 @@ impl AssetCache {
                 mtime,
                 data: data.clone(),
                 opaque,
+                bytes,
+                used: 0,
             },
+            DECODED_BUDGET_BYTES,
         );
-        Ok((data, mtime))
+        Ok((data, mtime, opaque))
     }
 
     /// Is the asset a raster image without transparent pixels? Its shadow
     /// can then be drawn from its rectangle (`false` for SVGs, images with
     /// alpha and assets that cannot be decoded).
     pub fn is_opaque(&self, rel: &str) -> bool {
-        if self.decoded(rel).is_err() {
-            return false;
-        }
-        lock(&self.decoded).get(rel).is_some_and(|e| e.opaque)
+        self.entry(rel).is_ok_and(|(_, _, opaque)| opaque)
     }
 
     /// Natural size of an asset (px or SVG user units).
@@ -333,6 +393,39 @@ fn pad(inner: &Pixmap, w: u32, h: u32, bg: [u8; 4]) -> Pixmap {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn entry(bytes: usize) -> DecodedEntry {
+        DecodedEntry {
+            mtime: None,
+            data: Arc::new(Decoded::Raster(SourceImage {
+                width: 1,
+                height: 1,
+                rgba: vec![0; 4],
+            })),
+            opaque: false,
+            bytes,
+            used: 0,
+        }
+    }
+
+    #[test]
+    fn decoded_cache_drops_the_least_recently_used_beyond_its_budget() {
+        let mut c = DecodedCache::default();
+        c.insert("a".into(), entry(40), 100);
+        c.insert("b".into(), entry(40), 100);
+        assert!(c.get("a", None).is_some()); // a is now newer than b
+        c.insert("c".into(), entry(40), 100);
+        assert!(c.get("b", None).is_none(), "b was the oldest");
+        assert!(c.get("a", None).is_some() && c.get("c", None).is_some());
+        assert_eq!(c.bytes, 80);
+        // Replacing an entry does not count it twice; one huge entry stays.
+        c.insert("a".into(), entry(50), 100);
+        assert_eq!(c.bytes, 90);
+        c.insert("big".into(), entry(500), 100);
+        assert_eq!((c.map.len(), c.bytes), (1, 500));
+        c.clear();
+        assert_eq!((c.map.len(), c.bytes), (0, 0));
+    }
 
     #[test]
     fn rejects_escaping_paths() {

@@ -62,6 +62,47 @@ pub struct DeviceInfo {
     /// Foldables: this model's fold state and the model of the other one.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fold: Option<FoldInfo>,
+    /// Parametric frame geometry per supported orientation for an element
+    /// [`FRAME_REFERENCE_WIDTH`] lu wide (scales linearly with `width`);
+    /// empty for `aspect: free` models.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub frame: Vec<FrameInfo>,
+}
+
+/// Element width the [`FrameInfo`] numbers refer to (lu).
+pub const FRAME_REFERENCE_WIDTH: f64 = 1000.0;
+
+/// Frame geometry of a device element in one orientation (lu, element
+/// [`FRAME_REFERENCE_WIDTH`] wide, relative to the element box's top-left
+/// corner before rotation).
+#[derive(Debug, Clone, Serialize)]
+pub struct FrameInfo {
+    pub orientation: Orientation,
+    pub width: f64,
+    pub height: f64,
+    /// Screen rect `{x, y, w, h}` and its corner radius.
+    pub screen: [f64; 4],
+    pub screen_radius: f64,
+    /// Corner radius of the device body.
+    pub corner_radius: f64,
+}
+
+fn frame_info(d: &catalog::Device) -> Vec<FrameInfo> {
+    let r = |v: f64| (v * 10.0).round() / 10.0;
+    d.orientations
+        .iter()
+        .filter_map(|&o| {
+            let m = d.frame_metrics(o, FRAME_REFERENCE_WIDTH)?;
+            Some(FrameInfo {
+                orientation: o,
+                width: r(m.width),
+                height: r(m.height),
+                screen: [r(m.screen.x), r(m.screen.y), r(m.screen.w), r(m.screen.h)],
+                screen_radius: r(m.screen.radius),
+                corner_radius: r(m.corner_radius),
+            })
+        })
+        .collect()
 }
 
 /// Fold link of a foldable model (`fold:` in `devices.yaml`).
@@ -114,6 +155,10 @@ pub struct GalleryInfo {
     pub radius_x: f64,
     pub radius_y: f64,
     pub background: String,
+    /// Page colour of the store in dark mode (gallery preview
+    /// `background: dark`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_dark: Option<String>,
     pub measured: String,
     pub source: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -203,6 +248,7 @@ pub fn catalog_devices(_: &AppState, _: NoArgs) -> CmdResult<Vec<DeviceInfo>> {
                 state: f.state,
                 other: f.other.clone(),
             }),
+            frame: frame_info(d),
         })
         .collect())
 }
@@ -245,6 +291,7 @@ pub fn catalog_galleries(_: &AppState, _: NoArgs) -> CmdResult<Vec<GalleryInfo>>
             radius_x: g.radius.x,
             radius_y: g.radius.y,
             background: g.background.to_string(),
+            background_dark: g.background_dark.map(|c| c.to_string()),
             measured: snake(g.measured),
             source: g.source.clone(),
             note: g.note.clone(),

@@ -40,6 +40,7 @@ pub mod docs;
 pub mod host;
 #[cfg(feature = "http")]
 pub mod http;
+pub mod jobs;
 pub mod output;
 pub mod params;
 pub mod progress;
