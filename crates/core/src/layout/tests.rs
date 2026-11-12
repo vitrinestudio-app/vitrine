@@ -769,3 +769,126 @@ fn variable_fonts_follow_the_requested_weight() {
     let face = l.fonts().face(out.runs[0].font).unwrap();
     assert!(face.italic && out.runs[0].skew.is_none());
 }
+
+/// Bundled script fonts (ADR 0028): RTL, Indic and Thai texts lay out
+/// without missing glyphs or emergency breaks; Indic conjuncts shape into
+/// fewer glyphs than characters; the script font joins the chain only for
+/// texts that need it (lazy registration stays lazy for Latin).
+#[test]
+fn complex_scripts_use_the_bundled_script_fonts() {
+    let mut l = layouter();
+    let style = headline(60.0);
+    for (lang, text, family) in [
+        ("ar", "خطط حديقتك في دقائق وتابع كل شيء", "Noto Sans Arabic"),
+        ("he", "תכננו את הגינה שלכם בדקות", "Noto Sans Hebrew"),
+        (
+            "hi",
+            "मिनटों में अपने बगीचे की योजना बनाएं",
+            "Noto Sans Devanagari",
+        ),
+        (
+            "bn",
+            "মিনিটের মধ্যে আপনার বাগানের পরিকল্পনা করুন",
+            "Noto Sans Bengali",
+        ),
+        (
+            "ta",
+            "நிமிடங்களில் உங்கள் தோட்டத்தைத் திட்டமிடுங்கள்",
+            "Noto Sans Tamil",
+        ),
+        (
+            "th",
+            "วางแผนสวนของคุณได้ภายในไม่กี่นาทีและติดตามทุกอย่าง",
+            "Noto Sans Thai",
+        ),
+    ] {
+        let out = l.layout(&TextInput {
+            lang: Some(lang),
+            ..TextInput::new(text, &style, 600.0)
+        });
+        assert!(out.diagnostics.is_empty(), "{lang}: {:?}", out.diagnostics);
+        assert!(out.lines.len() >= 2, "{lang}: wraps");
+        assert!(
+            out.lines.iter().all(|x| x.end != LineEnd::Emergency),
+            "{lang}"
+        );
+        let fams: BTreeSet<&str> = out
+            .runs
+            .iter()
+            .filter_map(|r| l.fonts().face(r.font))
+            .map(|f| f.family.as_str())
+            .collect();
+        assert!(fams.contains(family), "{lang}: {fams:?}");
+    }
+    // Devanagari "क्षत्रिय": conjuncts → fewer glyphs than characters.
+    let out = l.layout(&TextInput::new("क्षत्रिय", &style, 600.0));
+    let glyphs: usize = out.runs.iter().map(|r| r.glyphs.len()).sum();
+    assert!(glyphs < "क्षत्रिय".chars().count(), "{glyphs} glyphs");
+    // Latin texts never register a script font.
+    let mut fresh = layouter();
+    fresh.layout(&TextInput::new("Hello", &style, 600.0));
+    assert!(
+        fresh
+            .loaded_bundled_families()
+            .iter()
+            .all(|f| !f.starts_with("noto")),
+        "{:?}",
+        fresh.loaded_bundled_families()
+    );
+}
+
+/// RTL lines are aligned like LTR ones: the model's alignment is physical
+/// and applied once (parley's `Start` alignment right-aligned RTL lines
+/// before, and centred text was pushed out of its box).
+#[test]
+fn rtl_lines_follow_the_physical_alignment() {
+    let mut l = layouter();
+    let style = headline(60.0);
+    let text = "خطط حديقتك في دقائق وتابع كل شيء";
+    for align in [Align::Left, Align::Center, Align::Right] {
+        let out = l.layout(&TextInput {
+            align,
+            lang: Some("ar"),
+            ..TextInput::new(text, &style, 600.0)
+        });
+        // Visible glyphs (the hanging trailing space may sit left of 0).
+        let xs: Vec<f32> = out
+            .runs
+            .iter()
+            .filter(|r| {
+                l.fonts()
+                    .face(r.font)
+                    .is_some_and(|f| f.family == "Noto Sans Arabic")
+            })
+            .flat_map(|r| r.glyphs.iter().map(|g| g.x))
+            .collect();
+        let (min, max) = xs
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), x| (a.min(*x), b.max(*x)));
+        assert!(min >= -0.5 && max <= 600.0, "{align:?}: {min}..{max}");
+        match align {
+            Align::Left => assert!(min < 40.0, "left: starts at {min}"),
+            Align::Right => assert!(max > 520.0, "right: ends at {max}"),
+            Align::Center => assert!(min > 20.0 && max < 580.0, "center: {min}..{max}"),
+        }
+    }
+}
+
+/// Korean breaks between words (spaces), not between syllables.
+#[test]
+fn korean_keeps_words_together() {
+    let mut l = layouter();
+    let style = headline(60.0);
+    let text = "몇 분 만에 정원을 계획하세요";
+    let words: Vec<&str> = text.split(' ').collect();
+    let out = l.layout(&TextInput {
+        lang: Some("ko"),
+        ..TextInput::new(text, &style, 300.0)
+    });
+    assert!(out.lines.len() > 1);
+    for line in texts(&out) {
+        for w in line.split_whitespace() {
+            assert!(words.contains(&w), "{w:?} split inside a word");
+        }
+    }
+}

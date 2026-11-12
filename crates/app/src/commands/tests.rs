@@ -314,7 +314,8 @@ fn validate_strings_catalog() {
             .iter()
             .any(|f| f == "Inter")
     );
-    assert_eq!(fonts["bundled"].as_array().unwrap().len(), 11);
+    // 11 families + 6 script fonts (ADR 0028).
+    assert_eq!(fonts["bundled"].as_array().unwrap().len(), 17);
     let info = fonts["bundled_info"].as_array().unwrap();
     let montserrat = info.iter().find(|f| f["family"] == "Montserrat").unwrap();
     assert_eq!(montserrat["category"], "sans_serif");
@@ -325,37 +326,50 @@ fn validate_strings_catalog() {
     assert_eq!(caveat["italic"], false);
 }
 
-/// Regression: the project settings showed "Not used" while the app
-/// setting was on, because only the (often empty) list of loaded system
-/// families was reported.
+/// The app setting `system_fonts` ("Use installed fonts", ADR 0028; on by
+/// default) is reported with and without a project, and switching it
+/// rebuilds the session's fonts.
 #[test]
-fn catalog_fonts_reports_system_fallback_setting() {
+fn catalog_fonts_reports_system_fonts_setting() {
     let f = fixture();
     let fonts = call(&f.app, "catalog_fonts", Value::Null);
-    assert_eq!(fonts["system_enabled"], false);
+    assert_eq!(fonts["system_enabled"], true);
     call(
         &f.app,
         "settings_set",
-        json!({"settings": {"system_font_fallback": true}}),
+        json!({"settings": {"system_fonts": false}}),
     );
     // Without a project: the setting itself.
-    assert_eq!(
-        call(&f.app, "catalog_fonts", Value::Null)["system_enabled"],
-        true
-    );
+    let fonts = call(&f.app, "catalog_fonts", Value::Null);
+    assert_eq!(fonts["system_enabled"], false);
+    assert_eq!(fonts["installed"], json!([]));
     // Opening applies the setting to the session.
     open(&f);
     let fonts = call(&f.app, "catalog_fonts", Value::Null);
-    assert_eq!(fonts["system_enabled"], true);
-    assert!(fonts["system"].is_array());
+    assert_eq!(fonts["system_enabled"], false);
+    assert_eq!(fonts["system"], json!([]));
+    assert_eq!(fonts["system_named"], json!([]));
     call(
+        &f.app,
+        "settings_set",
+        json!({"settings": {"system_fonts": true}}),
+    );
+    let fonts = call(&f.app, "catalog_fonts", Value::Null);
+    assert_eq!(fonts["system_enabled"], true);
+    // The example project uses bundled families and Latin text only.
+    assert_eq!(fonts["system_named"], json!([]));
+    assert!(fonts["installed"].is_array());
+    // The old key is still accepted.
+    let s = call(
         &f.app,
         "settings_set",
         json!({"settings": {"system_font_fallback": false}}),
     );
-    let fonts = call(&f.app, "catalog_fonts", Value::Null);
-    assert_eq!(fonts["system_enabled"], false);
-    assert_eq!(fonts["system"], json!([]));
+    assert_eq!(s["system_fonts"], false);
+    // Stored fonts: nothing to store for this project.
+    let st = call(&f.app, "fonts_embed_status", Value::Null);
+    assert_eq!(st["items"], json!([]));
+    assert_eq!(st["stored"], false);
 }
 
 #[test]

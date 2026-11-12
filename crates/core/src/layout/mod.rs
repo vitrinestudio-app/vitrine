@@ -25,6 +25,10 @@ pub mod fonts;
 pub mod hyphen;
 mod report;
 mod scene;
+pub mod script;
+pub mod setup;
+pub mod stored;
+pub mod system;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -206,6 +210,9 @@ pub struct TextInput<'a> {
     /// Font fallbacks of the project (`styles.fonts`): family → families
     /// tried for missing characters before the library's own fallbacks.
     pub fallbacks: Option<&'a BTreeMap<String, Vec<String>>>,
+    /// Language of the text (BCP 47): shaping locale and the language's
+    /// system fallbacks (CJK, ADR 0028). `None` = unknown.
+    pub lang: Option<&'a str>,
 }
 
 impl<'a> TextInput<'a> {
@@ -222,6 +229,7 @@ impl<'a> TextInput<'a> {
             fit: Fit::default(),
             hyphenate: None,
             fallbacks: None,
+            lang: None,
         }
     }
 }

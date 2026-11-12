@@ -175,6 +175,9 @@ pub struct Created {
     pub copied_texts: Vec<(Lang, Lang)>,
     /// Project paths of the copied sample screenshots.
     pub samples: Vec<String>,
+    /// Font families the template uses but does not include (see
+    /// [`super::unavailable_fonts`]).
+    pub fonts_required: Vec<super::RequiredFont>,
 }
 
 /// Creates a project from `pkg` in `dir` (which must not exist or be
@@ -255,6 +258,7 @@ pub fn create_project(
         project,
         copied_texts,
         samples: samples.into_iter().map(|(_, to)| to).collect(),
+        fonts_required: pkg.manifest.fonts_required.clone(),
     })
 }
 

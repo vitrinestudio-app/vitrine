@@ -112,10 +112,16 @@ docs/gui/               screenshots of the editor (README)
   `content_scale`, `device_map`, i18n + screenshot fallback chains,
   styles, diagnostics; ADR 0004).
 - `markup` – inline markup parser; `layout` – parley text layout with
-  auto-fit, soft hyphens and layout reports, bundled + project fonts
-  only (ADR 0003); `layout::hyphen` – opt-in pattern hyphenation at
-  `shrink_to`, project font fallbacks, optional system fonts (GUI
-  setting) and per-language text overrides (`langs`, ADR 0009).
+  auto-fit, soft hyphens and layout reports (ADR 0003); `layout::hyphen`
+  – opt-in pattern hyphenation at `shrink_to`, project font fallbacks
+  and per-language text overrides (`langs`, ADR 0009); fonts (ADR 0028):
+  `layout::setup::project_library` (the one library builder for GUI,
+  CLI, MCP: bundled → project `fonts/` → stored `fonts/system/` →
+  installed system fonts, app setting `system_fonts`), `layout::system`
+  (process-wide index of installed fonts; `VITRINE_SYSTEM_FONTS=off`),
+  `layout::stored` ("Store used system fonts in the project"),
+  `layout::script` (bundled Noto script fallbacks, CJK system font
+  preferences per language). Tests use bundled fonts only.
 - `validate` – findings per target × language (texts, screenshots, store
   rules; ADR 0005).
 - `colorspace` – image colour profiles (PNG `cICP`/`iCCP`/`sRGB`, JPEG
@@ -400,7 +406,9 @@ A=B] [--dry-run] [--save-mapping]`, `frames import <path> [--dry-run]`, `frames
 list`, `frames remove [--model] [--color] [--orientation] [--bezel] [--all]`,
 `frames embed [--all-sizes|--used-only] [--dry-run]`, `frames unembed`
 (synthetic test package: `cargo run -p vitrine-core --example
-synthetic_bezels -- [--full-size] <dir|file.zip>`), `mcp [--app-dir DIR]
+synthetic_bezels -- [--full-size] <dir|file.zip>`), `fonts [--installed]
+[--format json]`, `fonts embed [--dry-run]`, `fonts unembed` (global
+`--no-system-fonts`), `mcp [--app-dir DIR]
 [--headless]` (MCP over stdio: proxy to the running GUI, GUI autostart,
 else headless opening `--project` when it holds a `project.yaml`; never
 print to stdout there), `upload plan [--store apple|google] [--target]

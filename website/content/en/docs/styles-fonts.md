@@ -1,6 +1,6 @@
 ---
 title: Styles & fonts
-description: "Project colours, text styles, span styles and shadows; the eleven bundled font families, your own fonts, fallbacks for other scripts, outlines and glows."
+description: "Project colours, text styles, span styles and shadows; bundled, project and installed fonts, storing fonts in the project, supported scripts (Arabic, Hebrew, Indic, Thai, CJK), outlines and glows."
 weight: 70
 icon: fonts
 ---
@@ -84,33 +84,136 @@ assistants, no files needed, all under the SIL Open Font License:
   Display, Lora, Nunito, Oswald, Caveat, JetBrains Mono. **Greek:** Inter and
   JetBrains Mono. **Vietnamese:** all but Bebas Neue and Caveat.
 
-`vitrine fonts` lists the families of a project.
+Six more bundled families cover other scripts and are used automatically –
+see [Supported scripts](#supported-scripts).
+
+`vitrine fonts` lists the families of a project (`--installed`: also every
+font installed on the computer).
+
+## Fonts installed on your computer {#system-fonts}
+
+The font pickers list three groups and have a search field:
+
+1. **Vitrine Studio** – the bundled families,
+2. **This project** – the fonts in the project's `fonts/` folder,
+3. **Installed on this computer** – every font family installed on your Mac
+   or PC.
+
+Pick any of them. A family name is looked up in this order: **bundled →
+project → installed**, so a bundled family always wins over an installed one
+with the same name. Installed fonts work everywhere on your computer: in the
+preview, in exports, in the CLI (`vitrine export`) and for AI assistants (MCP).
+
+They are switched on by **App settings → Use installed fonts** (on by
+default). Switch it off to use bundled and project fonts only – then the
+output is the same on every machine. The CLI has `--no-system-fonts`, and
+`VITRINE_SYSTEM_FONTS=off` switches them off for any process (e.g. on a build
+server). Installed a font while the app is running? **Project settings →
+Fonts → Rescan installed fonts**.
+
+{{< callout note >}}
+Another computer – a build server (CI) or a colleague – may not have the same
+fonts. There, texts in a missing family fall back to Inter. Validation points
+this out (`system_font_used`, info). Store the fonts in the project (next
+section) or use bundled fonts for projects that are exported elsewhere.
+{{< /callout >}}
+
+## Store used system fonts in the project {#store-system-fonts}
+
+**Project settings → Fonts → Store used system fonts in the project** copies
+the font files of the installed families the project uses into
+`fonts/system/`. A build server then renders exactly what your computer
+renders. Only the files of the weights your styles use are copied; the list
+shows each file with its size and the licence the font states (vendor, OFL
+or not). **Update stored fonts** refreshes them, **Remove from project**
+deletes the folder. On the command line:
+
+```sh
+vitrine fonts embed --dry-run    # what would be stored, with licences
+vitrine fonts embed              # store / update
+vitrine fonts unembed            # remove fonts/system/
+```
+
+{{< callout warn >}}
+**Check the licence before storing.** Fonts under the SIL Open Font License
+may be shared. The system fonts of macOS and Windows (San Francisco, New York,
+Helvetica Neue, PingFang, Hiragino, Segoe UI …) and most commercial fonts may
+only be used on your computer and **must not be redistributed**. Keep a
+project with such fonts in a **private** repository and never publish it with
+`fonts/system/` – no public repository, no template, no gallery upload, no
+shared archive. For a public repository add `fonts/system/` to `.gitignore`.
+Templates never contain this folder.
+{{< /callout >}}
+
+Validation reminds you of stored fonts (`system_fonts_stored`, info).
 
 ## Your own fonts
 
 Put `.ttf` or `.otf` files into the project's **`fonts/`** folder (or use
 **Assets → Import…** with *Font (fonts/)*). They are picked up automatically
-and appear in the font pickers with their family name. Because they travel with
-the project, the export looks the same on every computer – Vitrine Studio never
-uses fonts from your system unless you allow it.
+and appear in the font pickers with their family name. Because they travel
+with the project, the export looks the same on every computer.
+
+## Supported scripts
+
+Text layout shapes every script with HarfBuzz rules (in Rust): Arabic letters
+join, Indic consonants form conjuncts and vowel signs move into place,
+right-to-left text runs right to left, Thai is broken into lines at word
+boundaries (it has no spaces), Chinese and Japanese break between characters
+with the usual rules (no line starts with `。` or `、`).
+
+| Script | Languages (examples) | Font |
+|---|---|---|
+| Latin, Cyrillic, Greek | most European languages | bundled families (see the table above) |
+| Arabic | Arabic, Persian, Urdu | **Noto Sans Arabic** (bundled, automatic) |
+| Hebrew | Hebrew | **Noto Sans Hebrew** (bundled, automatic) |
+| Devanagari | Hindi, Marathi, Nepali | **Noto Sans Devanagari** (bundled, automatic) |
+| Bengali | Bengali, Assamese | **Noto Sans Bengali** (bundled, automatic) |
+| Tamil | Tamil | **Noto Sans Tamil** (bundled, automatic) |
+| Thai | Thai | **Noto Sans Thai** (bundled, automatic) |
+| Chinese, Japanese, Korean | zh-Hans, zh-Hant, ja, ko | an **installed** font, or a font in `fonts/` |
+
+The bundled script fonts step in for characters the style's font doesn't
+have – your headline font stays for Latin text and digits. You can also pick
+them directly (category *script font*).
+
+**Chinese, Japanese and Korean** fonts are 10–20 MB each, so none is bundled.
+With *Use installed fonts* on, each language gets an installed font made for
+it – Japanese texts Hiragino Sans or Yu Gothic, Simplified Chinese PingFang SC
+or Microsoft YaHei, Traditional Chinese PingFang TC or Microsoft JhengHei,
+Korean Apple SD Gothic Neo or Malgun Gothic (macOS and Windows ship them; on
+Linux install Noto Sans CJK). Han characters look different in Chinese and
+Japanese, so the language decides. For identical exports on every machine,
+put a font like *Noto Sans JP* into `fonts/` (OFL, free to share) or store the
+used system fonts in the project.
+
+{{< callout note >}}
+Right-to-left layouts are not mirrored: alignment is physical (*left* means
+left in every language). For Arabic and Hebrew set the alignment to *right*
+with a [language override](../languages/).
+{{< /callout >}}
 
 ## Other scripts: fallback fonts
 
-Characters a family doesn't have (Japanese, Arabic, Hebrew, Thai, Cyrillic in
-Bebas Neue …) come from its **fallbacks**, then from Inter. No CJK, Arabic,
-Hebrew or Thai font is bundled, so for those languages:
+Characters a family doesn't have come, in this order, from its
+**fallbacks**, Inter, the bundled script fonts and – with *Use installed
+fonts* – an installed font. To choose the fallback yourself (e.g. a Japanese
+font that matches your headline font):
 
-1. Put a font that covers them into `fonts/`, e.g. *Noto Sans JP*.
+1. Put the font into `fonts/` (or install it), e.g. *Noto Sans JP*.
 2. **Project settings → Fonts** → the family you use → **Add fallback family**
    → Noto Sans JP.
 
-Validation reports characters no font can draw (`missing_glyphs`).
+Validation reports characters no font can draw (`missing_glyphs`) and
+characters drawn with an installed fallback font (`system_font_fallback`,
+info).
 
-**System fonts** as a last resort: **App settings → System fonts → Use system
-fonts as last resort**. Then fonts installed on your computer fill the gaps –
-but preview and export depend on that computer. *Project settings → Fonts →
-System fonts* shows whether any were needed.
+## Fonts in templates
 
-{{< callout note >}}
-Right-to-left layouts (Arabic, Hebrew) are not mirrored yet.
-{{< /callout >}}
+Templates contain only fonts under the SIL Open Font License. When a project
+font may not be shared, *Save as template* stops – or, with **Leave out fonts
+that may not be shared** (`vitrine template save --skip-unlicensed-fonts`),
+saves the template without it. The template then names the family as
+*required, not included*; installed system fonts are always listed that way.
+A project made from the template uses the font where it is installed and
+shows Inter elsewhere – the app tells you which fonts are missing.

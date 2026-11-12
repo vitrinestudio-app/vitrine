@@ -1,0 +1,67 @@
+# Vitrine Studio script test project (ADR 0028): one headline and one
+# subtitle in languages with non-Latin scripts.
+#
+# - ar, he: right-to-left (bidi + Arabic joining); `align: right` set per
+#   language (alignment is physical, RTL layouts are not mirrored).
+# - hi (Devanagari), bn (Bengali), ta (Tamil): Indic shaping (conjuncts,
+#   vowel signs), th (Thai): dictionary line breaking (no spaces).
+#   These six use the bundled Noto fallbacks automatically.
+# - ja, zh-Hans, ko: CJK – no font is bundled; with "Use installed fonts"
+#   (default) the language's system font is used (Hiragino / PingFang /
+#   Apple SD Gothic Neo on macOS, Yu Gothic / Microsoft YaHei / Malgun
+#   Gothic on Windows, Noto CJK on Linux), else validation reports
+#   `missing_glyphs`.
+#
+# Tests: crates/render/tests/scripts.rs (no golden images: they check
+# glyph coverage, line breaking and alignment).
+# Try: cargo run -p vitrine-cli -- --project tests/fixtures/scripts render --lang ar -o /tmp/ar.png
+format: vitrine/1
+revision: 1
+name: Scripts
+languages:
+  default: en
+  available: [en, ar, he, hi, bn, ta, th, ja, zh-Hans, ko]
+styles:
+  colors:
+    ink: "#14202B"
+    soft: "#4C5A66"
+  text:
+    headline: {font: Inter Display, weight: 700, size: 84, line_height: 1.2, color: "@ink"}
+    sub: {font: Inter, weight: 400, size: 44, line_height: 1.35, color: "@soft"}
+canvases:
+- id: s
+  page: {aspect: 1000:2000, count: 2, ids: [hero, more]}
+  backgrounds: ["#F4F1EA"]
+  elements:
+  - id: title
+    kind: text
+    page: 0
+    text: hero.title
+    style: headline
+    box: {top: 160, left: 80, right: 80}
+    fit: {shrink_to: 56, max_lines: 3}
+    langs:
+      ar: {align: right}
+      he: {align: right}
+  - id: sub
+    kind: text
+    page: 0
+    text: hero.sub
+    style: sub
+    box: {top: 620, left: 80, right: 80}
+    fit: {shrink_to: 32, max_lines: 4}
+    langs:
+      ar: {align: right}
+      he: {align: right}
+  - id: more
+    kind: text
+    page: 1
+    text: more.title
+    style: headline
+    box: {top: 160, left: 80, right: 80}
+    align: center
+    fit: {shrink_to: 56, max_lines: 3}
+targets:
+- id: pages
+  canvas: s
+  size: [600, 1200]

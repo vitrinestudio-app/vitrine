@@ -28,7 +28,6 @@ use serde::Serialize;
 use serde_json::json;
 use vitrine_core::Project;
 use vitrine_core::io::PROJECT_FILE;
-use vitrine_core::layout::FontLibrary;
 use vitrine_core::model::Element;
 use vitrine_core::ops::{History, Op};
 use vitrine_render::scene::RenderContext;
@@ -233,7 +232,7 @@ pub struct Session {
     watcher: Mutex<Option<Watcher>>,
     /// Last scratch project of an edit preview (key, revision, project).
     edit_preview: Mutex<Option<(String, u64, Arc<Project>)>>,
-    /// App setting `system_font_fallback`: system fonts as last resort.
+    /// App setting `system_fonts`: installed system fonts (ADR 0028).
     system_fonts: AtomicBool,
     /// What the GUI shows (pushed by the GUI, read by MCP).
     view: Mutex<ViewState>,
@@ -323,19 +322,26 @@ impl Session {
         }))
     }
 
-    /// Whether the system font fallback (app setting) is on. System
-    /// families are only loaded for characters no bundled or project font
-    /// covers, so it can be on with none loaded.
-    pub fn system_font_fallback(&self) -> bool {
+    /// Whether installed system fonts are used (app setting
+    /// `system_fonts`, ADR 0028): families the styles name that no bundled
+    /// or project font has, and fallbacks for characters no other font
+    /// covers. On with none loaded is normal (bundled fonts suffice).
+    pub fn system_fonts(&self) -> bool {
         self.system_fonts.load(Ordering::Relaxed)
     }
 
-    /// Turns the system font fallback (app setting) on or off; rebuilds
-    /// the render context when it changes.
-    pub fn set_system_font_fallback(&self, on: bool) {
+    /// Turns system fonts (app setting) on or off; rebuilds the render
+    /// context when it changes.
+    pub fn set_system_fonts(&self, on: bool) {
         if self.system_fonts.swap(on, Ordering::Relaxed) == on {
             return;
         }
+        self.fonts_changed();
+    }
+
+    /// Rebuilds the render context (fonts re-read, system fonts looked up
+    /// again) and tells the UI (`project-changed` with `fonts`).
+    pub fn fonts_changed(&self) {
         let project = self.snapshot();
         self.replace_context(self.context_for(&project));
         let revision = project.revision;
@@ -350,9 +356,9 @@ impl Session {
         );
     }
 
-    /// A render context: bundled + project fonts, plus system fonts for
-    /// characters of the translations none of them has (if enabled).
-    /// Imported vendor frames (`set_frames`) are attached in either case.
+    /// A render context: bundled, project and stored fonts, plus installed
+    /// system fonts the project needs (if enabled). Imported vendor frames
+    /// (`set_frames`) are attached in either case.
     fn context_for(&self, project: &Project) -> RenderContext {
         let frames = self
             .frames
@@ -361,24 +367,9 @@ impl Session {
             .clone();
         // Decoded images do not depend on fonts or frames: keep them.
         let assets = self.render_context().shared_assets();
-        if !self.system_fonts.load(Ordering::Relaxed) {
-            return RenderContext::new(&self.dir)
-                .0
-                .with_frames(frames)
-                .with_assets(assets);
-        }
-        let mut fonts = FontLibrary::bundled();
-        let dir = self.dir.join("fonts");
-        if dir.is_dir() {
-            fonts.load_dir(&dir);
-        }
-        let text: Vec<&str> = project
-            .strings
-            .values()
-            .flat_map(|m| m.values().map(String::as_str))
-            .collect();
-        fonts.add_system_fallbacks(&text.join(" "));
-        RenderContext::with_fonts(&self.dir, fonts)
+        let on = self.system_fonts.load(Ordering::Relaxed);
+        RenderContext::for_project(&self.dir, project, on)
+            .0
             .with_frames(frames)
             .with_assets(assets)
     }
@@ -388,26 +379,32 @@ impl Session {
         self.preview.clear();
     }
 
-    /// With the system fallback on: load more system fonts when changed
-    /// translations contain characters no loaded font has.
-    fn check_system_fallback(&self, project: &Project, changes: &Changes) {
-        if !self.system_fonts.load(Ordering::Relaxed) || changes.strings.is_empty() {
-            return;
-        }
-        let text: Vec<&str> = changes
-            .strings
-            .iter()
-            .filter_map(|r| project.string(&r.lang, &r.key))
-            .collect();
-        if self
-            .render_context()
-            .fonts()
-            .uncovered(&text.join(" "))
-            .is_empty()
+    /// With system fonts on: rebuild the context when a style now names an
+    /// installed family that is not loaded yet, or changed translations
+    /// contain characters no loaded font has.
+    fn check_system_fonts(&self, project: &Project, changes: &Changes) {
+        if !self.system_fonts.load(Ordering::Relaxed)
+            || (changes.strings.is_empty() && !changes.styles)
         {
             return;
         }
-        self.replace_context(self.context_for(project));
+        let ctx = self.render_context();
+        let fonts = ctx.fonts();
+        let new_family = changes.styles
+            && vitrine_core::layout::setup::named_families(&project.styles)
+                .iter()
+                .any(|f| {
+                    !fonts.has_family(f)
+                        && vitrine_core::layout::system::index().family(f).is_some()
+                });
+        let new_chars = changes.strings.iter().any(|r| {
+            project
+                .string(&r.lang, &r.key)
+                .is_some_and(|t| !fonts.uncovered_for(t, Some(&r.lang)).is_empty())
+        });
+        if new_family || new_chars {
+            self.replace_context(self.context_for(project));
+        }
     }
 
     /// Starts the file watcher (reloads and events on external changes).
@@ -613,9 +610,12 @@ impl Session {
     /// Work after a committed step, outside the model lock (loading system
     /// fonts can take seconds; other tools must not wait for it).
     fn after_commit(&self, r: &ApplyResult) {
-        if r.applied && !r.changes.strings.is_empty() && self.system_fonts.load(Ordering::Relaxed) {
+        if r.applied
+            && (!r.changes.strings.is_empty() || r.changes.styles)
+            && self.system_fonts.load(Ordering::Relaxed)
+        {
             let project = self.snapshot();
-            self.check_system_fallback(&project, &r.changes);
+            self.check_system_fonts(&project, &r.changes);
         }
     }
 

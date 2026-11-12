@@ -400,6 +400,61 @@ fn ofl_fonts_are_shipped_with_a_license_and_others_refused() {
     std::fs::write(dir.join("fonts/Inter-Regular.ttf"), &patched).unwrap();
     let e = extract(&project, &dir, &save_opts("With font", None)).unwrap_err();
     assert!(matches!(e, TemplateError::FontLicense { .. }), "{e}");
+    assert!(e.to_string().contains("--skip-unlicensed-fonts"), "{e}");
+
+    // Saved without it (ADR 0028): left out, listed as required. Renamed
+    // to a family that is not bundled ("Brand").
+    let utf16 = |s: &str| {
+        s.encode_utf16()
+            .flat_map(u16::to_be_bytes)
+            .collect::<Vec<u8>>()
+    };
+    let (from, to) = (utf16("Inter"), utf16("Brand"));
+    let mut pos = 0;
+    while pos + from.len() <= patched.len() {
+        if patched[pos..pos + from.len()] == from[..] {
+            patched[pos..pos + from.len()].copy_from_slice(&to);
+        }
+        pos += 1;
+    }
+    std::fs::write(dir.join("fonts/Inter-Regular.ttf"), &patched).unwrap();
+    let mut styles = project.styles.clone();
+    styles.text.get_mut("body").unwrap().font = Some("Brand".into());
+    styles.text.insert(
+        "sys".into(),
+        crate::model::TextStyle {
+            font: Some("Some System Font".into()),
+            ..Default::default()
+        },
+    );
+    project.apply(crate::ops::Op::SetStyles { styles }).unwrap();
+    let mut opts = save_opts("Without font", None);
+    opts.skip_unlicensed_fonts = true;
+    let (tpl, report) = extract(&project, &dir, &opts).unwrap();
+    assert!(tpl.manifest.fonts.is_empty(), "{:?}", tpl.manifest.fonts);
+    assert!(tpl.paths().all(|p| !p.starts_with("fonts/")));
+    assert_eq!(report.fonts_skipped.len(), 1);
+    assert_eq!(report.fonts_skipped[0].0, "fonts/Inter-Regular.ttf");
+    assert_eq!(
+        tpl.manifest.fonts_required,
+        [
+            RequiredFont {
+                family: "Brand".into(),
+                reason: RequiredReason::License
+            },
+            RequiredFont {
+                family: "Some System Font".into(),
+                reason: RequiredReason::NotInProject
+            }
+        ]
+    );
+    tpl.check().unwrap();
+    let missing = unavailable_fonts(
+        &tpl.manifest.fonts_required,
+        &crate::layout::FontLibrary::bundled(),
+        &crate::layout::system::SystemFontIndex::default(),
+    );
+    assert_eq!(missing, ["Brand", "Some System Font"]);
 }
 
 #[test]

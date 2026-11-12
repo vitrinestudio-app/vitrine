@@ -7,6 +7,7 @@ use std::fmt::Debug;
 use serde::Serialize;
 use vitrine_core::catalog;
 use vitrine_core::layout::bundled::{self, FontCategory};
+use vitrine_core::layout::system::{self, SystemFamilyInfo};
 use vitrine_core::model::{
     BannerFit, Fold, Orientation, PixelSize, Region, SafeArea, StoreSlot, TargetKind,
 };
@@ -168,22 +169,32 @@ pub struct GalleryInfo {
 #[derive(Debug, Clone, Serialize)]
 pub struct FontsInfo {
     /// Bundled families (always available), Inter first, then grouped by
-    /// category (sans serif, serif, display, handwriting, monospace).
+    /// category (sans serif, serif, display, handwriting, monospace,
+    /// script fonts for Arabic, Hebrew, Indic and Thai).
     pub bundled: Vec<String>,
     /// Details of every bundled family, in the order of `bundled`.
     pub bundled_info: Vec<BundledFontInfo>,
-    /// Families from the open project's `fonts/` folder.
+    /// Families from the open project's `fonts/` folder (including the
+    /// stored system fonts, see `stored`).
     pub project: Vec<String>,
-    /// System families loaded as last-resort fallback (app setting
-    /// `system_font_fallback`). Only families needed for characters no
-    /// bundled or project font covers, so it is often empty while
-    /// `system_enabled` is true.
+    /// Families from system fonts stored in the project (`fonts/system/`,
+    /// ADR 0028).
+    pub stored: Vec<String>,
+    /// Installed system families the project's styles name (loaded from
+    /// this computer; not stored in the project).
+    pub system_named: Vec<String>,
+    /// System families loaded as fallback for characters no bundled or
+    /// project font covers (for every language, then per language). Often
+    /// empty while `system_enabled` is true.
     pub system: Vec<String>,
-    /// The app setting `system_font_fallback` as applied to the open
-    /// project (the setting itself without a project).
+    /// The app setting `system_fonts` as applied to the open project (the
+    /// setting itself without a project).
     pub system_enabled: bool,
+    /// Every installed system family (empty when system fonts are off), for
+    /// the font pickers. Families with the name of a bundled one are left
+    /// out (the bundled font wins).
+    pub installed: Vec<SystemFamilyInfo>,
 }
-
 /// A bundled font family (`vitrine_core::layout::bundled`).
 #[derive(Debug, Clone, Serialize)]
 pub struct BundledFontInfo {
@@ -302,34 +313,57 @@ pub fn catalog_galleries(_: &AppState, _: NoArgs) -> CmdResult<Vec<GalleryInfo>>
 pub fn catalog_fonts(app: &AppState, _: NoArgs) -> CmdResult<FontsInfo> {
     let bundled_info = bundled_fonts();
     let bundled: Vec<String> = bundled_info.iter().map(|f| f.family.clone()).collect();
-    let (project, system, system_enabled) = app.session().map_or_else(
-        |_| {
-            let on = app
-                .settings_store()
-                .load()
-                .is_ok_and(|s| s.system_font_fallback);
-            (Vec::new(), Vec::new(), on)
-        },
-        |s| {
-            let ctx = s.render_context();
-            let fonts = ctx.fonts();
-            let system = fonts.system_fallbacks().to_vec();
-            let project = fonts
-                .families()
-                .into_iter()
-                .filter(|f| !bundled.iter().any(|b| b == f) && !system.iter().any(|x| x == f))
-                .map(str::to_owned)
-                .collect();
-            (project, system, s.system_font_fallback())
-        },
-    );
-    Ok(FontsInfo {
+    let mut info = FontsInfo {
         bundled,
         bundled_info,
-        project,
-        system,
-        system_enabled,
-    })
+        project: Vec::new(),
+        stored: Vec::new(),
+        system_named: Vec::new(),
+        system: Vec::new(),
+        system_enabled: false,
+        installed: Vec::new(),
+    };
+    match app.session() {
+        Err(_) => {
+            info.system_enabled = app.settings_store().load().map_or(true, |s| s.system_fonts);
+        }
+        Ok(s) => {
+            let ctx = s.render_context();
+            let fonts = ctx.fonts();
+            info.system_named = fonts.system_families().to_vec();
+            let mut system: Vec<String> = fonts.system_fallbacks().to_vec();
+            for list in fonts.lang_fallbacks().values() {
+                for f in list {
+                    if !system.contains(f) {
+                        system.push(f.clone());
+                    }
+                }
+            }
+            info.stored = fonts.stored_families().to_vec();
+            system.retain(|f| fonts.is_system_family(f));
+            info.project = fonts
+                .families()
+                .into_iter()
+                .filter(|f| !info.bundled.iter().any(|b| b == f) && !fonts.is_system_family(f))
+                .map(str::to_owned)
+                .collect();
+            info.system = system;
+            info.system_enabled = s.system_fonts();
+        }
+    }
+    if info.system_enabled && system::allowed() {
+        info.installed = system::index()
+            .infos()
+            .into_iter()
+            .filter(|f| {
+                !info
+                    .bundled
+                    .iter()
+                    .any(|b| b.eq_ignore_ascii_case(&f.family))
+            })
+            .collect();
+    }
+    Ok(info)
 }
 
 #[cfg(test)]

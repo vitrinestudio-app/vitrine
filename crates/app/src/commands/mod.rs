@@ -25,6 +25,7 @@ mod canvases;
 mod cli_tool;
 mod exchange;
 mod export;
+mod fonts;
 mod frames;
 mod gallery;
 mod inspect;
@@ -58,6 +59,7 @@ pub use cli_tool::*;
 pub use edit::*;
 pub use exchange::*;
 pub use export::*;
+pub use fonts::*;
 pub use frames::*;
 pub use gallery::*;
 pub use inspect::*;
@@ -395,8 +397,8 @@ impl AppState {
     /// Opens `dir` as the current project (closing the previous one).
     pub fn open_project(&self, dir: &std::path::Path) -> CmdResult<Arc<Session>> {
         let session = Session::open(dir, self.events.clone())?;
-        if self.settings.load().is_ok_and(|s| s.system_font_fallback) {
-            session.set_system_font_fallback(true);
+        if self.settings.load().map_or(true, |s| s.system_fonts) {
+            session.set_system_fonts(true);
         }
         session.set_frames(self.frame_index_for(Some(session.dir())), false);
         if self.watch {
@@ -481,6 +483,7 @@ command_table! {
         frames_import_plan, frames_import_apply, frames_list, frames_remove,
         frames_pack_import, frames_pack_remove, frames_embed_status, frames_embed,
         frames_unembed,
+        fonts_embed_status, fonts_embed, fonts_unembed, fonts_refresh,
         view_get, view_set,
         mcp_status, mcp_set_enabled, claude_desktop_plan, claude_desktop_install,
         cli_install_status, cli_install,

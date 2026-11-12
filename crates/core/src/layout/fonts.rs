@@ -1,6 +1,8 @@
-//! The font library: bundled OFL fonts plus fonts from a project's `fonts/`
-//! folder. System fonts are never used, so layouts are identical on every
-//! machine (golden tests, `docs/adr/0003-text-markup-and-layout.md`).
+//! The font library: bundled OFL fonts, fonts from a project's `fonts/`
+//! folder and – only where the caller asks for it – installed system
+//! fonts (ADR 0028). Layout and rendering only see the library, so tests
+//! and golden images (bundled fonts only) are identical on every machine
+//! (`docs/adr/0003-text-markup-and-layout.md`).
 //!
 //! Bundled faces come from an embedded manifest ([`super::bundled`]) and
 //! are loaded lazily: the library knows their family, weights and style
@@ -16,6 +18,7 @@ use parley::fontique::{Blob, Collection, CollectionOptions, FontStyle};
 use serde::{Deserialize, Serialize};
 
 use super::bundled;
+use super::system::{SystemFamily, SystemFontIndex};
 
 /// Family used when a requested family is missing (always bundled).
 pub const DEFAULT_FAMILY: &str = "Inter";
@@ -32,8 +35,8 @@ pub enum FontSource {
     Bundled(&'static str),
     /// Loaded from a file (project `fonts/` folder).
     File(PathBuf),
-    /// A system font loaded as last-resort fallback (app setting, never
-    /// in tests/CI).
+    /// An installed system font (named by the project or loaded as a
+    /// fallback for missing characters; never in tests).
     System(PathBuf),
     /// Added from memory.
     Memory,
@@ -132,9 +135,19 @@ pub struct FontDirReport {
 pub struct FontLibrary {
     faces: Vec<FontFace>,
     fallbacks: BTreeMap<String, Vec<String>>,
-    /// Families loaded from system fonts as last resort (app setting,
-    /// never in tests/CI); appended to every family chain.
+    /// Families loaded from system fonts as last resort for characters no
+    /// other font has (never in tests); appended to every family chain.
     system_fallbacks: Vec<String>,
+    /// Like `system_fallbacks`, but only for texts of one language
+    /// (lower-case tag): the CJK family of the language (Han glyph shapes
+    /// differ between Japanese and Chinese).
+    lang_fallbacks: BTreeMap<String, Vec<String>>,
+    /// Installed system families loaded because the project names them
+    /// ([`Self::add_system_family`]).
+    system_named: Vec<String>,
+    /// Families from system fonts stored in the project (`fonts/system/`,
+    /// [`super::stored`]).
+    stored: Vec<String>,
 }
 
 impl Default for FontLibrary {
@@ -150,6 +163,9 @@ impl FontLibrary {
             faces: Vec::new(),
             fallbacks: BTreeMap::new(),
             system_fallbacks: Vec::new(),
+            lang_fallbacks: BTreeMap::new(),
+            system_named: Vec::new(),
+            stored: Vec::new(),
         }
     }
 
@@ -301,9 +317,57 @@ impl FontLibrary {
         self.fallbacks.insert(family.to_owned(), fallbacks);
     }
 
-    /// Families added by [`Self::add_system_fallbacks`].
+    /// Families added as last-resort fallback for every language
+    /// ([`Self::add_system_fallbacks`]).
     pub fn system_fallbacks(&self) -> &[String] {
         &self.system_fallbacks
+    }
+
+    /// System families added as fallback for the texts of one language
+    /// (lower-case tag → families).
+    pub fn lang_fallbacks(&self) -> &BTreeMap<String, Vec<String>> {
+        &self.lang_fallbacks
+    }
+
+    /// Records that `family` comes from the project's stored system fonts.
+    pub fn mark_stored(&mut self, family: &str) {
+        if !self.stored.iter().any(|f| f.eq_ignore_ascii_case(family)) {
+            self.stored.push(family.to_owned());
+        }
+    }
+
+    /// Families from the project's stored system fonts (`fonts/system/`).
+    pub fn stored_families(&self) -> &[String] {
+        &self.stored
+    }
+
+    /// Appends `family` to the fallback chains of language `lang` (`None`:
+    /// of every language), like a system fallback (stored copies).
+    pub fn add_chain_fallback(&mut self, lang: Option<&str>, family: &str) {
+        let list = match lang {
+            Some(l) => self.lang_fallbacks.entry(l.to_lowercase()).or_default(),
+            None => &mut self.system_fallbacks,
+        };
+        if !list.iter().any(|f| f.eq_ignore_ascii_case(family)) {
+            list.push(family.to_owned());
+        }
+    }
+
+    /// Installed system families loaded because the project names them
+    /// ([`Self::add_system_family`]).
+    pub fn system_families(&self) -> &[String] {
+        &self.system_named
+    }
+
+    /// Is every face of `family` an installed system font (none bundled or
+    /// from the project)?
+    pub fn is_system_family(&self, family: &str) -> bool {
+        let mut faces = self
+            .faces
+            .iter()
+            .filter(|f| f.family.eq_ignore_ascii_case(family))
+            .peekable();
+        faces.peek().is_some() && faces.all(|f| matches!(f.source, FontSource::System(_)))
     }
 
     /// Does any face have a glyph for `c`?
@@ -314,91 +378,172 @@ impl FontLibrary {
     /// Characters of `text` (ignoring whitespace and controls) that no face
     /// of the library covers.
     pub fn uncovered(&self, text: &str) -> BTreeSet<char> {
+        self.uncovered_where(text, |_| true)
+    }
+
+    /// Characters of `text` that no face usable for language `lang`
+    /// covers: bundled and project faces, the system fallbacks for every
+    /// language and those of `lang` (system families loaded by name or for
+    /// another language are not in this language's chains).
+    pub fn uncovered_for(&self, text: &str, lang: Option<&str>) -> BTreeSet<char> {
+        let key = lang.map(str::to_lowercase);
+        let usable: Vec<&String> = self
+            .system_fallbacks
+            .iter()
+            .chain(
+                key.as_ref()
+                    .and_then(|k| self.lang_fallbacks.get(k))
+                    .into_iter()
+                    .flatten(),
+            )
+            .collect();
+        self.uncovered_where(text, |f| {
+            !matches!(f.source, FontSource::System(_))
+                || usable.iter().any(|u| u.eq_ignore_ascii_case(&f.family))
+        })
+    }
+
+    fn uncovered_where(&self, text: &str, usable: impl Fn(&FontFace) -> bool) -> BTreeSet<char> {
+        use skrifa::MetadataProvider;
+        let maps: Vec<skrifa::charmap::Charmap<'_>> = self
+            .faces
+            .iter()
+            .filter(|f| usable(f))
+            .filter_map(|f| skrifa::FontRef::from_index(f.data(), f.index).ok())
+            .map(|f| f.charmap())
+            .collect();
         let mut seen = BTreeSet::new();
         text.chars()
             .filter(|c| !c.is_whitespace() && !c.is_control() && *c != '\u{AD}')
             .filter(|c| seen.insert(*c))
-            .filter(|c| !self.covers(*c))
+            .filter(|c| !maps.iter().any(|m| m.map(*c).is_some()))
             .collect()
     }
 
-    /// Loads system fonts covering the characters of `text` that the
-    /// library lacks, as last-resort fallback families (appended to every
-    /// family chain). Only for the GUI's opt-in app setting: layouts then
-    /// depend on the machine, so tests and CI never call this. Returns the
-    /// families added.
-    pub fn add_system_fallbacks(&mut self, text: &str) -> Vec<String> {
-        self.add_fallbacks_from_dirs(text, &system_font_dirs())
+    /// Loads the installed system family `name` (all its faces) unless the
+    /// library already has a family of that name: bundled and project
+    /// fonts win (ADR 0028). Returns whether it was added.
+    pub fn add_system_family(&mut self, index: &SystemFontIndex, name: &str) -> bool {
+        if self.has_family(name) {
+            return false;
+        }
+        let Some(family) = index.family(name) else {
+            return false;
+        };
+        let added = self.add_system_faces(family);
+        if added {
+            self.system_named.push(family.name.clone());
+        }
+        added
     }
 
-    /// [`Self::add_system_fallbacks`] with explicit font folders: picks
-    /// greedily the family (default face) covering most missing
-    /// characters, adds all its faces, repeats while characters remain (at
-    /// most 8 families). Hidden (`.`) families and `LastResort` are skipped.
+    /// Adds every file of an installed family (each file once).
+    fn add_system_faces(&mut self, family: &SystemFamily) -> bool {
+        let mut files = BTreeSet::new();
+        let mut added = false;
+        for face in &family.faces {
+            if !files.insert(face.path.clone()) {
+                continue;
+            }
+            if let Some(blob) = face.load() {
+                added |= self
+                    .add_blob(&blob, &FontSource::System(face.path.clone()))
+                    .is_ok();
+            }
+        }
+        added
+    }
+
+    /// Loads installed system fonts covering the characters of `text` that
+    /// the library lacks, as last-resort fallback families for every
+    /// language (see [`Self::add_system_fallbacks_from`]). Layouts then
+    /// depend on the machine, so tests never call this. Returns the
+    /// families added.
+    pub fn add_system_fallbacks(&mut self, text: &str) -> Vec<String> {
+        self.add_system_fallbacks_from(&super::system::index(), None, text)
+    }
+
+    /// [`Self::add_system_fallbacks`] with explicit font folders.
     pub fn add_fallbacks_from_dirs(&mut self, text: &str, dirs: &[PathBuf]) -> Vec<String> {
-        let mut missing = self.uncovered(text);
-        if missing.is_empty() || dirs.is_empty() {
+        if dirs.is_empty() {
             return Vec::new();
         }
-        let mut collection = Collection::new(CollectionOptions {
-            shared: false,
-            system_fonts: false,
-        });
-        collection.load_fonts_from_paths(dirs.iter().filter(|d| d.is_dir()));
-        let mut names: Vec<String> = collection
-            .family_names()
-            .filter(|n| !n.starts_with('.') && *n != "LastResort" && !self.has_family(n))
-            .map(str::to_owned)
+        self.add_system_fallbacks_from(&SystemFontIndex::scan(dirs), None, text)
+    }
+
+    /// Fallbacks for the characters of `text` (in language `lang`) that no
+    /// font usable for that language covers ([`Self::uncovered_for`]):
+    ///
+    /// 1. CJK characters: the first installed family of the language's
+    ///    preference list ([`super::script::cjk_preferences`]: `Hiragino Sans`,
+    ///    `Yu Gothic` for `ja`, `PingFang SC`, `Microsoft YaHei` for `zh-Hans`
+    ///    …) that covers any of them – a fallback for `lang` only when it
+    ///    is a CJK language, else for every language;
+    /// 2. then greedily the family (default face) covering most missing
+    ///    characters, repeated while characters remain (at most 8
+    ///    families per call), as fallback for every language. Hidden (`.`)
+    ///    families and `LastResort` are never candidates.
+    pub fn add_system_fallbacks_from(
+        &mut self,
+        index: &SystemFontIndex,
+        lang: Option<&str>,
+        text: &str,
+    ) -> Vec<String> {
+        use super::script::{Script, cjk_flavour, cjk_preferences, script_of};
+        let mut missing = self.uncovered_for(text, lang);
+        if missing.is_empty() || index.is_empty() {
+            return Vec::new();
+        }
+        let mut added: Vec<String> = Vec::new();
+        let cjk: Vec<char> = missing
+            .iter()
+            .copied()
+            .filter(|c| script_of(*c) == Some(Script::Cjk))
             .collect();
-        names.sort();
-        // Default face of every candidate family with its data.
-        let candidates: Vec<(String, Vec<SystemFace>)> = names
-            .into_iter()
-            .filter_map(|name| {
-                let fam = collection.family_by_name(&name)?;
-                let faces = fam
-                    .fonts()
-                    .iter()
-                    .filter_map(|f| {
-                        let path = match f.source().kind() {
-                            parley::fontique::SourceKind::Path(p) => Some(p.to_path_buf()),
-                            parley::fontique::SourceKind::Memory(_) => None,
-                        };
-                        Some((f.load(None)?, f.index(), path))
-                    })
-                    .collect::<Vec<_>>();
-                (!faces.is_empty()).then_some((name, faces))
-            })
+        if !cjk.is_empty() {
+            let flavour = lang.and_then(cjk_flavour);
+            let pick = cjk_preferences(flavour)
+                .iter()
+                .filter_map(|n| index.family(n))
+                .find(|fam| family_count(fam, cjk.iter()) > 0);
+            if let Some(fam) = pick {
+                let name = fam.name.clone();
+                if self.has_family(&name) || self.add_system_faces(fam) {
+                    let list = match (flavour, lang) {
+                        (Some(_), Some(l)) => {
+                            self.lang_fallbacks.entry(l.to_lowercase()).or_default()
+                        }
+                        _ => &mut self.system_fallbacks,
+                    };
+                    if !list.contains(&name) {
+                        list.push(name.clone());
+                    }
+                    added.push(name);
+                    missing = self.uncovered_for(text, lang);
+                }
+            }
+        }
+        let candidates: Vec<&SystemFamily> = index
+            .families()
+            .filter(|f| !self.has_family(&f.name))
             .collect();
-        let mut added = Vec::new();
         while !missing.is_empty() && added.len() < 8 {
             let best = candidates
                 .iter()
-                .filter(|(n, _)| !added.contains(n))
-                .map(|(n, faces)| {
-                    let (blob, index, _) = &faces[0];
-                    let n_cov = missing
-                        .iter()
-                        .filter(|c| face_covers(blob.data(), *index, **c))
-                        .count();
-                    (n_cov, n, faces)
-                })
-                .filter(|(n_cov, _, _)| *n_cov > 0)
+                .filter(|f| !added.contains(&f.name))
+                .map(|f| (family_count(f, missing.iter()), *f))
+                .filter(|(n, _)| *n > 0)
                 // Most covered; ties: the first name.
-                .max_by(|a, b| a.0.cmp(&b.0).then_with(|| b.1.cmp(a.1)));
-            let Some((_, name, faces)) = best else {
+                .max_by(|a, b| a.0.cmp(&b.0).then_with(|| b.1.name.cmp(&a.1.name)));
+            let Some((_, fam)) = best else {
                 break;
             };
-            let mut blobs = BTreeSet::new();
-            for (blob, _, path) in faces {
-                if blobs.insert(blob.id()) {
-                    let source = FontSource::System(path.clone().unwrap_or_default());
-                    let _ = self.add_blob(blob, &source);
-                }
+            if !self.add_system_faces(fam) {
+                break;
             }
-            missing.retain(|c| !self.covers(*c));
-            self.system_fallbacks.push(name.clone());
-            added.push(name.clone());
+            self.system_fallbacks.push(fam.name.clone());
+            added.push(fam.name.clone());
+            missing = self.uncovered_for(text, lang);
         }
         added
     }
@@ -416,17 +561,39 @@ impl FontLibrary {
     /// Like [`Self::family_chain`] with `extra` fallbacks (the project's
     /// `styles.fonts`) tried before the library's own.
     pub fn family_chain_with(&self, family: &str, extra: &[String]) -> Vec<String> {
+        self.family_chain_for(family, extra, None, &[])
+    }
+
+    /// The full chain for a text in language `lang`: `family`, `extra`
+    /// (project fallbacks), the library's fallbacks for `family`,
+    /// [`DEFAULT_FAMILY`], the bundled script fonts `scripts`
+    /// ([`super::script::bundled_fallbacks`] of the text), the system
+    /// fallbacks of `lang`, then those for every language.
+    pub fn family_chain_for(
+        &self,
+        family: &str,
+        extra: &[String],
+        lang: Option<&str>,
+        scripts: &[&str],
+    ) -> Vec<String> {
         let mut out = vec![family.to_owned()];
-        let push = |f: &String, out: &mut Vec<String>| {
+        let push = |f: &str, out: &mut Vec<String>| {
             if !out.iter().any(|x| x.eq_ignore_ascii_case(f)) {
-                out.push(f.clone());
+                out.push(f.to_owned());
             }
         };
         for f in extra.iter().chain(self.fallbacks(family)) {
             push(f, &mut out);
         }
-        push(&DEFAULT_FAMILY.to_owned(), &mut out);
-        for f in &self.system_fallbacks {
+        push(DEFAULT_FAMILY, &mut out);
+        for f in scripts {
+            push(f, &mut out);
+        }
+        let by_lang = lang
+            .and_then(|l| self.lang_fallbacks.get(&l.to_lowercase()))
+            .into_iter()
+            .flatten();
+        for f in by_lang.chain(&self.system_fallbacks) {
             push(f, &mut out);
         }
         out
@@ -475,8 +642,30 @@ fn weight_value(w: f32) -> u16 {
     w.round().clamp(1.0, 1000.0) as u16
 }
 
-/// A system font face: data, face index, file.
-type SystemFace = (Blob<u8>, u32, Option<PathBuf>);
+/// How many of `chars` the default face of an installed family covers
+/// (maps the file once).
+fn family_count<'a>(family: &SystemFamily, chars: impl Iterator<Item = &'a char>) -> usize {
+    use skrifa::MetadataProvider;
+    let Some((blob, index)) = family
+        .default_face()
+        .and_then(|f| Some((f.load()?, f.index)))
+    else {
+        return 0;
+    };
+    let Ok(font) = skrifa::FontRef::from_index(blob.data(), index) else {
+        return 0;
+    };
+    // Bitmap-only colour fonts (Apple Color Emoji: `sbix`, Noto Color
+    // Emoji: `CBDT`) have no outlines to draw: never a fallback.
+    if [*b"sbix", *b"CBDT"]
+        .iter()
+        .any(|t| font.table_data(skrifa::raw::types::Tag::new(t)).is_some())
+    {
+        return 0;
+    }
+    let map = font.charmap();
+    chars.filter(|c| map.map(**c).is_some()).count()
+}
 
 /// Does face `index` of font file `data` map `c` to a glyph?
 fn face_covers(data: &[u8], index: u32, c: char) -> bool {
@@ -492,6 +681,20 @@ pub fn system_font_dirs() -> Vec<PathBuf> {
         out.push("/System/Library/Fonts".into());
         out.push("/Library/Fonts".into());
         out.extend(home.map(|h| h.join("Library/Fonts")));
+        // Fonts downloaded on demand (Font Book, e.g. PingFang, Songti).
+        out.extend(
+            std::fs::read_dir("/System/Library/AssetsV2")
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| {
+                    p.file_name().is_some_and(|n| {
+                        n.to_string_lossy()
+                            .starts_with("com_apple_MobileAsset_Font")
+                    })
+                }),
+        );
     } else if cfg!(target_os = "windows") {
         let windir =
             std::env::var_os("WINDIR").map_or_else(|| PathBuf::from(r"C:\Windows"), PathBuf::from);
@@ -529,6 +732,12 @@ mod tests {
                 "JetBrains Mono",
                 "Lora",
                 "Montserrat",
+                "Noto Sans Arabic",
+                "Noto Sans Bengali",
+                "Noto Sans Devanagari",
+                "Noto Sans Hebrew",
+                "Noto Sans Tamil",
+                "Noto Sans Thai",
                 "Nunito",
                 "Oswald",
                 "Playfair Display"
