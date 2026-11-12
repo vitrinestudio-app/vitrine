@@ -77,7 +77,7 @@ pub fn run(args: &ValidateArgs, global: &Global) -> anyhow::Result<u8> {
     let frames = crate::frames::installed(root);
     let mut opts = ValidateOptions::new(&fs);
     opts.frames = frames.as_deref();
-    opts.fonts = project::fonts(root, global.quiet);
+    opts.fonts = project::fonts(root, &project, global);
     opts.targets = (!args.targets.is_empty()).then(|| args.targets.clone());
     opts.langs = (!args.langs.is_empty()).then(|| args.langs.clone());
     opts.mode = if args.preview {

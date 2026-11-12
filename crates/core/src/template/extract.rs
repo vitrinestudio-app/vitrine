@@ -13,9 +13,9 @@ use crate::layout::FontLibrary;
 use crate::model::Project;
 
 use super::{
-    CanvasInfo, FONT_LICENSE, FontInfo, LICENSE, Manifest, Package, SAMPLE_MAX_BYTES,
-    SAMPLE_MAX_EDGE, TEMPLATE_FORMAT, TemplateError, TemplateTags, archive, fonts, is_template_id,
-    placeholder, walk,
+    CanvasInfo, FONT_LICENSE, FontInfo, LICENSE, Manifest, Package, RequiredFont, RequiredReason,
+    SAMPLE_MAX_BYTES, SAMPLE_MAX_EDGE, TEMPLATE_FORMAT, TemplateError, TemplateTags, archive,
+    fonts, is_template_id, placeholder, walk,
 };
 
 /// What to save and the template's metadata.
@@ -44,6 +44,11 @@ pub struct SaveOptions {
     /// placeholders. Default: placeholders only.
     #[serde(default)]
     pub sample_screenshots: bool,
+    /// Leave out project fonts whose licence does not allow sharing (not
+    /// OFL) instead of refusing: the template lists them in
+    /// `fonts_required` (ADR 0028).
+    #[serde(default)]
+    pub skip_unlicensed_fonts: bool,
 }
 
 /// Remarks about a saved template (nothing here blocks saving).
@@ -53,6 +58,10 @@ pub struct SaveReport {
     /// the project's `fonts/` (the template falls back to Inter for them).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fonts_missing: Vec<String>,
+    /// Project fonts left out because their licence does not allow sharing
+    /// (`skip_unlicensed_fonts`): `(file, reason)`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fonts_skipped: Vec<(String, String)>,
     /// Fonts whose licence file was generated from the name table.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub licenses_generated: Vec<String>,
@@ -177,6 +186,7 @@ pub fn extract(
     let bundled = FontLibrary::bundled();
     let mut font_infos = Vec::new();
     let mut found = BTreeSet::new();
+    let mut required: Vec<RequiredFont> = Vec::new();
     for (file, data) in project_fonts(root) {
         let names = fonts::font_names(&data).unwrap_or_else(|_| fonts::FontNames {
             family: String::new(),
@@ -189,7 +199,25 @@ pub fn extract(
             continue;
         }
         let path = format!("fonts/{file}");
-        let names = fonts::check_ofl(&path, &data)?;
+        let names = match fonts::check_ofl(&path, &data) {
+            Ok(n) => n,
+            Err(TemplateError::FontLicense { reason, .. }) if opts.skip_unlicensed_fonts => {
+                report.fonts_skipped.push((path, reason));
+                if !bundled.has_family(&family)
+                    && !required
+                        .iter()
+                        .any(|r| r.family.eq_ignore_ascii_case(&family))
+                {
+                    required.push(RequiredFont {
+                        family: family.clone(),
+                        reason: RequiredReason::License,
+                    });
+                }
+                found.insert(family.to_lowercase());
+                continue;
+            }
+            Err(e) => return Err(e),
+        };
         let license_file = fonts::license_path(&path);
         let licence = existing_license(root, &file).unwrap_or_else(|| {
             report.licenses_generated.push(path.clone());
@@ -210,6 +238,18 @@ pub fn extract(
         .into_iter()
         .filter(|f| !found.contains(&f.to_lowercase()) && !bundled.has_family(f))
         .collect();
+    // Stored system fonts (`fonts/system/`) are never read: only files
+    // directly in `fonts/` are candidates.
+    required.extend(report.fonts_missing.iter().map(|f| RequiredFont {
+        family: f.clone(),
+        reason: RequiredReason::NotInProject,
+    }));
+    // A family left out for its licence keeps no OFL face either.
+    font_infos.retain(|fi: &FontInfo| {
+        !required.iter().any(|r| {
+            r.reason == RequiredReason::License && r.family.eq_ignore_ascii_case(&fi.family)
+        })
+    });
 
     // Sample screenshots (opt-in), then placeholders for the rest.
     let samples: BTreeSet<String> = if opts.sample_screenshots {
@@ -250,6 +290,7 @@ pub fn extract(
         project_format: crate::PROJECT_FORMAT.to_owned(),
         canvases: canvas_infos(&tpl),
         fonts: font_infos,
+        fonts_required: required,
         samples: report.samples.clone(),
         generator: None,
     };

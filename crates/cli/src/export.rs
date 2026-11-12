@@ -55,11 +55,9 @@ pub fn run(args: &ExportArgs, global: &Global) -> anyhow::Result<u8> {
     if args.gallery_only && args.layout != ExportLayout::Standard {
         anyhow::bail!("--gallery-only needs the standard layout");
     }
-    let (ctx, fonts) = crate::frames::render_context(root);
-    if !global.quiet
-        && let Some(r) = &fonts
-    {
-        project::report_font_errors(&r.errors);
+    let (ctx, fonts) = crate::frames::render_context(root, &project, global);
+    if !global.quiet {
+        project::report_font_errors(&fonts.errors);
     }
     let report = export(
         &project,

@@ -71,6 +71,41 @@ Playfair Display, Lora, Nunito and JetBrains Mono (proposal); Oswald,
 Bebas Neue, Caveat and Dancing Script have no italic upstream – italic
 text in them is slanted synthetically.
 
+## Script fonts, added 2026-11-12
+
+Owner's request 2026-11-12 (ADR 0028): compact Noto fonts for scripts with
+large populations, used automatically as fallbacks for characters of
+their script (`crates/core/src/layout/script.rs`) and selectable like any
+family (category `script`). Same source and pinned commit as above:
+**github.com/google/fonts**, folder `ofl/<family>/`, commit
+**`5bb28733cec313b63fbd415b574b5ae35c8aa8b8`**. Variable fonts with a
+width and a weight axis (`[wdth,wght]`; the default width 100 is used).
+No CJK fonts (10–20 MB each, see
+`docs/research/2026-11-12-cjk-font-packs.md`).
+
+Name table check (2026-11-12, also run by the manifest tests): every file
+has ID 13 = "This Font Software is licensed under the SIL Open Font
+License, Version 1.1. …" and ID 14 = `https://openfontlicense.org`.
+
+| Family | Script | File | Weights | Bytes | SHA-256 |
+|---|---|---|---|---:|---|
+| Noto Sans Arabic | Arabic | `notosansarabic/NotoSansArabic[wdth,wght].ttf` | 100–900 | 844676 | `63111b5b2e074dd48cc67692e0a2726d86ee94c1c37fe8598257b7b4e87e869e` |
+| | | `notosansarabic/OFL.txt` | | | `07fc70bfeb985cc1a87a8587d0a0c80bab11c86c9dc3fd95b6f0cb332f983e96` |
+| Noto Sans Hebrew | Hebrew | `notosanshebrew/NotoSansHebrew[wdth,wght].ttf` | 100–900 (default 100) | 112640 | `7ef36a2c3593758cdb622e1bdef4f84523e92fbc3ccc667438dd80ff54c2de88` |
+| | | `notosanshebrew/OFL.txt` | | | `9b9fe028b5ba74d231659a1bbaf0ed09b11e759d1ca6a070999e16d151616b47` |
+| Noto Sans Devanagari | Devanagari (Hindi, Marathi, Nepali) | `notosansdevanagari/NotoSansDevanagari[wdth,wght].ttf` | 100–900 | 641944 | `14ec4af41f27482216d1c2229f417ff9b1425e1babb014e57d1d40d03229853e` |
+| | | `notosansdevanagari/OFL.txt` | | | `a216f6f8d85c7228093e0ee5e258d9d377e6671f68acb4db1930b29583d0f331` |
+| Noto Sans Bengali | Bengali | `notosansbengali/NotoSansBengali[wdth,wght].ttf` | 100–900 | 463668 | `dcd42978094e584a849c84a51450eeac40c8826057d566ea6d4b9627a403a05a` |
+| | | `notosansbengali/OFL.txt` | | | `754f0e221aa7d5a915489f3bf1f20fe53ddc35ab2834a4d91656d78f9622de70` |
+| Noto Sans Tamil | Tamil | `notosanstamil/NotoSansTamil[wdth,wght].ttf` | 100–900 | 340668 | `aa3a9b321f4b0bb2c40203ffbde9af89713227866e0e13f76e5b9eeea727cf88` |
+| | | `notosanstamil/OFL.txt` | | | `f8ff8ce7d0a81bf8d5e121c635ef027250c531f2fd37d5988b8dd6e45f19d7f1` |
+| Noto Sans Thai | Thai | `notosansthai/NotoSansThai[wdth,wght].ttf` | 100–900 | 218652 | `5a1c559bb539583c8a1fd99d1c5b9491e5e14478c9cd2bd0970d5c3096cc9ef8` |
+| | | `notosansthai/OFL.txt` | | | `2e98fd23a52d253db8612cd5942c8f2ff4111b21d2367050fdca91d8ccc374a0` |
+
+Total added: 2.62 MB (6 font files). Designer of all six: Google /
+the Noto project (Monotype and others; see the copyright line in each
+`OFL.txt`). The licence files are stored unchanged (LF upstream).
+
 To update a family: download the new files from a newer pinned commit,
 re-run `cargo test -p vitrine-core bundled` (the manifest test reports
 changed weights/families), update this table.

@@ -89,11 +89,14 @@ pub struct Settings {
     pub default_frame_style: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub window: Option<WindowState>,
-    /// Use system fonts as a last resort for characters no bundled or
-    /// project font has (preview and export then depend on this machine's
-    /// fonts). Off by default; never used by tests, CLI or CI.
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub system_font_fallback: bool,
+    /// Use the fonts installed on this computer (ADR 0028): families the
+    /// styles name that no bundled or project font has, and fallbacks for
+    /// characters no other font covers (e.g. CJK). Preview and export then
+    /// depend on this machine; validation reports it (`system_font_used`).
+    /// On by default. Replaces `system_font_fallback` (read as an alias).
+    #[serde(alias = "system_font_fallback", skip_serializing_if = "is_true")]
+    pub system_fonts: bool,
+
     /// The GUI serves MCP on 127.0.0.1 so AI assistants can connect (ADR 0015).
     /// On by default.
     #[serde(skip_serializing_if = "is_true")]
@@ -142,7 +145,7 @@ impl Default for Settings {
             default_project_language: "en".to_owned(),
             default_frame_style: "detailed".to_owned(),
             window: None,
-            system_font_fallback: false,
+            system_fonts: true,
             mcp_enabled: true,
             mcp_port: None,
             mcp_autostart_gui: true,
@@ -363,7 +366,7 @@ mod tests {
                 height: 800,
                 maximized: false,
             }),
-            system_font_fallback: true,
+            system_fonts: false,
             mcp_enabled: false,
             mcp_port: Some(4100),
             mcp_autostart_gui: true,

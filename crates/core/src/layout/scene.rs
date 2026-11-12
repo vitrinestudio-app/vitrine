@@ -187,6 +187,7 @@ pub fn layout_text(
             None
         },
         fallbacks: Some(&text.font_fallbacks),
+        lang: text.text_lang.as_ref().map(crate::model::Lang::as_str),
     });
     let y = if text.frame.auto_height {
         let h = f64::from(layout.r#box.h);

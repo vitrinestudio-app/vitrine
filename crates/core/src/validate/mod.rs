@@ -159,6 +159,16 @@ finding_codes! {
     /// Unbalanced inline markup, rendered literally.
     InvalidMarkup = "invalid_markup",
     UnknownFont = "unknown_font",
+    /// A style uses a font family installed on this computer (not bundled,
+    /// not in the project): other machines (CI, colleagues) render it
+    /// differently or fall back to Inter (info; ADR 0028).
+    SystemFontUsed = "system_font_used",
+    /// Characters of a language are drawn with a system font loaded as
+    /// fallback (e.g. CJK): machine-dependent like `system_font_used`.
+    SystemFontFallback = "system_font_fallback",
+    /// The project stores system fonts in `fonts/system/`: licence
+    /// reminder (keep the repository private unless all are OFL).
+    SystemFontsStored = "system_fonts_stored",
     /// Characters without a glyph in any font of the chain.
     MissingGlyphs = "missing_glyphs",
     /// Text reaches into a gap between store images (cut off in exports).
@@ -709,6 +719,7 @@ fn project_text_checks(
             }
         }
     }
+    system_font_checks(project, &options.fonts, &root, &mut out);
     for s in &project.canvases {
         s.walk_elements(&mut |e| {
             for l in e.text_props().into_iter().flat_map(|t| t.langs.keys()) {
@@ -772,6 +783,106 @@ fn allow_checks(project: &Project, root: &Ctx, out: &mut Sink) {
                 }
             }
         }
+    }
+}
+
+/// Installed system fonts the project depends on and stored copies
+/// (ADR 0028).
+fn system_font_checks(project: &Project, fonts: &FontLibrary, root: &Ctx, out: &mut Sink) {
+    let named = crate::layout::setup::named_families(&project.styles);
+    for family in fonts.system_families() {
+        if !named.iter().any(|n| n.eq_ignore_ascii_case(family)) {
+            continue;
+        }
+        let styles: Vec<&str> = project
+            .styles
+            .text
+            .iter()
+            .filter(|(_, s)| {
+                s.font
+                    .as_deref()
+                    .is_some_and(|f| f.eq_ignore_ascii_case(family))
+            })
+            .map(|(k, _)| k.as_str())
+            .chain(
+                project
+                    .styles
+                    .spans
+                    .iter()
+                    .filter(|(_, s)| {
+                        s.font
+                            .as_deref()
+                            .is_some_and(|f| f.eq_ignore_ascii_case(family))
+                    })
+                    .map(|(k, _)| k.as_str()),
+            )
+            .collect();
+        let used_by = if styles.is_empty() {
+            "a font fallback".to_owned()
+        } else {
+            format!(
+                "style{} `{}`",
+                if styles.len() == 1 { "" } else { "s" },
+                styles.join("`, `")
+            )
+        };
+        out.push(root.finding(
+            Severity::Info,
+            FindingCode::SystemFontUsed,
+            false,
+            None,
+            None,
+            format!(
+                "`{family}` ({used_by}) is a font installed on this computer, not bundled or in \
+                 the project: other machines (build server, colleagues) render it differently \
+                 or fall back to Inter – store it in the project (Project settings → Fonts, \
+                 `vitrine fonts embed`; mind its licence) or use a bundled font"
+            ),
+        ));
+    }
+    let mut fallbacks: Vec<(Option<&str>, &String)> =
+        fonts.system_fallbacks().iter().map(|f| (None, f)).collect();
+    for (lang, list) in fonts.lang_fallbacks() {
+        fallbacks.extend(list.iter().map(|f| (Some(lang.as_str()), f)));
+    }
+    for (lang, family) in fallbacks {
+        if !fonts.is_system_family(family) {
+            continue;
+        }
+        let which = lang.map_or_else(
+            || "some characters".to_owned(),
+            |l| format!("characters of `{l}`"),
+        );
+        out.push(root.finding(
+            Severity::Info,
+            FindingCode::SystemFontFallback,
+            false,
+            None,
+            None,
+            format!(
+                "{which} are drawn with the system font `{family}` (no bundled or project \
+                 font has them): other machines may use another font or show no glyphs – \
+                 store it in the project or put a font for them into `fonts/`"
+            ),
+        ));
+    }
+    let stored = fonts.stored_families();
+    if !stored.is_empty() {
+        out.push(root.finding(
+            Severity::Info,
+            FindingCode::SystemFontsStored,
+            false,
+            None,
+            None,
+            format!(
+                "the project stores {} system font famil{} in `fonts/system/` ({}): most \
+                 system and commercial fonts may not be redistributed – keep the repository \
+                 private and never publish the project, a template or an archive with them",
+                stored.len(),
+                if stored.len() == 1 { "y" } else { "ies" },
+                stored.join(", ")
+            ),
+        ));
     }
 }
 

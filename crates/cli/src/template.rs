@@ -76,6 +76,11 @@ pub struct SaveArgs {
     /// uploaded); keys without a screenshot get placeholders.
     #[arg(long)]
     pub sample_screenshots: bool,
+    /// Leave out project fonts whose licence does not allow sharing (not
+    /// OFL) instead of refusing; the template lists them as required, not
+    /// included (used where installed, else Inter).
+    #[arg(long)]
+    pub skip_unlicensed_fonts: bool,
     /// Template version (default 1.0.0).
     #[arg(long)]
     pub version: Option<String>,
@@ -281,6 +286,7 @@ fn run_save(a: &SaveArgs, global: &Global) -> anyhow::Result<u8> {
         version: a.version.clone(),
         canvases: (!a.canvases.is_empty()).then(|| a.canvases.clone()),
         sample_screenshots: a.sample_screenshots,
+        skip_unlicensed_fonts: a.skip_unlicensed_fonts,
     };
     let (mut pkg, report) = extract(&project, root, &opts)?;
     pkg.manifest.generator = Some(format!("Vitrine Studio {}", env!("CARGO_PKG_VERSION")));
@@ -308,8 +314,15 @@ fn run_save(a: &SaveArgs, global: &Global) -> anyhow::Result<u8> {
         }
         for f in &report.fonts_missing {
             println!(
-                "  {} font `{f}` is not in the project's fonts/ folder; the template falls back to Inter",
-                style.warn("warning:")
+                "  {} font `{f}` is not in the project's fonts/ folder (a system font?): listed as \
+                 required, not included – users without it get Inter",
+                style.warn("note:")
+            );
+        }
+        for (file, why) in &report.fonts_skipped {
+            println!(
+                "  {} {file} left out: {why} – listed as required, not included",
+                style.warn("note:")
             );
         }
         for (from, to) in &report.assets_moved {
@@ -417,6 +430,12 @@ fn run_insert(a: &InsertArgs, global: &Global) -> anyhow::Result<u8> {
         }
         for f in &r.files {
             println!("file {f}");
+        }
+        for f in &r.fonts_required {
+            println!(
+                "font {} used but not included (used where installed, else Inter)",
+                f.family
+            );
         }
     }
     if a.dry_run {

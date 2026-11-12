@@ -82,9 +82,9 @@ export async function openAppSettings({ section } = {}) {
           t('fonts.system_setting'),
           checkbox({
             label: t('fonts.system_setting.on'),
-            checked: !!settings.system_font_fallback,
+            checked: settings.system_fonts !== false,
             // The backend rebuilds the fonts and reports a `fonts` change.
-            onchange: (v) => save({ system_font_fallback: v }),
+            onchange: (v) => save({ system_fonts: v }),
           }),
           t('fonts.system_setting.hint'),
         ),

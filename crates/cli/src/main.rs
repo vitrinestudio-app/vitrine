@@ -85,6 +85,18 @@ pub struct Global {
     /// Print more details (every exported file, image sizes).
     #[arg(short, long, global = true, help_heading = "Global options")]
     pub verbose: bool,
+    /// Do not use fonts installed on this computer: bundled and project
+    /// fonts only, identical output on every machine (also
+    /// `VITRINE_SYSTEM_FONTS=off`).
+    #[arg(long, global = true, help_heading = "Global options")]
+    pub no_system_fonts: bool,
+}
+
+impl Global {
+    /// Use installed system fonts (ADR 0028)?
+    pub fn system_fonts(&self) -> bool {
+        !self.no_system_fonts && vitrine_core::layout::system::allowed()
+    }
 }
 
 /// Output format of `validate` and `export`.
@@ -111,7 +123,7 @@ enum Command {
     Import(import::ImportCommand),
     /// Import, list and remove device frames (Apple Product Bezels, own frame packs).
     Frames(frames::FramesArgs),
-    /// List the font families text styles can use (bundled and the project's fonts/ folder).
+    /// List the font families text styles can use (bundled, project, system); store used system fonts in the project (`fonts embed`).
     Fonts(fonts::FontsArgs),
     /// Run the MCP server over stdio (for Claude Code / Claude Desktop).
     Mcp(mcp::McpArgs),

@@ -14,6 +14,8 @@ import { store } from '../store.js';
 import { checkbox, confirmDialog, errorLine, input, openModal, row, select } from './modal.js';
 import { storesPane } from './stores.js';
 import { storedFramesPane } from './stored-frames.js';
+import { storedFontsPane } from './stored-fonts.js';
+import { fontPicker } from './font-picker.js';
 
 const TABS = ['general', 'languages', 'styles', 'fonts', 'frames', 'stores'];
 /** Frame styles of the project default; `imported:*` are Apple's bezels (ADR 0012). */
@@ -107,7 +109,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
     } else {
       styles ??= await api.stylesGet();
       fonts ??= await api.catalogFonts();
-      pane.replaceChildren(fontsPane());
+      pane.replaceChildren(await fontsPane());
     }
   }
 
@@ -257,7 +259,6 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
   function stylesPane(s) {
     const listId = 'ps-color-names';
     const datalist = h('datalist', { id: listId }, Object.keys(styles.colors ?? {}).map((n) => h('option', { value: `@${n}` })));
-    const fontNames = fontOptions();
     const shadowNames = [...new Set([...BUILTIN_SHADOWS, ...Object.keys(styles.shadows ?? {})])];
     const patch = (p) => commit(() => api.stylesPatch(p));
     const renameInput = (kind, name) =>
@@ -340,7 +341,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
           'div',
           { class: 'form' },
           row(t('project.styles.name'), h('div', { class: 'inline' }, renameInput('text', name), removeBtn('text', name))),
-          row(t('project.styles.font'), select({ options: [{ value: '', label: t('project.styles.default') }, ...fontNames], value: st.font ?? '', onchange: (v) => set('font', v || null) })),
+          row(t('project.styles.font'), fontPicker({ value: st.font, fonts, emptyLabel: t('project.styles.default'), onchange: (v) => set('font', v || null) })),
           row(t('project.styles.weight'), h('div', { class: 'inline' }, select({ options: [{ value: '', label: t('project.styles.default') }, ...WEIGHTS.map(String)], value: st.weight ? String(st.weight) : '', onchange: (v) => set('weight', v ? Number(v) : null) }), checkbox({ label: t('project.styles.italic'), checked: st.italic, onchange: (v) => set('italic', v || null) }))),
           row(t('project.styles.size'), num(st.size, (v) => set('size', v), 'lu')),
           row(t('project.styles.line_height'), num(st.line_height, (v) => set('line_height', v), '×', 0.05)),
@@ -365,7 +366,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
           'div',
           { class: 'form' },
           row(t('project.styles.name'), h('div', { class: 'inline' }, renameInput('span', name), removeBtn('spans', name))),
-          row(t('project.styles.font'), select({ options: [{ value: '', label: t('project.styles.inherit') }, ...fontNames], value: st.font ?? '', onchange: (v) => set('font', v || null) })),
+          row(t('project.styles.font'), fontPicker({ value: st.font, fonts, emptyLabel: t('project.styles.inherit'), onchange: (v) => set('font', v || null) })),
           row(t('project.styles.weight'), h('div', { class: 'inline' }, select({ options: [{ value: '', label: t('project.styles.inherit') }, ...WEIGHTS.map(String)], value: st.weight ? String(st.weight) : '', onchange: (v) => set('weight', v ? Number(v) : null) }), checkbox({ label: t('project.styles.italic'), checked: st.italic, onchange: (v) => set('italic', v || null) }))),
           row(t('project.styles.color'), withRefs(colorRefInput(st.color, (v) => set('color', v)))),
           row(t('project.styles.background'), withRefs(colorRefInput(st.background, (v) => set('background', v)))),
@@ -426,15 +427,6 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
     return h('div', { class: 'inline' }, input({ type: 'number', value, step, cls: 'num', placeholder: t('project.styles.default'), onchange: (v) => onchange(v) }), h('span', { class: 'muted small' }, unit));
   }
 
-  /** Font picker options: bundled families with their category, then project fonts. */
-  function fontOptions() {
-    const info = fonts.bundled_info ?? fonts.bundled.map((family) => ({ family }));
-    return [
-      ...info.map((f) => ({ value: f.family, label: f.category ? `${f.family} · ${t(`fonts.category.${f.category}`)}` : f.family })),
-      ...fonts.project.filter((f) => !fonts.bundled.includes(f)).map((f) => ({ value: f, label: `${f} · ${t('fonts.project')}` })),
-    ];
-  }
-
   /** Families the text and span styles name (the default is Inter). */
   function usedFamilies() {
     const used = new Set(['Inter']);
@@ -448,14 +440,33 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
     return [t(`fonts.category.${f.category}`), w, f.italic ? t('fonts.italic') : null].filter(Boolean).join(' · ');
   }
 
-  /** System fallback state: off, on but not needed, or the loaded families. */
-  function systemFontsText() {
-    if (fonts.system.length) return `${t('fonts.system.loaded')}: ${fonts.system.join(', ')}`;
-    return fonts.system_enabled ? t('fonts.system.unneeded') : t('fonts.system.off');
+  const lower = (list) => new Set((list ?? []).map((f) => f.toLowerCase()));
+
+  /** Where a family comes from: bundled, project, stored, this computer, missing. */
+  function sourceOf(family) {
+    const f = family.toLowerCase();
+    if (lower(fonts.bundled).has(f)) return t('fonts.bundled');
+    if (lower(fonts.stored).has(f)) return t('fonts.stored');
+    if (lower(fonts.project).has(f)) return t('fonts.project');
+    if (lower(fonts.system_named).has(f) || lower(fonts.system).has(f) || (fonts.installed ?? []).some((x) => x.family.toLowerCase() === f)) return t('fonts.system_font');
+    return t('fonts.missing');
   }
 
-  function fontsPane() {
-    const all = [...fonts.bundled, ...fonts.project];
+  /** System font state: off, on and used (named / fallback), on but not needed. */
+  function systemFontsText() {
+    if (!fonts.system_enabled) return t('fonts.system.off');
+    const parts = [];
+    if (fonts.system_named?.length) parts.push(`${t('fonts.system.named')}: ${fonts.system_named.join(', ')}`);
+    if (fonts.system.length) parts.push(`${t('fonts.system.loaded')}: ${fonts.system.join(', ')}`);
+    if (!parts.length) parts.push(t('fonts.system.unneeded'));
+    parts.push(t('fonts.system.installed').replace('{n}', String(fonts.installed?.length ?? 0)));
+    return parts.join(' · ');
+  }
+
+  async function fontsPane() {
+    const installed = (fonts.installed ?? []).map((f) => f.family);
+    const all = [...fonts.bundled, ...fonts.project, ...installed];
+    const known = lower(all);
     const settings = styles.fonts ?? {};
     // Rows for the families in use, project fonts and families with settings;
     // every bundled family is listed compactly below.
@@ -465,7 +476,6 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
     const setFallback = (family, list) => commit(() => api.stylesPatch({ fonts: { [family]: list.length ? { fallback: list } : null } }));
     const familyRow = (family) => {
       const list = settings[family]?.fallback ?? [];
-      const source = fonts.bundled.includes(family) ? t('fonts.bundled') : fonts.project.includes(family) ? t('fonts.project') : t('fonts.missing');
       let adding = '';
       const add = input({ placeholder: t('fonts.add_fallback'), cls: 'mono', oninput: (v) => (adding = v.trim()) });
       add.setAttribute('list', listId);
@@ -474,7 +484,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
       return h(
         'div',
         { class: 'ps-font-family' },
-        h('div', { class: 'inline' }, h('strong', {}, family), h('span', { class: 'muted small' }, ` · ${source}`)),
+        h('div', { class: 'inline' }, h('strong', {}, family), h('span', { class: 'muted small' }, ` · ${sourceOf(family)}`)),
         h(
           'div',
           { class: 'inline wrap' },
@@ -482,7 +492,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
           ...list.map((f, i) =>
             h(
               'span',
-              { class: `font-chip${all.includes(f) || fonts.system.includes(f) ? '' : ' missing'}`, title: all.includes(f) ? f : t('fonts.missing') },
+              { class: `font-chip${known.has(f.toLowerCase()) || fonts.system.includes(f) ? '' : ' missing'}`, title: known.has(f.toLowerCase()) ? `${f} · ${sourceOf(f)}` : t('fonts.missing') },
               f,
               i > 0 ? h('button', { class: 'icon-btn', type: 'button', title: t('fonts.up'), onclick: () => setFallback(family, [...list.slice(0, i - 1), f, list[i - 1], ...list.slice(i + 1)]) }, icon('up')) : null,
               h('button', { class: 'icon-btn', type: 'button', title: t('project.styles.remove'), onclick: () => setFallback(family, list.filter((x) => x !== f)) }, icon('close')),
@@ -493,6 +503,23 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
         ),
       );
     };
+    const rescan = h('button', { class: 'btn btn-small', type: 'button', disabled: fonts.system_enabled ? undefined : true, title: t('fonts.system.rescan.hint') }, icon('update'), t('fonts.system.rescan'));
+    rescan.addEventListener('click', async () => {
+      rescan.disabled = true;
+      try {
+        await api.fontsRefresh();
+        fonts = null;
+        await render();
+      } catch (e) {
+        err.show(e);
+        rescan.disabled = false;
+      }
+    });
+    const bundledList = (pred) => (fonts.bundled_info ?? []).filter(pred).map((f) => h('div', { class: 'inline' }, h('span', {}, f.family), h('span', { class: 'muted small' }, ` · ${bundledSummary(f)}`)));
+    const stored = await storedFontsPane(async () => {
+      fonts = null;
+      await render();
+    });
     return h(
       'div',
       { class: 'stack' },
@@ -500,11 +527,17 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
       h('div', { class: 'section-title' }, t('fonts.families')),
       h('p', { class: 'muted small' }, t('fonts.fallback.hint')),
       ...families.map(familyRow),
-      h('div', { class: 'section-title' }, t('fonts.bundled_list')),
-      h('p', { class: 'muted small' }, t('fonts.bundled_list.hint')),
-      h('div', { class: 'stack' }, ...(fonts.bundled_info ?? []).map((f) => h('div', { class: 'inline' }, h('span', {}, f.family), h('span', { class: 'muted small' }, ` · ${bundledSummary(f)}`)))),
       h('div', { class: 'section-title' }, t('fonts.system')),
       h('p', { class: 'muted small' }, systemFontsText()),
+      h('p', { class: 'muted small' }, t('fonts.system.hint')),
+      h('div', { class: 'inline' }, rescan),
+      stored,
+      h('div', { class: 'section-title' }, t('fonts.bundled_list')),
+      h('p', { class: 'muted small' }, t('fonts.bundled_list.hint')),
+      h('div', { class: 'stack' }, ...bundledList((f) => f.category !== 'script')),
+      h('div', { class: 'section-title' }, t('fonts.scripts')),
+      h('p', { class: 'muted small' }, t('fonts.scripts.hint')),
+      h('div', { class: 'stack' }, ...bundledList((f) => f.category === 'script')),
       h('p', { class: 'muted small' }, t('project.fonts.hint')),
     );
   }

@@ -110,6 +110,12 @@ pub struct InsertReport {
     /// already has is never replaced.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub samples: Vec<String>,
+    /// Font families the template uses but does not include (licence or
+    /// system font): used when installed, else Inter (ADR 0028). The
+    /// front ends check which of them are available
+    /// ([`super::unavailable_fonts`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fonts_required: Vec<super::RequiredFont>,
 }
 
 /// Ops and files of an insert.
@@ -258,6 +264,9 @@ pub fn plan_insert(
         files.push(FileCopy { from, to });
     }
     report.files = files.iter().map(|f| f.to.clone()).collect();
+    report
+        .fonts_required
+        .clone_from(&pkg.manifest.fonts_required);
 
     // Ops: styles, texts, canvases, targets – one transaction.
     let mut ops = Vec::new();

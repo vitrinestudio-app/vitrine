@@ -259,6 +259,15 @@ export const api = {
   framesEmbed: (opts = {}) => invoke('frames_embed', opts),
   /** Removes `frames/imported/`; returns the bytes freed. */
   framesUnembed: () => invoke('frames_unembed'),
+  // ----- system fonts stored in the project (ADR 0028) -----
+  /** Dry run of storing the used system fonts: { stored, up_to_date, items, restricted, system_families, bytes_now, bytes_after, folder_bytes, system_enabled }. */
+  fontsEmbedStatus: () => invoke('fonts_embed_status'),
+  /** Stores / updates the used system fonts in fonts/system/; returns the applied plan. */
+  fontsEmbed: () => invoke('fonts_embed', {}),
+  /** Removes fonts/system/; returns the bytes freed. */
+  fontsUnembed: () => invoke('fonts_unembed'),
+  /** Rescans the installed system fonts; returns the number of families. */
+  fontsRefresh: () => invoke('fonts_refresh'),
   // ----- banner from this canvas (6.2) -----
   /** Store banner proposals for `canvas`: [{ preset, label, store, size, pages, existing }]. */
   canvasBannerOptions: (canvas, page) => invoke('canvas_banner_options', page == null ? { canvas } : { canvas, page }),
