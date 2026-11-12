@@ -457,7 +457,12 @@ mod tests {
         let jpg = created
             .samples
             .iter()
-            .find(|s| s.starts_with("screenshots/en/ios-phone/") && s.ends_with(".jpg"))
+            .find(|s| {
+                s.starts_with("screenshots/en/ios-phone/")
+                    && Path::new(s.as_str())
+                        .extension()
+                        .is_some_and(|e| e.eq_ignore_ascii_case("jpg"))
+            })
             .expect("a JPEG sample for ios-phone");
         let key = jpg
             .trim_start_matches("screenshots/en/ios-phone/")
