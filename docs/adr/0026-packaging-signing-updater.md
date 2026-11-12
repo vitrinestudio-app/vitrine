@@ -163,3 +163,66 @@ is not `v<version>`.
 - Not verified locally: notarization, DMG creation on CI, NSIS hooks, the
   SignPath path, AppImage/deb/rpm – first `workflow_dispatch` run checks
   them.
+
+## Amendment 2026-11-12: more CLI builds and the container image
+
+Owner decisions (STATUS open question g): Linux arm64 and a static musl
+build of the CLI; the CLI container image is built and pushed by
+`release.yml`.
+
+### CLI-only archives (job `cli`)
+
+| archive | target | built on | libc |
+|---|---|---|---|
+| `vitrine-cli_linux_aarch64.tar.gz` | `aarch64-unknown-linux-gnu` | GitHub `ubuntu-22.04-arm` runner (native; free for public repos) | glibc, same Ubuntu 22.04 baseline as `vitrine-cli_linux_x86_64` (glibc 2.35+) |
+| `vitrine-cli_linux_x86_64-musl.tar.gz` | `x86_64-unknown-linux-musl` | `ubuntu-24.04`, `cargo zigbuild` | static (musl), any Linux, Alpine |
+| `vitrine-cli_linux_aarch64-musl.tar.gz` | `aarch64-unknown-linux-musl` | `ubuntu-24.04-arm`, `cargo zigbuild` | static (musl) |
+
+- No GUI for Linux arm64 (no AppImage/deb/rpm; `latest.json` unchanged,
+  GUI only).
+- musl via **cargo-zigbuild** (0.24.1) with **zig** (0.17.1) as C compiler
+  and linker, both prebuilt and SHA-256 pinned in the workflow, instead of
+  `cross` (needs Docker) or Ubuntu's `musl-tools` (a musl-gcc setup that
+  cannot be tried on the Mac). The C parts (aws-lc-sys for rustls, bundled
+  SQLite) build unchanged; no code or dependency changes were needed. The
+  same tool chain builds both musl targets on a Mac (verified 2026-11-12).
+- Native runners per architecture, so `scripts/release/build-cli.sh` runs
+  the binary: `--version`, a new project, `validate --preview`, one
+  rendered page; it also checks the linkage with `readelf` (musl: no
+  dynamic section, no interpreter; glibc: NEEDED list and newest GLIBC
+  symbol version).
+- Names follow the existing `vitrine-cli_<os>_<arch>` scheme; the libc is
+  a suffix of the arch (`x86_64-musl`), so the version-free names stay
+  stable for `releases/latest/download/…`. All archives have the same
+  layout (`vitrine-cli_<version>/{vitrine, licenses/}`) and are in
+  `SHA256SUMS.txt`. `about.toml` / `deny.toml` list the three targets.
+- musl's allocator is slower than glibc's under many threads; rendering
+  in the musl build may be slower. Not measured yet (needs a Linux host);
+  if it matters, a faster allocator for musl builds only is the fix.
+
+### Container image `ghcr.io/vitrinestudio-app/vitrine-cli`
+
+- Built from the **static musl archives** of the same run (identical
+  binary to the download), `docker/cli/Dockerfile` target `release`:
+  Alpine 3.24, `ca-certificates jq git`, non-root user `vitrine` (uid
+  10001), `/work`, `VITRINE_APP_DIR`, licence files under
+  `/usr/share/doc/vitrine/licenses/`, no ENTRYPOINT (CI runs shells).
+  Alpine instead of distroless/static: GitLab, Jenkins and other CI
+  systems need a shell in the image, and upload scripts need `jq`.
+- linux/amd64 + linux/arm64, each built natively on its runner (no QEMU),
+  smoke-tested (`docker run --network none`: version, new project,
+  validate, render, licence file present), pushed by digest; job
+  `image-manifest` joins the digests into one multi-arch index with tags
+  `<version>`, `<major>.<minor>` and `latest` (pre-releases: only
+  `<version>`).
+- Only on tag pushes, with `GITHUB_TOKEN` (`packages: write` on the image
+  jobs only; plain `docker buildx`, no third-party actions). Manual runs
+  build and smoke-test without pushing. OCI labels: title, description,
+  source (links the package to the repository), url, documentation,
+  licenses `GPL-3.0-or-later`, version, revision; the same as index
+  annotations.
+- The image is pushed when the tag workflow runs, i.e. **before** the
+  owner publishes the draft release. A discarded draft means deleting that
+  image version on GitHub (Packages) as well.
+- The default target of the Dockerfile still builds from source (Debian,
+  glibc) for local images without a release.

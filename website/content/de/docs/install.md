@@ -23,10 +23,19 @@ Releases erscheinen auf
 | macOS 11 oder neuer (Apple Silicon und Intel) | `VitrineStudio_macos_universal.dmg` | `vitrine-cli_macos_universal.tar.gz` |
 | Windows 10/11 (x64) | `VitrineStudio_windows_x64-setup.exe` | `vitrine-cli_windows_x64.zip` |
 | Linux (x86_64) | `VitrineStudio_linux_x86_64.AppImage`, `…_amd64.deb`, `…_x86_64.rpm` | `vitrine-cli_linux_x86_64.tar.gz` |
+| Linux (aarch64 / arm64) | – | `vitrine-cli_linux_aarch64.tar.gz` |
+| Linux, statischer Build (jede Distribution, Alpine) | – | `vitrine-cli_linux_x86_64-musl.tar.gz`, `vitrine-cli_linux_aarch64-musl.tar.gz` |
 
 Die Archive „nur Kommandozeilen-Tool“ sind für Build-Server und CI gedacht,
-wo du die App nicht brauchst. Jedes Release enthält außerdem
-`SHA256SUMS.txt`, mit dem du deinen Download prüfen kannst:
+wo du die App nicht brauchst. Die normalen Linux-Builds brauchen glibc 2.35
+oder neuer (Ubuntu 22.04, Debian 12 und neuer); die statischen
+`-musl`-Builds haben keine Abhängigkeiten und laufen auf jedem Linux, auch
+auf Alpine. Für CI gibt es außerdem ein Container-Image mit dem
+Kommandozeilen-Tool (amd64 und arm64):
+`ghcr.io/vitrinestudio-app/vitrine-cli` – siehe [CI/CD](../ci/).
+
+Jedes Release enthält außerdem `SHA256SUMS.txt`, mit dem du deinen Download
+prüfen kannst:
 
 ```sh
 sha256sum -c SHA256SUMS.txt --ignore-missing

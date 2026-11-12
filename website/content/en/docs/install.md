@@ -22,10 +22,17 @@ Releases are published on
 | macOS 11 or later (Apple silicon and Intel) | `VitrineStudio_macos_universal.dmg` | `vitrine-cli_macos_universal.tar.gz` |
 | Windows 10/11 (x64) | `VitrineStudio_windows_x64-setup.exe` | `vitrine-cli_windows_x64.zip` |
 | Linux (x86_64) | `VitrineStudio_linux_x86_64.AppImage`, `…_amd64.deb`, `…_x86_64.rpm` | `vitrine-cli_linux_x86_64.tar.gz` |
+| Linux (aarch64 / arm64) | – | `vitrine-cli_linux_aarch64.tar.gz` |
+| Linux, static build (any distribution, Alpine) | – | `vitrine-cli_linux_x86_64-musl.tar.gz`, `vitrine-cli_linux_aarch64-musl.tar.gz` |
 
 The "command line tool only" archives are meant for build servers and CI,
-where you don't need the app. Every release also has `SHA256SUMS.txt` to
-check your download:
+where you don't need the app. The regular Linux builds need glibc 2.35 or
+newer (Ubuntu 22.04, Debian 12 and later); the static `-musl` builds have no
+dependencies and run on any Linux, including Alpine. For CI there is also a
+container image with the command line tool (amd64 and arm64):
+`ghcr.io/vitrinestudio-app/vitrine-cli` – see [CI/CD](../ci/).
+
+Every release also has `SHA256SUMS.txt` to check your download:
 
 ```sh
 sha256sum -c SHA256SUMS.txt --ignore-missing

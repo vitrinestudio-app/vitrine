@@ -11,9 +11,10 @@ project on every pull request, to export the images as build artifacts, or
 to upload them to the stores from a release job.
 
 {{< callout status >}}
-The ready-made integrations (GitHub Action, GitLab components, container
-image, fastlane plugin) are **drafts** and not published yet. Everything
-below that uses only the CLI works with the first release.
+The CLI archives and the container image come with the first release. The
+ready-made integrations (GitHub Action, GitLab components, fastlane plugin)
+are **drafts** and not published yet; everything below that uses only the
+CLI or the image works with the first release.
 {{< /callout >}}
 
 ## Installing the CLI in CI
@@ -23,7 +24,9 @@ Every release has a standalone CLI archive per platform, plus
 
 | runner | file |
 |---|---|
-| Linux x86_64 (glibc, e.g. Ubuntu 22.04 or Debian 12 and newer; not Alpine) | `vitrine-cli_linux_x86_64.tar.gz` |
+| Linux x86_64 (glibc 2.35+, e.g. Ubuntu 22.04 or Debian 12 and newer) | `vitrine-cli_linux_x86_64.tar.gz` |
+| Linux aarch64 / arm64 (glibc 2.35+, e.g. `ubuntu-24.04-arm`) | `vitrine-cli_linux_aarch64.tar.gz` |
+| any Linux, static build (Alpine, older glibc, minimal images) | `vitrine-cli_linux_x86_64-musl.tar.gz`, `vitrine-cli_linux_aarch64-musl.tar.gz` |
 | macOS (Apple silicon and Intel) | `vitrine-cli_macos_universal.tar.gz` |
 | Windows x64 | `vitrine-cli_windows_x64.zip` |
 
@@ -39,7 +42,29 @@ vitrine --version
 
 The binary needs no GUI libraries, no fonts from the system and no
 keychain. Fonts, hyphenation patterns, device data and the built-in frames
-are inside it.
+are inside it. The `-musl` builds are fully static (no libraries at all).
+
+### Container image
+
+For container-based CI (GitLab, Jenkins, CircleCI, Buildkite, Azure, …)
+every release also publishes the image
+**`ghcr.io/vitrinestudio-app/vitrine-cli`** (linux/amd64 and linux/arm64):
+
+| tag | |
+|---|---|
+| `0.2.0` | exactly this release (recommended for reproducible builds) |
+| `0.2` | the newest `0.2.x` |
+| `latest` | the newest release |
+
+It is Alpine with the static `vitrine` binary, `git`, `jq`, CA certificates
+and a POSIX `sh` (no `bash`), runs as the non-root user `vitrine` (uid
+10001) in `/work`, and has no entrypoint, so CI systems can run their
+shell in it. The licences are in `/usr/share/doc/vitrine/licenses/`.
+
+```sh
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" \
+  ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0 vitrine --project store-screens validate
+```
 
 ## What the CLI offers CI
 
@@ -82,14 +107,25 @@ jobs:
           path: export
 ```
 
-The planned action `setup-vitrine` will do the install step (with caching)
-and the validate/export steps in one `uses:`.
+The planned action
+[`vitrinestudio-app/vitrine-github-action`](https://github.com/vitrinestudio-app/vitrine-github-action)
+will do the install step (checksum, caching; it picks the arm64 or static
+build where needed) and the validate/export steps in one `uses:`:
+
+```yaml
+      - uses: vitrinestudio-app/vitrine-github-action@v1
+        with:
+          version: 0.2.0
+          project: store-screens
+          validate: true
+          export: true
+```
 
 ## GitLab CI
 
 ```yaml
 vitrine-validate:
-  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0   # planned image
+  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0
   script:
     - vitrine --project store-screens validate --format gitlab -o gl-code-quality-report.json
   artifacts:
@@ -108,6 +144,18 @@ vitrine-export:
 Code Quality findings show in the merge request. Use `--format junit -o
 vitrine-junit.xml` with `reports: junit:` for the pipeline's *Tests* tab.
 Without the image, install the archive in `before_script` as shown above.
+
+The planned CI/CD Catalog components in the gitlab.com project
+[`vitrinestudio/vitrine-gitlab-ci`](https://gitlab.com/vitrinestudio/vitrine-gitlab-ci)
+wrap these two jobs (`validate` with Code Quality + JUnit, `export`) and run
+the same image:
+
+```yaml
+include:
+  - component: $CI_SERVER_FQDN/vitrinestudio/vitrine-gitlab-ci/validate@1
+    inputs:
+      project: store-screens
+```
 
 ## fastlane (Bitrise, Codemagic, CircleCI, local)
 

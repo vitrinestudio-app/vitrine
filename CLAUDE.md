@@ -81,14 +81,18 @@ website/                www.vitrinestudio.app: Hugo site (no theme), en + de,
                         landing page + docs; `hugo server` / `hugo --minify`
                         in website/, see website/README.md
 scripts/release/        release helpers (licence files via cargo-about, CLI sidecar,
-                        collect artifacts, latest.json/checksums/notes; ADR 0026)
+                        Linux CLI builds incl. static musl (build-cli.sh), collect
+                        artifacts, latest.json/checksums/notes; ADR 0026)
 deny.toml, about.toml   licence allow-list (cargo deny, CI) / third-party notices
 .signpath/              SignPath artifact configuration drafts (Windows signing)
-docker/cli/             Dockerfile of the CLI container image for CI (draft)
-integrations/           unpublished CI drafts: GitHub Action, GitLab components,
-                        fastlane plugin (docs/research/2026-11-12-ci-integrations.md)
+docker/cli/             Dockerfile of the CLI image ghcr.io/vitrinestudio-app/vitrine-cli
+                        (target `release` = musl release binary, default = from source)
+integrations/           unpublished CI drafts, MIT, each folder self-contained for its
+                        own repo: github-action/ (vitrinestudio-app/vitrine-github-action),
+                        gitlab/ (gitlab.com vitrinestudio/vitrine-gitlab-ci),
+                        fastlane-plugin/ (docs/research/2026-11-12-ci-integrations.md)
 .github/workflows/      ci.yml (fmt/clippy/test per OS + licences), release.yml
-                        (tag v* → draft release; docs/dev/releasing.md)
+                        (tag v* → draft release + CLI image; docs/dev/releasing.md)
 docs/example/           preview images of the example project (README)
 docs/gui/               screenshots of the editor (README)
 ```
