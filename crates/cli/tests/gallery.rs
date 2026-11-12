@@ -309,6 +309,7 @@ fn unreachable_and_invalid_urls() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn bulk_upload_dry_run_samples_and_admin() {
     let env = start();
     let api = env.api.as_str();
