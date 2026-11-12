@@ -47,6 +47,8 @@ jsonwebtoken = "11.1.0"
 md-5 = "0.10.6"
 # Upload plan hashes and confirm tokens (vitrine-app::upload).
 sha2 = "0.10.9"
+# Lossy WebP for the gallery sprites (api-server only; bundles libwebp, BSD-3-Clause).
+webp = { version = "0.3.1", default-features = false }
 zeroize = "1.9.1"
 aws-lc-rs = "1.19.0"
 

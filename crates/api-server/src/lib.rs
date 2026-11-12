@@ -19,13 +19,16 @@ mod auth;
 mod config;
 mod db;
 mod error;
+mod maintenance;
 mod ratelimit;
 mod routes;
+mod sprites;
 mod storage;
 
 use std::sync::{Arc, Mutex};
 
 pub use config::{Config, DEFAULT_GITHUB_CLIENT_ID, DEFAULT_OFFICIAL_LOGIN, StaticToken};
+pub use maintenance::backfill;
 pub use routes::router;
 
 /// Serves the API on `listener` (client addresses for rate limiting from
@@ -59,6 +62,8 @@ pub struct AppState {
     /// Last poll and interval per device code (device flow).
     poll_gate: auth::poll::PollGate,
     github: auth::github::Github,
+    /// Limits concurrent preview/sprite renders.
+    render_slots: tokio::sync::Semaphore,
 }
 
 impl AppState {
@@ -77,7 +82,9 @@ impl AppState {
             &config.github_api_url,
             &config.github_client_id,
         )?;
+        let render_slots = tokio::sync::Semaphore::new(config.render_concurrency.max(1));
         Ok(Arc::new(Self {
+            render_slots,
             config,
             db: Mutex::new(db),
             storage,
@@ -88,6 +95,15 @@ impl AppState {
             poll_gate: auth::poll::PollGate::default(),
             github,
         }))
+    }
+
+    /// Waits for a free render slot (`VITRINE_API_RENDER_CONCURRENCY`).
+    async fn render_slot(&self) -> tokio::sync::SemaphorePermit<'_> {
+        // The semaphore is never closed.
+        self.render_slots
+            .acquire()
+            .await
+            .unwrap_or_else(|_| unreachable!("render semaphore closed"))
     }
 
     fn db(&self) -> std::sync::MutexGuard<'_, rusqlite::Connection> {

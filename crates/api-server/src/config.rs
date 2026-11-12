@@ -88,6 +88,9 @@ pub struct Config {
     /// browser after login (token in the URL fragment); unset = the
     /// callback answers JSON.
     pub web_login_return_url: Option<String>,
+    /// `VITRINE_API_RENDER_CONCURRENCY` (default 2): previews and sprites
+    /// rendered at the same time (uploads, approvals, re-renders).
+    pub render_concurrency: usize,
     /// GitHub web base (`https://github.com`); tests point it to a fake.
     pub github_url: String,
     /// GitHub REST API base (`https://api.github.com`); tests: a fake.
@@ -116,6 +119,7 @@ impl std::fmt::Debug for Config {
             .field("session_days", &self.session_days)
             .field("official_logins", &self.official_logins)
             .field("web_login_return_url", &self.web_login_return_url)
+            .field("render_concurrency", &self.render_concurrency)
             .field("github_url", &self.github_url)
             .field("github_api_url", &self.github_api_url)
             .finish()
@@ -137,6 +141,7 @@ impl Default for Config {
             login_rate_limit_per_hour: 10,
             poll_rate_limit_per_hour: 300,
             enforce_poll_interval: true,
+            render_concurrency: 2,
             public_url: "https://api.vitrinestudio.app".to_owned(),
             github_client_id: DEFAULT_GITHUB_CLIENT_ID.to_owned(),
             github_client_secret: None,
@@ -284,6 +289,12 @@ impl Config {
         }
         c.web_login_return_url =
             get("VITRINE_API_WEB_LOGIN_RETURN_URL").map(|v| v.trim().to_owned());
+        if let Some(v) = get("VITRINE_API_RENDER_CONCURRENCY") {
+            c.render_concurrency = parse("VITRINE_API_RENDER_CONCURRENCY", &v)?;
+            if c.render_concurrency == 0 {
+                anyhow::bail!("VITRINE_API_RENDER_CONCURRENCY: must be at least 1");
+            }
+        }
         Ok(c)
     }
 
