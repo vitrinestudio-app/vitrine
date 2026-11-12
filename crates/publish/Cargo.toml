@@ -36,3 +36,4 @@ zeroize = { workspace = true, features = ["serde"] }
 wiremock.workspace = true
 tokio = { workspace = true, features = ["time", "rt-multi-thread", "macros"] }
 aws-lc-rs.workspace = true
+tempfile.workspace = true

@@ -41,7 +41,9 @@ pub fn upload_readiness(
 ) -> CmdResult<crate::upload::readiness::Readiness> {
     let session = app.session()?;
     let accounts = app.settings_store().load()?.store_accounts;
-    Ok(session.with_project(|p| crate::upload::readiness::readiness(p, &accounts, args.store)))
+    let env = app.env_stores();
+    Ok(session
+        .with_project(|p| crate::upload::readiness::readiness(p, &accounts, &env, args.store)))
 }
 
 /// Builds the plan (renders the images incrementally; `remote` reads the
@@ -328,7 +330,9 @@ pub fn upload_refdata(app: &AppState, args: UploadRefdataArgs) -> CmdResult<Refd
     let account_id = match args.account {
         Some(a) => a,
         None => {
-            if let Some(a) = project
+            if app.env_account(StoreKind::Apple).is_some() {
+                crate::stores::ENV_ACCOUNT_ID.to_owned()
+            } else if let Some(a) = project
                 .as_ref()
                 .and_then(|p| p.store.account(StoreKind::Apple))
             {

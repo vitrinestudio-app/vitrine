@@ -240,7 +240,15 @@ pub(crate) fn build_local(
         }
     }
     let dir = session.dir().to_path_buf();
-    let accounts = app.settings_store().load()?.store_accounts;
+    let mut accounts = app.settings_store().load()?.store_accounts;
+    let env_stores = app.env_stores();
+    let readiness = super::readiness::readiness(&project, &accounts, &env_stores, args.store);
+    // Environment credentials (CLI in CI) act as the store's account.
+    accounts.extend(
+        env_stores
+            .iter()
+            .filter_map(|k| app.env_account(*k).map(|(a, _)| a)),
+    );
     let selection = args.selection();
     let mut plan = UploadPlan {
         version: PLAN_VERSION,
@@ -252,7 +260,7 @@ pub(crate) fn build_local(
         selection,
         stores: Vec::new(),
         problems: Vec::new(),
-        readiness: super::readiness::readiness(&project, &accounts, args.store),
+        readiness,
         totals: Totals::default(),
         blocked: false,
     };
@@ -335,7 +343,11 @@ pub(crate) fn build_local(
     for store in stores {
         let mut sp = StorePlan {
             store,
-            account: project.store.account(store).map(str::to_owned),
+            account: if env_stores.contains(&store) {
+                Some(crate::stores::ENV_ACCOUNT_ID.to_owned())
+            } else {
+                project.store.account(store).map(str::to_owned)
+            },
             app: app_key(&project, store),
             flow: match store {
                 StoreKind::Apple => remote::preferred_flow(flow_setting).as_str().to_owned(),
@@ -352,7 +364,12 @@ pub(crate) fn build_local(
                 "account_not_selected",
                 format!("no {store} account selected (Project settings → Stores)"),
             )),
-            Some(id) => match accounts.iter().find(|a| &a.id == id) {
+            // (Both environment accounts are called `env`: prefer the store's.)
+            Some(id) => match accounts
+                .iter()
+                .find(|a| &a.id == id && a.kind == store)
+                .or_else(|| accounts.iter().find(|a| &a.id == id))
+            {
                 None => sp.problems.push(Problem::blocking(
                     "unknown_account",
                     format!(

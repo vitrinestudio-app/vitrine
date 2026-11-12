@@ -116,6 +116,7 @@ enum Command {
     Mcp(mcp::McpArgs),
     /// Upload to App Store Connect / Google Play: `plan` (dry run + confirm
     /// token), `execute --confirm <token>`, `log`.
+    #[command(after_help = upload::ENV_HELP)]
     Upload(upload::UploadArgs),
     /// Templates: save canvases as a template, list, import, export,
     /// remove, insert into the project, new project from a template.

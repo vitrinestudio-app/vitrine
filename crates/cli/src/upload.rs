@@ -6,6 +6,11 @@
 //! (`store.<store>.account`): its public facts from the app settings
 //! (`--app-dir`, `$VITRINE_APP_DIR` or the platform folder), the key from
 //! the system keychain (`VITRINE_KEYRING=mock` = in-memory, tests).
+//!
+//! In CI, `VITRINE_ASC_*` / `VITRINE_PLAY_*` variables replace both
+//! (`vitrine_publish::env_credentials`): a store with them set uses them
+//! instead of the project's account and never opens the keychain. An
+//! upload still needs the plan's confirm token and `--yes` (no terminal).
 
 use std::io::{BufRead, IsTerminal, Write};
 use std::path::PathBuf;
@@ -18,9 +23,19 @@ use vitrine_app::dialogs::NoDialogs;
 use vitrine_app::events::EventSink;
 use vitrine_app::settings::AppPaths;
 use vitrine_app::{AppState, CommandError, Reply};
+use vitrine_publish::env_credentials::EnvCredentials;
 
 use crate::term::Style;
 use crate::{EXIT_OK, EXIT_PROBLEMS, Format, Global, project};
+
+/// `vitrine upload --help`: the CI credential variables.
+pub const ENV_HELP: &str = "\
+Credentials in CI (instead of the app settings + keychain; they win over the project's account):
+  App Store Connect: VITRINE_ASC_KEY_ID, VITRINE_ASC_ISSUER_ID and
+                     VITRINE_ASC_KEY (.p8 text or base64) or VITRINE_ASC_KEY_PATH
+  Google Play:       VITRINE_PLAY_SERVICE_ACCOUNT (JSON text or base64) or
+                     VITRINE_PLAY_SERVICE_ACCOUNT_PATH
+An upload always needs the plan's token: `upload execute --confirm <token> --yes`.";
 
 #[derive(Debug, Args)]
 pub struct UploadArgs {
@@ -193,10 +208,39 @@ fn app_state(
         }
     };
     project::load(dir)?;
-    let app =
-        AppState::new(paths, Arc::new(Progress { quiet }), Arc::new(NoDialogs)).without_watcher();
+    let app = AppState::new(paths, Arc::new(Progress { quiet }), Arc::new(NoDialogs))
+        .without_watcher()
+        .with_env_credentials(env_credentials(quiet)?);
     app.open_project(dir).map_err(cmd_error)?;
     Ok(app)
+}
+
+/// Store credentials from `VITRINE_ASC_*` / `VITRINE_PLAY_*` (CI). A
+/// half-set or invalid set stops the command (exit 2); the note on stderr
+/// names the variables and public facts only.
+fn env_credentials(quiet: bool) -> anyhow::Result<EnvCredentials> {
+    let env = EnvCredentials::from_env()
+        .map_err(|e| anyhow!("store credentials from the environment: {e}"))?;
+    if !quiet {
+        let style = Style::stderr();
+        if let Some(a) = &env.apple {
+            eprintln!(
+                "{} App Store Connect key {} from {} (instead of the project's account)",
+                style.dim("credentials:"),
+                a.key_id,
+                a.source
+            );
+        }
+        if let Some(g) = &env.google {
+            eprintln!(
+                "{} Google Play service account {} from {} (instead of the project's account)",
+                style.dim("credentials:"),
+                g.info.client_email,
+                g.source
+            );
+        }
+    }
+    Ok(env)
 }
 
 #[allow(clippy::needless_pass_by_value)] // used as `map_err(cmd_error)`
@@ -328,7 +372,8 @@ fn refdata(
         Arc::new(Progress { quiet: true }),
         Arc::new(NoDialogs),
     )
-    .without_watcher();
+    .without_watcher()
+    .with_env_credentials(env_credentials(global.quiet)?);
     if global.project.join("project.yaml").is_file() {
         app.open_project(&global.project).map_err(cmd_error)?;
     }

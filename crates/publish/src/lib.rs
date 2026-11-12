@@ -38,6 +38,7 @@ pub use progress::{Progress, ProgressFn, UploadStep, ignore_progress};
 pub use tokio_util::sync::CancellationToken;
 
 pub mod credentials;
+pub mod env_credentials;
 /// Template gallery API client (`api.vitrinestudio.app`, ADR 0025).
 pub mod gallery;
 

@@ -27,12 +27,16 @@ use crate::commands::AppState;
 use crate::error::{CmdResult, CommandError};
 use crate::stores::StoreAccount;
 
-/// The account of `store` referenced by the project, with its secret.
+/// The account of `store` referenced by the project, with its secret;
+/// environment credentials (CLI in CI) win and skip the keychain.
 pub(crate) fn credentials(
     app: &AppState,
     project: &Project,
     store: StoreKind,
 ) -> CmdResult<(StoreAccount, Secret)> {
+    if let Some(env) = app.env_account(store) {
+        return Ok(env);
+    }
     let id = project.store.account(store).ok_or_else(|| {
         CommandError::invalid(format!(
             "the project has no {store} account (Project settings → Stores)"

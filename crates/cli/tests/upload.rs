@@ -175,3 +175,100 @@ fn refdata_needs_an_apple_account_and_its_key() {
         text(&out.stdout)
     );
 }
+
+/// CI: credentials from `VITRINE_PLAY_*` replace the app-wide account –
+/// no settings, no keychain entry. The plan is not blocked and names the
+/// environment account; a half-set variable group stops with exit 2
+/// naming the variable, never its value.
+#[test]
+fn environment_credentials_in_ci() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("project");
+    let app = tmp.path().join("app");
+    std::fs::create_dir_all(dir.join("i18n")).unwrap();
+    std::fs::create_dir_all(&app).unwrap();
+    std::fs::write(dir.join("project.yaml"), PROJECT).unwrap();
+    std::fs::write(dir.join("i18n/en.yaml"), "one.title: One\ntwo.title: Two\n").unwrap();
+    std::fs::write(
+        dir.join("i18n/de.yaml"),
+        "one.title: Eins\ntwo.title: Zwei\n",
+    )
+    .unwrap();
+    let kind = ["PRIVATE", "KEY"].join(" ");
+    let sa = serde_json::json!({
+        "type": "service_account",
+        "client_email": "ci@demo.iam.gserviceaccount.com",
+        "private_key": format!("-----BEGIN {kind}-----\nAAEC\n-----END {kind}-----\n"),
+    })
+    .to_string();
+    let with_env = |args: &[&str], vars: &[(&str, &str)]| {
+        let mut c = Command::new(env!("CARGO_BIN_EXE_vitrine"));
+        c.arg("--project")
+            .arg(&dir)
+            .arg("upload")
+            .arg("--app-dir")
+            .arg(&app)
+            .args(args)
+            .env("VITRINE_KEYRING", "mock")
+            .env_remove("VITRINE_APP_DIR")
+            .stdin(Stdio::null());
+        for v in vitrine_publish::env_credentials::ALL_VARS {
+            c.env_remove(v);
+        }
+        for (k, v) in vars {
+            c.env(k, v);
+        }
+        c.output().unwrap()
+    };
+
+    // Without the variables: no account on this machine → blocked.
+    let out = with_env(&["plan"], &[]);
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out.stdout));
+
+    let vars = [("VITRINE_PLAY_SERVICE_ACCOUNT", sa.as_str())];
+    let out = with_env(&["plan", "--lang", "en", "--format", "json"], &vars);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let plan: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(plan["blocked"], false);
+    assert_eq!(plan["readiness"]["ready"], true);
+    assert_eq!(plan["stores"][0]["account"], "env");
+    let stderr = text(&out.stderr);
+    assert!(
+        stderr.contains("ci@demo.iam.gserviceaccount.com"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("VITRINE_PLAY_SERVICE_ACCOUNT"), "{stderr}");
+    let token = plan["confirm_token"].as_str().unwrap().to_owned();
+
+    // CI has no terminal: an upload still needs the token *and* --yes.
+    let out = with_env(&["execute", "--confirm", &token], &vars);
+    assert_eq!(out.status.code(), Some(2));
+    assert!(text(&out.stderr).contains("--yes"));
+
+    // With --yes it gets as far as the store: the (fake) key is used, the
+    // keychain is never asked, nothing secret is printed.
+    let out = with_env(
+        &["execute", "--confirm", &token, "--yes", "--format", "json"],
+        &[
+            vars[0],
+            ("VITRINE_PLAY_TOKEN_URL", "http://127.0.0.1:9/token"),
+            ("VITRINE_PLAY_BASE_URL", "http://127.0.0.1:9"),
+        ],
+    );
+    let all = format!("{}{}", text(&out.stdout), text(&out.stderr));
+    assert_ne!(out.status.code(), Some(0), "{all}");
+    assert!(!all.contains("keychain"), "{all}");
+    assert!(!all.contains("AAEC") && !all.contains("BEGIN"), "{all}");
+
+    // Half-set Apple variables: refused before anything happens.
+    let out = with_env(&["plan"], &[("VITRINE_ASC_KEY_ID", "ABCDE12345")]);
+    assert_eq!(out.status.code(), Some(2));
+    let stderr = text(&out.stderr);
+    assert!(stderr.contains("VITRINE_ASC_"), "{stderr}");
+
+    let out = Command::new(env!("CARGO_BIN_EXE_vitrine"))
+        .args(["upload", "--help"])
+        .output()
+        .unwrap();
+    assert!(text(&out.stdout).contains("VITRINE_ASC_KEY_PATH"));
+}

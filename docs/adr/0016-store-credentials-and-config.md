@@ -177,3 +177,38 @@ the mapping in the GUI.
   overrides via `VITRINE_ASC_BASE_URL`/`VITRINE_PLAY_*` in CLI/dev
   bridge, set directly in tests). Tests: `crates/publish/tests/{apple,
   google}.rs`, `crates/app/tests/store_setup.rs`.
+
+## Amendment 2026-11-12: credentials from the environment (CI)
+
+CI runners have no usable keychain (headless Linux has no Secret Service;
+hosted macOS runners start empty) and no app settings. The CLI therefore
+also reads store credentials from environment variables
+(`vitrine_publish::env_credentials`):
+
+| store | variables |
+|---|---|
+| App Store Connect | `VITRINE_ASC_KEY_ID`, `VITRINE_ASC_ISSUER_ID`, and `VITRINE_ASC_KEY` (`.p8` text or its base64) or `VITRINE_ASC_KEY_PATH` |
+| Google Play | `VITRINE_PLAY_SERVICE_ACCOUNT` (JSON text or its base64) or `VITRINE_PLAY_SERVICE_ACCOUNT_PATH` |
+
+- **Scope.** Only `vitrine upload …` reads them (`AppState::with_env_credentials`).
+  The GUI, the dev bridge and the MCP server (also `vitrine mcp
+  --headless`) never do, so an assistant cannot pick up CI secrets.
+- **Precedence.** A store with environment credentials uses them instead
+  of the account the project references (`store.<kind>.account`), and the
+  keychain is not opened at all. The plan names the account `env`
+  (`StorePlan.account`), readiness needs no account for that store, and
+  the CLI prints one stderr line per store with the public facts only
+  (key id / client e-mail and the variable name).
+- **All or nothing.** Empty values count as unset. As soon as one variable
+  of a store is set, the set must be complete and valid (same validation
+  as the import), else the command stops with exit 2 – a half-configured
+  job must not fall back to another account. Inline and path variants
+  together are refused. `VITRINE_ASC_KEY_ID` may be omitted when the path
+  ends in `AuthKey_<KEYID>.p8`. A single-line PEM with literal `\n` is
+  unescaped (some secret stores flatten newlines).
+- **Secrets.** Held in memory as `Secret` only; nothing is written to disk
+  by Vitrine Studio; errors name the variable, never its value (tests check
+  that no key material or value appears).
+- **Not adopted:** reading fastlane's `APP_STORE_CONNECT_API_KEY_*` /
+  `SUPPLY_JSON_KEY*` names implicitly (surprising when both tools run in
+  one job); users map them explicitly in the workflow file.

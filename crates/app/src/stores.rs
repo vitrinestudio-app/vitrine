@@ -17,11 +17,59 @@
 //!   label: Play uploads
 //!   google: {client_email: uploader@demo.iam.gserviceaccount.com, project_id: demo}
 //! ```
+//!
+//! **CI credentials** (`vitrine_publish::env_credentials`): the CLI may
+//! install credentials read from `VITRINE_ASC_*` / `VITRINE_PLAY_*`
+//! variables ([`crate::AppState::with_env_credentials`]). They act as the
+//! account of their store with the id [`ENV_ACCOUNT_ID`] and win over the
+//! account the project references; the GUI and MCP never install them.
 
 use serde::{Deserialize, Serialize};
 use vitrine_core::model::{StoreKind, is_valid_id};
 pub use vitrine_publish::credentials;
 use vitrine_publish::credentials::Secret;
+
+/// Account id of credentials from the environment (never in `settings.yaml`).
+pub const ENV_ACCOUNT_ID: &str = "env";
+
+/// The environment credentials of `kind` as an account plus its secret.
+pub fn env_account(
+    env: &vitrine_publish::env_credentials::EnvCredentials,
+    kind: StoreKind,
+) -> Option<(StoreAccount, Secret)> {
+    match kind {
+        StoreKind::Apple => env.apple.as_ref().map(|a| {
+            (
+                StoreAccount {
+                    id: ENV_ACCOUNT_ID.to_owned(),
+                    kind,
+                    label: format!("environment ({})", a.source),
+                    apple: Some(AppleAccount {
+                        issuer_id: a.issuer_id.clone(),
+                        key_id: a.key_id.clone(),
+                    }),
+                    google: None,
+                },
+                a.key.clone(),
+            )
+        }),
+        StoreKind::Google => env.google.as_ref().map(|g| {
+            (
+                StoreAccount {
+                    id: ENV_ACCOUNT_ID.to_owned(),
+                    kind,
+                    label: format!("environment ({})", g.source),
+                    apple: None,
+                    google: Some(GoogleAccount {
+                        client_email: g.info.client_email.clone(),
+                        project_id: g.info.project_id.clone(),
+                    }),
+                },
+                g.key.clone(),
+            )
+        }),
+    }
+}
 
 /// One store account (no secrets).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

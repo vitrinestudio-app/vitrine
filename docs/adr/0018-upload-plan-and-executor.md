@@ -292,3 +292,24 @@ defaults, older stored plans still load): `StorePlan.flow_setting`,
 `upload-finished` was emitted (flag `delivered`, set after the event by the
 executor and by the watchdog's end path), so a waiter (CLI, `upload_execute
 {wait}`, tests) never sees a finished run whose event is still pending.
+
+## Amendment 2026-11-12: uploads from CI
+
+No new command and no policy change: a CI upload is the same two steps in
+one job, with credentials from the environment (ADR 0016 amendment):
+
+```sh
+vitrine upload plan --format json > plan.json        # exit 1 when blocked
+vitrine upload execute --confirm "$(jq -r .confirm_token plan.json)" --yes
+```
+
+- Without a terminal, `execute` refuses to run without `--yes` (exit 2), so
+  an upload never happens by accident; `--yes` in the job file is the
+  explicit opt-in and the plan JSON in the log/artifacts documents it.
+- The token lives in `<project>/.cache/uploads.sqlite`, so plan and
+  execute must run in the same job (or the cache must be carried over).
+  A protected environment / manual approval belongs to the CI system,
+  in front of the job.
+- A one-step `vitrine upload run --yes` was considered and left out until
+  the owner decides (see `docs/research/2026-11-12-ci-integrations.md`):
+  it would skip the reviewable plan step that the token enforces.

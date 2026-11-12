@@ -295,6 +295,11 @@ pub(crate) fn account_with_secret(
     id: &str,
     kind: StoreKind,
 ) -> CmdResult<(StoreAccount, Secret)> {
+    if id == crate::stores::ENV_ACCOUNT_ID
+        && let Some(env) = app.env_account(kind)
+    {
+        return Ok(env);
+    }
     let account = find_account(app, id)?;
     if account.kind != kind {
         return Err(CommandError::invalid(format!(
