@@ -353,7 +353,7 @@ fn store_frames_in_the_project() {
     assert_eq!(done["applied"], true);
     assert!(dir.join("frames/imported/apple/index.yaml").is_file());
     let list = call(app, "frames_list", Value::Null);
-    assert!(!list["stored"]["apple"].as_array().unwrap().is_empty());
+    assert!(list["stored"]["apple"].as_array().map_or(0, Vec::len) > 0);
     let status = call(app, "frames_embed_status", json!({}));
     assert_eq!(status["stored"], true);
     assert_eq!(status["up_to_date"], true);
