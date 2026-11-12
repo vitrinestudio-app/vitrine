@@ -3,6 +3,86 @@
 Living hand-off document so work can continue after a context reset. Keep it
 current: update after each phase/merge and whenever the user decides something.
 
+## Coordinator hand-off (2026-11-12, before a context compaction)
+
+Read this first when resuming. Repo: github.com/vitrinestudio-app/vitrine
+(remote `origin`; old repo = remote `old-arrangia`, to be archived/deleted
+by the owner). Local folder still `/Users/thorsten/Dev/arrangia`.
+
+**Subagents running at hand-off time** (worktrees under `.claude/worktrees/`,
+each reports back; merge with `--no-ff`, resolve STATUS/NOTES/i18n
+conflicts by keeping both sides, run the gate, push, check CI per OS):
+- MCP findings A – bugs (render_preview height 0, multiple canvas
+  backgrounds, 80 s timeouts), docs gaps, export/preview P2.4–P2.6, P2.1–P2.3,
+  P3 triage → answers in `docs/research/2026-11-12-mcp-test-results.md`.
+- MCP findings B – quality checks P1.1–P1.8 (text near device, screen box,
+  contrast, seams, pixel overlap, gap per target, gallery corners).
+- GUI polish – menu order ("Projekt schließen"), Apple bezels help link,
+  ☰ on app icon/project name, "Leinwände & Ziele", resizable wider
+  inspector, image preview lightbox, **background elements editable**.
+- Fonts – system fonts first-class (+ "store used system fonts in the
+  project", licence warning), template save without non-OFL fonts
+  (`--skip-unlicensed-fonts`), bundled Noto for Arabic/Hebrew/Devanagari/
+  Bengali/Tamil/Thai, CJK via system fonts + font-pack proposal.
+
+**Release 0.1.0** (tag `v0.1.0` on 3152f19, draft release not yet created):
+macOS universal signed + notarized ✅, Windows NSIS (unsigned) ✅, Linux ❌ –
+AppImage bundling fails in `linuxdeploy` even with
+`APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true` + libfuse2. Waiting for the owner
+to paste the verbose log tail (Actions → Release v0.1.0 → Build linux →
+"Build and bundle"), or the OK to ship 0.1.0 without AppImage (deb/rpm only).
+Then: delete + re-push the tag (no release exists yet), owner reviews and
+publishes the draft, makes the ghcr package `vitrine-cli` public, enables
+website downloads. Public API (no auth) for run/job status:
+`api.github.com/repos/vitrinestudio-app/vitrine/actions/runs/<id>/jobs`
+(steps + conclusions; logs need auth – ask the owner). Helper scripts used:
+`scratchpad/ci2.sh <sha>` (CI per OS), `scratchpad/run.sh <run id>`.
+
+**Server** api.vitrinestudio.app (owner's Docker/Portainer, nginx): running
+`vitrine-api` (renamed from gallery-server), GitHub login verified
+(`vitrine gallery login` as Looking4Cache). Pending owner step: upgrade per
+`docs/api/DEPLOY.md` "Upgrade 2026-11-12" (tags/samples/sprites migration),
+then save + dry-run + upload the ~50 templates
+(`/Users/thorsten/cloud.grove.eco/App Development/App Vitrine-Studio/Vorlagen/`,
+read-only for agents) with the `vitrinestudio-app` token, approve via
+`vitrine gallery admin`. Next coordinator task after that: **website
+gallery page** on the sprite API (floating rounded pages reacting to the
+mouse, like the hero; filters by style/color/use/devices).
+
+**Open owner decisions (collected):**
+- CJK font pack (download on demand?) – after the fonts agent's proposal.
+- Gallery defaults to confirm (sample limits 10 MB/6000 px, WebP q80, local
+  templates may leave tag facets empty); gallery rule for templates with
+  "required, not included" fonts.
+- German wording: "Frame" vs "Rahmen" (UI mixes both); translate device/
+  colour names?
+- Release defaults to confirm: universal macOS build, no MSI, macOS ≥ 11,
+  daily update check on.
+- Switch Apple upload default to the App Asset Library after one real run
+  with "asset library only"; remove the screenshot-set API later (owner
+  asked 2026-11-12; answer: keep as fallback until verified/Apple date).
+- (g4) more CI integrations on demand; (g5) fastlane variable names.
+- Publish: GitLab project `vitrinestudio/vitrine-gitlab-ci` (owner creates,
+  coordinator pushes `integrations/gitlab/`), Marketplace release of
+  `vitrinestudio-app/vitrine-github-action` (pushed 7d1645d) after the
+  first Vitrine release; fastlane plugin gem.
+- SignPath application (needs public release + code signing policy page;
+  CLA relicensing clause vs "no commercial dual-licensing").
+- Website: Impressum/Datenschutz texts, deploy (www + redirect), images.
+
+**Lessons for coordinating:**
+- Worktree agents sometimes start from `origin/main`: push main before
+  spawning and tell every agent to `git merge main` first.
+- Never merge while a gate runs on the same working tree.
+- The owner may run `hugo serve` in `website/`: build checks go to a temp
+  dir (`hugo --minify -d <tmp>`), point the link checker there.
+- GUI checks: dev bridge (`--copy`, own `--app-dir`) + headless Chrome via
+  CDP (node 24 script) – Claude-in-Chrome is usually not connected.
+- Never use tokens the owner pastes into chat; tell them to run the command
+  themselves (`read -s`, `--token-env`).
+- Check `git status` before committing with `-a`: the owner edits files
+  (e.g. CLA.md, logo files, tauri.conf.json pubkey) in the same tree.
+
 ## Current state (2026-11-11)
 - 2026-11-11 Product renamed **Arrangia → Vitrine Studio** (CLI `vitrine`, crates `vitrine-*`, env `VITRINE_*`, identifier/keychain `app.vitrinestudio`, project format `vitrine/1`, export manifest `.vitrine-export.json`, MCP server / Claude Desktop key `vitrine-studio`, domain vitrinestudio.app). Old `arrangia/1` projects are rejected with a clear hint (no migration code). Names and paths: `docs/guide/NOTES.md` → "Names, app data and keychain".
 - Phase 0 (spike), Phase 1 (core + CLI), Phase 2 (GUI editor) done and reviewed by the user.
@@ -79,7 +159,7 @@ current: update after each phase/merge and whenever the user decides something.
 - Coordinator session plans and reviews (incl. looking at rendered images); subagents implement (worktrees for parallel work, merged with `--no-ff`).
 - Every commit: fmt, clippy `-D warnings`, `cargo test --all`, `cargo build -p vitrine-gui`.
 - CI on GitHub (Linux/macOS/Windows) must stay green; LF line endings enforced by `.gitattributes`.
-- GUI verification via the dev bridge in Chrome (Claude-in-Chrome).
+- GUI verification via the dev bridge + headless Chrome (CDP script); Claude-in-Chrome only when connected.
 - User-facing facts go to `docs/guide/NOTES.md` (English, notes only, no prose yet).
 
 ## Decisions taken with the user
