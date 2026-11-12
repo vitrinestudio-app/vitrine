@@ -51,10 +51,14 @@ vitrine validate --target play-phone --lang de
 vitrine validate --preview                # fehlende Screenshots sind Warnungen
 vitrine validate --strict                 # auch bei Warnungen fehlschlagen (CI)
 vitrine validate --format json
+vitrine validate --format github          # Annotationen in GitHub Actions
+vitrine validate --format junit -o validate.xml   # Bericht in eine Datei, Text ins Log
 ```
 
 Befunde werden pro Ziel und Sprache als `error`, `warn` oder `info` mit einem
 Code aufgelistet (siehe [Fehlerbehebung](../troubleshooting/#validation-findings)).
+Die CI-Formate `github`, `gitlab` (Code Quality) und `junit` beschreibt
+[CI/CD](../ci/).
 
 {{< cli-help "vitrine validate" >}}
 
@@ -179,7 +183,9 @@ vitrine upload log --last --events
 vitrine upload refdata                      # App-Store-Asset-Typen, nur lesend
 ```
 
-Siehe [Store-Upload](../store-upload/#on-the-command-line).
+Siehe [Store-Upload](../store-upload/#on-the-command-line). In der CI kommen
+die Schlüssel aus Umgebungsvariablen statt aus dem Schlüsselbund – siehe
+[CI/CD](../ci/#uploading-from-ci).
 
 {{< cli-help "vitrine upload plan" >}}
 {{< cli-help "vitrine upload execute" >}}
@@ -213,3 +219,5 @@ installieren…* in der App macht dasselbe.
 | `VITRINE_APP_DIR` | diesen Ordner für die App-Daten (Einstellungen, Store-Konten, Rahmen, Vorlagen) statt des Plattform-Ordners verwenden |
 | `NO_COLOR` | keine Farben in der Ausgabe |
 | `VITRINE_KEYRING=mock` | Store-Schlüssel nur im Arbeitsspeicher halten (Tests) – der Schlüsselbund des Systems bleibt unberührt |
+| `VITRINE_ASC_KEY_ID`, `VITRINE_ASC_ISSUER_ID`, `VITRINE_ASC_KEY` / `VITRINE_ASC_KEY_PATH` | nur `upload`: App-Store-Connect-Schlüssel aus der Umgebung (CI), statt des Kontos im Projekt – siehe [CI/CD](../ci/#uploading-from-ci) |
+| `VITRINE_PLAY_SERVICE_ACCOUNT` / `VITRINE_PLAY_SERVICE_ACCOUNT_PATH` | nur `upload`: Google-Play-Dienstkonto aus der Umgebung (CI) |
