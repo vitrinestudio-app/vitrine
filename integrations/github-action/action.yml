@@ -1,7 +1,8 @@
-# DRAFT – not published. Planned home: its own repository (proposal:
-# vitrinestudio-app/setup-vitrine) so it can be listed on the GitHub
-# Marketplace (one action.yml at the repository root). See README.md.
-name: Setup Vitrine Studio CLI
+# Vitrine Studio CLI for GitHub Actions – repository
+# vitrinestudio-app/vitrine-github-action (this file at its root; the source
+# also lives in integrations/github-action/ of vitrinestudio-app/vitrine).
+# MIT licence (LICENSE). See README.md.
+name: Vitrine Studio CLI
 description: >-
   Install the vitrine CLI (App Store / Play Store screenshots) from the
   GitHub release with checksum verification, and optionally validate the
@@ -21,6 +22,12 @@ inputs:
   cache:
     description: Cache the downloaded CLI with actions/cache (`true`/`false`).
     default: "true"
+  libc:
+    description: >-
+      Linux only: `auto` (glibc build on glibc 2.35+ systems such as the
+      Ubuntu runners, else the static musl build, e.g. in Alpine containers),
+      `gnu` or `musl`.
+    default: auto
   project:
     description: Project folder (the folder with `project.yaml`) for `validate` / `export` / `args`.
     default: "."
@@ -71,23 +78,43 @@ runs:
       env:
         VERSION: ${{ inputs.version }}
         REPO: ${{ inputs.repository }}
+        LIBC: ${{ inputs.libc }}
       run: |
         set -euo pipefail
         case "$RUNNER_OS/$RUNNER_ARCH" in
-          Linux/X64)     asset=vitrine-cli_linux_x86_64.tar.gz ;;
+          Linux/X64|Linux/ARM64)
+            if [ "$RUNNER_ARCH" = "X64" ]; then arch=x86_64; else arch=aarch64; fi
+            libc="$LIBC"
+            if [ "$libc" = "auto" ]; then
+              # The glibc build needs glibc 2.35+ (built on Ubuntu 22.04).
+              # Anything else (Alpine/musl containers, older glibc) gets the
+              # static musl build, which runs on every Linux.
+              glibc="$(getconf GNU_LIBC_VERSION 2> /dev/null | awk '{ print $2 }' || true)"
+              if [ -n "$glibc" ] && [ "$(printf '%s\n' 2.35 "$glibc" | sort -V | head -n 1)" = "2.35" ]; then
+                libc=gnu
+              else
+                libc=musl
+              fi
+            fi
+            case "$libc" in
+              gnu) asset="vitrine-cli_linux_${arch}.tar.gz" ;;
+              musl) asset="vitrine-cli_linux_${arch}-musl.tar.gz" ;;
+              *) echo "::error title=vitrine::libc must be auto, gnu or musl (got $libc)"; exit 1 ;;
+            esac ;;
           macOS/*)       asset=vitrine-cli_macos_universal.tar.gz ;;
           # Windows on ARM runs the x64 build (emulation).
           Windows/*)     asset=vitrine-cli_windows_x64.zip ;;
           *)
-            echo "::error title=setup-vitrine::no vitrine CLI build for $RUNNER_OS/$RUNNER_ARCH yet (Linux arm64: use an x64 runner)"
+            echo "::error title=vitrine::no vitrine CLI build for $RUNNER_OS/$RUNNER_ARCH"
             exit 1 ;;
         esac
+        echo "asset: $asset"
         if [ "$VERSION" = "latest" ]; then
           # The /releases/latest redirect names the tag (no API rate limit).
           url="$(curl -sSfL --retry 3 -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest")"
           tag="${url##*/}"
           case "$tag" in v[0-9]*) ;; *)
-            echo "::error title=setup-vitrine::no published release found in $REPO"
+            echo "::error title=vitrine::no published release found in $REPO"
             exit 1 ;;
           esac
         else
@@ -129,7 +156,7 @@ runs:
           curl -sSfL --retry 3 -o "$tmp/SHA256SUMS.txt" "$base/SHA256SUMS.txt"
           want="$(awk -v f="$ASSET" '$2 == f || $2 == "*" f { print $1 }' "$tmp/SHA256SUMS.txt")"
           if [ -z "$want" ]; then
-            echo "::error title=setup-vitrine::$ASSET is not listed in SHA256SUMS.txt of $TAG"
+            echo "::error title=vitrine::$ASSET is not listed in SHA256SUMS.txt of $TAG"
             exit 1
           fi
           if command -v sha256sum > /dev/null; then
@@ -138,7 +165,7 @@ runs:
             got="$(shasum -a 256 "$tmp/$ASSET" | cut -d' ' -f1)"
           fi
           if [ "$got" != "$want" ]; then
-            echo "::error title=setup-vitrine::checksum mismatch for $ASSET ($got, expected $want)"
+            echo "::error title=vitrine::checksum mismatch for $ASSET ($got, expected $want)"
             exit 1
           fi
           mkdir -p "$tmp/x" "$dir/bin"
@@ -148,7 +175,7 @@ runs:
           esac
           # Archive layout: vitrine-cli_<version>/{vitrine[.exe],licenses/}
           src="$(find "$tmp/x" -maxdepth 2 -name "$exe" -type f | head -n 1)"
-          [ -n "$src" ] || { echo "::error title=setup-vitrine::$exe not found in $ASSET"; exit 1; }
+          [ -n "$src" ] || { echo "::error title=vitrine::$exe not found in $ASSET"; exit 1; }
           cp "$src" "$dir/bin/$exe"
           cp -R "$(dirname "$src")/licenses" "$dir/licenses" 2> /dev/null || true
           chmod +x "$dir/bin/$exe"

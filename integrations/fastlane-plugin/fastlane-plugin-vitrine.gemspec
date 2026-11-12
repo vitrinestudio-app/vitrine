@@ -9,15 +9,15 @@ Gem::Specification.new do |spec|
   spec.author        = "Vitrine Studio"
   spec.summary       = "Validate and export App Store / Play Store screenshots with Vitrine Studio (replaces frameit)"
   spec.homepage      = "https://vitrinestudio.app"
-  # Owner decision: plugin licence (the app is GPL-3.0-or-later; fastlane
-  # plugins are usually MIT).
-  spec.license       = "GPL-3.0-or-later"
+  # Owner decision 2026-11-12: integrations that only call the CLI as a
+  # separate program are MIT (the app/CLI stay GPL-3.0-or-later, ADR 0022).
+  spec.license       = "MIT"
   spec.metadata      = {
     "source_code_uri" => "https://github.com/vitrinestudio-app/vitrine/tree/main/integrations/fastlane-plugin",
     "rubygems_mfa_required" => "true"
   }
 
-  spec.files         = Dir["lib/**/*"] + %w[README.md]
+  spec.files         = Dir["lib/**/*"] + %w[README.md LICENSE]
   spec.require_paths = ["lib"]
   spec.required_ruby_version = ">= 2.6"
   # The plugin only calls the `vitrine` binary; fastlane itself is the host.

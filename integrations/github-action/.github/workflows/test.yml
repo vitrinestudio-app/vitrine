@@ -1,0 +1,94 @@
+# Tests the action against a published Vitrine Studio release on every
+# runner kind it supports. Active in vitrinestudio-app/vitrine-github-action
+# (a nested .github folder in the main repository is not run by GitHub).
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Vitrine Studio release to test (`latest` or e.g. `0.2.0`)"
+        default: latest
+  schedule:
+    # Weekly: catches a release whose assets no longer fit the action.
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  runners:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install
+        id: vitrine
+        uses: ./
+        with:
+          version: ${{ inputs.version || 'latest' }}
+
+      - name: Create a project
+        run: |
+          vitrine --version
+          vitrine new demo
+
+      - name: Validate and export
+        id: run
+        uses: ./
+        with:
+          version: ${{ inputs.version || 'latest' }}
+          project: demo
+          validate: true
+          preview: true
+          export: true
+
+      - name: Check the outputs
+        env:
+          BIN_DIR: ${{ steps.vitrine.outputs.bin-dir }}
+          EXPORT_DIR: ${{ steps.run.outputs.export-dir }}
+          REPORT: ${{ steps.run.outputs.export-report }}
+        run: |
+          set -euo pipefail
+          echo "bin-dir: $BIN_DIR"
+          test -n "$EXPORT_DIR"
+          test -s "$REPORT"
+          jq -e '.files | length > 0' "$REPORT"
+
+  alpine:
+    name: alpine container (musl build)
+    runs-on: ubuntu-latest
+    container: alpine:3.24
+    timeout-minutes: 15
+    steps:
+      - name: Tools the action needs
+        run: apk add --no-cache bash curl tar jq git
+
+      - uses: actions/checkout@v5
+
+      - name: Install
+        uses: ./
+        with:
+          version: ${{ inputs.version || 'latest' }}
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          vitrine --version
+          command -v vitrine
+          case "$(command -v vitrine)" in *musl*) ;; *) echo "expected the musl build"; exit 1 ;; esac
+          vitrine new demo > /dev/null
+          vitrine --project demo validate --preview

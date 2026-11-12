@@ -12,10 +12,11 @@ Build-Artefakte exportieren oder sie aus einem Release-Job in die Stores
 hochladen.
 
 {{< callout status >}}
-Die fertigen Integrationen (GitHub Action, GitLab-Komponenten,
-Container-Image, fastlane-Plugin) sind **Entwürfe** und noch nicht
-veröffentlicht. Alles hier, was nur das Kommandozeilenwerkzeug nutzt,
-funktioniert ab dem ersten Release.
+Die CLI-Archive und das Container-Image kommen mit dem ersten Release. Die
+fertigen Integrationen (GitHub Action, GitLab-Komponenten, fastlane-Plugin)
+sind **Entwürfe** und noch nicht veröffentlicht; alles hier, was nur das
+Kommandozeilenwerkzeug oder das Image nutzt, funktioniert ab dem ersten
+Release.
 {{< /callout >}}
 
 ## Das Kommandozeilenwerkzeug in der CI installieren {#installing-the-cli-in-ci}
@@ -25,7 +26,9 @@ dazu `SHA256SUMS.txt`:
 
 | Runner | Datei |
 |---|---|
-| Linux x86_64 (glibc, z. B. Ubuntu 22.04 oder Debian 12 und neuer; nicht Alpine) | `vitrine-cli_linux_x86_64.tar.gz` |
+| Linux x86_64 (glibc 2.35+, z. B. Ubuntu 22.04 oder Debian 12 und neuer) | `vitrine-cli_linux_x86_64.tar.gz` |
+| Linux aarch64 / arm64 (glibc 2.35+, z. B. `ubuntu-24.04-arm`) | `vitrine-cli_linux_aarch64.tar.gz` |
+| jedes Linux, statischer Build (Alpine, ältere glibc, minimale Images) | `vitrine-cli_linux_x86_64-musl.tar.gz`, `vitrine-cli_linux_aarch64-musl.tar.gz` |
 | macOS (Apple Silicon und Intel) | `vitrine-cli_macos_universal.tar.gz` |
 | Windows x64 | `vitrine-cli_windows_x64.zip` |
 
@@ -41,7 +44,31 @@ vitrine --version
 
 Das Programm braucht keine GUI-Bibliotheken, keine Systemschriften und
 keinen Schlüsselbund. Schriften, Silbentrennmuster, Gerätedaten und die
-eingebauten Rahmen sind enthalten.
+eingebauten Rahmen sind enthalten. Die `-musl`-Builds sind vollständig
+statisch (gar keine Bibliotheken).
+
+### Container-Image {#container-image}
+
+Für containerbasierte CI (GitLab, Jenkins, CircleCI, Buildkite, Azure, …)
+veröffentlicht jedes Release außerdem das Image
+**`ghcr.io/vitrinestudio-app/vitrine-cli`** (linux/amd64 und linux/arm64):
+
+| Tag | |
+|---|---|
+| `0.2.0` | genau dieses Release (empfohlen für reproduzierbare Builds) |
+| `0.2` | das neueste `0.2.x` |
+| `latest` | das neueste Release |
+
+Es ist ein Alpine mit dem statischen `vitrine`, `git`, `jq`,
+CA-Zertifikaten und einer POSIX-`sh` (kein `bash`), läuft als
+Nicht-Root-Benutzer `vitrine` (UID 10001) in `/work` und hat keinen
+Entrypoint, damit CI-Systeme ihre Shell darin starten können. Die Lizenzen
+liegen in `/usr/share/doc/vitrine/licenses/`.
+
+```sh
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" \
+  ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0 vitrine --project store-screens validate
+```
 
 ## Was das Werkzeug für CI bietet {#what-the-cli-offers-ci}
 
@@ -84,14 +111,26 @@ jobs:
           path: export
 ```
 
-Die geplante Action `setup-vitrine` übernimmt die Installation (mit Cache)
-und die Prüf- und Exportschritte in einem `uses:`.
+Die geplante Action
+[`vitrinestudio-app/vitrine-github-action`](https://github.com/vitrinestudio-app/vitrine-github-action)
+übernimmt die Installation (Prüfsumme, Cache; sie wählt bei Bedarf den
+arm64- oder den statischen Build) und die Prüf- und Exportschritte in einem
+`uses:`:
+
+```yaml
+      - uses: vitrinestudio-app/vitrine-github-action@v1
+        with:
+          version: 0.2.0
+          project: store-screens
+          validate: true
+          export: true
+```
 
 ## GitLab CI {#gitlab-ci}
 
 ```yaml
 vitrine-validate:
-  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0   # geplantes Image
+  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0
   script:
     - vitrine --project store-screens validate --format gitlab -o gl-code-quality-report.json
   artifacts:
@@ -111,6 +150,18 @@ Code-Quality-Befunde erscheinen im Merge Request. Für den Reiter *Tests* der
 Pipeline nimmst du `--format junit -o vitrine-junit.xml` mit `reports:
 junit:`. Ohne das Image installierst du das Archiv in `before_script` wie
 oben.
+
+Die geplanten CI/CD-Catalog-Komponenten im gitlab.com-Projekt
+[`vitrinestudio/vitrine-gitlab-ci`](https://gitlab.com/vitrinestudio/vitrine-gitlab-ci)
+fassen diese beiden Jobs zusammen (`validate` mit Code Quality + JUnit,
+`export`) und nutzen dasselbe Image:
+
+```yaml
+include:
+  - component: $CI_SERVER_FQDN/vitrinestudio/vitrine-gitlab-ci/validate@1
+    inputs:
+      project: store-screens
+```
 
 ## fastlane (Bitrise, Codemagic, CircleCI, lokal) {#fastlane-bitrise-codemagic-circleci-local}
 

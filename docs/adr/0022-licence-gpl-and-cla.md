@@ -119,3 +119,31 @@ agreement.
 - Contributors without a signed CLA cannot be merged.
 - Open for the owner: CLA bot setup, optional repository rename.
   (`CLA.md` reviewed by the owner on 2026-11-11.)
+
+## Amendment 2026-11-12: CI integrations are MIT
+
+Owner decision: glue code that only runs the `vitrine` CLI as a separate
+program is licensed under **MIT** (copyright Looking4Cache UG
+(haftungsbeschränkt), 2026): the GitHub Action
+(`integrations/github-action/`, repository
+`vitrinestudio-app/vitrine-github-action`), the GitLab CI/CD components
+(`integrations/gitlab/`, gitlab.com `vitrinestudio/vitrine-gitlab-ci`) and
+the fastlane plugin (`integrations/fastlane-plugin/`, gem
+`fastlane-plugin-vitrine`). Each folder carries its own `LICENSE` and says
+so in its README.
+
+- Why: users copy these files into their own pipelines, Fastfiles and
+  repositories; a permissive licence avoids any GPL question for their
+  build configuration. They link no Vitrine Studio code – they download
+  and execute the separately distributed program ("aggregate" / separate
+  program, not a derivative work), so GPL-3.0 does not reach them and MIT
+  is compatible either way.
+- The app, the CLI, all crates and the container image's binary stay
+  **GPL-3.0-or-later** (the image ships the release archive's licence
+  files under `/usr/share/doc/vitrine/licenses/`).
+- Contributions to the integrations go through the CLA as well (`CLA.md`
+  covers contributions "to the Project … on the Project's repositories",
+  which includes the separate integration repositories, and allows any
+  outbound licence). The CLA bot has to be enabled on those repositories
+  too (GitLab: no CLA bot – accept contributions only via GitHub or ask
+  for a signed CLA).

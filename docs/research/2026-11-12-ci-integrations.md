@@ -12,7 +12,7 @@ primary source are marked *(unverified)*.
   as the *main* CI but common as a second one, and all of them run
   **fastlane**. fastlane is the glue that mobile teams already have.
 - **Build first (in this order):**
-  1. **GitHub Action** `setup-vitrine` (composite; it installs the CLI
+  1. **GitHub Action** `vitrine-github-action` (composite; it installs the CLI
      archive from the release with a checksum check, caches it, validates
      with annotations and exports). It reaches the most users, costs little
      to maintain, and the Marketplace makes it easy to find.
@@ -59,7 +59,7 @@ keep up to date (Node handlers etc.), or vendor certification.
 
 | system | relevance | idiomatic integration | install path | caching | report formats it reads | our plan | maintenance |
 |---|---|---|---|---|---|---|---|
-| **GitHub Actions** | #1 | action repo with `action.yml` at the root. JavaScript and composite actions run on Linux, macOS and Windows; Docker actions are Linux only ([docs](https://docs.github.com/en/actions/concepts/workflows-and-actions/custom-actions)). Marketplace: public repo, one action per repo, unique name, 2FA ([docs](https://docs.github.com/en/actions/how-tos/create-and-publish-actions/publish-in-github-marketplace)) | CLI archive from GitHub Releases + `SHA256SUMS.txt` | `actions/cache` keyed by version + asset, in `RUNNER_TOOL_CACHE` | workflow commands `::error file=,line=,title=::`. At most 10 errors, 10 warnings and 10 notices per step and 50 per job ([toolkit docs](https://raw.githubusercontent.com/actions/toolkit/HEAD/docs/problem-matchers.md)); SARIF via code scanning | **composite action** (draft `integrations/github-action/`), repo `setup-vitrine` | low: bash only, no Node runtime to bump; asset names are stable (ADR 0026) |
+| **GitHub Actions** | #1 | action repo with `action.yml` at the root. JavaScript and composite actions run on Linux, macOS and Windows; Docker actions are Linux only ([docs](https://docs.github.com/en/actions/concepts/workflows-and-actions/custom-actions)). Marketplace: public repo, one action per repo, unique name, 2FA ([docs](https://docs.github.com/en/actions/how-tos/create-and-publish-actions/publish-in-github-marketplace)) | CLI archive from GitHub Releases + `SHA256SUMS.txt` | `actions/cache` keyed by version + asset, in `RUNNER_TOOL_CACHE` | workflow commands `::error file=,line=,title=::`. At most 10 errors, 10 warnings and 10 notices per step and 50 per job ([toolkit docs](https://raw.githubusercontent.com/actions/toolkit/HEAD/docs/problem-matchers.md)); SARIF via code scanning | **composite action** (draft `integrations/github-action/`), repo `vitrine-github-action` | low: bash only, no Node runtime to bump; asset names are stable (ADR 0026) |
 | **GitLab CI** | #2 (general), common in-house | CI/CD components: `templates/<name>.yml` with `spec: inputs`, README required, catalog project, published by a `release` job on a semver tag ([docs](https://docs.gitlab.com/ci/components/)) | container image | the image is cached by the runner | `artifacts:reports:junit` (all tiers), `codequality` (MR widget on all tiers, diff annotations need Ultimate; [docs](https://docs.gitlab.com/ci/testing/code_quality/)), `sarif` (Ultimate only, security tab) | **components `validate` + `export`** (draft `integrations/gitlab/`) | medium: second project on gitlab.com, release tags in step with ours |
 | **Jenkins** | #2–3 | plugins are Java and heavy; the usual way is a Docker agent (`agent { docker { image … } }`) plus the JUnit plugin | container image (or the Linux archive) | Docker layer cache | JUnit (`junit` step); Warnings NG reads SARIF, JUnit and its native format ([formats](https://github.com/jenkinsci/warnings-ng-plugin/blob/main/SUPPORTED-FORMATS.md)) | **docs snippet only** (image + `validate --format junit`) | none |
 | **Bitrise** | mobile-specific, ~5–10 % *(unverified)* | step in the StepLib: `step.yml` with `source_code_url`/`support_url`, one PR per version, must be maintained ([docs](https://docs.bitrise.io/en/steps-and-workflows/developing-your-own-bitrise-step/sharing-steps-with-all-bitrise-users.html)) | archive (macOS/Linux stacks) | Bitrise cache steps | JUnit in `$BITRISE_TEST_RESULT_DIR/<sub>/` with `test-info.json`, then "Deploy to Bitrise.io" ([docs](https://docs.bitrise.io/en/bitrise-ci/testing/deploying-and-viewing-test-results)) | **later**. Until then: fastlane plugin, or a script step that downloads the archive | high: StepLib PR per release |
@@ -76,7 +76,7 @@ Not researched: Appcircle, Travis CI, Expo EAS (EAS Build runs custom
 
 | need | status |
 |---|---|
-| install without the app, verifiable | CLI archives per OS + `SHA256SUMS.txt` on every release (ADR 0026). Gaps: **no Linux arm64** and **no musl/static** build (Alpine); owner decision |
+| install without the app, verifiable | CLI archives per OS + `SHA256SUMS.txt` on every release (ADR 0026). Linux arm64 and static musl builds (Alpine) added 2026-11-12 (ADR 0026 amendment) |
 | headless, no GUI libraries | checked 2026-11-12: a Linux build of `vitrine` needs only `libc`, `libm`, `libpthread`, `libdl`, `librt`, `libgcc_s` and `ld-linux` (readelf of a cross build; that build needs `GLIBC_2.28`, the
 release built on Ubuntu 22.04 may need up to its glibc 2.35, so: glibc
 distributions from Ubuntu 22.04 / Debian 12 on, not Alpine). Fonts, hyphenation, catalogs and parametric frames are embedded; the keychain crate talks D-Bus in pure Rust (zbus) and only runs when used; SQLite is bundled; TLS uses rustls |
@@ -130,6 +130,14 @@ Buildkite. They use either the release archive (download, `sha256sum -c`,
 extract) or the container image.
 
 ## Owner decisions
+
+> **Decided 2026-11-12** (STATUS decision log): (1) action repo
+> `vitrinestudio-app/vitrine-github-action` (not `setup-vitrine`), image
+> `ghcr.io/vitrinestudio-app/vitrine-cli` (built in `release.yml`), gitlab.com
+> project `vitrinestudio/vitrine-gitlab-ci`, integrations licensed MIT;
+> (2) upload policy stays plan → `execute --confirm --yes`; (3) Linux
+> arm64 + static musl builds added. (4) and (5) still open. The proposals
+> below are kept as asked.
 
 1. **Where and under what names to publish:**
    - GitHub Action repo `vitrinestudio-app/setup-vitrine` (Marketplace name

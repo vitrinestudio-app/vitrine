@@ -5,7 +5,8 @@
 > plugin list picks gems up by that prefix), ideally from its own repository
 > (proposed `vitrinestudio-app/fastlane-plugin-vitrine`) with fastlane's
 > usual plugin scaffold (`fastlane new_plugin vitrine`: rspec, rubocop,
-> CI). Owner decisions: name, repository, licence (see the gemspec).
+> CI). Owner decisions open: name and repository. Licence: MIT (decided
+> 2026-11-12).
 > Only Ruby syntax was checked here (`ruby -c`); the actions were not run
 > inside fastlane yet.
 
@@ -47,3 +48,8 @@ token → execute flow that a single action would hide. A later
 `vitrine_upload` action could run `upload plan` and `upload execute
 --confirm <token> --yes` with the credentials mapped from fastlane's
 `app_store_connect_api_key` (owner decision).
+
+## Licence
+
+MIT (see `LICENSE`). The plugin only runs the `vitrine` program; Vitrine
+Studio itself is licensed under the GNU GPL v3 or later.

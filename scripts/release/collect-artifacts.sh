@@ -10,11 +10,16 @@
 #   linux:   VitrineStudio_linux_x86_64.AppImage[.sig]        (updater)
 #            VitrineStudio_linux_amd64.deb, VitrineStudio_linux_x86_64.rpm
 #            vitrine-cli_linux_x86_64.tar.gz
+#   CLI-only builds (job `cli` of release.yml, no app bundle):
+#   linux-aarch64:       vitrine-cli_linux_aarch64.tar.gz        (glibc, Ubuntu 22.04+)
+#   linux-x86_64-musl:   vitrine-cli_linux_x86_64-musl.tar.gz    (static, Alpine)
+#   linux-aarch64-musl:  vitrine-cli_linux_aarch64-musl.tar.gz   (static, Alpine)
 #
 # Every CLI archive carries the licence files (LICENSE.txt, third-party
 # notices, font and hyphenation licences).
 #
-# Usage: scripts/release/collect-artifacts.sh <macos|windows|linux> <version> <out-dir>
+# Usage: scripts/release/collect-artifacts.sh <macos|windows|linux|linux-aarch64|
+#          linux-x86_64-musl|linux-aarch64-musl> <version> <out-dir>
 # Honours CARGO_TARGET_DIR (default: target).
 set -euo pipefail
 
@@ -72,6 +77,16 @@ case "$platform" in
     cp crates/gui/binaries/vitrine-x86_64-unknown-linux-gnu "$cli_dir/vitrine"
     chmod +x "$cli_dir/vitrine"
     tar -C "$stage" -czf "$out/vitrine-cli_linux_x86_64.tar.gz" "vitrine-cli_${version}"
+    ;;
+  linux-aarch64 | linux-x86_64-musl | linux-aarch64-musl)
+    case "$platform" in
+      linux-aarch64) triple=aarch64-unknown-linux-gnu ;;
+      linux-x86_64-musl) triple=x86_64-unknown-linux-musl ;;
+      linux-aarch64-musl) triple=aarch64-unknown-linux-musl ;;
+    esac
+    cp "$target_dir/$triple/release/vitrine" "$cli_dir/vitrine"
+    chmod +x "$cli_dir/vitrine"
+    tar -C "$stage" -czf "$out/vitrine-cli_linux_${platform#linux-}.tar.gz" "vitrine-cli_${version}"
     ;;
   *)
     echo "unknown platform $platform" >&2

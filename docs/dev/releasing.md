@@ -8,12 +8,20 @@ research: `docs/research/2026-11-11-windows-signing.md`.
 
 - Push a tag `vX.Y.Z` → GitHub Actions builds macOS (universal .dmg + .app),
   Windows (NSIS setup) and Linux (AppImage, deb, rpm), the standalone CLI
-  archives and the licence files, signs what the secrets allow and creates a
-  **draft** release with `SHA256SUMS.txt`, `THIRD-PARTY-NOTICES.html` and
-  `latest.json` (updater manifest). You publish the draft by hand.
+  archives (macOS, Windows, Linux x86_64 + aarch64 with glibc, Linux
+  x86_64 + aarch64 static musl) and the licence files, signs what the
+  secrets allow and creates a **draft** release with `SHA256SUMS.txt`,
+  `THIRD-PARTY-NOTICES.html` and `latest.json` (updater manifest). You
+  publish the draft by hand.
+- The same tag run pushes the CLI container image
+  `ghcr.io/vitrinestudio-app/vitrine-cli` (`X.Y.Z`, `X.Y`, `latest`;
+  amd64 + arm64, from the musl archives). It is pushed **before** you
+  publish the draft: if you discard a draft, also delete that image
+  version (GitHub → organisation → Packages → vitrine-cli → versions).
 - Actions → Release → "Run workflow" (`workflow_dispatch`) builds the same
-  files as workflow artifacts only (no release); tick `sign` to use the
-  signing secrets (test notarization before the first tag).
+  files as workflow artifacts only (no release; the image is built and
+  smoke-tested, not pushed); tick `sign` to use the signing secrets (test
+  notarization before the first tag).
 - Builds without secrets succeed unsigned and say so in the release notes.
 
 ## One-time setup (owner)
@@ -130,7 +138,22 @@ Then:
 Alternative without SignPath: Azure Artifact Signing (~$10/month,
 company validation); Tauri calls it via `bundle.windows.signCommand`.
 
-### 5. First test run
+### 5. Container image (after the first tag run)
+
+The first push creates the package `vitrine-cli` in the organisation. Once:
+
+1. GitHub → organisation → Packages → `vitrine-cli` → Package settings →
+   **Change visibility → Public** (new packages start private; CI users
+   pull without login).
+2. Check that the package shows "linked to vitrinestudio-app/vitrine" (the
+   `org.opencontainers.image.source` label does that) and that "Manage
+   Actions access" lists the repository with **Write** (needed for later
+   pushes from the workflow's `GITHUB_TOKEN`; it is set automatically when
+   the workflow created the package).
+3. Try it: `docker run --rm ghcr.io/vitrinestudio-app/vitrine-cli:X.Y.Z vitrine --version`
+   (also on an arm64 machine).
+
+### 6. First test run
 
 1. Actions → Release → Run workflow (branch `main`), tick `sign`.
 2. Download the artifacts `vitrine-studio-macos|windows|linux` and
@@ -142,6 +165,10 @@ company validation); Tauri calls it via `bundle.windows.signCommand`.
    App settings → Command line tool → Install, App settings → Updates shows
    the version (no updates yet: no release), Windows setup installs per
    user and offers the PATH entry, the AppImage starts.
+4. The artifacts `vitrine-studio-linux-aarch64`, `…-linux-x86_64-musl`,
+   `…-linux-aarch64-musl` hold the extra CLI archives; the `cli` job log
+   shows the linkage check ("static: no NEEDED entries") and the smoke
+   test, the `image` jobs the container smoke test.
 
 ## Releasing a version
 
@@ -172,6 +199,39 @@ company validation); Tauri calls it via `bundle.windows.signCommand`.
 
 A re-run of the workflow for the same tag replaces the files of the draft
 and keeps edited notes. Never re-use a tag for different code; bump instead.
+
+## CI integrations (separate repositories, MIT)
+
+Sources live in `integrations/` (each folder self-contained); copy a folder's
+content to the root of its repository when it changed:
+
+- `integrations/github-action/` → `vitrinestudio-app/vitrine-github-action`;
+  tag `v1.x.y` and move the `v1` tag; Marketplace listing from the release
+  page. Its `Test` workflow runs against the latest Vitrine Studio release.
+- `integrations/gitlab/` → gitlab.com `vitrinestudio/vitrine-gitlab-ci`
+  (CI/CD Catalog project); bump the default `image` tag
+  (`ghcr.io/vitrinestudio-app/vitrine-cli:X.Y`) when a new minor release
+  changes the CLI, then tag `X.Y.Z` there.
+- `integrations/fastlane-plugin/` → gem `fastlane-plugin-vitrine`.
+
+## Local CLI builds for Linux (from the Mac)
+
+```sh
+rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl
+brew install zig && cargo install cargo-zigbuild   # once
+scripts/release/build-cli.sh x86_64-unknown-linux-musl   # → target/x86_64-unknown-linux-musl/release/vitrine
+scripts/release/build-cli.sh aarch64-unknown-linux-musl
+```
+
+The smoke test only runs on a Linux host of the same architecture; with a
+`readelf` on `PATH` (e.g. the messense cross toolchain's
+`x86_64-unknown-linux-gnu-readelf` linked as `readelf`) the static check
+runs on the Mac too. Container image from a release archive:
+
+```sh
+mkdir -p dist/image && tar xzf vitrine-cli_linux_x86_64-musl.tar.gz -C dist/image --strip-components=1
+docker build --target release -f docker/cli/Dockerfile -t vitrine-cli .
+```
 
 ## Local bundle (macOS, unsigned)
 

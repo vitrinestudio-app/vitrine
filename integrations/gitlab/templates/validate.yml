@@ -1,14 +1,15 @@
 # DRAFT – GitLab CI/CD component: validate a Vitrine Studio project and
 # publish the findings as Code Quality + JUnit reports (merge request
-# widget, pipeline "Tests" tab). Not published; see ../README.md.
+# widget, pipeline "Tests" tab). Draft; home: the gitlab.com project
+# vitrinestudio/vitrine-gitlab-ci (see README.md). MIT licence.
 spec:
   inputs:
     stage:
       default: test
       description: Stage of the job.
     image:
-      default: ghcr.io/vitrinestudio-app/vitrine-cli:latest
-      description: Container image with the vitrine CLI (docker/cli/Dockerfile).
+      default: ghcr.io/vitrinestudio-app/vitrine-cli:0.1
+      description: Container image with the vitrine CLI (pin an exact release such as 0.1.0).
     project:
       default: "."
       description: Project folder (with project.yaml), relative to the repository.
