@@ -377,7 +377,8 @@ select.field {
   min-width: 220px;
 }
 
-.ctx-menu .menu-item:focus-visible {
+.ctx-menu .menu-item:focus-visible,
+.popover.menu .menu-item:focus-visible {
   outline: none;
   background: var(--bg-hover);
 }

@@ -26,6 +26,7 @@ import {
   textInput,
 } from './fields.js';
 import { renderCanvasSettings } from './canvas-settings.js';
+import { openImagePreview } from '../dialogs/image-preview.js';
 
 const KIND_ICON = { device: 'device', text: 'text', image: 'image', shape: 'shape', group: 'group', background: 'background' };
 const BUILTIN_SHADOWS = ['soft', 'hard', 'none'];
@@ -809,8 +810,31 @@ export function mount(el, ctx) {
 
   function imageSection(info, e, extra, set) {
     const list = imagePaths(extra);
+    // Preview of the image (all project images, ←/→ step through them).
+    const previewBtn = list.includes(e.asset)
+      ? h(
+          'button',
+          {
+            type: 'button',
+            class: 'mini-btn',
+            title: t('preview.open'),
+            onclick: () => {
+              const usage = extra.assets?.asset_usage ?? {};
+              openImagePreview({
+                items: list.map((path) => ({ path, title: path.replace(/^assets\//, ''), users: usage[path] ?? [] })),
+                index: list.indexOf(e.asset),
+                onSelectElement: (sel) => {
+                  if (store.get().overlay?.elements.some((x) => x.id === sel)) store.set({ selection: [sel] });
+                  else editor.toast(`${sel}: ${t('assets.not_in_view')}`);
+                },
+              });
+            },
+          },
+          icon('eye'),
+        )
+      : null;
     return section('image', t('kind.image'), [
-      row(t('inspector.asset'), textInput({ key: 'asset', value: e.asset ?? '', list, mono: true, title: t('inspector.asset'), onCommit: (v) => v && set({ asset: v }) }), { field: 'asset', info, hint: e.asset && !list.includes(e.asset) ? t('inspector.asset.unknown') : null }),
+      row(t('inspector.asset'), [textInput({ key: 'asset', value: e.asset ?? '', list, mono: true, title: t('inspector.asset'), onCommit: (v) => v && set({ asset: v }) }), previewBtn], { field: 'asset', info, hint: e.asset && !list.includes(e.asset) ? t('inspector.asset.unknown') : null }),
       row(t('inspector.fit'), fitSelect(e.fit, 'contain', (v) => set({ fit: v || null })), { field: 'fit', info }),
       shadowSelect(info, e, set),
     ]);

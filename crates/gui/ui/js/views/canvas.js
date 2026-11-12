@@ -230,6 +230,23 @@ export function mountCanvas(root) {
     return null;
   }
 
+  /**
+   * Background elements (kind `background`, they fill their home page) at
+   * canvas point `p`, topmost first. Not hit by clicks or the marquee;
+   * double-click on empty page space and the canvas context menu select them.
+   */
+  function backgroundsAt(p) {
+    const o = store.get().overlay;
+    if (!o || !p) return [];
+    const out = [];
+    for (let i = o.elements.length - 1; i >= 0; i--) {
+      const e = o.elements[i];
+      if (e.kind !== 'background' || isLocked(o, e)) continue;
+      if (inQuad(p, e.quad)) out.push(e.id);
+    }
+    return out;
+  }
+
   /** Top-level ids (outermost groups) of elements intersecting `r`. */
   function inMarquee(r) {
     const o = store.get().overlay;
@@ -740,6 +757,7 @@ export function mountCanvas(root) {
       },
       '-',
       page ? { label: t('ctx.select_page').replace('{page}', n), action: () => actions.selectAllOnPage(page.index) } : null,
+      ...backgroundsAt(p).map((id) => ({ label: t('ctx.select_background').replace('{id}', id), icon: 'background', action: () => store.set({ selection: [id] }) })),
       { label: t('ctx.select_all'), key: 'mod+a', action: () => actions.selectAll() },
       '-',
       { label: t('ctx.fit'), key: 'mod+0', action: () => vp.fit() },
@@ -747,8 +765,14 @@ export function mountCanvas(root) {
   }
 
   el.addEventListener('dblclick', (e) => {
-    const hit = hitTest(toLu(e), true);
+    const p = toLu(e);
+    const hit = hitTest(p, true);
     if (hit) store.set({ selection: [hit] });
+    else {
+      // Empty page space: the page's background element (topmost), if any.
+      const bg = backgroundsAt(p)[0];
+      if (bg) store.set({ selection: [bg] });
+    }
     if (store.get().overlay?.elements.find((x) => x.id === hit)?.kind === 'text') editText(hit);
   });
 

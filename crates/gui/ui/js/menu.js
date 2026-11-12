@@ -76,12 +76,13 @@ const HELP_LINKS = [
 export function createMenu(handlers) {
   // "Check for updates…" only in the app (the dev bridge cannot update).
   const items = [...ITEMS.filter((it) => !it.app || isTauri), { sep: true }, { ...BEZELS_LINK, link: true }, ...HELP_ITEMS];
-  const button = h('button', { class: 'icon-btn menu-btn', type: 'button', title: t('project.menu.title'), 'aria-haspopup': 'menu' }, icon('menu'));
+  const button = h('button', { class: 'icon-btn menu-btn', type: 'button', title: t('project.menu.title'), 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('menu'));
   let popup = null;
 
   function close() {
     popup?.remove();
     popup = null;
+    button.setAttribute('aria-expanded', 'false');
     document.removeEventListener('mousedown', onDown, true);
     document.removeEventListener('keydown', onKey, true);
   }
@@ -92,6 +93,14 @@ export function createMenu(handlers) {
     if (e.key === 'Escape') {
       e.stopPropagation();
       close();
+      button.focus({ preventScroll: true });
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      // Step through the enabled entries (wrapping).
+      e.preventDefault();
+      const all = [...popup.querySelectorAll('.menu-item:not(:disabled)')];
+      const i = all.indexOf(document.activeElement);
+      const next = e.key === 'ArrowDown' ? (i + 1) % all.length : (i <= 0 ? all.length : i) - 1;
+      all[next]?.focus();
     }
   }
   button.addEventListener('click', () => {
@@ -122,6 +131,8 @@ export function createMenu(handlers) {
       ),
     );
     document.body.append(popup);
+    button.setAttribute('aria-expanded', 'true');
+    popup.querySelector('.menu-item:not(:disabled)')?.focus({ preventScroll: true });
     const r = button.getBoundingClientRect();
     popup.style.top = `${r.bottom + 4}px`;
     popup.style.left = `${r.left}px`;

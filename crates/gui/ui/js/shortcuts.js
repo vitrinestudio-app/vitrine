@@ -90,7 +90,10 @@ export function bindShortcuts(handlers) {
       else if (key === '-' || key === '_') handled = call('zoomOut');
       else if (key === '0') handled = call('fit');
       else if (key === '1') handled = call('zoomActual');
-    } else if (!e.altKey) {
+    } else if (!e.altKey && !document.querySelector('dialog[open]')) {
+      // Not while a modal dialog is open: Esc must reach the dialog (a
+      // handled Esc here would cancel its close), arrows/Delete/[ ] must
+      // not edit the canvas behind it.
       const step = e.shiftKey ? 10 : 1;
       if (key === 'backspace' || key === 'delete') handled = call('remove');
       else if (key === 'escape') handled = call('escape');
