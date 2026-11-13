@@ -142,11 +142,51 @@
 .docs-nav li a[aria-current="page"] { background: var(--grad-soft); color: var(--ink); }
 .docs-nav li a[aria-current="page"] .icon { color: var(--magenta); }
 .docs-nav__toc { margin: 2px 0 6px 28px !important; border-left: 2px solid var(--line); }
+/* Nested section (docs/automation/): its pages below its entry. */
+.docs-nav li a.is-ancestor { color: var(--ink); }
+.docs-nav li a.is-ancestor .icon { color: var(--magenta); }
+.docs-nav__sub { margin: 2px 0 6px 18px !important; padding-left: 8px !important; border-left: 2px solid var(--line); }
+.docs-nav__sub a { padding: 6px 10px !important; font-size: .89rem !important; }
+.docs-nav__sub a .icon { width: 16px !important; height: 16px !important; }
+.docs-nav__sub .docs-nav__toc { margin-left: 24px !important; }
 .docs-nav__toc a { padding: 5px 12px !important; font-weight: 400 !important; font-size: .86rem !important; border-radius: 0 8px 8px 0 !important; }
 
 .docs__head { margin-bottom: 28px; }
 .docs__head h1 { font-size: clamp(2.2rem, 4.5vw, 3.2rem); margin-bottom: .3em; }
-.docs__lead { font-size: 1.15rem; color: var(--ink-soft); max-width: 62ch; }
+/* Lead box: the page's `description` with a sticker label in the logo's
+   coral (#ff7a59, the right end of the brand gradient). The label text is
+   dark on coral in both themes (about 7:1); white would fail contrast. */
+.docs__lead {
+  position: relative;
+  max-width: 760px;
+  margin-top: 26px;
+  padding: 22px 22px 16px;
+  border: 1px solid color-mix(in srgb, var(--coral) 40%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--coral) 5%, var(--surface));
+  box-shadow: var(--shadow-sm);
+}
+.docs__lead p { margin: 0; font-size: 1.1rem; line-height: 1.6; color: var(--ink-soft); }
+.docs__lead-label {
+  position: absolute;
+  top: 0;
+  left: 18px;
+  padding: 3px 11px 2px;
+  border-radius: 8px;
+  background: var(--coral);
+  color: #2a0d04;
+  font: 600 .72rem/1.5 var(--font-body);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateY(-50%) rotate(-2deg);
+  box-shadow: 0 6px 14px -6px rgba(255, 122, 89, .75);
+}
+@media (max-width: 560px) {
+  .docs__lead { padding: 20px 16px 14px; }
+  .docs__lead p { font-size: 1.02rem; }
+  .docs__lead-label { left: 12px; }
+}
 .docs__main { min-width: 0; }
 .docs__draft { margin-top: 32px; color: var(--ink-faint); font-size: .9rem; }
 .docs__edit { margin-top: 18px; font-size: .88rem; }
@@ -167,9 +207,15 @@
   text-decoration: none;
 }
 .docs-card:hover { color: var(--ink); }
+.docs-card .feature__icon { flex: none; }
 .docs-card__text { display: grid; gap: 4px; }
 .docs-card__text strong { font-family: var(--font-display); font-size: 1.08rem; }
 .docs-card__text span { color: var(--ink-soft); font-size: .93rem; line-height: 1.5; }
+/* Cards inside the text ({{< section-cards >}}). */
+.prose .docs-cards { margin: 0 0 1.6em; }
+.prose .docs-card { text-decoration: none; }
+.docs__head .eyebrow a { color: inherit; text-decoration: none; }
+.docs__head .eyebrow a:hover { text-decoration: underline; }
 
 .docs-pager {
   display: grid;

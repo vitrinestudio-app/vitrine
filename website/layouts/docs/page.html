@@ -3,11 +3,7 @@
 <div class="wrap docs">
   {{ partial "docs-nav.html" . }}
   <article class="docs__main">
-    <header class="docs__head">
-      <p class="eyebrow">{{ T "docsTitle" }}</p>
-      <h1>{{ .Title }}</h1>
-      {{- with .Description }}<p class="docs__lead">{{ . }}</p>{{ end }}
-    </header>
+    {{ partial "docs-head.html" . }}
     {{- if .Params.untranslated }}
     {{- $en := "" }}{{ range .Translations }}{{ if eq .Language.Lang "en" }}{{ $en = . }}{{ end }}{{ end }}
     <aside class="callout callout--lang" lang="de">

@@ -101,7 +101,7 @@ vitrine import screenshots fastlane/ --save-mapping
 vitrine import screenshots shots/ --device-map "iPhone 17 Pro Max=ios-phone" --lang-map pt-PT=pt --key-map 01_home=home
 ```
 
-Wie Vitrine Studio in eine fastlane-Lane passt: [Nutzung mit fastlane](../fastlane/).
+Wie Vitrine Studio in eine fastlane-Lane passt: [Nutzung mit fastlane](../automation/fastlane/).
 
 ## Fehlende Screenshots und Platzhalter {#missing-screenshots-and-placeholders}
 
