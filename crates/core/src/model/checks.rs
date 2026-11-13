@@ -7,6 +7,7 @@
 //!   device_distance: 16      # lu between glyphs and a device frame
 //!   min_contrast: 4.5        # WCAG ratio for normal text
 //!   min_contrast_large: 3    # … for large text
+//!   screen_cover: 0.15       # share of a screen below its top bar an element may cover
 //!   off: [page_blends_with_store]
 //! ```
 
@@ -29,6 +30,10 @@ pub struct Checks {
     /// Minimum contrast ratio of large text (`low_contrast`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_contrast_large: Option<f64>,
+    /// Share (0..1) of a device screen below its top bar an element drawn
+    /// over it may cover before `screen_covered` reports it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub screen_cover: Option<f64>,
     /// Finding codes not reported for this project.
     #[serde(
         default,
@@ -43,12 +48,18 @@ impl Checks {
         *self == Self::default()
     }
 
-    /// Checks the values (distance 0..=1000 lu, ratios 1..=21).
+    /// Checks the values (distance 0..=1000 lu, ratios 1..=21, share
+    /// 0..=1).
     pub fn check(&self) -> Result<(), String> {
         if let Some(d) = self.device_distance
             && !(d.is_finite() && (0.0..=1000.0).contains(&d))
         {
             return Err(format!("checks.device_distance {d} must be 0..1000 lu"));
+        }
+        if let Some(s) = self.screen_cover
+            && !(s.is_finite() && (0.0..=1.0).contains(&s))
+        {
+            return Err(format!("checks.screen_cover {s} must be 0..1"));
         }
         for (name, v) in [
             ("min_contrast", self.min_contrast),
