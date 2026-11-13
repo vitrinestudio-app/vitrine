@@ -1396,8 +1396,8 @@ sandboxed (projects are arbitrary folders shared with the CLI).
 
 ### Versioning, release, updater
 
-- Version = `[workspace.package] version` (0.1.0) only; tag `v<version>`
-  must match.
+- Version = `[workspace.package] version` only (1.0.0, the first public
+  release, being released); tag `v<version>` must match.
 - `.github/workflows/release.yml`: tag → draft release (owner publishes);
   macOS universal `.app`/`.dmg` (Developer ID + notarization when secrets
   exist), Windows NSIS per-user setup (**unsigned for now**, owner decision

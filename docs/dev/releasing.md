@@ -191,7 +191,8 @@ The first push creates the package `vitrine-cli` in the organisation. Once:
 2. Bump the version in `Cargo.toml` → `[workspace.package] version`
    (single source: crates, Tauri bundle, `vitrine --version`, About/start
    screen, updater). Run `cargo build` so `Cargo.lock` follows; commit
-   "Release vX.Y.Z".
+   "Release vX.Y.Z". The first public release is `v1.0.0` (owner decision
+   2026-11-13; no public 0.x).
 3. Tag and push the tag:
    ```sh
    git tag -a vX.Y.Z -m "Vitrine Studio X.Y.Z"
@@ -204,13 +205,15 @@ The first push creates the package `vitrine-cli` in the organisation. Once:
    notes, check the signing lines, download one installer per OS.
 6. Publish. From now on `releases/latest/download/latest.json` points to
    it and installed apps (with the real updater key) offer the update.
-7. Website: once the first release is published, set
-   `downloads_available = true` in `website/hugo.toml` and fill
+7. Website: once the first release is published, flip the downloads
+   switch in `website/hugo.toml`: `downloads_available = true` and
    `[params.downloads]` with the stable links
    `https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_macos_universal.dmg`,
    `…/VitrineStudio_windows_x64-setup.exe`,
-   `…/VitrineStudio_linux_x86_64.AppImage` (deb/rpm/CLI: link the release
-   page).
+   `…/VitrineStudio_linux_x86_64.AppImage` (without an AppImage: the
+   release page `…/releases/latest`; deb/rpm/CLI are linked from there).
+   Exact snippet and what it changes: `website/README.md` "Release switch".
+   Later releases need no website change (the links follow `latest`).
 
 A re-run of the workflow for the same tag replaces the files of the draft
 and keeps edited notes. Never re-use a tag for different code; bump instead.
@@ -225,8 +228,9 @@ content to the root of its repository when it changed:
   page. Its `Test` workflow runs against the latest Vitrine Studio release.
 - `integrations/gitlab/` → gitlab.com `vitrinestudio/vitrine-gitlab-ci`
   (CI/CD Catalog project); bump the default `image` tag
-  (`ghcr.io/vitrinestudio-app/vitrine-cli:X.Y`) when a new minor release
-  changes the CLI, then tag `X.Y.Z` there.
+  (`ghcr.io/vitrinestudio-app/vitrine-cli:X.Y`, today `1.0`; the image has
+  no major-only tag) when a new minor release changes the CLI, then tag
+  `X.Y.Z` there.
 - `integrations/fastlane-plugin/` → gem `fastlane-plugin-vitrine`.
 
 ## Local CLI builds for Linux (from the Mac)

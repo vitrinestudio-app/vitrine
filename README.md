@@ -34,7 +34,7 @@ and the [download page](https://www.vitrinestudio.app/download/):
 |---|---|---|
 | macOS 11+ (Apple silicon and Intel) | universal `.dmg` | signed with a Developer ID and notarised by Apple |
 | Windows 10/11 (x64) | setup `.exe` (per user, no admin rights) | **not code-signed** – SmartScreen warns once about an "Unknown publisher": *More info* → *Run anyway* |
-| Linux (x86_64) | `.deb` and `.rpm` (AppImage to follow) | unsigned packages; verify with `SHA256SUMS.txt` |
+| Linux (x86_64) | AppImage, `.deb` and `.rpm` | unsigned packages; verify with `SHA256SUMS.txt` |
 | Build servers / CI | command line archives (macOS, Windows, Linux x86_64 and aarch64, static musl builds) and the container image `ghcr.io/vitrinestudio-app/vitrine-cli` | checksums in `SHA256SUMS.txt` |
 
 Installing, updating and verifying downloads:
