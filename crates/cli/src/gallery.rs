@@ -18,7 +18,7 @@ use clap::{Args, Subcommand};
 use vitrine_core::template::{EXTENSION, Limits, Package};
 use vitrine_publish::credentials::{CredentialError, Secret, SecretStore};
 use vitrine_publish::gallery::{
-    DevicePoll, GalleryClient, GalleryError, ListQuery, api_url, keychain_user,
+    DevicePoll, GalleryClient, GalleryError, ListQuery, TERMS_URL, api_url, keychain_user,
 };
 
 use crate::term::{Style, plural};
@@ -462,11 +462,18 @@ fn upload(
     if !a.dry_run && !ready.is_empty() {
         let token = upload_token(client, a)?;
         if !global.quiet && a.format == Format::Text {
+            let style = Style::stderr();
             eprintln!(
                 "{}",
-                Style::stderr().dim(
+                style.dim(
                     "Templates in the gallery are CC0-1.0; you confirm you own the rights to everything in them."
                 )
+            );
+            eprintln!(
+                "{}",
+                style.dim(&format!(
+                    "By uploading you accept the gallery terms of use: {TERMS_URL}"
+                ))
             );
         }
         for (i, bytes) in ready {

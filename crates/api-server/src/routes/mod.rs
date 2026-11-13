@@ -19,6 +19,12 @@ use crate::error::{ApiError, ApiResult};
 
 pub(crate) type St = State<Arc<AppState>>;
 
+/// The gallery's terms of use (English translation of the binding German
+/// page `/de/nutzungsbedingungen/`) and the date of their current version,
+/// shown in `/health`. Update the version with the page's "Last updated".
+pub const TERMS_URL: &str = "https://www.vitrinestudio.app/terms/";
+pub const TERMS_VERSION: &str = "2026-11-13";
+
 /// All routes.
 pub fn router(state: Arc<AppState>) -> Router {
     let max = state.config.max_upload;
@@ -108,5 +114,7 @@ async fn health(State(state): St) -> Json<Value> {
         "status": "ok",
         "version": env!("CARGO_PKG_VERSION"),
         "max_upload_mb": state.config.max_upload / (1024 * 1024),
+        "terms_url": TERMS_URL,
+        "terms_version": TERMS_VERSION,
     }))
 }

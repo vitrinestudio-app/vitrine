@@ -18,7 +18,7 @@ Every template is CC0-1.0; fonts inside keep the OFL.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/health` | `{"status": "ok", "version": "…", "max_upload_mb": 50}` |
+| GET | `/health` | `{"status": "ok", "version": "…", "max_upload_mb": 50, "terms_url": "https://www.vitrinestudio.app/terms/", "terms_version": "2026-11-13"}` |
 | GET | `/v1/templates?q=&tag=&style=&color=&use=&devices=&limit=&offset=` | approved templates, newest first; `q` searches name, description, tags; `tag` matches any tag or device; facet filters below; `limit` 1–200 (default 50; the answer's `limit` is the one used – page with `offset += limit` until fewer come back) |
 | GET | `/v1/templates/{id}` | one approved template |
 | GET | `/v1/templates/{id}/download` | the `.vitrine-template` (`application/zip`, `Content-Disposition: attachment`); counts a download |
@@ -154,10 +154,16 @@ new login; someone who later takes the old login cannot update them);
 otherwise (static token without id) the logins decide, case-insensitively.
 A new version replaces the files and goes back to `pending`.
 
-Upload terms the client shows before uploading (text to be finalised by
-the owner): the uploader owns the rights to everything in the template,
-grants CC0 1.0 for it, and confirms that it contains no app screenshots of
-others, no vendor device images and only OFL fonts.
+Upload terms: the gallery's terms of use
+(<https://www.vitrinestudio.app/de/nutzungsbedingungen/>, binding German;
+English translation <https://www.vitrinestudio.app/terms/>; draft pending
+legal review). Uploading accepts them; the client shows the link before
+uploading (`vitrine gallery upload`). In short: the uploader holds the
+rights to everything in the template, releases it under CC0 1.0 on
+publication (fonts keep the OFL), and confirms that it contains no app
+screenshots of others, no vendor device images and only OFL fonts.
+`/health` carries `terms_url` and `terms_version` (date of the current
+version, `routes::TERMS_VERSION` – update it with the page).
 
 ## Login with GitHub (ADR 0025)
 
