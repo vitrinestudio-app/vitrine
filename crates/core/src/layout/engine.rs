@@ -28,6 +28,9 @@ const EPS: f32 = 0.01;
 struct Paint {
     color: [u8; 4],
     background: Option<[u8; 4]>,
+    /// Padding `(x, y)` and corner radius of the background box, lu.
+    pad: (f32, f32),
+    radius: f32,
     /// Index into [`Prepared::effects`].
     fx: u16,
 }
@@ -130,6 +133,8 @@ fn prepare(
         paint: Paint {
             color: arr(style.color),
             background: None,
+            pad: (0.0, 0.0),
+            radius: 0.0,
             fx: 0,
         },
     };
@@ -158,6 +163,8 @@ fn prepare(
                 rs.paint.color = arr(c);
             }
             rs.paint.background = n.background.map(arr);
+            rs.paint.pad = n.padding;
+            rs.paint.radius = n.radius;
             if n.has_effects() {
                 let fx = TextEffects {
                     stroke: n.stroke.or(style.effects.stroke),
@@ -676,23 +683,31 @@ impl TextLayouter {
                 let paint = gr.style().brush;
                 line_end_x = line_end_x.max(gr.offset() + gr.advance());
                 if let Some(bg) = paint.background {
+                    // The run's box plus padding (ADR 0031: padding grows
+                    // the box, the text keeps its place). Runs of one
+                    // line fragment with the same paint merge into one box.
+                    let (px, py) = paint.pad;
                     let rect = Rect {
-                        x: gr.offset() + dx,
-                        y: m.content_block_min_coord,
-                        w: gr.advance(),
-                        h: m.content_block_max_coord - m.content_block_min_coord,
+                        x: gr.offset() + dx - px,
+                        y: m.content_block_min_coord - py,
+                        w: gr.advance() + 2.0 * px,
+                        h: m.content_block_max_coord - m.content_block_min_coord + 2.0 * py,
                     };
                     match out.highlights.last_mut() {
                         Some(h)
                             if h.color == rgba(bg)
                                 && h.effects == paint.fx
+                                && h.padding == paint.pad
+                                && h.radius.to_bits() == paint.radius.to_bits()
                                 && (h.rect.y - rect.y).abs() < EPS
-                                && (h.rect.right() - rect.x).abs() < EPS =>
+                                && (h.rect.right() - 2.0 * px - rect.x).abs() < EPS =>
                         {
                             h.rect.w = rect.right() - h.rect.x;
                         }
                         _ => out.highlights.push(Highlight {
                             rect,
+                            radius: paint.radius,
+                            padding: paint.pad,
                             color: rgba(bg),
                             effects: paint.fx,
                         }),

@@ -8,9 +8,9 @@ use std::collections::BTreeMap;
 
 use super::lookup::{lookup_screenshot, lookup_text};
 use super::scene::{
-    DeviceColor, DiagnosticCode, ImportedFrame, ResolvedDevice, ResolvedElement, ResolvedImage,
-    ResolvedKind, ResolvedShadowLayer, ResolvedShape, ResolvedSpanStyle, ResolvedText,
-    ScreenshotSource, TextFrame,
+    DeviceColor, DiagnosticCode, ImportedFrame, ResolvedClipShape, ResolvedDevice, ResolvedElement,
+    ResolvedImage, ResolvedKind, ResolvedShadowLayer, ResolvedShape, ResolvedSpanStyle,
+    ResolvedText, ScreenshotSource, TextFrame,
 };
 use super::style::StyleResolver;
 use super::{Diags, ResolveOptions};
@@ -60,6 +60,11 @@ struct Walker<'a, 'i> {
     content_scale: f64,
     frame_style: FrameStyle,
     out: Vec<ResolvedElement>,
+    /// Parallel to `out`: is the element drawn? Hidden shapes are resolved
+    /// too when an image may be clipped to them (`clip_to`, ADR 0031).
+    shown: Vec<bool>,
+    /// Some element of the canvas uses `clip_to`.
+    masks: bool,
 }
 
 pub(super) fn resolve_elements(
@@ -101,14 +106,101 @@ pub(super) fn resolve_elements(
             .clone()
             .unwrap_or(FrameStyle::Detailed),
         out: Vec::new(),
+        shown: Vec::new(),
+        masks: uses_clip_to(inp.canvas),
     };
     for e in &inp.canvas.elements {
         w.element(e, d);
     }
     d.element = None;
+    let mut out = w.out;
+    if w.masks {
+        out = clip_images(inp.canvas, out, &w.shown, d);
+    }
     // Stable: equal z keeps list (painting) order.
-    w.out.sort_by_key(|e| e.z);
-    (variant_id, w.out)
+    out.sort_by_key(|e| e.z);
+    (variant_id, out)
+}
+
+/// Does an element of `canvas` (or a variant override) set `clip_to`?
+fn uses_clip_to(canvas: &Canvas) -> bool {
+    let mut any = false;
+    canvas.walk_elements(&mut |e| any |= e.clip_to().is_some());
+    any || canvas
+        .variants
+        .values()
+        .flat_map(|v| v.overrides.values())
+        .any(|p| matches!(p.clip_to, Some(Some(_))))
+}
+
+/// Gives images with `clip_to` the outline of their shape (all resolved
+/// shapes, drawn or not) and drops the hidden elements.
+fn clip_images(
+    canvas: &Canvas,
+    out: Vec<ResolvedElement>,
+    shown: &[bool],
+    d: &mut Diags,
+) -> Vec<ResolvedElement> {
+    let shapes: BTreeMap<ElementId, ResolvedClipShape> = out
+        .iter()
+        .filter_map(|r| match &r.props {
+            ResolvedKind::Shape(s) if s.shape != ShapeKind::Line => Some((
+                r.id.clone(),
+                ResolvedClipShape {
+                    element: r.id.clone(),
+                    page: r.page,
+                    shape: s.shape,
+                    radius: s.radius,
+                    center: r.center,
+                    size: r.size,
+                    rotation: r.rotation,
+                    pivot: r.pivot,
+                },
+            )),
+            _ => None,
+        })
+        .collect();
+    let mut kept = Vec::with_capacity(out.len());
+    for (mut r, show) in out.into_iter().zip(shown.iter().copied()) {
+        if !show {
+            continue;
+        }
+        if let ResolvedKind::Image(img) = &mut r.props
+            && let Some(id) = &img.clip_to
+        {
+            d.element = Some(r.id.clone());
+            if let Some(shape) = shapes.get(id) {
+                if shape.page != r.page {
+                    d.info(
+                        DiagnosticCode::ClipToOtherPage,
+                        format!(
+                            "`clip_to: {id}` names a shape on page {} (the image is on page {})",
+                            shape.page + 1,
+                            r.page + 1
+                        ),
+                    );
+                }
+                img.clip_shape = Some(shape.clone());
+            } else {
+                let why = match canvas.element(id.as_str()).map(|e| &e.kind) {
+                    None => format!("`clip_to` names `{id}`, which is not on this canvas"),
+                    Some(ElementKind::Shape(_)) => {
+                        format!("`clip_to` names `{id}`, a line (use a rect or ellipse)")
+                    }
+                    Some(_) => format!(
+                        "`clip_to` names `{id}`, which is not a shape (use a rect or ellipse)"
+                    ),
+                };
+                d.warn(
+                    DiagnosticCode::InvalidClipTo,
+                    format!("{why}; drawn unclipped"),
+                );
+            }
+        }
+        kept.push(r);
+    }
+    d.element = None;
+    kept
 }
 
 impl Walker<'_, '_> {
@@ -161,11 +253,16 @@ impl Walker<'_, '_> {
                 }))
     }
 
-    /// Resolve `e` (and its children); returns how many elements were added.
+    /// Resolve `e` (and its children). Hidden elements are only resolved
+    /// as possible `clip_to` shapes (quietly) and dropped afterwards.
     fn element(&mut self, e: &Element, d: &mut Diags) {
         d.element = Some(e.id.clone());
         let e = self.patched(e, d);
         if !self.visible(&e) {
+            if self.masks {
+                let mut quiet = Diags::default();
+                self.hidden_element(&e, &mut quiet);
+            }
             return;
         }
         if e.page >= self.inp.canvas.page.count {
@@ -182,15 +279,7 @@ impl Walker<'_, '_> {
             for c in &g.children {
                 self.element(c, d);
             }
-            let xf = GroupXf {
-                id: e.id.clone(),
-                offset: Vec2::new(e.at.x, e.at.y),
-                pivot: self.group_pivot(&e, d),
-                rotation: e.rotation,
-                scale: g.scale,
-                opacity: e.opacity,
-                z: e.z,
-            };
+            let xf = self.group_xf(&e, d);
             for r in &mut self.out[start..] {
                 apply_group(r, &xf);
                 for a in &e.allow {
@@ -203,6 +292,50 @@ impl Walker<'_, '_> {
         }
         if let Some(r) = self.leaf(&e, d) {
             self.out.push(r);
+            self.shown.push(true);
+        }
+    }
+
+    /// A hidden element (or one inside a hidden group): shapes and groups
+    /// are resolved like visible ones (a hidden shape may still be a
+    /// `clip_to` mask), everything else is skipped. `e` may be patched
+    /// already (patching twice is harmless: overrides are idempotent).
+    fn hidden_element(&mut self, e: &Element, d: &mut Diags) {
+        let e = self.patched(e, d);
+        match &e.kind {
+            ElementKind::Group(g) => {
+                let start = self.out.len();
+                for c in &g.children {
+                    self.hidden_element(c, d);
+                }
+                let xf = self.group_xf(&e, d);
+                for r in &mut self.out[start..] {
+                    apply_group(r, &xf);
+                }
+            }
+            ElementKind::Shape(_) => {
+                if let Some(r) = self.leaf(&e, d) {
+                    self.out.push(r);
+                    self.shown.push(false);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// The transform group `g` applies to its children.
+    fn group_xf(&self, g: &Element, d: &mut Diags) -> GroupXf {
+        GroupXf {
+            id: g.id.clone(),
+            offset: Vec2::new(g.at.x, g.at.y),
+            pivot: self.group_pivot(g, d),
+            rotation: g.rotation,
+            scale: match &g.kind {
+                ElementKind::Group(p) => p.scale,
+                _ => 1.0,
+            },
+            opacity: g.opacity,
+            z: g.z,
         }
     }
 
@@ -758,6 +891,8 @@ impl Walker<'_, '_> {
                 fit: p.fit.unwrap_or(FitMode::Contain),
                 auto_height: h.is_none(),
                 shadow: self.inp.styles.shadow(p.shadow.as_deref(), d),
+                clip_to: p.clip_to.clone(),
+                clip_shape: None,
             },
             Vec2::new(w, h.unwrap_or(w)),
         )

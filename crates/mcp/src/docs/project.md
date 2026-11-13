@@ -21,7 +21,10 @@ styles:
                hyphenate?: false}
   spans:                  # inline styles for [name]…[/] in translations
     accent: {color: "@accent", weight?: 800, italic?: true, font?: …,
-             background?: colour, stroke?, glow?, shadow?}
+             background?: colour, padding?: 8 | {x: 16, y: 4}, radius?: 20,
+             stroke?, glow?, shadow?}
+    # padding/radius shape the background box (a pill: radius ≥ half its
+    # height); padding grows the box, it does not move the text
   shadows:                # presets; soft, hard, none are built in
     lifted: {layers: [{color: "#00000033", blur: 30, x: 0, y: 20}]}
   frame: detailed         # default device frame: stylized | detailed | imported:apple | pack:<id> (frames_list)

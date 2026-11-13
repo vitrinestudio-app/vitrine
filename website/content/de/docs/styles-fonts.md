@@ -43,6 +43,21 @@ Im Text-Editor auf der Leinwand markierst du die Wörter und nutzt **Span-Stil
 setzen. `**fett**` und `_kursiv_` funktionieren ohne Span-Stil. Siehe die
 [Markup-Referenz](../languages/#text-markup).
 
+Aus einer Hinterlegung wird eine Pille oder ein Textmarker: **padding**
+(ein Wert oder `{x, y}`, in lu) vergrößert die Fläche um die Wörter,
+**radius** rundet ihre Ecken – ab der halben Flächenhöhe entsteht eine
+Pille. Der Innenabstand verschiebt den Text nie und ändert keine
+Zeilenumbrüche; lass also ein Leerzeichen neben der Pille. Bricht ein Span
+um, bekommt jede Zeile ihre eigene Fläche. In der App: Projekteinstellungen →
+Stile → Span-Stil → *Hinterlegungsfläche*.
+
+```yaml
+styles:
+  spans:
+    tag: {color: "#FFFFFF", weight: 800, background: "@accent",
+          padding: {x: 14, y: 2}, radius: 40}
+```
+
 ## Schatten {#shadows}
 
 **Schatten-Presets** sind eingebaut (`soft`, `hard`, `none`) oder deine

@@ -52,9 +52,9 @@ replaces it) – open question in ADR 0017.
       file size/name), upload parts per `uploadOperations`, commit with MD5
       checksum, poll `assetDeliveryState`, set order
       (`appScreenshotSets/{id}/relationships/appScreenshots` PATCH)
-- [~] Rate limits / retries / resume after abort; log every step – client
+- [x] Rate limits / retries / resume after abort; log every step – client
       side done (retry/backoff/Retry-After, cancel, observer hook, progress
-      events, idempotent deletes); resume + upload log belong to 5.5
+      events, idempotent deletes); resume + upload log done in 5.5
 - [x] App Asset Library backend (ADR 0019, 2026-11-10; `auto` uses it
       only for Duo/creative slots, `upload_flow: asset_library` for all):
       library, ref data, images (commit without checksum), placements,
@@ -66,7 +66,7 @@ replaces it) – open question in ADR 0017.
       `upload refdata` (CLI + GUI "Show App Store asset types")
 - [ ] User checks the real ref data once (`vitrine upload refdata`) and the
       mapping in `data/asset-library.yaml` (display classes, header/search
-      groups, Duo inner/outer groups)
+      groups, Duo inner/outer groups) – still open 2026-11-13 (Phase 7)
 
 ## 5.4 Google Play client
 Client part done 2026-11-10 (`vitrine_publish::google`, ADR 0017).
@@ -97,7 +97,8 @@ Client part done 2026-11-10 (`vitrine_publish::google`, ADR 0017).
       `store_apps_list` (session cache) → fills Apple ID + bundle id
 - [x] Google Play: no list endpoint (verified) → typed package name +
       "Check" (`store_package_check`: temporary edit, deleted, explicit click)
-- [ ] Look at it in the real app (dev bridge checked with curl only)
+- [ ] Look at it in the real app (dev bridge checked with curl only) –
+      Phase 7 checklist
 
 ## 5.5c First real Apple upload fixes (2026-11-10, ADR 0018 amendment b)
 - [x] Run hung for 10 min per slow image (per-image poll, timeout failed the
@@ -113,7 +114,8 @@ Client part done 2026-11-10 (`vitrine_publish::google`, ADR 0017).
 - [x] "No editable App Store version": short message with suggestion,
       once per store (plan problem + readiness step + link; run:
       `store_failures`, sets skipped)
-- [ ] User re-runs the real upload with the fixes
+- [ ] User re-runs the real upload with the fixes (owner testing,
+      Phase 7 checklist)
 
 ## 5.6 Tests & real run
 - [~] wiremock tests for both clients (happy path, partial failure + resume,
@@ -124,7 +126,14 @@ Client part done 2026-11-10 (`vitrine_publish::google`, ADR 0017).
       tokens, blocking rules, MCP policy, Apple processing budget,
       FAILED processing, cancel while polling, reuse, stale runs, watchdog,
       no editable version once)
-- [ ] User runs a real upload into a test app (Apple first, then Google)
+- [~] User runs a real upload into a test app (Apple first, then Google) –
+      first real Apple run 2026-11-10 (→ 5.5c fixes); re-run, asset-library
+      run and Google still open (Phase 7 checklist)
+- [x] Added 2026-11-12 for CI: store credentials from `VITRINE_ASC_*` /
+      `VITRINE_PLAY_*` (only `vitrine upload`, ADR 0016 amendment), CI
+      upload = `plan` + `execute --confirm <token> --yes` in one job
+      (ADR 0018 amendment); sample screenshots from templates block an
+      upload plan (ADR 0023 amendment)
 - [~] Docs: ADR(s), NOTES (setup: creating API keys / service account, roles
       needed, locale mapping, how to upload), CLAUDE.md, STATUS.md – done
       except the findings of the real run

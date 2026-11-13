@@ -17,6 +17,7 @@
 mod history;
 mod lang;
 mod patch;
+mod refs;
 mod structure;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -25,6 +26,7 @@ use serde::{Deserialize, Serialize};
 
 pub use history::History;
 pub use patch::{CanvasPatch, TargetPatch};
+pub use refs::ClipRef;
 
 use crate::catalog;
 use crate::model::{
@@ -99,6 +101,8 @@ pub enum Op {
         patch: ElementPatch,
     },
     /// Remove an element (with its children and variant overrides).
+    /// Refused while an image outside it is clipped to it (`clip_to`;
+    /// release with [`Project::clip_to_release_ops`] first).
     RemoveElement {
         id: ElementId,
     },
@@ -141,7 +145,8 @@ pub enum Op {
     RemoveTarget {
         id: TargetId,
     },
-    /// Rename an element; its variant overrides follow.
+    /// Rename an element; its variant overrides and `clip_to`
+    /// references to it follow.
     RenameElement {
         from: ElementId,
         to: ElementId,
@@ -560,12 +565,15 @@ impl Project {
             }
             Op::RemoveElement { id } => {
                 let loc = self.locate(&id)?;
+                let mut subtree = BTreeSet::new();
+                if let Some(e) = self.canvases[loc.canvas].element(id.as_str()) {
+                    e.walk(&mut |e| {
+                        subtree.insert(e.id.clone());
+                    });
+                }
+                self.check_clip_to_unreferenced(&subtree)?;
                 let s = &mut self.canvases[loc.canvas];
                 let element = list_mut(s, loc.parent.as_ref()).remove(loc.index);
-                let mut subtree = BTreeSet::new();
-                element.walk(&mut |e| {
-                    subtree.insert(e.id.clone());
-                });
                 let mut overrides = VariantOverrides::new();
                 for (vid, v) in &mut s.variants {
                     let removed: BTreeMap<_, _> = subtree

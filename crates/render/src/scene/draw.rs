@@ -10,7 +10,7 @@ use tiny_skia::{
 use vitrine_core::geometry::{Rect, Vec2, Viewport};
 use vitrine_core::model::{FitMode, ImageFillMode, Rgba, ShapeKind, StrokeJoin};
 use vitrine_core::resolve::{
-    ImportedFrame, ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedKind,
+    ImportedFrame, ResolvedClipShape, ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedKind,
     ResolvedShadowLayer, ResolvedShape, ResolvedStop, TextEffects,
 };
 
@@ -167,6 +167,36 @@ fn image_shader(img: &Pixmap, r: Rect, spread: SpreadMode) -> Shader<'_> {
     )
 }
 
+/// Outline of a shape element of size `rect` (local, centred).
+fn shape_path(kind: ShapeKind, radius: f64, rect: Rect) -> Option<Path> {
+    match kind {
+        ShapeKind::Rect if radius > 0.0 => round_rect(
+            rect.x as f32,
+            rect.y as f32,
+            rect.w as f32,
+            rect.h as f32,
+            radius as f32,
+        ),
+        ShapeKind::Rect => rect_path(rect),
+        ShapeKind::Ellipse => tsr(rect).and_then(PathBuilder::from_oval),
+        ShapeKind::Line => {
+            let mut pb = PathBuilder::new();
+            pb.move_to(rect.x as f32, 0.0);
+            pb.line_to(rect.right() as f32, 0.0);
+            pb.finish()
+        }
+    }
+}
+
+/// Local transform of an element placed at `center` with `rotation`
+/// around `center + pivot`, on top of `vt`.
+fn local_transform(vt: Transform, center: Vec2, pivot: Vec2, rotation: f64) -> Transform {
+    let p = center + pivot;
+    vt.pre_translate(p.x as f32, p.y as f32)
+        .pre_rotate(rotation as f32)
+        .pre_translate(-pivot.x as f32, -pivot.y as f32)
+}
+
 fn stops(s: &[ResolvedStop]) -> Vec<(f32, [u8; 4])> {
     s.iter().map(|s| (s.pos as f32, rgba(s.color))).collect()
 }
@@ -306,23 +336,7 @@ impl Painter<'_> {
             },
             ResolvedKind::Shape(shape) => {
                 let rect = centered(w, h);
-                let path = match shape.shape {
-                    ShapeKind::Rect if shape.radius > 0.0 => round_rect(
-                        rect.x as f32,
-                        rect.y as f32,
-                        rect.w as f32,
-                        rect.h as f32,
-                        shape.radius as f32,
-                    ),
-                    ShapeKind::Rect => rect_path(rect),
-                    ShapeKind::Ellipse => tsr(rect).and_then(PathBuilder::from_oval),
-                    ShapeKind::Line => {
-                        let mut pb = PathBuilder::new();
-                        pb.move_to(rect.x as f32, 0.0);
-                        pb.line_to(rect.right() as f32, 0.0);
-                        pb.finish()
-                    }
-                }?;
+                let path = shape_path(shape.shape, shape.radius, rect)?;
                 Item::Shape { shape, path, rect }
             }
             ResolvedKind::Image(img) => match self.ctx.assets.natural_size(&img.asset) {
@@ -418,12 +432,7 @@ impl Painter<'_> {
         if e.opacity <= 0.0 {
             return;
         }
-        let pivot = e.center + e.pivot;
-        let lt = self
-            .vt
-            .pre_translate(pivot.x as f32, pivot.y as f32)
-            .pre_rotate(e.rotation as f32)
-            .pre_translate(-e.pivot.x as f32, -e.pivot.y as f32);
+        let lt = local_transform(self.vt, e.center, e.pivot, e.rotation);
         // Cheap cull before preparing (text paths, geometry): a circle around
         // the element.
         let vis = self.view.visible();
@@ -490,6 +499,12 @@ impl Painter<'_> {
                 mask = Some(m);
             }
         }
+        if let ResolvedKind::Image(img) = &e.props
+            && let Some(cs) = &img.clip_shape
+            && !self.clip_to_shape(pm, cs, &mut mask, (x0, y0, x1, y1))
+        {
+            return;
+        }
         if e.opacity >= 1.0 && mask.is_none() {
             self.draw_item(pm, &item, e, lt);
             return;
@@ -510,6 +525,36 @@ impl Painter<'_> {
             Transform::identity(),
             mask.as_ref(),
         );
+    }
+
+    /// `clip_to` (ADR 0031): adds the outline of the shape `cs` (canvas
+    /// pixels) to `mask`. `false` when it misses the layer box `(x0, y0,
+    /// x1, y1)`, i.e. nothing of the image shows.
+    fn clip_to_shape(
+        &self,
+        pm: &Pixmap,
+        cs: &ResolvedClipShape,
+        mask: &mut Option<Mask>,
+        (x0, y0, x1, y1): (f32, f32, f32, f32),
+    ) -> bool {
+        let ts = local_transform(self.vt, cs.center, cs.pivot, cs.rotation);
+        let Some(path) = shape_path(cs.shape, cs.radius, centered(cs.size.x, cs.size.y)) else {
+            return false;
+        };
+        let Some(sb) = path.bounds().transform(ts) else {
+            return false;
+        };
+        if sb.right() <= x0 || sb.left() >= x1 || sb.bottom() <= y0 || sb.top() >= y1 {
+            return false;
+        }
+        if let Some(m) = mask {
+            m.intersect_path(&path, FillRule::Winding, true, ts);
+        } else {
+            let mut m = Mask::new(pm.width(), pm.height()).expect("mask size");
+            m.fill_path(&path, FillRule::Winding, true, ts);
+            *mask = Some(m);
+        }
+        true
     }
 
     fn shadow(&self, pm: &mut Pixmap, path: &Path, ts: Transform, layers: &[ResolvedShadowLayer]) {

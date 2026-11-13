@@ -584,6 +584,8 @@ fn resolve_diagnostics(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mu
             D::ImportedColorFallback => (C::ImportedColorFallback, Severity::Info, false),
             D::ScreenshotOnlyEmpty => (C::ScreenshotOnlyEmpty, Severity::Warn, false),
             D::BackgroundHidden => (C::BackgroundHidden, Severity::Warn, false),
+            D::InvalidClipTo => (C::InvalidClipTo, Severity::Warn, false),
+            D::ClipToOtherPage => (C::ClipToOtherPage, Severity::Info, false),
         };
         let page = d.element.as_ref().and_then(|id| s.page_of(id));
         out.push(ctx.finding(

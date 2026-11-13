@@ -160,9 +160,15 @@ guide pages in both languages.
 
 ### Text effects
 - Outline (stroke), glow, shadow on text styles, span styles and elements. Precedence span > element > style. Disable inherited: `width: 0`, `opacity: 0`, `shadow: none`. Sizes in lu (don't shrink with auto-fit).
+- Pills / markers (ADR 0031): span style `background` + `padding` (`8` or `{x: 14, y: 2}`, lu) + `radius` (lu; ≥ half the box height = pill), e.g. `tag: {color: "#FFFFFF", background: "@accent", padding: {x: 14, y: 2}, radius: 40}` and `[tag]NEW[/] Smart lists`. Padding grows the box only – text position and line breaks stay, so leave room with spaces. A span over several lines gets one box per line. GUI: Project settings → Styles → span style → "Highlight box" (shown once a highlight colour is set).
 
 ### Images
 - PNG/JPEG/SVG. Shadows of transparent images follow the alpha (like CSS drop-shadow). Text inside SVGs is not rendered yet.
+- Clip an image to a shape (ADR 0031): `clip_to: <shape id>` on the image; the shape must be a `rect` (its `radius` counts) or `ellipse` on the same canvas. The mask follows the shape exactly as placed in each target (variant overrides, groups, rotation). The shape is drawn normally; set `visible: false` on it to use it only as a mask. Example: comic panel = panel shape + face image `clip_to: panel`; round avatar = hidden ellipse.
+- The shape's fill/stroke/opacity don't affect the mask. The image's page clip still applies, and its shadow is clipped too (give the shape the shadow).
+- Findings: `invalid_clip_to` (unknown id, line, not a shape, other canvas → drawn unclipped), `clip_to_other_page` (info, can be `allow`ed).
+- Renaming the shape updates the images; deleting it (GUI/MCP delete) removes their `clip_to` in the same undo step. Duplicating a group with image + shape keeps them paired.
+- GUI: image inspector → "Clip to" lists the canvas's rectangles and ellipses (hidden ones marked "mask only").
 
 ### Colours (colour management, Phase 6.1, ADR 0021)
 - Vitrine Studio works in sRGB. Colours you type (`#RRGGBB`) are sRGB.

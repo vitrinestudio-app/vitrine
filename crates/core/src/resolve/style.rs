@@ -249,6 +249,11 @@ impl<'a> StyleResolver<'a> {
                         italic: s.italic,
                         color: s.color.as_ref().map(|c| self.color(c, d)),
                         background: s.background.as_ref().map(|c| self.color(c, d)),
+                        padding: s.padding.map_or(Vec2::ZERO, |p| {
+                            let (x, y) = p.xy();
+                            Vec2::new(x.max(0.0), y.max(0.0))
+                        }),
+                        radius: s.radius.unwrap_or(0.0).max(0.0),
                         stroke: s.stroke.as_ref().map(|v| self.text_stroke(v, d)),
                         glow: s.glow.as_ref().map(|v| self.glow(v, d)),
                         shadow: s.shadow.as_deref().map(|name| self.shadow(Some(name), d)),

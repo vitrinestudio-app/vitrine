@@ -16,6 +16,16 @@ Unbalanced markers are drawn literally and reported (`invalid_markup`).
 Example: `Plan your garden [accent]in minutes[/]` or
 `Gemüse\-beet\-planung **leicht** gemacht`.
 
+Highlights and pills: a span style with `background` draws a box behind
+the span, one per line fragment when the span wraps. `padding` (lu, `8` or
+`{x: 16, y: 4}`) grows the box around the text and `radius` (lu) rounds
+its corners (radius ≥ half the box height = pill). Padding never moves
+the text or changes line breaks: leave room with spaces (or a smaller x
+padding) so the box does not touch neighbouring words, and keep y padding
+below the line gap for multi-line spans.
+Example: `styles.spans.tag: {color: "#FFFFFF", background: "@accent",
+padding: {x: 14, y: 2}, radius: 40}` with `[tag]NEW[/] Smart lists`.
+
 ## Auto-fit
 `fit: {shrink_to: 52, max_lines: 3}` on a text element: the font starts at
 `font_size` (or the style's size) and shrinks down to `shrink_to` (lu) until

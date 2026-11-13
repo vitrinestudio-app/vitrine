@@ -30,7 +30,7 @@ mod canvas;
 mod lang;
 mod overlay;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -1225,6 +1225,8 @@ impl<'a> Editor<'a> {
         let mut taken = BTreeSet::new();
         let mut renames = Vec::new();
         rename_tree(self.project, &mut copy, &mut taken, &mut renames);
+        let ref_map: BTreeMap<ElementId, ElementId> = renames.iter().cloned().collect();
+        copy.remap_element_refs(&ref_map);
         let new_id = copy.id.clone();
         // Offset: `at` (or the margins) of the copy itself.
         let sy = {
@@ -1251,6 +1253,7 @@ impl<'a> Editor<'a> {
             for (old, new) in &renames {
                 if let Some(p) = v.overrides.get(old) {
                     let mut p = p.clone();
+                    p.remap_element_refs(&ref_map);
                     if old.as_str() == id && offset != Vec2::ZERO {
                         let base = self.base_element(id)?;
                         if let Ok((eff, _)) = base.patched(&p) {
@@ -1334,6 +1337,8 @@ impl<'a> Editor<'a> {
             shift_pages(&mut copy, shift, count);
             let mut renames = Vec::new();
             rename_tree(self.project, &mut copy, &mut taken, &mut renames);
+            let ref_map: BTreeMap<ElementId, ElementId> = renames.iter().cloned().collect();
+            copy.remap_element_refs(&ref_map);
             let sy = if copy.effective_anchor_y() == crate::model::AnchorY::Stretch {
                 stretch
             } else {
@@ -1359,6 +1364,7 @@ impl<'a> Editor<'a> {
                 for (old, new) in &renames {
                     let Some(p) = map.get(old) else { continue };
                     let mut p = p.clone();
+                    p.remap_element_refs(&ref_map);
                     if movable
                         && old == &item.element.id
                         && let Ok((eff, _)) = item.element.patched(&p)
@@ -1392,10 +1398,15 @@ impl<'a> Editor<'a> {
         Ok((ops, created))
     }
 
-    /// Remove `id` with its children and their variant overrides.
+    /// Remove `id` with its children and their variant overrides. Images
+    /// clipped to it (`clip_to`) lose the clip in the same step.
     pub fn remove(&self, id: &str) -> Result<Vec<Op>, EditError> {
         let e = self.base_element(id)?;
-        Ok(vec![Op::RemoveElement { id: e.id.clone() }])
+        let mut ids = Vec::new();
+        collect_ids(e, &mut ids);
+        let mut ops = self.project.clip_to_release_ops(&ids.into_iter().collect());
+        ops.push(Op::RemoveElement { id: e.id.clone() });
+        Ok(ops)
     }
 
     /// Put `ids` (siblings of one list) into a new group at the position of

@@ -38,6 +38,8 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - [x] GUI: app settings → frame packages (import, list, remove, unmatched files); inspector frame source picker
 - [x] Tests with a synthetic bezel package (generated PNGs + names) (ADR 0012)
 - [~] Real package verified by the user: iPhone 18 package dry run (2026-11-10) → iPhone rules verified; all bezel sizes kept (Pro for 6.3", Pro Max for 6.9"), automatic choice per target + `bezel:` pin, DMG licence-agreement guidance, licence notice; iPad / Mac rules still unverified; real import + render pending
+      - 2026-11-10: the owner imported the real iPhone 18 package (16 frames) and used it; fixes from that test (project default "Apple (imported)", vendor colours, measured swatches, colour follows a source switch). 2026-11-10 also iPhone Duo + Watch Ultra 4 rules verified with the owner's DMGs. 2026-11-12: bezels can be stored in a private project for CI (ADR 0027).
+      - Still open (owner): re-check after the colour fixes; iPad / Mac packages → Phase 7 checklist
 
 ## 3.6 Follow-ups from Phase 2
 - [x] Project settings: styles list must not collapse after each edit
@@ -47,5 +49,5 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 
 ## 3.7 Verification + docs
 - [x] Example project gets a third language: `fr` (all texts, French phone screenshots for 3 of 5 screens → en fallback, no-break spaces) plus `fr-CA` (2 Québec texts, rest via prefix fallback → info); German language override + automatic hyphenation on `title-companions` ("Mischkultur-partner"); golden tests: fr for the iPhone 6.9" and iPad sets (+1.1 MB)
-- [~] "Done when" scenario: 3 languages × 3 targets exported with fallbacks, overflow reported (`crates/cli/tests/scenario.rs`) – done; Apple bezels imported and used with the user's real package – open (coordinator/user)
+- [~] "Done when" scenario: 3 languages × 3 targets exported with fallbacks, overflow reported (`crates/cli/tests/scenario.rs`) – done; Apple bezels imported and used with the user's real package – done by the owner 2026-11-10 (iPhone 18); only the re-check after the colour fixes remains (Phase 7)
 - [x] ADRs (0009 overrides + hyphenation, 0010 screenshot import, 0011 translation exchange, 0012 frame packages); CLAUDE.md/README updated
