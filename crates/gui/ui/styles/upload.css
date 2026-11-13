@@ -53,9 +53,69 @@
   font-weight: 500;
 }
 
-.up-table .num {
+.up-table .up-num {
   text-align: right;
   white-space: nowrap;
+}
+
+.up-table .up-num > div {
+  white-space: normal;
+}
+
+/* Fixed column widths (colgroup from `columns()` in upload.js): the plan is
+   re-rendered and run statuses change all the time; the columns must not
+   follow the text. Long words wrap inside their cell. */
+.up-table.up-fixed {
+  table-layout: fixed;
+}
+
+.up-table.up-fixed td {
+  overflow-wrap: anywhere;
+}
+
+.up-table.up-fixed th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.up-table .up-cut {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.up-col-target {
+  width: 24%;
+}
+
+.up-col-lang {
+  width: 6.5em;
+}
+
+.up-col-locale {
+  width: 9em;
+}
+
+.up-col-action {
+  width: 7.5em;
+}
+
+.up-col-images {
+  width: 8.5em;
+}
+
+/* Progress: store · set · locale · status (+ step, error) · images */
+.up-col-store {
+  width: 7.5em;
+}
+
+.up-col-set {
+  width: 28%;
+}
+
+.up-col-files {
+  width: 5.5em;
 }
 
 .up-row.up-unchanged,
@@ -164,7 +224,9 @@
 }
 
 .up-detail {
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .up-processing {
