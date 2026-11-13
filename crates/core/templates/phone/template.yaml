@@ -3,7 +3,7 @@
 format: vitrine-template/1
 id: phone
 name: Phone
-description: Three phone pages with gradient, headlines and devices; iPhone 6.9″, Google Play phone, blog banner
+description: Three phone pages with gradient, headlines and devices; iPhone 6.9″ and 6.3″, Google Play phone, blog banner
 author: Vitrine Studio
 tags:
   style: [bold]
@@ -15,4 +15,4 @@ canvases:
 - id: phone
   aspect: 1320:2868
   pages: 3
-  targets: [ios-iphone-69, play-phone, blog-header]
+  targets: [ios-iphone-69, ios-iphone-63, play-phone, blog-header]

@@ -20,8 +20,8 @@ einen Projektordner auf das Fenster ziehen).
 3. **Speicherort:** der übergeordnete Ordner – das Projekt wird darin ein
    neuer Ordner.
 4. **Vorlage:** lass **Phone** stehen – drei Seiten mit je einer Überschrift
-   und einem Smartphone, gerendert für iPhone 6,9″, Google Play und einen
-   Blog-Header. (*Minimal* ist eine einzelne iPhone-Seite; deine eigenen
+   und einem Smartphone, gerendert für iPhone 6,9″ und 6,3″, Google Play
+   und einen Blog-Header. (*Minimal* ist eine einzelne iPhone-Seite; deine eigenen
    Vorlagen erscheinen hier auch.)
 5. **Sprachen:** durch Kommas getrennt, die erste ist die Standardsprache,
    z. B. `en, de`.
@@ -139,6 +139,7 @@ export/
   ios-iphone-69/en/03_start.png
   ios-iphone-69/en/_gallery.png   ← Vorschau der Store-Galerie
   ios-iphone-69/de/…
+  ios-iphone-63/en/…
   play-phone/en/…
   blog-header/en/banner.jpg
 ```

@@ -13,7 +13,8 @@ texts in every language, images and fonts. It is a single
 ## Built-in and your own templates
 
 - **Phone** – three pages with a headline and a phone each; targets iPhone
-  6.9″, Google Play phone and a blog header. The default.
+  6.9″ and 6.3″ (the set Apple requires), Google Play phone and a blog header.
+  The default.
 - **Minimal** – one iPhone page.
 - **Your own** templates – saved, imported or downloaded – are kept in the app
   data folder (`templates/`) and available in every project.

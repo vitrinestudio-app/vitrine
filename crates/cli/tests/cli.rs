@@ -84,7 +84,15 @@ fn new_creates_project_folder() {
     assert_eq!(project.name, "Grove: eco");
     assert_eq!(project.languages.default.as_str(), "en");
     let targets: Vec<&str> = project.targets.iter().map(|t| t.id.as_str()).collect();
-    assert_eq!(targets, ["ios-iphone-69", "play-phone", "blog-header"]);
+    assert_eq!(
+        targets,
+        [
+            "ios-iphone-69",
+            "ios-iphone-63",
+            "play-phone",
+            "blog-header"
+        ]
+    );
     assert!(
         std::fs::read_to_string(dir.join("i18n/de.yaml"))
             .unwrap()
@@ -147,11 +155,15 @@ fn round_trip_new_validate_export() {
     assert_eq!(code(&o), 0, "{}\n{}", stdout(&o), stderr(&o));
     let out = stdout(&o);
     assert!(out.contains("play-phone"), "{out}");
-    assert!(out.contains("18 files written"), "{out}");
+    assert!(out.contains("26 files written"), "{out}");
     let export = dir.join("export");
     assert_eq!(
         png_size(&export.join("ios-iphone-69/en/01_welcome.png")),
         (1320, 2868)
+    );
+    assert_eq!(
+        png_size(&export.join("ios-iphone-63/en/01_welcome.png")),
+        (1206, 2622)
     );
     assert_eq!(
         png_size(&export.join("play-phone/de/03_start.png")),
@@ -164,7 +176,7 @@ fn round_trip_new_validate_export() {
     let o = vitrine_in(&dir, &["export", "--format", "json"]);
     let json: Value = serde_json::from_str(&stdout(&o)).unwrap();
     let files = json["files"].as_array().unwrap();
-    assert_eq!(files.len(), 18);
+    assert_eq!(files.len(), 26);
     assert!(files.iter().all(|f| f["skipped"] == true));
     let o = vitrine_in(
         &dir,
