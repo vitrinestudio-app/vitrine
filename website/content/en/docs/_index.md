@@ -9,7 +9,7 @@ need: every device size, every language, App Store and Google Play. This guide
 shows you how, task by task.
 
 {{< callout status >}}
-Vitrine Studio is **pre-release**. The first signed installers are being
+Vitrine Studio is **pre-release**. The first installers are being
 prepared, and uploading to the stores works but is still being tested with
 live store accounts. Each page says where something is not finished.
 {{< /callout >}}
