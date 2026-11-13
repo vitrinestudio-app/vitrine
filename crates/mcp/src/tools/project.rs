@@ -33,7 +33,7 @@ pub struct ProjectCreateParams {
     #[serde(default)]
     pub name: Option<String>,
     /// Template: built in (`phone` – three phone pages, iPhone 6.9" +
-    /// Google Play + blog banner; `minimal` – one page), the id of an
+    /// 6.3" + Google Play + blog banner; `minimal` – one page), the id of an
     /// installed template (see `template_list`) or a `.vitrine-template`
     /// file path. Default `phone`.
     #[serde(default)]

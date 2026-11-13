@@ -64,6 +64,26 @@ checks:
   off: [page_blends_with_store]
 ```
 
+`page_blends_with_store` und `variant_suggested` gehören zu keinem Element,
+deshalb kann `allow` sie nicht stummschalten; schalte sie für das ganze
+Projekt mit `checks.off` ab.
+
+**Welche Sprache geprüft wird.** Alles zu Texten (`low_contrast`,
+`text_near_device`, die Befunde des Textlayouts) und Überlappungen über
+Seitengrenzen, an denen ein Text beteiligt ist, wird in **jeder** Sprache
+geprüft. Die Prüfungen zu Geräten, Seiten und Ecken laufen nur in der
+**ersten Sprache jedes Ziels** (der ersten Sprache des Projekts bzw. der
+eigenen Sprachliste des Ziels): `screen_header_covered`, `screen_covered`,
+`screen_header_cut`, `device_cut`, `device_small`, `element_in_corner`,
+`page_not_covered`, `seam_split`, `page_blends_with_store`,
+`variant_suggested`, `seam_overlap` zwischen zwei Elementen ohne Text und
+die Store-Regeln (`store_size`, `store_count`, `store_format`). Ein deutscher
+Screenshot, der ändert, wie ein Gerät oder eine Ecke aussieht, wird bei
+einer Prüfung über alle Sprachen also nicht geprüft. Für eine andere Sprache
+nimm `vitrine validate --lang de` oder wähl die Sprache in der App – das
+Prüf-Abzeichen prüft das aktuelle Ziel und die aktuelle Sprache – und sieh dir ihre
+Seiten an.
+
 ## Fragen {#questions}
 
 **Wo ist der Speichern-Knopf?**

@@ -44,7 +44,7 @@ gap is cut from page exports (layout_report flags `in_gap`). render_preview
 ## Presets
 Each preset has a store, sizes (first = default; `orientation` picks
 portrait or landscape), a default device model, screenshot variant, gallery
-and store slot. Required sets (e.g. App Store iPhone 6.9″, iPad 13″) are
+and store slot. Required sets (e.g. App Store iPhone 6.3″, iPad 13″) are
 marked in catalog_targets. `target_add {preset, canvas, size?: "WxH",
 orientation?}`.
 

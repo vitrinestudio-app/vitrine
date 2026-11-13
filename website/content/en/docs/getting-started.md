@@ -19,7 +19,7 @@ onto the window).
 2. **Name:** your app's name, e.g. `Fernwood`.
 3. **Location:** the parent folder – the project becomes a new folder in it.
 4. **Template:** keep **Phone** – three pages with a headline and a phone
-   each, rendered for iPhone 6.9″, Google Play and a blog header. (*Minimal*
+   each, rendered for iPhone 6.9″ and 6.3″, Google Play and a blog header. (*Minimal*
    is a single iPhone page; your own templates appear here too.)
 5. **Languages:** comma-separated, the first one is the default language,
    e.g. `en, de`.
@@ -130,6 +130,7 @@ export/
   ios-iphone-69/en/03_start.png
   ios-iphone-69/en/_gallery.png   ← preview of the store gallery
   ios-iphone-69/de/…
+  ios-iphone-63/en/…
   play-phone/en/…
   blog-header/en/banner.jpg
 ```

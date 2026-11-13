@@ -186,44 +186,23 @@ live in a `deploy/nginx-*.conf` snippet. The same pattern fits here:
 3. nginx: serve `404.html` as the error page; long cache headers for
    `/css/`, `/js/` (fingerprinted), `/fonts/` and processed images.
 
-## Images to replace later
+## Current images
 
-New screenshots will be generated once templates exist. Today's images:
+All in `assets/images/` (made 2026-11; retake them when the UI changes
+visibly). No placeholders are left in the docs.
 
-| File | Used on | Replace with |
+| Images | Used on | Made from |
 |---|---|---|
-| `assets/images/editor-dark.jpg` | home "The editor" | a current editor screenshot (this one still says "Strip" instead of "Canvas"), ideally 2× (≥ 2400 px wide), light and dark versions |
-| `assets/images/inspector-text.jpg` | home, floating over the editor | a 2× crop of the inspector with a selected text (today cut from `/docs/gui/text-editing.jpg`, only 359 px wide) |
-| `assets/images/iphone-gallery-en.jpg`, `iphone-gallery-fr.jpg`, `ipad-gallery-de.jpg`, `mac-gallery-en.jpg`, `web-gallery-en.jpg`, `blog-header-de.jpg` | home showcase tabs; `iphone-gallery-en.jpg` is also the Open Graph image (cropped to 1200×630) | galleries rendered from the new templates (`vitrine render --gallery`), 2× width; a dedicated 1200×630 OG image |
-| CSS/SVG mock-ups: hero canvas, AI chat, terminal, upload plan, template cards | home | may stay as illustrations; the template cards are replaced automatically by live gallery cards once the snapshot has templates |
+| App screenshots, each a light/dark pair (`x.jpg` + `x-dark.jpg`): `editor`, `inspector-text`, `text-editing`, `gallery-view`, `all-languages`, `context-menu`, `app-menu`, `translations`, `validation`, `new-project`, `new-project-local`, `export-dialog`, `export-overview`, `canvas-dialog`, `targets-add`, `import-screenshots`, `frame-import`, `save-template`, `project-fonts`, `project-stores`, `store-accounts`, `upload-plan`, `mcp-settings` | home (editor, floating inspector) and the docs | dev bridge, see *Screenshots* above; projects made from the gallery templates *Pop-Art Panels*, *Synthwave Sunset* and *Park Poster* (the sample apps Swoonly, Glowtape and Ridgecast) |
+| `iphone-gallery-en`, `iphone-gallery-fr`, `ipad-gallery-de`, `play-gallery-en`, `ipad-landscape-gallery-en`, `blog-header-en` | home showcase tabs (`showcase:` in `_index.md`); `play-gallery-en` and `blog-header-en` also in concepts / targets; `iphone-gallery-en` is the Open Graph image (cropped to 1200×630 in `head.html`) | `vitrine render --gallery` / `--image` of the same three template projects; one version (store renders, no dark pair) |
+| `canvas-phone-en` | concepts | the *Synthwave Sunset* phone canvas, `vitrine render --canvas --width 2400` |
+| `matrix/<target>-<lang>.jpg`, `ipad-grouped-gallery-en` | home matrix, targets | the *Warm Stay* project, see *Matrix on the home page* above |
+| CSS/SVG illustrations: hero canvas, AI chat, terminal, upload plan, template cards | home | hand-made; the template cards give way to live gallery cards once the snapshot has templates |
 
-### Docs screenshots (placeholders today)
+Still open: a dedicated 1200×630 Open Graph image.
 
-The user guide marks missing screenshots with the `placeholder` shortcode
-(a hatched box "Screenshot coming soon" + caption). Replace each with
-`{{< shot src="images/<file>.jpg" alt="…" caption="…" >}}` in **both**
-languages (German pages: German UI, `?lang=de` in the dev bridge). Ideally 2×,
-light theme (or both), cropped to the dialog:
-
-| Page (`content/*/docs/`) | Shows |
-|---|---|
-| `getting-started.md` | start screen with the *New project* dialog (name, location, template cards, languages) |
-| `getting-started.md` | the export dialog (targets × languages grid, folder, layout, options) |
-| `editor.md` | the canvas context menu on a selected phone |
-| `devices-frames.md` | *Frame packages* dialog after analysing an Apple bezel package |
-| `targets.md` | *Canvases & targets* → *Add target* list (presets, badges, sizes) |
-| `languages.md` | Translations tab: a missing German text shown from the fallback, an overflowing French cell |
-| `screenshots.md` | *Import screenshots* dialog with a fastlane folder |
-| `export.md` | the export's `index.html` overview with the enlarged view |
-| `store-upload.md` | App settings → Stores (two accounts, Test, the Apple key help) |
-| `store-upload.md` | the upload plan table with *Confirm & upload* |
-| `ai-mcp.md` | App settings → *AI assistants (MCP)* (status, Add to Claude Desktop, Claude Code command) |
-
-Used today: `editor-dark.jpg` (getting started, outdated: says "Strip"),
-`inspector-text.jpg` (editor), `ipad-gallery-de.jpg`, `blog-header-de.jpg`
-(concepts, targets) and `canvas-phone-en.jpg` (concepts; rendered with
-`vitrine --project tests/fixtures/example render --target ios-iphone-69
---canvas --width 2400`, converted to JPEG).
+`docs/gui/editor*.jpg`, `text-editing*.jpg` (repo README) are separate
+copies, not used by the site.
 
 ## Docs
 
@@ -251,8 +230,7 @@ Used today: `editor-dark.jpg` (getting started, outdated: says "Strip"),
   privacy policy in line with the code when data flows change.
 - **Downloads:** when installers exist, set `downloads_available = true` and
   the URLs under `[params.downloads]` in `hugo.toml`.
-- **Docs:** review the user guide (en + de), replace the screenshot
-  placeholders (list above); once installers exist, update the "pre-release"
+- **Docs:** review the user guide (en + de); once installers exist, update the "pre-release"
   callouts (`install.md`, docs `_index.md`).
 - **Gallery:** set `VITRINE_API_CORS_ORIGINS` on the API server (above);
   rebuild the site after approving templates (snapshot for no-JS/SEO and
