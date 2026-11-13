@@ -1,6 +1,6 @@
 # Phase 4 – MCP server: task list
 
-Scope: KONZEPT.md §8 and §12, Phase 4. Done when Claude can create a project
+Scope: KONZEPT (`docs/archive/KONZEPT-de.md`, superseded by `ARCHITECTURE.md`) §8 and §12, Phase 4. Done when Claude can create a project
 from scratch, design it, translate it and export it – purely via MCP.
 
 Status markers: `[ ]` open · `[~]` in progress · `[x]` done

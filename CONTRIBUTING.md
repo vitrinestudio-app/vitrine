@@ -1,9 +1,8 @@
 # Contributing to Vitrine Studio
 
 Thanks for helping! Vitrine Studio is pre-alpha, so please open an issue
-before larger changes – the concept ([`docs/KONZEPT.md`](docs/KONZEPT.md),
-German) and the architecture decision records ([`docs/adr/`](docs/adr/))
-are binding, and the current state is in
+before larger changes – the architecture ([`ARCHITECTURE.md`](ARCHITECTURE.md))
+is binding, and the current state is in
 [`docs/plan/STATUS.md`](docs/plan/STATUS.md).
 
 ## Contributor licence agreement (CLA)

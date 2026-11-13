@@ -1,6 +1,6 @@
 # Phase 3 – Languages & import: task list
 
-Scope: KONZEPT.md §4.2, §5 and §12, Phase 3. Done when 3 languages × 3 targets
+Scope: KONZEPT (`docs/archive/KONZEPT-de.md`, superseded by `ARCHITECTURE.md`) §4.2, §5 and §12, Phase 3. Done when 3 languages × 3 targets
 export correctly with fallbacks, overflows are reported, and Apple product
 bezels are imported and used.
 

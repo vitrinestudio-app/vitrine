@@ -1,8 +1,9 @@
 # AGENTS.md
 
 Guide for coding agents (and humans) working in this repository. It says
-where things are and how to work here; the reasons behind decisions are in
-the ADRs (`docs/adr/`), the current state in `docs/plan/STATUS.md`.
+where things are and how to work here; the binding description of the
+system and the decisions behind it is `ARCHITECTURE.md`, the current state
+`docs/plan/STATUS.md`.
 
 ## Product
 
@@ -16,9 +17,10 @@ on the same core.
 
 ## Core concepts
 
-The binding concept is **`docs/KONZEPT.md`** (German); read it before
-changing the model, renderer or architecture. Glossary: KONZEPT §2
-"Begriffe"; user-facing explanation: `website/content/en/docs/concepts.md`.
+The binding description is **`ARCHITECTURE.md`**; read it before
+changing the model, renderer or architecture. Glossary: its §2; user-facing
+explanation: `website/content/en/docs/concepts.md`. "ADR 00NN" and
+"KONZEPT §n" references in code resolve through its §14.
 
 - **Canvas, not single images.** A canvas is a row of equal pages;
   backgrounds run across pages, a device spanning two pages exists once.
@@ -62,8 +64,8 @@ changing the model, renderer or architecture. Glossary: KONZEPT §2
 | `.github/workflows/` | `ci.yml` (fmt/clippy/test per OS + licences), `release.yml` (tag `v*` → draft release + CLI image) |
 | `.signpath/` | Windows signing configuration drafts (dormant) |
 | `deny.toml`, `about.toml` | licence allow-list (`cargo deny`), third-party notices (cargo-about) |
-| `docs/KONZEPT.md` | binding concept (German) |
-| `docs/adr/` | architecture decision records `NNNN-title.md` (format: ADR 0000); images they link in `docs/adr/images/` |
+| `ARCHITECTURE.md` | binding description of the system; decision index (§14) and decision log (§15) |
+| `docs/archive/` | historical: the German concept `KONZEPT-de.md` and the former ADRs `adr/NNNN-title.md` (+ `adr/images/`), superseded by `ARCHITECTURE.md` |
 | `docs/plan/` | `STATUS.md` (state + decision log), `phase-N.md` task lists, `phase-N.2.md` = a finished side work package of phase N |
 | `docs/guide/` | `NOTES.md` (user-guide notes), `frame-packs.md` |
 | `docs/research/` | dated research notes and MCP test reports |
@@ -77,7 +79,7 @@ Version: `[workspace.package] version` in `Cargo.toml` is the single source.
 
 | Change | Where |
 |---|---|
-| New model field | `crates/core/src/model/` (serde, canonical YAML form in `io`), a patch field in `ops` (`ops/patch.rs` or `model::ElementPatch`) so it has an inverse op, resolve/render if it draws, `crates/mcp/src/ops.md` (+ `src/docs/*.md` if relevant), `website/content/{en,de}/docs/file-format.md`, NOTES.md; KONZEPT.md if it changes the concept |
+| New model field | `crates/core/src/model/` (serde, canonical YAML form in `io`), a patch field in `ops` (`ops/patch.rs` or `model::ElementPatch`) so it has an inverse op, resolve/render if it draws, `crates/mcp/src/ops.md` (+ `src/docs/*.md` if relevant), `website/content/{en,de}/docs/file-format.md`, NOTES.md; `ARCHITECTURE.md` if it changes the concept |
 | New model change in general | an `Op` in `crates/core/src/ops/` → `Project::apply` → inverse op. Several ops for one gesture: a Rust command/edit intent (`crates/core/src/edit/`), never in JS |
 | New app command | module in `crates/app/src/commands/`, entry in `command_table!` (`crates/app/src/commands/mod.rs`) **and** in `json_commands!`/`image_commands!` + `generate_handler!` in `crates/gui/src/main.rs` |
 | New MCP tool | the matching `#[tool_router]` block in `crates/mcp/src/tools/<area>.rs` (args = `schemars::JsonSchema` struct with doc comments, `deny_unknown_fields`; body via `VitrineMcp::run` calling an app command), tool list in `docs/guide/NOTES.md` (section "AI assistants / MCP"), `crates/mcp/src/instructions.md` / `src/docs/*.md` if it changes usage, `website/content/{en,de}/docs/ai-mcp.md` |
@@ -90,7 +92,7 @@ Version: `[workspace.package] version` in `Cargo.toml` is the single source.
 | Gallery API | `crates/api-server/src/routes/<area>.rs`, `docs/api/API.md`; deployment changes in `docs/api/DEPLOY.md` |
 | Upload flow | `crates/app/src/upload/`, store clients in `crates/publish/src/{apple,google}` (ADR 0017–0019) |
 | Release process | `.github/workflows/release.yml`, `scripts/release/`, `docs/dev/releasing.md` |
-| Architecture decision | new `docs/adr/NNNN-title.md` (take the next free number: `ls docs/adr`) |
+| Architecture decision | the relevant section of `ARCHITECTURE.md` + a dated row in its decision log (§15; next number = last row + 1); no new ADR files |
 
 ## Rules (must follow)
 
@@ -138,9 +140,10 @@ Version: `[workspace.package] version` in `Cargo.toml` is the single source.
 - **Don't push** unless asked.
 - **Document as you go:** user-facing features or findings → short bullets
   in `docs/guide/NOTES.md`; decisions with the owner and phase state →
-  `docs/plan/STATUS.md`; architecture decisions → a new ADR (check the
-  highest number in `docs/adr/` first; parallel agents may take the same
-  one). Visible features also update the user guide in
+  `docs/plan/STATUS.md`; architecture decisions → update the matching
+  section of `ARCHITECTURE.md` and add a row to its decision log (take the
+  next number after the last row; parallel agents may take the same one –
+  renumber on merge). Visible features also update the user guide in
   `website/content/{en,de}/docs/`.
 - **Parallel agents / worktrees** (`.claude/worktrees/`):
   - use your own `CARGO_TARGET_DIR` (e.g. `target/<agent-name>`) so you
@@ -244,8 +247,8 @@ checked-in text normalise `\r\n` anyway.
 
 | Document | Content |
 |---|---|
-| `docs/KONZEPT.md` | binding concept (German), roadmap §12 |
-| `docs/adr/` | architecture decisions and their reasons |
+| `ARCHITECTURE.md` | binding description: concepts, format, pipeline, front ends, rules; decision index + log |
+| `docs/archive/` | historical concept (German) and ADRs 0000–0032 (reasons, research, measurements) |
 | `docs/plan/STATUS.md` | current state, decision log, open owner questions |
 | `docs/plan/phase-*.md` | task lists per phase (`phase-7.md` = release) |
 | `docs/guide/NOTES.md` | user-facing notes incl. the MCP tool list |

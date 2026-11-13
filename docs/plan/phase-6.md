@@ -1,6 +1,6 @@
 # Phase 6 – Polish → release 1.0: task list
 
-Scope: KONZEPT.md §12, Phase 6 ("Vorlagen, eigene Frame-Pakete,
+Scope: KONZEPT (`docs/archive/KONZEPT-de.md`, superseded by `ARCHITECTURE.md`) §12, Phase 6 ("Vorlagen, eigene Frame-Pakete,
 Farbmanagement P3 → sRGB, Feature Graphic, Installer/Signierung, Website
 vitrinestudio.app, Doku"). Done when release 1.0 ships.
 

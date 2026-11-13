@@ -1,5 +1,4 @@
-//! Inline markup of translated texts (`docs/KONZEPT.md` §3.5,
-//! `docs/adr/0003-text-markup-and-layout.md`).
+//! Inline markup of translated texts (`ARCHITECTURE.md` §6).
 //!
 //! Deliberately minimal and translator friendly:
 //!

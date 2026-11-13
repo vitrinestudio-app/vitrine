@@ -1,6 +1,6 @@
 # Phase 2 – GUI editor: task list
 
-Scope: KONZEPT.md §9 and §12, Phase 2. Done when a project can be created,
+Scope: KONZEPT (`docs/archive/KONZEPT-de.md`, superseded by `ARCHITECTURE.md`) §9 and §12, Phase 2. Done when a project can be created,
 designed and exported completely in the GUI.
 
 Status markers: `[ ]` open · `[~]` in progress · `[x]` done

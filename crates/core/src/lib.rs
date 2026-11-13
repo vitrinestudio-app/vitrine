@@ -3,7 +3,7 @@
 //! The heart of Vitrine Studio: the project model and everything that works on it
 //! without touching pixels or the network.
 //!
-//! Responsibilities (see `docs/KONZEPT.md`, sections 3 and 10):
+//! Responsibilities (see `ARCHITECTURE.md`, sections 3–6):
 //!
 //! - **Model**: projects, canvases, pages, gaps, elements, styles,
 //!   variants, targets. Every element hangs on a *home page* and is positioned
@@ -21,7 +21,7 @@
 //!
 //! Module layout (`model`, `io`, `ops`, `edit`, `catalog`, `geometry`,
 //! `resolve`, `layout`, `markup`, `validate`).
-//! The file format is described in `docs/adr/0002-project-file-format.md`.
+//! The file format is described in `ARCHITECTURE.md` §3.
 //!
 //! ```text
 //! model/      project, canvas, page, element, style, target, variant

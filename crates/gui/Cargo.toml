@@ -20,7 +20,7 @@ name = "vitrine-gui"
 path = "src/main.rs"
 
 # Dev harness: serves ui/ and the commands over HTTP for browser-based
-# checks (docs/adr/0008). Never part of the release bundle.
+# checks (ARCHITECTURE.md §12.2). Never part of the release bundle.
 [[bin]]
 name = "vitrine-devbridge"
 path = "src/bin/vitrine-devbridge.rs"

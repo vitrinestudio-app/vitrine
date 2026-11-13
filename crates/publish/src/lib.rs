@@ -1,7 +1,7 @@
 //! # vitrine-publish
 //!
 //! Store upload, kept out of `vitrine-core` so the core stays free of
-//! network code (`docs/KONZEPT.md`, section 7).
+//! network code (`ARCHITECTURE.md` §10).
 //!
 //! Responsibilities:
 //!
@@ -24,7 +24,7 @@
 //! only and never log it.
 //!
 //! Plain REST via `reqwest` + rustls, no vendor SDKs. API facts and sources:
-//! `docs/adr/0017-store-clients.md`.
+//! `ARCHITECTURE.md` §10 (former ADR 0017).
 
 pub mod apple;
 mod error;

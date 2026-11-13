@@ -1,7 +1,7 @@
 # Frame packs – format reference (`vitrine-frame/1`)
 
 An own frame pack is a folder with PNG and/or SVG device frames and a small
-`frame.yaml` (ADR 0024, KONZEPT §4.2 item 3). Vitrine Studio ships no vendor
+`frame.yaml` (`ARCHITECTURE.md` §7, former ADR 0024). Vitrine Studio ships no vendor
 images; packs are drawn by you, exported from a design tool, or built from
 vendor material whose licence allows it (see
 `docs/research/2026-11-11-vendor-frames.md`).
