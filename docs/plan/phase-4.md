@@ -95,8 +95,10 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       elements, toasts, activity list (top-bar indicator), `selection_get`,
       `view_get`; GUI-hosted tools default to the GUI's target/language;
       projects opened by Claude open in the GUI
-- Follow-ups: bundled-build CLI path (Phase 6); Claude Desktop's real
-  `clientInfo.name` to confirm in 4.5 (assumed `claude-ai`)
+- Follow-ups: bundled-build CLI path (Phase 6) – done 2026-11-11 (CLI
+  is a Tauri sidecar next to the GUI binary, ADR 0026; check in the first
+  signed build); Claude Desktop's real `clientInfo.name` to confirm in 4.5
+  (assumed `claude-ai`)
 
 ## 4.4 Tests
 - [x] Integration test: start `vitrine mcp` as a subprocess, speak MCP over
@@ -107,9 +109,12 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       handling (`crates/cli/tests/mcp.rs`, `crates/mcp/src/server.rs` tests)
 
 ## 4.5 Real-world check with Claude
-- [ ] Register the server in Claude Code and Claude Desktop through the app
+- [~] Register the server in Claude Code and Claude Desktop through the app
       settings ("Add to Claude Desktop", copied `claude mcp add` command) and
-      check the live view with a real client
+      check the live view with a real client – Claude Desktop through the
+      proxy works (owner sessions 2026-11-10 to 2026-11-13); after the
+      rename the owner re-adds `vitrine-studio`; Claude Code and the real
+      `clientInfo.name` not confirmed yet (Phase 7 checklist)
 - [~] Scenario run by a Claude session: "Create screenshots for app X in en/de,
       iPhone + iPad, translate, export" – judge the rendered result; fix tool
       ergonomics (descriptions, defaults, error messages) based on what the
@@ -121,7 +126,14 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
         documented for `apply_ops`), ids across canvases, `docs_get {topic}`
         (resources are user-attached in Claude Desktop), `assets_import`
         mapping list + kind alias `image`
-  - [ ] re-run the scenario with the fixes; judge the rendered result
-- [~] Docs: ADR (app crate + MCP design), CLAUDE.md, README, `docs/guide/NOTES.md`
+  - [x] re-run the scenario with the fixes: the owner built ~50 gallery
+        templates through MCP (2026-11-12, 70ebb82; round 2 2026-11-13,
+        `docs/research/2026-11-12-mcp-test-results.md`,
+        `docs/research/2026-11-13-mcp-test-results2.md`) → design checks
+        (ADR 0029), preview/export fixes, group `scale` (ADR 0030),
+        `apply_ops {file}`, quieter checks; round 2 work packages partly
+        still running (design checks round 2, `clip_to`)
+- [x] Docs: ADR (app crate + MCP design), CLAUDE.md, README, `docs/guide/NOTES.md`
       (setup snippets, tool list, example prompts) – done for the server
-      and GUI hosting (ADR 0013, 0014, 0015); real-world findings follow
+      and GUI hosting (ADR 0013, 0014, 0015); real-world findings in the
+      two research notes above, website page `docs/ai-mcp` (en + de)
