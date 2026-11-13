@@ -131,6 +131,28 @@ fn rows(report: &ExportReport) -> Vec<Row> {
     rows
 }
 
+/// Layout notes (not the errors) and the removed files.
+fn print_notes(report: &ExportReport, style: Style) {
+    for n in report.notes.iter().filter(|n| n.level != NoteLevel::Error) {
+        let level = match n.level {
+            NoteLevel::Info => style.info("info "),
+            _ => style.warn("warn "),
+        };
+        let scope = match &n.lang {
+            Some(l) => format!("[{}/{l}]", n.target),
+            None if n.target.is_empty() => "[fastlane]".to_owned(),
+            None => format!("[{}]", n.target),
+        };
+        println!("{level} {} {}", style.dim(&scope), n.message);
+    }
+    for r in &report.removed {
+        println!("{} {r}", style.dim("removed stale"));
+    }
+    for r in &report.removed_foreign {
+        println!("{} {r}", style.dim("removed foreign"));
+    }
+}
+
 fn print_text(report: &ExportReport, global: &Global) {
     let style = Style::stdout();
     let rows = rows(report);
@@ -188,24 +210,7 @@ fn print_text(report: &ExportReport, global: &Global) {
         }
     }
     if !global.quiet {
-        for n in report.notes.iter().filter(|n| n.level != NoteLevel::Error) {
-            let level = match n.level {
-                NoteLevel::Info => style.info("info "),
-                _ => style.warn("warn "),
-            };
-            let scope = match &n.lang {
-                Some(l) => format!("[{}/{l}]", n.target),
-                None if n.target.is_empty() => "[fastlane]".to_owned(),
-                None => format!("[{}]", n.target),
-            };
-            println!("{level} {} {}", style.dim(&scope), n.message);
-        }
-        for r in &report.removed {
-            println!("{} {r}", style.dim("removed stale"));
-        }
-        for r in &report.removed_foreign {
-            println!("{} {r}", style.dim("removed foreign"));
-        }
+        print_notes(report, style);
     }
     for e in &report.errors {
         println!("{} {e}", style.error("error"));

@@ -224,7 +224,11 @@ fn fastlane_reports_and_removes_foreign_images() {
     let first = export(&p, &ctx, &opts(false));
     assert!(first.errors.is_empty(), "{:?}", first.errors);
     assert_eq!(first.foreign, foreign);
-    assert!(first.removed_foreign.is_empty());
+    assert!(
+        first.removed_foreign.is_empty(),
+        "{:?}",
+        first.removed_foreign
+    );
     let warned: Vec<&str> = first
         .notes
         .iter()
@@ -245,7 +249,7 @@ fn fastlane_reports_and_removes_foreign_images() {
     let second = export(&p, &ctx, &opts(true));
     assert!(second.errors.is_empty(), "{:?}", second.errors);
     assert_eq!(second.removed_foreign, foreign);
-    assert!(second.foreign.is_empty());
+    assert!(second.foreign.is_empty(), "{:?}", second.foreign);
     assert!(
         !second
             .notes

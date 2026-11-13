@@ -578,23 +578,12 @@ fn fastlane_tasks(
     let (rejected, conflict_notes) = fastlane::check_claims(&existing, &claims);
     notes.extend(conflict_notes);
     let mut tasks = Vec::new();
-    let mut deliver_dirs: BTreeSet<String> = BTreeSet::new();
     let mut upload = UploadFolders::default();
     for (n, ((i, img, p), claim)) in planned.into_iter().zip(claims).enumerate() {
         if rejected.contains(&n) {
             continue;
         }
-        if p.store == vitrine_core::model::StoreKind::Apple {
-            deliver_dirs.insert(p.dir.clone());
-        }
-        match &p.naming {
-            fastlane::Naming::SupplyImage { image_type } => {
-                upload.singles.insert((p.dir.clone(), image_type.clone()));
-            }
-            _ => {
-                upload.sets.insert(p.dir.clone());
-            }
-        }
+        upload.add(&p);
         tasks.push(Task {
             job: i,
             kind: TaskKind::Image(img),
@@ -602,16 +591,9 @@ fn fastlane_tasks(
             locale: Some(p.locale),
         });
     }
+    report.foreign = upload.foreign(out_dir, old, &tasks);
     if !opts.remove_foreign {
-        notes.extend(framed_warnings(out_dir, deliver_dirs));
-    }
-    let own: BTreeSet<&str> = old
-        .keys()
-        .map(String::as_str)
-        .chain(tasks.iter().map(|t| t.rel.as_str()))
-        .collect();
-    report.foreign = upload.foreign(out_dir, &own);
-    if !opts.remove_foreign {
+        notes.extend(framed_warnings(out_dir, &upload.deliver));
         notes.extend(foreign_warnings(&report.foreign));
     }
     for n in &notes {
@@ -633,14 +615,41 @@ struct UploadFolders {
     /// Single Play images (`images` folder, image type): supply uploads the
     /// last of `<type>.{png,jpg,jpeg}`.
     singles: BTreeSet<(String, String)>,
+    /// deliver's locale folders (frameit check).
+    deliver: BTreeSet<String>,
 }
 
 impl UploadFolders {
+    fn add(&mut self, p: &Placement) {
+        if p.store == vitrine_core::model::StoreKind::Apple {
+            self.deliver.insert(p.dir.clone());
+        }
+        match &p.naming {
+            fastlane::Naming::SupplyImage { image_type } => {
+                self.singles.insert((p.dir.clone(), image_type.clone()));
+            }
+            _ => {
+                self.sets.insert(p.dir.clone());
+            }
+        }
+    }
+
     /// Images in these folders that deliver/supply would upload together
-    /// with this export but that no export of this folder wrote (not in
-    /// `own`): raw snapshot/screengrab captures, frameit output, files put
-    /// there by hand. Paths relative to the export folder, sorted.
-    fn foreign(&self, out_dir: &Path, own: &BTreeSet<&str>) -> Vec<String> {
+    /// with this export but that no export of this folder wrote (neither in
+    /// the manifest `old` nor in `tasks`): raw snapshot/screengrab captures,
+    /// frameit output, files put there by hand. Paths relative to the
+    /// export folder, sorted.
+    fn foreign(
+        &self,
+        out_dir: &Path,
+        old: &BTreeMap<String, ManifestEntry>,
+        tasks: &[Task],
+    ) -> Vec<String> {
+        let own: BTreeSet<&str> = old
+            .keys()
+            .map(String::as_str)
+            .chain(tasks.iter().map(|t| t.rel.as_str()))
+            .collect();
         let exts = &vitrine_core::catalog::fastlane().deliver.extensions;
         let image = |name: &str| {
             name.rsplit_once('.')
@@ -730,11 +739,11 @@ fn remove_foreign(out_dir: &Path, report: &mut ExportReport) {
 }
 
 /// frameit leftovers make deliver skip every unframed file of the folder.
-fn framed_warnings(out_dir: &Path, deliver_dirs: BTreeSet<String>) -> Vec<LayoutNote> {
+fn framed_warnings(out_dir: &Path, deliver_dirs: &BTreeSet<String>) -> Vec<LayoutNote> {
     let mut notes = Vec::new();
     let framed = &vitrine_core::catalog::fastlane().deliver.framed_suffix;
     for dir in deliver_dirs {
-        let has_framed = std::fs::read_dir(out_dir.join(&dir))
+        let has_framed = std::fs::read_dir(out_dir.join(dir))
             .into_iter()
             .flatten()
             .flatten()
