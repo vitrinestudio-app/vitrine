@@ -857,8 +857,8 @@
    (`data-d` 0–3, set by site.js). Wide screens (≥ 1420 px, the labels fit
    into the margin) show it all the time after the hero; narrower screens
    show it while scrolling (`.is-scrolling`) over a soft fog and fade it out
-   a moment after scrolling stops. Hover, keyboard focus or a tap
-   (`.is-open`) shows all labels on a card. */
+   a moment after scrolling stops. Hover, keyboard focus or a tap on the
+   rail (`.is-open`) shows all labels on a card. Not on phones (< 700 px). */
 
 .secnav {
   --row: 22px;
@@ -1006,8 +1006,15 @@
 }
 .secnav.is-open::before,
 .secnav:focus-within::before { opacity: 1; }
+/* Visible labels take the pointer right where they are: in the margin
+   from 1420 px, while scrolling below, and on the open card. Invisible
+   labels (and the hidden index) never catch clicks meant for the page. */
+.secnav.is-scrolling .secnav__link,
 .secnav.is-open .secnav__link,
 .secnav:focus-within .secnav__link { pointer-events: auto; }
+@media (min-width: 1420px) {
+  .secnav .secnav__link { pointer-events: auto; }
+}
 .secnav.is-open .secnav__fog,
 .secnav:focus-within .secnav__fog { opacity: 0; }
 .secnav.is-open .secnav__label,
@@ -1022,13 +1029,14 @@
   .secnav__link[aria-current]:hover .secnav__tick::before { width: 22px; background: var(--coral); }
 }
 
-/* Touch screens: taller rows to hit. Phones: closer to the edge. */
+/* Touch screens (tablets): taller rows to hit. Phones (< 700 px): no
+   index at all – the page is one column and the rail would sit on text. */
 @media (pointer: coarse) {
   .secnav { --row: 30px; }
   .secnav__link { font-size: .8rem; }
 }
-@media (max-width: 640px) {
-  .secnav { right: 2px; }
+@media (max-width: 699px) {
+  .secnav { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .secnav, .secnav.is-shown, .secnav::before, .secnav__fog, .secnav__tick::before, .secnav__label { transition: none; }
