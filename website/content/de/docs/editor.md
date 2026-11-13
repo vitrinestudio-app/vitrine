@@ -66,9 +66,16 @@ Unter Windows und Linux liest du in diesem Handbuch <kbd>⌘</kbd> als
 | **Form** | Rechteck (mit Eckenradius), Ellipse oder Linie, mit Füllung und Kontur |
 | **Seitenhintergrund** | eine Füllung (Farbe, Verlauf oder Bild) für eine Seite, über dem Leinwand-Hintergrund |
 
-**Gruppen** fassen Elemente zusammen, die sich gemeinsam bewegen und drehen:
-<kbd>⌘</kbd><kbd>G</kbd> gruppiert die Auswahl,
-<kbd>⇧</kbd><kbd>⌘</kbd><kbd>G</kbd> hebt die Gruppierung auf.
+**Gruppen** fassen Elemente zusammen, die sich gemeinsam bewegen, drehen und
+skalieren: <kbd>⌘</kbd><kbd>G</kbd> gruppiert die Auswahl,
+<kbd>⇧</kbd><kbd>⌘</kbd><kbd>G</kbd> hebt die Gruppierung auf. Die
+**Skalierung** einer Gruppe im Inspektor verkleinert oder vergrößert alles
+darin – Positionen, Größen, Schriftgrößen, Konturen, Eckenradien und Schatten
+– um ihren Drehpunkt (die Mitte ihrer Elemente, verschiebbar mit
+**Drehpunkt**). Texte werden in der neuen Größe gesetzt und bleiben scharf.
+In einer Variante gesetzt, macht eine einzige Änderung eine Karte oder ein
+Ticket für ein Format kleiner. Eine skalierte Gruppe lässt sich nicht
+auflösen; stell die Skalierung vorher auf 100 % zurück.
 
 Hintergründe, die über **alle** Seiten laufen, gehören zur Leinwand: Heb die
 Auswahl auf und bearbeite **Leinwand-Hintergründe** im Inspektor.

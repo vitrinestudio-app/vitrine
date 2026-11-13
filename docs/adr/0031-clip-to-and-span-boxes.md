@@ -37,7 +37,7 @@ asked twice for the same two things:
   polygons or paths (owner scope); `line` and other kinds are invalid.
 - The mask is the shape's **resolved geometry** for the target: variant
   overrides, anchors, `content_scale`-independent sizes, group offsets and
-  rotation, its own rotation and pivot – exactly where the shape would be
+  rotation and scale (ADR 0030; the corner radius scales too), its own rotation and pivot – exactly where the shape would be
   drawn. Fill, stroke, opacity and shadow of the shape do not matter.
 - The shape is **drawn as usual**. To use it only as a mask, hide it
   (`visible: false`, or a `visible_in` that excludes the target): hidden
@@ -92,7 +92,7 @@ styles:
 ```
 
 - `padding`: one number (all sides) or `{x, y}`, lu; `radius`: lu,
-  clamped to half the box height when drawn (a large value = pill).
+  clamped to half the box height when drawn (a large value = pill). Inside a scaled group (ADR 0030) both scale with the text.
   Both apply to the existing span `background` box only.
 - **Padding does not change the line layout.** The box grows around the
   glyph run box; glyphs, line breaks, auto-fit and `layout_report` stay as

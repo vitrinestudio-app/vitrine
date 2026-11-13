@@ -303,3 +303,60 @@ fn clearing_clip_to_through_a_patch() {
     assert_eq!(clip_of(&p, "photo"), None);
     assert!(image(&scene(&p, "t"), "photo").clip_shape.is_none());
 }
+
+const SCALED: &str = r##"
+format: vitrine/1
+name: scaled
+languages: {default: en, available: [en]}
+styles:
+  spans:
+    pill: {background: "#FF0000", padding: {x: 20, y: 10}, radius: 30}
+canvases:
+- id: c
+  page: {aspect: 1:1, count: 1}
+  elements:
+  - id: g
+    kind: group
+    page: 0
+    scale: 0.5
+    children:
+    - {id: mask, kind: shape, page: 0, at: {x: 300, y: 500}, width: 400, height: 200, shape: rect, radius: 40, visible: false}
+    - {id: label, kind: text, page: 0, at: {x: 500, y: 300}, width: 900, text: t}
+  - {id: photo, kind: image, page: 0, at: {x: 500, y: 500}, width: 600, height: 600, asset: assets/a.png, clip_to: mask}
+targets:
+- {id: t, canvas: c, size: [1000, 1000]}
+"##;
+
+/// Inside a scaled group (ADR 0030) the mask uses the scaled geometry and
+/// span highlight padding/radius scale with the text.
+#[test]
+fn scaled_groups_scale_masks_and_span_boxes() {
+    let mut p = project_from_yaml(SCALED).unwrap();
+    p.strings
+        .entry(vitrine_core::model::Lang::new("en"))
+        .or_default()
+        .insert(
+            vitrine_core::model::StringKey::new("t"),
+            "a [pill]NEW[/] b".into(),
+        );
+    let s = scene(&p, "t");
+    let c = image(&s, "photo").clip_shape.as_ref().unwrap();
+    assert_eq!(c.size, Vec2::new(200.0, 100.0));
+    assert_eq!(c.radius, 20.0);
+
+    let text = s
+        .elements
+        .iter()
+        .find(|e| e.id.as_str() == "label")
+        .unwrap();
+    let ResolvedKind::Text(t) = &text.props else {
+        panic!("label is not a text")
+    };
+    let spans = vitrine_core::layout::span_styles(&s.spans);
+    let mut l =
+        vitrine_core::layout::TextLayouter::new(vitrine_core::layout::FontLibrary::bundled());
+    let placed = vitrine_core::layout::layout_text(&mut l, t, &spans).unwrap();
+    let h = placed.layout.highlights[0];
+    assert!((h.padding.0 - 10.0).abs() < 1e-4 && (h.padding.1 - 5.0).abs() < 1e-4);
+    assert!((h.radius - 15.0).abs() < 1e-4);
+}

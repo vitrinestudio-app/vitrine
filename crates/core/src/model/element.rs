@@ -222,13 +222,31 @@ pub struct ShapeProps {
     pub shadow: Option<String>,
 }
 
-/// Groups elements for moving/rotating them together. Children keep their
-/// own home page and position; the group's `at` is added as offset and its
-/// rotation/opacity apply to all children (resolve, task 1.4).
-#[derive(Clone, Debug, PartialEq, Default)]
+/// Groups elements for moving/rotating/scaling them together. Children
+/// keep their own home page and position; the group's `at` is added as
+/// offset and its scale/rotation/opacity apply to all children (resolve,
+/// task 1.4; ADR 0030).
+#[derive(Clone, Debug, PartialEq)]
 pub struct GroupProps {
     pub children: Vec<Element>,
+    /// Uniform scale of the whole group around its pivot (the centre of
+    /// its children plus `pivot`, like rotation): positions, sizes, font
+    /// sizes, strokes, radii and effects of all children. Within
+    /// [`GROUP_SCALE_RANGE`], default 1 (ADR 0030).
+    pub scale: f64,
 }
+
+impl Default for GroupProps {
+    fn default() -> Self {
+        Self {
+            children: Vec::new(),
+            scale: 1.0,
+        }
+    }
+}
+
+/// Allowed values of a group's `scale`.
+pub const GROUP_SCALE_RANGE: std::ops::RangeInclusive<f64> = 0.1..=10.0;
 
 /// `kind:` tag of an element.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -289,7 +307,7 @@ impl ElementKindTag {
             ],
             Self::Image => &["asset", "clip_to", "fit", "shadow"],
             Self::Shape => &["shape", "radius", "fill", "stroke", "shadow"],
-            Self::Group => &["children"],
+            Self::Group => &["scale", "children"],
         }
     }
 }
@@ -710,6 +728,9 @@ element_fields! {
     rotation: f64,
     pivot: Point,
     anchor_y: AnchorY,
+    // group
+    #[serde(serialize_with = "num")]
+    scale: f64,
     // device
     model: String,
     orientation: Orientation,
@@ -837,6 +858,16 @@ impl TryFrom<ElementWire> for Element {
         {
             return Err(format!("element `{}`: opacity must be within 0..1", w.id));
         }
+        if let Some(k) = w.scale
+            && !GROUP_SCALE_RANGE.contains(&k)
+        {
+            return Err(format!(
+                "element `{}`: scale must be within {}..{}, got {k}",
+                w.id,
+                GROUP_SCALE_RANGE.start(),
+                GROUP_SCALE_RANGE.end()
+            ));
+        }
         let props = match kind {
             ElementKindTag::Background => ElementKind::Background(BackgroundProps {
                 fill: w.fill.clone().ok_or_else(|| missing("fill"))?,
@@ -934,6 +965,7 @@ impl TryFrom<ElementWire> for Element {
             }),
             ElementKindTag::Group => ElementKind::Group(GroupProps {
                 children: w.children.clone().unwrap_or_default(),
+                scale: w.scale.unwrap_or(1.0),
             }),
         };
         Ok(Element {
@@ -975,6 +1007,7 @@ impl From<Element> for ElementWire {
             rotation: (e.rotation != 0.0).then_some(e.rotation),
             pivot: e.pivot,
             anchor_y: e.anchor_y,
+            scale: None,
             model: None,
             orientation: None,
             frame: None,
@@ -1063,6 +1096,7 @@ impl From<Element> for ElementWire {
             }
             ElementKind::Group(p) => {
                 w.kind = ElementKindTag::Group;
+                w.scale = ((p.scale - 1.0).abs() > f64::EPSILON).then_some(p.scale);
                 w.children = (!p.children.is_empty()).then_some(p.children);
             }
         }

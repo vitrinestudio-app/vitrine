@@ -35,7 +35,8 @@ color, fold (open|folded, foldables), chrome (none|browser), url, appearance (li
 text: text (translation key), style, box {top, left, right, bottom} (margins to the page), align \
 (left|center|right), valign (top|center|bottom), fit {shrink_to, max_lines}, color, font_size, \
 stroke {color, width}, glow {color, radius}, shadow, hyphenate. \
-image: asset, fit, shadow. shape: shape (rect|ellipse|line), radius, fill, stroke, shadow. \
+image: asset, fit, shadow, clip_to (id of a rect/ellipse shape: clip the image to it). shape: shape (rect|ellipse|line), radius, fill, stroke, shadow. \
+group: scale (0.1..10, default 1; scales all children around the group pivot, e.g. a variant override {scale: 0.85}). \
 background: fill (\"#RRGGBB\" or {kind: linear-gradient|radial-gradient|image, …})."
     };
 }
@@ -273,6 +274,8 @@ edit_params! {
     pub struct ElementResizeParams {
         pub id: String,
         /// New width in lu (devices: width only, the height follows).
+        /// Canvas lu: inside a scaled group the stored value is divided
+        /// by the group scale. Groups are scaled with `scale` instead.
         #[serde(default)]
         pub width: Option<f64>,
         /// New height in lu.

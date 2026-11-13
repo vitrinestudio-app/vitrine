@@ -170,7 +170,7 @@ Grad, positiv = im Uhrzeigersinn.
 | `image` | `asset` (z. B. `assets/badge.png`), `fit`, `shadow`, `clip_to` (ID einer `rect`-/`ellipse`-Form der Leinwand: das Bild wird auf ihren Umriss zugeschnitten; eine Form mit `visible: false` dient nur als Maske) |
 | `shape` | `shape` (`rect`/`ellipse`/`line`), `radius`, `fill`, `stroke`, `shadow` |
 | `background` | `fill` – füllt die Heimatseite |
-| `group` | `children` – Elemente, die gemeinsam verschoben und gedreht werden |
+| `group` | `children` – Elemente, die gemeinsam verschoben, gedreht und skaliert werden; `scale` (0,1–10, Standard 1) skaliert sie um den Drehpunkt der Gruppe |
 
 Ein Text ohne `box` ist eine freie Box, zentriert bei `at` mit der Breite
 `width`.

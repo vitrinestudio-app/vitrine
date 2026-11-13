@@ -178,6 +178,25 @@ impl ResolvedSpanStyle {
     pub fn has_effects(&self) -> bool {
         self.stroke.is_some() || self.glow.is_some() || self.shadow.is_some()
     }
+
+    /// The span with its lengths (outline, glow, shadow, highlight padding
+    /// and radius) multiplied by `k`: spans inside a scaled group (ADR 0030,
+    /// 0031).
+    #[must_use]
+    pub fn scaled(&self, k: f64) -> Self {
+        let kf = k as f32;
+        Self {
+            padding: (self.padding.0 * kf, self.padding.1 * kf),
+            radius: self.radius * kf,
+            stroke: self.stroke.map(|s| s.scaled(k)),
+            glow: self.glow.map(|g| g.scaled(k)),
+            shadow: self
+                .shadow
+                .as_ref()
+                .map(|v| v.iter().map(|l| l.scaled(k)).collect()),
+            ..self.clone()
+        }
+    }
 }
 
 /// Auto-fit settings (`fit: { shrink_to, max_lines }`).

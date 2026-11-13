@@ -10,12 +10,13 @@
 > Only Ruby syntax was checked here (`ruby -c`); the actions were not run
 > inside fastlane yet.
 
-Two actions that call the `vitrine` CLI – fastlane runs on every CI system
+Three actions that call the `vitrine` CLI – fastlane runs on every CI system
 mobile teams use (GitHub Actions, Bitrise, Codemagic, CircleCI, Jenkins, and
 locally), so this one plugin covers all of them:
 
 | action | does |
 |---|---|
+| `vitrine_import` | `vitrine import screenshots`; copies snapshot/screengrab captures (or any folder) into the project; `lang_map`/`device_map`/`key_map` as hashes, `save_mapping`, `dry_run`; fails the lane when files cannot be mapped |
 | `vitrine_validate` | `vitrine validate`; fails the lane on errors (warnings with `strict: true`) |
 | `vitrine_export` | `vitrine export --layout fastlane --out ./fastlane`; sets `DELIVER_SCREENSHOTS_PATH` / `SUPPLY_METADATA_PATH` (unless already set) and the lane context `VITRINE_SCREENSHOTS_PATH`, `VITRINE_METADATA_PATH` |
 
@@ -30,7 +31,7 @@ gem "fastlane-plugin-vitrine"
 # fastlane/Fastfile
 lane :screenshots do
   capture_screenshots                                   # snapshot, as before
-  sh("vitrine", "import", "screenshots", ".", "--project", "../store-screens")
+  vitrine_import(project: "store-screens", source: "./fastlane")  # snapshot + screengrab captures
   vitrine_validate(project: "store-screens", strict: true)
   vitrine_export(project: "store-screens")              # replaces frameit
   upload_to_app_store(skip_binary_upload: true, skip_metadata: true, overwrite_screenshots: true)

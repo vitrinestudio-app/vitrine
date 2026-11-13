@@ -293,10 +293,18 @@ const FIELD_DOCS: &[(&str, &str)] = &[
         "not used (the children have their own sizes)",
     ),
     ("group.height", "not used"),
+    (
+        "group.pivot",
+        "{x, y} lu – origin of the group's rotation and scale as offset from the centre of its children's reference points (default: that centre). E.g. {x: -200, y: 0} keeps a point 200 lu left of the centre in place when scaling",
+    ),
     // group
     (
+        "scale",
+        "number 0.1..10 – scales the whole group like a transform around its pivot (default 1): child positions, sizes, font sizes (text is laid out at the scaled size, stays sharp), strokes, corner radii, shadows and glows. Typical as a variant override (`scale: 0.85` for Play) instead of overriding every child. Nested groups multiply",
+    ),
+    (
         "children",
-        "list of elements – moved/rotated together; `at` of children is relative to the group's home page",
+        "list of elements – moved/rotated/scaled together; `at` of children is relative to the group's home page",
     ),
     (
         "langs",
