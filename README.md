@@ -182,6 +182,14 @@ Editing a headline, with its settings in the inspector:
   <img src="docs/gui/new-project.jpg" width="760" alt="The New project dialog on the Template gallery tab: template cards with previews and filters for style, colour, app category and devices">
 </picture>
 
+The store upload plan – what will be uploaded, replaced or skipped – before
+anything is sent:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/gui/upload-plan-dark.jpg">
+  <img src="docs/gui/upload-plan.jpg" width="760" alt="The upload plan for the App Store: a note that the required iPhone 6.3″ set is missing, six sets (two targets × three languages) marked Upload, and the Confirm &amp; upload button">
+</picture>
+
 ### Renders
 
 Store gallery previews as Vitrine Studio renders them. An iPhone set made
