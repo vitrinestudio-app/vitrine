@@ -11,8 +11,9 @@ means fix and re-render.
 - [ ] No banned words, prices, CTAs, awards, other platforms; proof only if true (never on Play).
 
 ## Visual
-- [ ] Thumbnail test: page shrunk to ~200 px wide, on #F2F2F7 and on #1C1C1E – headline
-      readable, app purpose clear, page doesn't dissolve into the store background.
+- [ ] Thumbnail test: page shrunk to ~200 px wide (`render_preview {view: "gallery"}` with a
+      small `max_edge`), on the light and the dark store background (`background: "dark"`)
+      – headline readable, app purpose clear, page doesn't dissolve into the store background.
 - [ ] Headline contrast ≥ 4.5:1 at its worst point, including the emphasis word.
 - [ ] No text clipped, no word wider than ~88 % of the page, no orphan single-word line.
 - [ ] Device ≥ ~65 % of page height on device pages; no empty band > ~22 %.
@@ -23,9 +24,11 @@ means fix and re-render.
 
 ## Store
 - [ ] App Store: > 50 % of pages show the app in use; iPad pages use iPad frames.
-- [ ] Play: no device imagery, tagline ≤ 20 % of the image, alt text prepared.
-- [ ] `validate` clean for every target × language: 0 errors, 0 warnings; every `allow`
-      intended and explainable.
+- [ ] Play: Android frames (never Apple ones) via `device_map`; feature graphic present.
+- [ ] Only if the user chose the frameless Play variant: no device imagery, tagline ≤ 20 %
+      of the image.
+- [ ] `validate` clean for every target × language: 0 errors, warnings fixed (aim for 0);
+      every `allow` and `checks.off` entry intended and explainable.
 - [ ] Only one upload target per store slot (portrait vs. landscape tablet).
 
 ## What validate can't see – check by eye
@@ -39,11 +42,10 @@ means fix and re-render.
 
 ## Languages
 - [ ] Every language filled; rendered and looked at, not just validated.
+- [ ] Device, screen and corner checks run on each target's first language only: run
+      `validate {langs: ["<lang>"]}` for the other languages (above all the longest) and
+      look at their galleries for headlines over screens or in corners.
 - [ ] German (and other long languages) fit with the same size or a documented override.
 - [ ] Screenshot UI language matches the copy language (or fallback is intentional).
+- [ ] No template sample screenshots left (`sample_screenshot`); they block the upload.
 
-## Templates only
-- [ ] Phone and tablet canvases (tablet orientation as planned), App Store and Play targets, EN (default) and DE.
-- [ ] No real brand, logo, character, person or trademark anywhere.
-- [ ] Placeholder copy follows the copy rules and the style's voice.
-- [ ] README written, previews saved, asset provenance noted.

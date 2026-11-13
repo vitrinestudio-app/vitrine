@@ -255,6 +255,8 @@ guide pages in both languages.
   - Shrinking texts: the auto-fit step (0.25 lu) is not scaled, so a scaled shrink-to-fit text may differ by a fraction of a step from a hand-scaled copy.
 - Example prompts: "Create a Vitrine Studio project in ~/Screens/Fernwood (en, de) for a garden planner, three iPhone pages with headline + phone each, show me the gallery"; "Translate everything missing into French, then check page 2 in French for overflows"; "Select the title in the app and say: make this 20 % smaller"; "Export iPhone and iPad for all languages".
 
+- Agent skill (2026-11-13, draft, MIT, `integrations/skill/`): a vendor-neutral skill in the open Agent Skills format (`skills/vitrine-store-screenshots/SKILL.md` + `references/`) that teaches any MCP-connected AI assistant the whole job for the user's own app – benefits, copy, layout, languages, store variants, checks, export, upload (plan → user's yes → "Confirm upload" in the app). Install: copy the skill folder into the agent's skills directory or upload it as zip (README lists per-client notes). Needs the app with MCP enabled. Template-authoring notes are internal: `docs/research/template-authoring-notes.md`.
+
 ### Store accounts & store mapping (Phase 5.1, ADR 0016)
 - Accounts are app-wide (App settings → Stores), not in the project: a project folder can be shared via Git, keys stay on the machine.
 - Where keys are stored: the system keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service), service `app.vitrinestudio`, account `<account id>/apple` or `<account id>/google`. `settings.yaml` only lists id, label, Apple issuer id + key id, Google client email + project id.

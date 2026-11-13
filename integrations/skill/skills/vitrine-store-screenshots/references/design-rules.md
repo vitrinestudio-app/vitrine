@@ -63,15 +63,18 @@ Every page answers one buying question. If two pages make the same claim, merge 
 - Max three text styles, max two families. One emphasis word per headline (accent colour,
   italic, script, heavier weight) – the emphasis colour must pass contrast on its own.
 - Thin weights fail at thumbnail size and in dark mode.
-- Vitrine bundled fonts: Inter, Montserrat, Nunito (sans); Oswald, Bebas Neue (condensed
-  display); Playfair Display, Lora (serif); Caveat, Dancing Script (script accents);
-  JetBrains Mono (mono). Script fonts only for single emphasis words.
+- Vitrine bundled fonts: Inter, Inter Display, Montserrat, Nunito, Oswald (sans); Bebas Neue
+  (caps-only display); Playfair Display, Lora (serif); Caveat, Dancing Script (script
+  accents); JetBrains Mono (mono). Script fonts only for single emphasis words. Bold Inter
+  headlines: use Inter Display (Inter itself has only 400 and 600; see
+  `vitrine-technical.md` §3).
 
 ## Colour and background
 
 - The background is a designed surface: colour field, warm off-white, deep navy/slate, or a
   gradient with ≥3 stops and a real hue shift. Never default white (merges with the light
-  store, #F2F2F7) or pure black (merges with the dark store, #1C1C1E).
+  store) or pure black (merges with the dark store); validate reports
+  `page_blends_with_store`.
 - Palette from the app icon. Assign roles: surface, primary text, secondary text, accent,
   contrast surface. Fewer colours read as more polished.
 - Contrast ≥ 4.5:1 against the worst pixel under the text (lightest gradient stop, photo
@@ -91,12 +94,12 @@ Every page answers one buying question. If two pages make the same claim, merge 
   element with `clip: none` (Vitrine cuts each store's real gap); never two halves.
 - Per-page background art must be computed in global coordinates including each target's
   gap, otherwise lines jump at the seams.
-- Respect the rounded gallery corners (iPhone ≈ 125 lu): nothing square or important there;
+- Respect the rounded gallery corners (iPhone ≈ 125 lu, `layout_report.gallery.radius_lu`): nothing square or important there;
   inner frames get radius = store radius − inset.
 
 ## Props and decoration
 
-- One consistent prop set per template: same light direction, camera angle and material;
+- One consistent prop set per screenshot set: same light direction, camera angle and material;
   true-to-scale relative to the device; touching frames, never covering the UI.
 - Decoration must not look like a UI system icon (image placeholder, warning triangle,
   spinner, broken image) – viewers read it as a rendering error.
