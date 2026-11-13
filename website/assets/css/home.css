@@ -851,12 +851,17 @@
 .cta .btn--grad:hover { color: #3a1d8c; }
 
 /* ================= Section index (right edge) =================
-   A ruler of ticks in the page margin: the current section gets a long
-   coral tick and its label, the rail fills with the reading progress.
-   Hover or keyboard focus opens all labels on a small card. Shown after
-   the hero (site.js), only where the margin has room for it. */
+   A ruler of ticks at the right edge: the current section gets a long
+   coral tick, the rail fills up to it. Labels: the current one prominent,
+   the others paler, smaller and softer the further away they are
+   (`data-d` 0–3, set by site.js). Wide screens (≥ 1420 px, the labels fit
+   into the margin) show it all the time after the hero; narrower screens
+   show it while scrolling (`.is-scrolling`) over a soft fog and fade it out
+   a moment after scrolling stops. Hover, keyboard focus or a tap
+   (`.is-open`) shows all labels on a card. */
 
 .secnav {
+  --row: 22px;
   position: fixed;
   z-index: 40;
   right: 6px;
@@ -864,13 +869,14 @@
   transform: translate(10px, -50%);
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transition: opacity .35s ease, transform .45s var(--ease), visibility 0s .45s;
 }
 .secnav.is-shown {
   transform: translate(0, -50%);
   opacity: 1;
   visibility: visible;
-  transition: opacity .35s ease, transform .45s var(--ease);
+  transition: opacity .25s ease, transform .4s var(--ease);
 }
 .secnav__list {
   position: relative;
@@ -880,19 +886,19 @@
   padding: 10px 0;
   list-style: none;
 }
-/* The rail and its progress fill, where the ticks meet. */
+/* The rail from the first to the last tick, and the progress fill. */
 .secnav__list::before,
 .secnav__list::after {
   content: "";
   position: absolute;
-  top: 10px;
+  top: calc(10px + var(--row) / 2);
   right: 0;
   width: 2px;
   border-radius: 2px;
 }
-.secnav__list::before { bottom: 10px; background: var(--line); }
+.secnav__list::before { bottom: calc(10px + var(--row) / 2); background: var(--line); }
 .secnav__list::after {
-  height: calc((100% - 20px) * var(--progress, 0));
+  height: calc((100% - 20px - var(--row)) * var(--progress, 0));
   background: linear-gradient(180deg, var(--violet), var(--magenta) 55%, var(--coral));
 }
 .secnav__link {
@@ -900,28 +906,26 @@
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  height: 22px;
+  height: var(--row);
   padding-left: 12px;
   border-radius: 6px;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
   font-size: .74rem;
   font-weight: 600;
   line-height: 1;
   letter-spacing: .01em;
   white-space: nowrap;
   text-decoration: none;
+  pointer-events: none;
 }
-/* The tick column is the only hit area until the index is open, so the
-   (invisible) labels never catch clicks meant for the page. */
-.secnav, .secnav__link { pointer-events: none; }
-.secnav:hover, .secnav:focus-within,
-.secnav:hover .secnav__link, .secnav:focus-within .secnav__link { pointer-events: auto; }
+/* Until the card is open only the tick column takes clicks, so the labels
+   never catch clicks meant for the page. */
 .secnav__tick {
   flex: none;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  width: 26px;
+  width: 24px;
   height: 100%;
   pointer-events: auto;
 }
@@ -933,14 +937,8 @@
   background: var(--line-strong);
   transition: width .35s var(--ease), background-color .25s ease, box-shadow .25s ease;
 }
-.secnav__label {
-  opacity: 0;
-  transform: translateX(6px);
-  transition: opacity .25s ease, transform .3s var(--ease), color .2s ease;
-}
 .secnav__link.is-past .secnav__tick::before { background: var(--ink-faint); }
-.secnav__link:hover .secnav__tick::before { width: 16px; background: var(--ink-soft); }
-.secnav__link:hover { color: var(--ink); }
+.secnav__link:hover, .secnav__link:focus { color: var(--ink-soft); }
 .secnav__link[aria-current] { color: var(--ink); }
 .secnav__link[aria-current] .secnav__tick::before {
   width: 22px;
@@ -950,7 +948,48 @@
 }
 .secnav__link:focus-visible { outline-offset: 1px; }
 
-/* All labels on a card while the pointer or the focus is in the index. */
+/* Labels: hidden by default; in depth when visible. */
+.secnav__label {
+  display: inline-block;
+  transform-origin: 100% 50%;
+  opacity: 0;
+  transform: translateX(6px) scale(.9);
+  transition: opacity .35s ease, transform .45s var(--ease), filter .35s ease, color .2s ease;
+}
+.secnav.is-scrolling .secnav__label { opacity: .16; transform: scale(.8); filter: blur(.8px); }
+.secnav.is-scrolling [data-d="2"] .secnav__label { opacity: .34; transform: scale(.86); filter: blur(.4px); }
+.secnav.is-scrolling [data-d="1"] .secnav__label { opacity: .58; transform: scale(.92); filter: none; }
+.secnav.is-scrolling [data-d="0"] .secnav__label { opacity: 1; transform: none; filter: none; }
+@media (min-width: 1420px) {
+  .secnav .secnav__label { opacity: .16; transform: scale(.8); filter: blur(.8px); }
+  .secnav [data-d="2"] .secnav__label { opacity: .34; transform: scale(.86); filter: blur(.4px); }
+  .secnav [data-d="1"] .secnav__label { opacity: .58; transform: scale(.92); filter: none; }
+  .secnav [data-d="0"] .secnav__label { opacity: 1; transform: none; filter: none; }
+}
+
+/* Behind the labels while scrolling on narrower screens: a soft fog of the
+   page colour, so they stay readable over text and never feel stuck on it. */
+.secnav__fog {
+  position: absolute;
+  z-index: -2;
+  inset: -56px -6px -56px -56px;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  -webkit-mask-image: linear-gradient(to left, #000 62%, transparent), linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to left, #000 62%, transparent), linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+  mask-composite: intersect;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .35s ease;
+}
+.secnav.is-scrolling .secnav__fog { opacity: 1; }
+@media (min-width: 1420px) {
+  .secnav.is-scrolling .secnav__fog { opacity: 0; }
+}
+
+/* The card with all labels: hover, keyboard focus, or a tap (.is-open). */
 .secnav::before {
   content: "";
   position: absolute;
@@ -958,39 +997,43 @@
   z-index: -1;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   box-shadow: var(--shadow-md);
   opacity: 0;
   transition: opacity .25s ease;
 }
-.secnav:hover::before,
+.secnav.is-open::before,
 .secnav:focus-within::before { opacity: 1; }
-.secnav:hover .secnav__label,
-.secnav:focus-within .secnav__label {
-  opacity: 1;
-  transform: none;
-  transition-delay: calc(var(--i, 0) * 18ms);
+.secnav.is-open .secnav__link,
+.secnav:focus-within .secnav__link { pointer-events: auto; }
+.secnav.is-open .secnav__fog,
+.secnav:focus-within .secnav__fog { opacity: 0; }
+.secnav.is-open .secnav__label,
+.secnav:focus-within .secnav__label { opacity: 1; transform: none; filter: none; }
+@media (hover: hover) {
+  .secnav:hover::before { opacity: 1; }
+  .secnav:hover .secnav__link { pointer-events: auto; }
+  .secnav:hover .secnav__fog { opacity: 0; }
+  .secnav:hover .secnav__label { opacity: 1; transform: none; filter: none; }
+  .secnav__link:hover { color: var(--ink); }
+  .secnav__link:hover .secnav__tick::before { width: 16px; background: var(--ink-soft); }
+  .secnav__link[aria-current]:hover .secnav__tick::before { width: 22px; background: var(--coral); }
 }
-.secnav li:nth-child(1) { --i: 0; } .secnav li:nth-child(2) { --i: 1; }
-.secnav li:nth-child(3) { --i: 2; } .secnav li:nth-child(4) { --i: 3; }
-.secnav li:nth-child(5) { --i: 4; } .secnav li:nth-child(6) { --i: 5; }
-.secnav li:nth-child(7) { --i: 6; } .secnav li:nth-child(8) { --i: 7; }
-.secnav li:nth-child(9) { --i: 8; } .secnav li:nth-child(10) { --i: 9; }
-.secnav li:nth-child(11) { --i: 10; } .secnav li:nth-child(12) { --i: 11; }
 
-/* Wide margin: the current section's label stays visible next to its tick. */
-@media (min-width: 1420px) {
-  .secnav__link[aria-current] .secnav__label { opacity: 1; transform: none; color: var(--ink); }
+/* Touch screens: taller rows to hit. Phones: closer to the edge. */
+@media (pointer: coarse) {
+  .secnav { --row: 30px; }
+  .secnav__link { font-size: .8rem; }
 }
-/* Not enough margin (tablets, phones, the mobile header): no index. */
-@media (max-width: 1099px) {
-  .secnav { display: none; }
+@media (max-width: 640px) {
+  .secnav { right: 2px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .secnav, .secnav.is-shown, .secnav::before, .secnav__tick::before, .secnav__label { transition: none; }
+  .secnav, .secnav.is-shown, .secnav::before, .secnav__fog, .secnav__tick::before, .secnav__label { transition: none; }
   .secnav, .secnav.is-shown { transform: translateY(-50%); }
+  .secnav .secnav__label { filter: none !important; }
 }
 @media print {
   .secnav { display: none; }
