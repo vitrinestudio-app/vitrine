@@ -205,6 +205,11 @@ pub struct ImageProps {
     pub asset: String,
     pub fit: Option<FitMode>,
     pub shadow: Option<String>,
+    /// Clip the image to the outline of this shape element (`rect` with
+    /// its `radius`, or `ellipse`) of the same canvas, as resolved for the
+    /// target (variant overrides, groups, rotation). The shape is drawn as
+    /// usual; with `visible: false` it only serves as the mask (ADR 0031).
+    pub clip_to: Option<ElementId>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -282,7 +287,7 @@ impl ElementKindTag {
                 "hyphenate",
                 "langs",
             ],
-            Self::Image => &["asset", "fit", "shadow"],
+            Self::Image => &["asset", "clip_to", "fit", "shadow"],
             Self::Shape => &["shape", "radius", "fill", "stroke", "shadow"],
             Self::Group => &["children"],
         }
@@ -637,6 +642,16 @@ macro_rules! element_fields {
 }
 
 impl ElementPatch {
+    /// Replace an element reference (`clip_to`) set by this patch by
+    /// `map` (old id → new id).
+    pub fn remap_element_refs(&mut self, map: &BTreeMap<ElementId, ElementId>) {
+        if let Some(Some(c)) = &mut self.clip_to
+            && let Some(to) = map.get(c)
+        {
+            *c = to.clone();
+        }
+    }
+
     /// Rename style references set by this patch (`kind` `from` → `to`):
     /// colours (`@name` in `color`, `fill`, `stroke`, `glow`), the text
     /// style and the shadow preset.
@@ -717,6 +732,7 @@ element_fields! {
     hyphenate: bool,
     // image
     asset: String,
+    clip_to: ElementId,
     // shape
     shape: ShapeKind,
     #[serde(serialize_with = "num")]
@@ -901,6 +917,7 @@ impl TryFrom<ElementWire> for Element {
                 asset: w.asset.clone().ok_or_else(|| missing("asset"))?,
                 fit: fit_mode(w.fit.clone())?,
                 shadow: w.shadow.clone(),
+                clip_to: w.clip_to.clone(),
             }),
             ElementKindTag::Shape if w.stroke.as_ref().is_some_and(|s| s.position.is_some()) => {
                 return Err(format!(
@@ -976,6 +993,7 @@ impl From<Element> for ElementWire {
             font_size: None,
             hyphenate: None,
             asset: None,
+            clip_to: None,
             shape: None,
             radius: None,
             stroke: None,
@@ -1031,6 +1049,7 @@ impl From<Element> for ElementWire {
             ElementKind::Image(p) => {
                 w.kind = ElementKindTag::Image;
                 w.asset = Some(p.asset);
+                w.clip_to = p.clip_to;
                 w.fit = p.fit.map(FitValue::Mode);
                 w.shadow = p.shadow;
             }
@@ -1122,6 +1141,29 @@ impl Element {
         match &mut self.kind {
             ElementKind::Group(g) => Some(&mut g.children),
             _ => None,
+        }
+    }
+
+    /// The shape element this image is clipped to (`clip_to`).
+    pub fn clip_to(&self) -> Option<&ElementId> {
+        match &self.kind {
+            ElementKind::Image(p) => p.clip_to.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Replace element references (`clip_to`) of this element and its
+    /// descendants by `map` (old id → new id); unmapped ids stay.
+    pub fn remap_element_refs(&mut self, map: &BTreeMap<ElementId, ElementId>) {
+        if let ElementKind::Image(p) = &mut self.kind
+            && let Some(to) = p.clip_to.as_ref().and_then(|c| map.get(c))
+        {
+            p.clip_to = Some(to.clone());
+        }
+        if let Some(children) = self.children_mut() {
+            for c in children {
+                c.remap_element_refs(map);
+            }
         }
     }
 

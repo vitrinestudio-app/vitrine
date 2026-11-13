@@ -40,8 +40,8 @@ pub use store::{
     StoreSettings,
 };
 pub use style::{
-    BUILTIN_SHADOWS, FontSettings, FrameStyle, Glow, ShadowLayer, ShadowPreset, SpanStyle,
-    StyleKind, Styles, TextStyle, TextTransform, is_valid_family_name,
+    BUILTIN_SHADOWS, FontSettings, FrameStyle, Glow, ShadowLayer, ShadowPreset, SpanPadding,
+    SpanStyle, StyleKind, Styles, TextStyle, TextTransform, is_valid_family_name,
 };
 pub use target::{
     AppleSlot, BannerFit, CreativePlacement, GalleryRef, Gaps, GoogleSlot, ImageFormat, Region,

@@ -87,10 +87,16 @@ pub fn copy_canvas(
         rename_tree(project, e, &mut taken, &mut renamed);
     }
     let map: BTreeMap<ElementId, ElementId> = renamed.iter().cloned().collect();
+    for e in &mut canvas.elements {
+        e.remap_element_refs(&map);
+    }
     for v in canvas.variants.values_mut() {
         v.overrides = std::mem::take(&mut v.overrides)
             .into_iter()
-            .map(|(id, p)| (map.get(&id).cloned().unwrap_or(id), p))
+            .map(|(id, mut p)| {
+                p.remap_element_refs(&map);
+                (map.get(&id).cloned().unwrap_or(id), p)
+            })
             .collect();
     }
     let mut string_ops = Vec::new();

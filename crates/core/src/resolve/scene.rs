@@ -470,6 +470,12 @@ pub struct ResolvedSpanStyle {
     pub color: Option<Rgba>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub background: Option<Rgba>,
+    /// Padding of the background box (x, y), lu; zero = none.
+    #[serde(skip_serializing_if = "is_zero_vec")]
+    pub padding: Vec2,
+    /// Corner radius of the background box, lu.
+    #[serde(skip_serializing_if = "crate::model::fmt::is_zero")]
+    pub radius: f64,
     /// Replaces the text's outline (`width: 0` = none).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stroke: Option<ResolvedTextStroke>,
@@ -490,6 +496,32 @@ pub struct ResolvedImage {
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub auto_height: bool,
     pub shadow: Vec<ResolvedShadowLayer>,
+    /// `clip_to`: the element the image is clipped to (ADR 0031).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clip_to: Option<ElementId>,
+    /// The outline of `clip_to` on the canvas; `None` when it does not
+    /// name a usable shape (the image is drawn unclipped, diagnostic
+    /// `invalid_clip_to`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clip_shape: Option<ResolvedClipShape>,
+}
+
+/// The outline of a shape element used as an image mask (`clip_to`):
+/// geometry only (fill, stroke, opacity and visibility of the shape do
+/// not matter). Same placement rules as [`ResolvedElement`].
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ResolvedClipShape {
+    pub element: ElementId,
+    /// Home page of the shape (0-based).
+    pub page: u32,
+    /// `rect` or `ellipse`.
+    pub shape: ShapeKind,
+    /// Corner radius of a `rect`, lu.
+    pub radius: f64,
+    pub center: Vec2,
+    pub size: Vec2,
+    pub rotation: f64,
+    pub pivot: Vec2,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -610,6 +642,12 @@ pub enum DiagnosticCode {
     /// A canvas background layer lies under an opaque layer and is never
     /// visible (canvas backgrounds are layers, not one fill per page).
     BackgroundHidden,
+    /// `clip_to` does not name a `rect`/`ellipse` shape of the canvas; the
+    /// image is drawn unclipped.
+    InvalidClipTo,
+    /// `clip_to` names a shape homed on another page than the image
+    /// (works, but moving pages apart separates them; info).
+    ClipToOtherPage,
 }
 
 /// An info or warning collected during resolve.
@@ -620,4 +658,8 @@ pub struct Diagnostic {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub element: Option<ElementId>,
     pub message: String,
+}
+
+fn is_zero_vec(v: &Vec2) -> bool {
+    *v == Vec2::ZERO
 }

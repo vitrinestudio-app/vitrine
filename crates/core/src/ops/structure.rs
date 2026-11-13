@@ -33,6 +33,7 @@ impl Project {
                 id: to.to_string(),
             });
         }
+        self.rename_clip_to_refs(&from, &to)?;
         let s = &mut self.canvases[loc.canvas];
         let e = find_mut(&mut s.elements, from.as_str())
             .ok_or_else(|| OpError::UnknownElement(from.to_string()))?;
