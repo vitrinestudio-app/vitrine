@@ -90,11 +90,24 @@ eine Vorlage; andere werden abgelehnt („darf nicht weitergegeben werden“ ode
 „Lizenz unklar“). Die Lizenzdatei wird übernommen oder erzeugt
 (`fonts/<name>-OFL.txt`). Mitgelieferte Schriften brauchen nichts.
 
+Auf der Kommandozeile speichert `vitrine template save` **alle Leinwände**
+des Projekts. Willst du nur einige, nenne sie mit `--canvas` – einmal pro
+Leinwand (`--canvas phone --canvas tablet`). Die Schlagwörter setzt du mit
+`--style`, `--color` und `--use`; jede Option darf mehrfach vorkommen oder
+mehrere Werte mit Komma nehmen (`--color gradient --color dark` ist dasselbe
+wie `--color gradient,dark`). Freie Schlagwörter (`--tag`) gibt es nicht
+mehr – nur die Werte aus der Tabelle oben.
+
 ```sh
-vitrine template save --name "Bold gradient" --canvas phone \
-  --style bold --color gradient,dark --use travel -o bold.vitrine-template
+# alle Leinwände des Projekts
+vitrine template save --name "Bold gradient" \
+  --style bold --color gradient --color dark --use travel -o bold.vitrine-template
+# nur die Leinwände phone und tablet
+vitrine template save --name "Calm set" --canvas phone --canvas tablet \
+  --style minimal --color light,pastel --use productivity,health-fitness
+# mit eigenen Screenshots als Beispiele
 vitrine template save --name "Demo set" --style minimal --color light --use productivity \
-  --sample-screenshots                     # mit eigenen Screenshots als Beispiele
+  --sample-screenshots
 vitrine template tags                      # alle Schlagwörter
 ```
 
