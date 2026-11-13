@@ -30,6 +30,8 @@ export const initialState = {
   selection: [],
   /** Element id under the pointer. */
   hover: null,
+  /** Device id under a dragged screenshot / file (drop highlight). */
+  dropTarget: null,
   /** Canvas zoom (screen px per lu) and pan (screen px of canvas lu 0,0). */
   zoom: 0.25,
   panX: 0,

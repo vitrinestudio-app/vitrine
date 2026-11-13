@@ -129,6 +129,12 @@
   stroke-width: 1;
 }
 
+.ov-drop {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
 .ov-sel {
   fill: none;
   stroke: var(--sel);

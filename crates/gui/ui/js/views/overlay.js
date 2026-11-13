@@ -57,6 +57,7 @@ export function rotateHandleAt(el, toScreen) {
 /**
  * @param {SVGSVGElement} svg
  * @param {object} m model: overlay, zoom, panX, panY, selection, hover,
+ *   dropTarget (device id under a dragged screenshot),
  *   variantActive, drag ({ ghosts, guides, readout, homePage, marquee,
  *   hideSelection }), showHandles, highlight ({ ids, alpha }: an assistant's
  *   last edit)
@@ -144,6 +145,12 @@ export function drawOverlay(svg, m) {
       const a = S({ x: g.bounds.x, y: g.bounds.y });
       out.push(rect({ x: a.x, y: a.y, w: g.bounds.w * m.zoom, h: g.bounds.h * m.zoom }, 'ov-hover'));
     }
+  }
+
+  // Drop target (a screenshot dragged onto a device).
+  if (m.dropTarget) {
+    const e = byId.get(m.dropTarget);
+    if (e) out.push(poly(e.quad.map(S), 'ov-drop'));
   }
 
   // Selection.
