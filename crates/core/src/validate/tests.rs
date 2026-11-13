@@ -1037,6 +1037,91 @@ fn page_not_covered_finds_a_thin_strip() {
 }
 
 #[test]
+fn page_not_covered_looks_underneath() {
+    let photo = |h: u32| {
+        format!(
+            "
+  - id: photo
+    kind: shape
+    page: 0
+    z: 1
+    at: {{x: 500, y: {}}}
+    width: 1000
+    height: {h}
+    shape: rect
+    fill: \"#334455\"",
+            h / 2
+        )
+    };
+    let below = |extra: &str| run(&project(&format!("{}{extra}", photo(1900)), ""));
+    // A full-page `background` element below fills the strip.
+    let bg = "
+  - id: bg
+    kind: background
+    page: 0
+    fill: \"#112233\"";
+    assert!(!has(&below(bg), FindingCode::PageNotCovered));
+    // So does a page-sized panel below.
+    let panel = "
+  - id: panel
+    kind: shape
+    page: 0
+    at: {x: 500, y: 1000}
+    width: 1000
+    height: 2000
+    shape: rect
+    fill: \"#112233\"";
+    assert!(!has(&below(panel), FindingCode::PageNotCovered));
+    // A translucent or smaller panel below does not.
+    let faint = format!("{panel}\n    opacity: 0.5");
+    assert!(has(&below(&faint), FindingCode::PageNotCovered));
+    let half = panel.replace("height: 2000", "height: 1000");
+    assert!(has(&below(&half), FindingCode::PageNotCovered));
+    // A background on another page or painted above does not count.
+    let other = bg.replace("page: 0", "page: 1");
+    assert!(has(&below(&other), FindingCode::PageNotCovered));
+    let above = format!("{bg}\n    z: 2");
+    assert!(has(&below(&above), FindingCode::PageNotCovered));
+}
+
+#[test]
+fn custom_screenshot_variant_folder_is_accepted() {
+    let p = project("[]", "  screenshots: landscape\n");
+    // No folder, not in the catalog: probably a typo.
+    assert!(has(&run(&p), FindingCode::UnknownScreenshotVariant));
+    let files = |path: &str| shots(&[(path, (100, 200))]);
+    // A folder for any project language makes it a custom variant.
+    for path in [
+        "screenshots/en/landscape/home.png",
+        "screenshots/de/landscape/sub/x.png",
+    ] {
+        let r = run_with(&p, &files(path));
+        assert!(!has(&r, FindingCode::UnknownScreenshotVariant), "{path}");
+    }
+    // A similarly named folder or another language's folder does not.
+    for path in [
+        "screenshots/en/landscape-old/home.png",
+        "screenshots/fr/landscape/home.png",
+        "screenshots/en/landscape.png",
+    ] {
+        let r = run_with(&p, &files(path));
+        assert!(has(&r, FindingCode::UnknownScreenshotVariant), "{path}");
+    }
+    // On disk too.
+    let dir = tempfile::tempdir().unwrap();
+    let assets = crate::resolve::FsAssets::new(dir.path());
+    assert!(has(
+        &run_with(&p, &assets),
+        FindingCode::UnknownScreenshotVariant
+    ));
+    std::fs::create_dir_all(dir.path().join("screenshots/en/landscape")).unwrap();
+    assert!(!has(
+        &run_with(&p, &assets),
+        FindingCode::UnknownScreenshotVariant
+    ));
+}
+
+#[test]
 fn thresholds_take_the_project_checks() {
     let mut c = crate::model::Checks {
         device_distance: Some(30.0),

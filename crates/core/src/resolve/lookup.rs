@@ -88,6 +88,14 @@ pub trait AssetLookup {
         let _ = path;
         false
     }
+
+    /// Does the folder `path` (relative, `/`-separated, no trailing `/`)
+    /// exist? Used to accept custom screenshot variant folders. `false`
+    /// (the default) when unknown.
+    fn dir_exists(&self, path: &str) -> bool {
+        let _ = path;
+        false
+    }
 }
 
 /// Looks files up below a project folder on disk.
@@ -129,6 +137,10 @@ impl AssetLookup for FsAssets {
             .get_or_init(|| crate::samples::SampleMarks::load(&self.root))
             .is_sample(&self.root, path)
     }
+
+    fn dir_exists(&self, path: &str) -> bool {
+        self.root.join(path).is_dir()
+    }
 }
 
 /// No files at all (every screenshot is a placeholder).
@@ -146,6 +158,11 @@ impl AssetLookup for BTreeSet<String> {
     fn exists(&self, path: &str) -> bool {
         self.contains(path)
     }
+
+    /// A folder exists when a file lies below it.
+    fn dir_exists(&self, path: &str) -> bool {
+        has_file_below(self.iter(), path)
+    }
 }
 
 /// An in-memory map of relative paths to image dimensions `(w, h)`.
@@ -157,6 +174,16 @@ impl AssetLookup for BTreeMap<String, (u32, u32)> {
     fn dimensions(&self, path: &str) -> Option<(u32, u32)> {
         self.get(path).copied()
     }
+
+    /// A folder exists when a file lies below it.
+    fn dir_exists(&self, path: &str) -> bool {
+        has_file_below(self.keys(), path)
+    }
+}
+
+fn has_file_below<'a>(mut files: impl Iterator<Item = &'a String>, dir: &str) -> bool {
+    let prefix = format!("{}/", dir.trim_end_matches('/'));
+    files.any(|f| f.starts_with(&prefix))
 }
 
 /// Accepted screenshot file extensions, in lookup order.

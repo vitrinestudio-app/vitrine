@@ -33,6 +33,11 @@ screenshots/
   Ziel-Formular): `ios-phone`, `android-phone`, `ios-tablet`, `mac`, `watch`,
   `wear`, `web` … So zeigt das iPhone-Ziel iPhone-Aufnahmen und das Play-Ziel
   Android-Aufnahmen desselben Bildschirms, unter demselben Schlüssel.
+- **Eigene Variantenordner** gehen auch: Trag im Feld *Screenshots* des Ziels
+  einen beliebigen Namen ein (etwa `landscape` für Querformat-Aufnahmen) und
+  leg die Dateien in `screenshots/<Sprache>/landscape/`. Die Prüfung meldet
+  nur eine Variante, die weder im Katalog steht noch als Ordner existiert
+  (meist ein Tippfehler).
 - Eine Datei **direkt im Sprachordner** (`screenshots/en/home.png`) gilt für
   jede Variante – der einfachste Einstieg, und gut genug, wenn deine iPhone-
   und Android-Aufnahmen gleich aussehen.
