@@ -200,12 +200,84 @@ async fn upload_moderate_list_download() {
         .unwrap();
     assert_eq!(send(&app, bad).await.0, StatusCode::BAD_REQUEST);
 
-    // Reject hides it again.
-    json_of(&app, admin("/v1/admin/templates/fernwood-mac/reject")).await;
+    let queue = || {
+        Request::get("/v1/admin/queue")
+            .header("authorization", "Bearer admin-secret")
+            .body(Body::empty())
+            .unwrap()
+    };
+    let (_, v) = json_of(&app, queue()).await;
+    assert_eq!(v["reports"][0]["reason"], "copyright");
+
+    // Reject deletes the template at once: row, reports and files.
+    let files = tmp.path().join("templates").join("fernwood-mac");
+    assert!(files.is_dir());
+    let (s, v) = json_of(&app, admin("/v1/admin/templates/fernwood-mac/reject")).await;
+    assert_eq!((s, v["deleted"].as_bool()), (StatusCode::OK, Some(true)));
     assert_eq!(
         send(&app, get("/v1/templates/fernwood-mac")).await.0,
         StatusCode::NOT_FOUND
     );
+    assert!(!files.exists(), "package, previews and sprites are deleted");
+    let (_, v) = json_of(&app, queue()).await;
+    assert_eq!(v["reports"].as_array().unwrap().len(), 0);
+    assert_eq!(v["pending"].as_array().unwrap().len(), 0);
+    let (s, _) = json_of(&app, admin("/v1/admin/templates/fernwood-mac/reject")).await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn approve_deletes_resolved_reports() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app = app(tmp.path(), true);
+    let (s, _) = json_of(&app, upload(Some("up-1"), package("1.0.0"))).await;
+    assert_eq!(s, StatusCode::CREATED);
+    let report = Request::post("/v1/templates/fernwood-mac/report")
+        .header("content-type", "application/json")
+        .body(Body::from(json!({"reason": "other"}).to_string()))
+        .unwrap();
+    assert_eq!(send(&app, report).await.0, StatusCode::ACCEPTED);
+    json_of(&app, admin("/v1/admin/templates/fernwood-mac/approve")).await;
+    let queue = Request::get("/v1/admin/queue")
+        .header("authorization", "Bearer admin-secret")
+        .body(Body::empty())
+        .unwrap();
+    let (_, v) = json_of(&app, queue).await;
+    assert_eq!(v["reports"].as_array().unwrap().len(), 0);
+    // Resolved reports are deleted, not kept: nothing left in the table.
+    let db = rusqlite::Connection::open(tmp.path().join("api.sqlite")).unwrap();
+    let count: i64 = db
+        .query_row("SELECT COUNT(*) FROM reports", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(count, 0);
+}
+
+#[tokio::test]
+async fn startup_deletes_rejected_templates_of_older_versions() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app1 = app(tmp.path(), true);
+    let (s, _) = json_of(&app1, upload(Some("up-1"), package("1.0.0"))).await;
+    assert_eq!(s, StatusCode::CREATED);
+    drop(app1);
+    // What an older server left behind: a rejected row with its files and
+    // a report kept as resolved.
+    {
+        let db = rusqlite::Connection::open(tmp.path().join("api.sqlite")).unwrap();
+        db.execute_batch(
+            "UPDATE templates SET status = 'rejected';
+             INSERT INTO reports (template_id, reason, message, created_at, resolved)
+             VALUES ('fernwood-mac', 'other', 'old', 0, 1);",
+        )
+        .unwrap();
+    }
+    let _app2 = app(tmp.path(), true);
+    assert!(!tmp.path().join("templates").join("fernwood-mac").exists());
+    let db = rusqlite::Connection::open(tmp.path().join("api.sqlite")).unwrap();
+    let count = |table: &str| -> i64 {
+        db.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
+            .unwrap()
+    };
+    assert_eq!((count("templates"), count("reports")), (0, 0));
 }
 
 #[tokio::test]

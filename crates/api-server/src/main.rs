@@ -16,6 +16,8 @@ fn main() -> anyhow::Result<()> {
         eprintln!("vitrine-api listening on {bind}");
         // Fill derived fields and missing sprites of older templates.
         tokio::spawn(vitrine_api_server::backfill(state.clone()));
+        // Drop expired rate-limit counters and sessions.
+        tokio::spawn(vitrine_api_server::housekeeping(state.clone()));
         serve(listener, state, shutdown()).await?;
         Ok(())
     })

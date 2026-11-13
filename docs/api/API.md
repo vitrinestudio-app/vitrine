@@ -219,8 +219,8 @@ checked 2026-11-11):
 | Method | Path | Description |
 |---|---|---|
 | GET | `/v1/admin/queue` | `{"pending": [templates], "reports": [open reports]}` |
-| POST | `/v1/admin/templates/{id}/approve` | publish; optional body `{"note": "…"}`; resolves its reports; renders the sprites first if the template has none |
-| POST | `/v1/admin/templates/{id}/reject` | hide (also for taking down a reported template) |
+| POST | `/v1/admin/templates/{id}/approve` | publish; optional body `{"note": "…"}`; deletes its reports (resolved reports are not kept); renders the sprites first if the template has none |
+| POST | `/v1/admin/templates/{id}/reject` | **delete** at once (also for taking down a reported template): the row, its reports and all files (package, previews, sprites) → `{"id", "status": "rejected", "deleted": true}`; the id becomes free again. Privacy policy: rejected templates and resolved reports are not kept |
 | POST | `/v1/admin/templates/{id}/rerender` | render previews and sprites again from the stored package (any status) → `{"id", "sprites": [metadata]}` |
 
 Admin CLI: `vitrine gallery admin queue|approve <id…>|reject <id…>
@@ -229,9 +229,15 @@ variable (`--admin-token-env VAR`, default `VITRINE_API_ADMIN_TOKEN`).
 
 On start the server fills what rows from before schema version 1 lack
 (devices, sample count, facet tags from the stored package) and renders
-missing sprites of approved templates in the background.
+missing sprites of approved templates in the background. It also deletes
+what older versions kept: templates marked `rejected` (row + files) and
+reports marked resolved.
 
-Not yet: deleting files of rejected templates (manual for now), uploader
+Housekeeping (`maintenance::housekeeping`, every 10 s): rate-limit counters
+(keyed by client IP, in memory) are dropped as soon as their one-hour
+window has passed; expired sessions and web-login states are deleted.
+
+Not yet: uploader
 self-service (list/delete own templates), notification of the uploader.
 
 ## Clients

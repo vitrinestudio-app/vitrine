@@ -47,7 +47,18 @@ async fn action(
     }
     let status = match action.as_str() {
         "approve" => APPROVED,
-        "reject" => REJECTED,
+        "reject" => {
+            // Rejecting deletes the template at once: row, reports, files
+            // (privacy policy: rejected templates and resolved reports
+            // are not kept).
+            if !db::delete_template(&state.db(), &id)? {
+                return Err(ApiError::not_found("template"));
+            }
+            state.storage.remove(&id).map_err(ApiError::internal)?;
+            return Ok(Json(
+                json!({ "id": id, "status": REJECTED, "deleted": true }),
+            ));
+        }
         "rerender" => {
             if db::get(&state.db(), &id)?.is_none() {
                 return Err(ApiError::not_found("template"));
@@ -63,7 +74,7 @@ async fn action(
         if !db::set_status(&db, &id, status, &note)? {
             return Err(ApiError::not_found("template"));
         }
-        db::resolve_reports(&db, &id)?;
+        db::delete_reports(&db, &id)?;
         db::get(&db, &id)?.is_some_and(|t| t.sprites.as_array().is_none_or(Vec::is_empty))
     };
     // Templates from before the sprites get them when approved.

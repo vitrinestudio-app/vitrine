@@ -76,7 +76,7 @@ pub enum AdminCommand {
     },
     /// Publish templates.
     Approve(ModerateArgs),
-    /// Hide templates (also to take down a reported one).
+    /// Reject and delete templates at once (also to take down a reported one)
     Reject(ModerateArgs),
     /// Render previews and gallery sprites again.
     Rerender {

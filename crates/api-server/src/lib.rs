@@ -29,7 +29,7 @@ mod storage;
 use std::sync::{Arc, Mutex};
 
 pub use config::{Config, DEFAULT_GITHUB_CLIENT_ID, DEFAULT_OFFICIAL_LOGIN, StaticToken};
-pub use maintenance::backfill;
+pub use maintenance::{backfill, housekeeping};
 pub use routes::router;
 
 /// Serves the API on `listener` (client addresses for rate limiting from
@@ -83,6 +83,13 @@ impl AppState {
             &config.github_api_url,
             &config.github_client_id,
         )?;
+        // Older versions kept rejected templates and resolved reports;
+        // both are deleted now (privacy policy).
+        for id in db::rejected_ids(&db)? {
+            storage.remove(&id)?;
+            db::delete_template(&db, &id)?;
+        }
+        db::purge_resolved_reports(&db)?;
         let render_slots = tokio::sync::Semaphore::new(config.render_concurrency.max(1));
         Ok(Arc::new(Self {
             render_slots,
@@ -105,6 +112,18 @@ impl AppState {
             .acquire()
             .await
             .unwrap_or_else(|_| unreachable!("render semaphore closed"))
+    }
+
+    /// Drops rate-limit counters whose window has passed.
+    fn prune_memory(&self) {
+        for l in [
+            &self.limiter,
+            &self.read_limiter,
+            &self.login_limiter,
+            &self.poll_limiter,
+        ] {
+            l.prune();
+        }
     }
 
     fn db(&self) -> std::sync::MutexGuard<'_, rusqlite::Connection> {
