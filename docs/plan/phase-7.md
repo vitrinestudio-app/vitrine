@@ -203,6 +203,37 @@ All need a published release with CLI archives (7.3). Doc:
       runs the actions inside fastlane once; **Owner** `gem push
       fastlane-plugin-vitrine` (the plugin list picks it up by prefix).
       Optional decision: a `vitrine_upload` action.
+- [x] **Owner** – repo `vitrinestudio-app/vitrine-agent-skill` created (2026-11-13) for the
+      agent skill (`integrations/skill/`, MIT, open Agent Skills format; that folder is the
+      repo root: `skills/vitrine-store-screenshots/SKILL.md`, README, LICENSE).
+- [ ] **Agent** – before publishing: validate the skill against the spec (`skills-ref
+      validate skills/vitrine-store-screenshots`, https://agentskills.io/specification:
+      `name` = folder name, lowercase/hyphens, `description` ≤ 1024 chars, SKILL.md < 500
+      lines); check `npx skills add <local path> --list` finds it; re-check the tool names
+      against the released app; verify the per-client install notes in the README (marked
+      "verify") and the licences of the sources in CREDITS.md.
+- [ ] **Agent** – push `integrations/skill/` to the repo (folder = repo root; later syncs the
+      same way as the GitHub Action).
+- [ ] **Owner** – repo settings: public, description ("Agent skill: App Store & Google Play
+      screenshots with Vitrine Studio over MCP"), topics (`agent-skills`, `mcp`,
+      `app-store-screenshots`, `aso`, `vitrine-studio`), MIT licence detected.
+- [ ] **Owner** – tag and release `v1.0.0` (GitHub release; attach a zip of
+      `vitrine-store-screenshots/` for clients that take zip uploads, e.g. Claude Desktop /
+      claude.ai). Users can pin it: `npx skills add vitrinestudio-app/vitrine-agent-skill@v1.0.0`.
+- [ ] **Owner** – skills.sh: there is no submission form – a skill appears on the
+      https://skills.sh leaderboard automatically through the anonymous telemetry of the
+      `skills` CLI once people run `npx skills add vitrinestudio-app/vitrine-agent-skill`
+      (skills.sh/docs/faq, checked 2026-11-13). So: run the install once yourself, then
+      announce it. Optional: add the badge
+      `[![skills.sh](https://skills.sh/b/vitrinestudio-app/vitrine-agent-skill)](https://skills.sh/vitrinestudio-app/vitrine-agent-skill)`
+      to the README.
+- [ ] **Agent** – website: page "AI assistants" (en + de) gets an "Agent skill" section with
+      the `npx skills add` command, the zip download for clients with skill upload, and a
+      link to the repo; link it from the skill README.
+- [ ] Optional (owner decision) – a Claude Code plugin marketplace entry
+      (`.claude-plugin/marketplace.json` in a separate subfolder, so `/plugin marketplace add`
+      works too; the `skills` CLI also discovers skills declared there) and a listing in
+      other directories when they appear. Keep the skill itself vendor-neutral.
 - [ ] **Owner** – crates.io: all crates have `publish = false`; decide
       whether to reserve/publish names (`vitrine-*` / `vitrine-cli`) or stay
       off crates.io (ADR 0022, KONZEPT §13).

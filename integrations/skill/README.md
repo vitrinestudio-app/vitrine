@@ -6,8 +6,9 @@ finding the benefits, writing the copy, laying out the pages (including panorama
 pages), languages, store rules, checks, export and – only on your confirmation – the store
 upload.
 
-Repository name: **TBD** (working name `vitrinestudio-app/vitrine-agent-skill`; not decided
-yet). Until then it lives in the Vitrine Studio repository under `integrations/skill/`.
+Repository: [`vitrinestudio-app/vitrine-agent-skill`](https://github.com/vitrinestudio-app/vitrine-agent-skill).
+Its source lives in the Vitrine Studio repository under `integrations/skill/` and is synced to
+that repository (this folder is its root).
 
 ## What's inside
 
@@ -40,7 +41,17 @@ vendor-neutral and only assumes an MCP client connected to Vitrine Studio.
 
 ## Install
 
-Generic: copy the folder `skills/vitrine-store-screenshots/` into your agent's skills
+With the cross-agent `skills` CLI (Node.js 22.20+; it knows the skills folders of Claude
+Code, Codex, Cursor, Gemini, GitHub Copilot, OpenCode and many more):
+
+```sh
+npx skills add vitrinestudio-app/vitrine-agent-skill            # pick agents interactively
+npx skills add vitrinestudio-app/vitrine-agent-skill -g -a claude-code -a codex   # global, chosen agents
+npx skills add vitrinestudio-app/vitrine-agent-skill@v1.0.0     # pin a release
+npx skills update                                               # later: get the newest version
+```
+
+Manually: copy the folder `skills/vitrine-store-screenshots/` into your agent's skills
 directory (keep the folder name – it must match the skill's `name`), or upload it as a zip
 where your client takes skill uploads. Restart or reload the agent if it reads skills at
 start-up. Then ask for something like "make App Store screenshots for my app in Vitrine".

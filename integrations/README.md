@@ -12,7 +12,7 @@ ranking and the owner decisions: `docs/research/2026-11-12-ci-integrations.md`.
 | `github-action/` | composite action: install (checksum, cache, PATH; Linux x64/arm64 glibc or static musl, macOS, Windows), validate with annotations, export | CLI archive from GitHub Releases | repo `vitrinestudio-app/vitrine-github-action` (folder content = repo root) → GitHub Marketplace |
 | `gitlab/` | CI/CD components `validate` (Code Quality + JUnit) and `export` (artifact) – GitLab-only | container image | gitlab.com project `vitrinestudio/vitrine-gitlab-ci` → CI/CD Catalog |
 | `fastlane-plugin/` | fastlane actions `vitrine_validate`, `vitrine_export` | `vitrine` on PATH | gem `fastlane-plugin-vitrine` on RubyGems (repo open) |
-| `skill/` | agent skill (open Agent Skills format) for making store screenshots of the user's own app over MCP; vendor-neutral | skill folder `skills/vitrine-store-screenshots/` copied into an agent's skills directory or uploaded as zip | own repo, name not decided yet (see `skill/README.md`) |
+| `skill/` | agent skill (open Agent Skills format) for making store screenshots of the user's own app over MCP; vendor-neutral | skill folder `skills/vitrine-store-screenshots/` copied into an agent's skills directory or uploaded as zip | own repo `vitrinestudio-app/vitrine-agent-skill` (install: `npx skills add vitrinestudio-app/vitrine-agent-skill`) |
 
 Every folder is self-contained (no references to files outside it), so its
 content can be copied to the root of its own repository. Licence: **MIT**
