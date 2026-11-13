@@ -15,7 +15,7 @@ module Fastlane
     class VitrineImportAction < Action
       def self.run(params)
         binary = Helper::VitrineHelper.binary(params[:binary])
-        source = File.expand_path(params[:source])
+        source = File.expand_path(params[:source] || default_source)
         UI.user_error!("Screenshot folder not found: #{source}") unless File.directory?(source)
 
         args = ["import", "screenshots", source, "--format", params[:format], "--format-output", "json"]
@@ -39,6 +39,8 @@ module Fastlane
           hint = Array(item["notes"]).join("; ")
           UI.error("#{item['source']}: #{item['action']}#{hint.empty? ? '' : " – #{hint}"}")
         end
+        own = Array(plan["skipped"]).count { |s| s["reason"].to_s.include?("Vitrine Studio") }
+        UI.message("Skipped #{own} image(s) exported by Vitrine Studio (not captures)") if own > 0
         Array(report.dig("applied", "failed")).each { |src, err| UI.error("#{src}: #{err}") }
         Array(plan["missing"]).each do |m|
           UI.important("missing screenshot #{m['lang']}/#{m['variant']}/#{m['key']} (#{m['status']})")
@@ -64,6 +66,20 @@ module Fastlane
         report
       end
 
+      # Raw captures belong in their own folder (`fastlane/captures`,
+      # see the Snapfile / Screengrabfile snippets in the README), so
+      # deliver/supply upload only Vitrine Studio's images. Falls back to
+      # `./fastlane`; the import then skips Vitrine Studio's own exports.
+      CAPTURES = "./fastlane/captures"
+
+      def self.default_source
+        return CAPTURES if File.directory?(CAPTURES)
+
+        UI.important("No #{CAPTURES} folder: importing from ./fastlane. Point snapshot/screengrab's output_directory " \
+                     "to fastlane/captures so the raw captures are not uploaded next to Vitrine Studio's images.")
+        "./fastlane"
+      end
+
       def self.description
         "Import raw screenshots (snapshot, screengrab or a folder) into a Vitrine Studio project"
       end
@@ -86,8 +102,9 @@ module Fastlane
         [
           FastlaneCore::ConfigItem.new(key: :project, env_name: "VITRINE_PROJECT", description: "Project folder (with project.yaml)", default_value: "."),
           FastlaneCore::ConfigItem.new(key: :source, env_name: "VITRINE_IMPORT_SOURCE",
-                                       description: "Folder with the raw screenshots: the fastlane folder (snapshot's screenshots/ + screengrab's metadata/android/), or any folder",
-                                       default_value: "./fastlane"),
+                                       description: "Folder with the raw screenshots (snapshot's screenshots/ + screengrab's metadata/android/ below it, or any folder). " \
+                                                    "Default: ./fastlane/captures, else ./fastlane",
+                                       optional: true),
           FastlaneCore::ConfigItem.new(key: :format, description: "Source layout: auto, fastlane, vitrine or flat", default_value: "auto",
                                        verify_block: proc { |v| UI.user_error!("format must be auto, fastlane, vitrine or flat") unless %w[auto fastlane vitrine flat].include?(v) }),
           FastlaneCore::ConfigItem.new(key: :lang_map, description: "Locale → language, e.g. { \"de-DE\" => \"de\" }", type: Hash, optional: true),
@@ -106,8 +123,9 @@ module Fastlane
 
       def self.example_code
         [
-          'capture_screenshots
-          vitrine_import(project: "store-screens")
+          '# Snapfile: output_directory("./fastlane/captures/screenshots")
+          capture_screenshots
+          vitrine_import(project: "store-screens")   # reads ./fastlane/captures
           vitrine_export(project: "store-screens")',
           'vitrine_import(project: "store-screens",
                          device_map: { "iPhone 17 Pro Max" => "ios-phone" }, save_mapping: true)'

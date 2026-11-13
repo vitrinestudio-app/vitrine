@@ -26,6 +26,12 @@
 //!   device from file-name tokens (and parent folder names), the variant
 //!   otherwise from the pixel size; no language → the default language.
 //!
+//! Vitrine Studio's own exports are never captures: files an export
+//! manifest ([`EXPORT_MANIFEST`], in the source tree or up to three
+//! folders above it) lists are skipped, and in fastlane folders so are
+//! files named like the fastlane export layout (`01_<target>.png`,
+//! `01_<play-locale>.png`; ADR 0032).
+//!
 //! [`plan_screenshot_import`] only reads; the [`ImportPlan`] lists every
 //! file with its destination, what was detected (with confidence and
 //! notes), conflicts (overwrites, several files for one destination),
@@ -343,14 +349,64 @@ pub fn plan_screenshot_import(
         return Err(ImportError::NotADir(source_dir.to_owned()));
     }
     let mut sources = Vec::new();
-    list(source_dir, &mut Vec::new(), &mut sources)?;
+    let mut manifests = Vec::new();
+    list(source_dir, &mut Vec::new(), &mut sources, &mut manifests)?;
+    // An export manifest in the folder or up to `MANIFEST_LEVELS_UP`
+    // levels above it (`fastlane/` when `fastlane/screenshots` is picked).
+    for dir in source_dir.ancestors().take(MANIFEST_LEVELS_UP + 1) {
+        let m = dir.join(EXPORT_MANIFEST);
+        if m.is_file() && !manifests.contains(&m) {
+            manifests.push(m);
+        }
+    }
+    let own = exported_files(&manifests);
     Ok(plan_sources(
         project,
         project_dir,
         source_dir,
         sources,
         rules,
+        &own,
     ))
+}
+
+/// File name of the export manifest Vitrine Studio writes into every
+/// export folder (`vitrine_render::export::manifest`): a JSON object whose
+/// keys are the exported files, relative to the manifest's folder.
+pub const EXPORT_MANIFEST: &str = ".vitrine-export.json";
+
+/// How many folders above the source folder the import looks for an
+/// export manifest.
+const MANIFEST_LEVELS_UP: usize = 3;
+
+/// The files the given export manifests list that exist (canonical paths):
+/// Vitrine Studio's own exports, never imported as captures.
+fn exported_files(manifests: &[PathBuf]) -> BTreeSet<PathBuf> {
+    let mut out = BTreeSet::new();
+    for m in manifests {
+        let Some(dir) = m.parent() else { continue };
+        let Some(map) = std::fs::read(m)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<BTreeMap<String, serde_json::Value>>(&b).ok())
+        else {
+            continue;
+        };
+        for rel in map.keys() {
+            // Manifest paths are relative and `/`-separated; never follow
+            // `..` or absolute entries out of the manifest's folder.
+            if rel
+                .split('/')
+                .any(|c| c.is_empty() || c == "." || c == "..")
+            {
+                continue;
+            }
+            let path = rel.split('/').fold(dir.to_path_buf(), |p, c| p.join(c));
+            if let Ok(c) = std::fs::canonicalize(&path) {
+                out.insert(c);
+            }
+        }
+    }
+    out
 }
 
 /// Plans importing single files (drag & drop) as a flat source: names are
@@ -381,11 +437,24 @@ pub fn plan_files(
         .and_then(|f| f.parent())
         .map(Path::to_path_buf)
         .unwrap_or_default();
-    plan_sources(project, project_dir, &dir, sources, &rules)
+    plan_sources(
+        project,
+        project_dir,
+        &dir,
+        sources,
+        &rules,
+        &BTreeSet::new(),
+    )
 }
 
-/// Files below `dir`, recursively, sorted, hidden entries skipped.
-fn list(dir: &Path, prefix: &mut Vec<String>, out: &mut Vec<Source>) -> Result<(), ImportError> {
+/// Files below `dir`, recursively, sorted, hidden entries skipped; export
+/// manifests ([`EXPORT_MANIFEST`]) found on the way go to `manifests`.
+fn list(
+    dir: &Path,
+    prefix: &mut Vec<String>,
+    out: &mut Vec<Source>,
+    manifests: &mut Vec<PathBuf>,
+) -> Result<(), ImportError> {
     let rd = std::fs::read_dir(dir).map_err(|source| ImportError::Io {
         path: dir.to_owned(),
         source,
@@ -395,6 +464,9 @@ fn list(dir: &Path, prefix: &mut Vec<String>, out: &mut Vec<Source>) -> Result<(
     for e in entries {
         let name = e.file_name().to_string_lossy().into_owned();
         if name.starts_with('.') {
+            if name == EXPORT_MANIFEST && e.path().is_file() {
+                manifests.push(e.path());
+            }
             continue;
         }
         let p = e.path();
@@ -402,7 +474,7 @@ fn list(dir: &Path, prefix: &mut Vec<String>, out: &mut Vec<Source>) -> Result<(
         if p.is_dir() {
             // Depth limit against symlink loops; real layouts are ≤ 3 deep.
             if prefix.len() < 8 {
-                list(&p, prefix, out)?;
+                list(&p, prefix, out, manifests)?;
             }
         } else {
             out.push(Source {
@@ -626,6 +698,7 @@ fn plan_sources(
     source_dir: &Path,
     sources: Vec<Source>,
     rules: &ImportRules,
+    own_exports: &BTreeSet<PathBuf>,
 ) -> ImportPlan {
     let mut mapping = project.import.fastlane.clone();
     mapping.merge(&rules.mapping);
@@ -666,6 +739,23 @@ fn plan_sources(
             s
         })
         .collect();
+    // Vitrine Studio's own exports (an export manifest lists them) are left
+    // out before the format is detected.
+    let mut skipped: Vec<SkippedFile> = Vec::new();
+    let sources: Vec<Source> = sources
+        .into_iter()
+        .filter(|s| {
+            let own = !own_exports.is_empty()
+                && std::fs::canonicalize(&s.abs).is_ok_and(|c| own_exports.contains(&c));
+            if own {
+                skipped.push(SkippedFile {
+                    source: s.rel(),
+                    reason: SKIP_OWN_EXPORT.to_owned(),
+                });
+            }
+            !own
+        })
+        .collect();
     let backgrounds = frameit_backgrounds(&sources);
 
     let format = match rules.format {
@@ -677,7 +767,6 @@ fn plan_sources(
 
     let fl = catalog::fastlane();
     let mut items: Vec<PlannedFile> = Vec::new();
-    let mut skipped: Vec<SkippedFile> = Vec::new();
     for src in sources {
         let rel = src.rel();
         let skip = |reason: &str| SkippedFile {
@@ -727,6 +816,10 @@ fn plan_sources(
                 continue;
             }
             stem.truncate(stem.len() - framed.len());
+        }
+        if format == SourceFormat::Fastlane && looks_exported(project, &route, &src.parts, &stem) {
+            skipped.push(skip(SKIP_EXPORT_NAME));
+            continue;
         }
         let ov = rules.overrides.get(&rel);
         if ov.is_some_and(|o| o.skip) {
@@ -1069,6 +1162,41 @@ fn detect_fastlane(
     }
     d.key = Some(ctx.key(screen, true));
     Ok(d)
+}
+
+/// Skip reason of a file an export manifest lists.
+pub const SKIP_OWN_EXPORT: &str =
+    "exported by Vitrine Studio (listed in .vitrine-export.json), not a capture";
+/// Skip reason of a file named like a fastlane-layout export.
+pub const SKIP_EXPORT_NAME: &str =
+    "named like a Vitrine Studio export (<nn>_<target> / <nn>_<locale>), not a capture";
+
+/// A file of a fastlane folder named the way the fastlane export layout
+/// names its images (`crate::fastlane::Placement::path`): deliver
+/// `<nn>_<target>[_<marker>]` with a target of this project, supply
+/// `<nn>_<locale>` with the file's own locale folder. Catches exports
+/// whose manifest is gone; snapshot (`<Device>-<screen>`) and screengrab
+/// (`<name>_<millis>`) do not name files like that.
+fn looks_exported(project: &Project, route: &Route, parts: &[String], stem: &str) -> bool {
+    let Some((nn, rest)) = stem.split_once('_') else {
+        return false;
+    };
+    if nn.len() < 2 || !nn.chars().all(|c| c.is_ascii_digit()) || rest.is_empty() {
+        return false;
+    }
+    match route {
+        Route::Screengrab { locale, .. } => rest.eq_ignore_ascii_case(locale),
+        Route::Snapshot => {
+            parts.len() >= 2
+                && project.targets.iter().any(|t| {
+                    rest == t.id.as_str()
+                        || rest
+                            .strip_prefix(t.id.as_str())
+                            .is_some_and(|m| m.starts_with('_'))
+                })
+        }
+        Route::Skip(_) => false,
+    }
 }
 
 /// Where a file of a fastlane folder belongs.

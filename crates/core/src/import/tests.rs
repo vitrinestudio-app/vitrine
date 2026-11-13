@@ -744,3 +744,129 @@ fn screengrab_timestamps() {
     assert_eq!(strip_timestamp("_1731234567890", 10), "_1731234567890");
     assert_eq!(strip_timestamp("home", 10), "home");
 }
+
+/// One `fastlane/` folder that holds snapshot/screengrab captures and the
+/// images an earlier `vitrine export --layout fastlane --out fastlane`
+/// wrote next to them (ADR 0032).
+fn shared_fastlane_folder(d: &Dirs, manifest: bool) -> PathBuf {
+    let s = d.source.join("fastlane");
+    png(
+        &s.join("screenshots/en-US/iPhone 15 Pro Max-01Home.png"),
+        1320,
+        2868,
+        "raw",
+    );
+    png(
+        &s.join("screenshots/en-US/01_phone.png"),
+        1320,
+        2868,
+        "own1",
+    );
+    png(
+        &s.join("screenshots/en-US/02_phone.png"),
+        1320,
+        2868,
+        "own2",
+    );
+    let shots = s.join("metadata/android/en-US/images/phoneScreenshots");
+    png(&shots.join("home_1731234567890.png"), 1080, 2160, "raw2");
+    png(&shots.join("01_en-US.png"), 1080, 2160, "own3");
+    if manifest {
+        fs::write(
+            s.join(EXPORT_MANIFEST),
+            r#"{
+  "screenshots/en-US/01_phone.png": {"hash": "00000000000000ae", "target": "phone", "lang": "en"},
+  "screenshots/en-US/02_phone.png": "00000000000000af",
+  "metadata/android/en-US/images/phoneScreenshots/01_en-US.png": {"hash": "1", "target": "play", "lang": "en"},
+  "../outside.png": "2",
+  "screenshots/en-US/gone.png": "3"
+}"#,
+        )
+        .unwrap();
+    }
+    s
+}
+
+#[test]
+fn own_exports_listed_in_the_manifest_are_skipped() {
+    let d = dirs();
+    let p = project_with_android();
+    let s = shared_fastlane_folder(&d, true);
+    let plan = plan(&d, &p, &ImportRules::default());
+    assert_eq!(plan.format, SourceFormat::Fastlane);
+    for own in [
+        "en-US/01_phone.png",
+        "en-US/02_phone.png",
+        "metadata/android/en-US/images/phoneScreenshots/01_en-US.png",
+    ] {
+        assert_eq!(skipped(&plan, own).reason, SKIP_OWN_EXPORT);
+    }
+    assert_eq!(
+        item(&plan, "en-US/iPhone 15 Pro Max-01Home.png")
+            .dest
+            .as_deref(),
+        Some("screenshots/en/ios-phone/home.png")
+    );
+    assert_eq!(
+        item(
+            &plan,
+            "metadata/android/en-US/images/phoneScreenshots/home_1731234567890.png"
+        )
+        .dest
+        .as_deref(),
+        Some("screenshots/en/android-phone/home.png")
+    );
+    assert_eq!(plan.items.len(), 2, "{:#?}", plan.items);
+    assert_eq!(plan.count(Action::Unresolved), 0, "{:#?}", plan.items);
+
+    // The manifest one level above a picked `fastlane/screenshots` counts.
+    let picked = plan_screenshot_import(
+        &p,
+        &d.project,
+        &s.join("screenshots"),
+        &ImportRules::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        skipped(&picked, "en-US/01_phone.png").reason,
+        SKIP_OWN_EXPORT
+    );
+    assert_eq!(picked.items.len(), 1, "{:#?}", picked.items);
+}
+
+#[test]
+fn exports_without_manifest_are_skipped_by_name() {
+    let d = dirs();
+    let p = project_with_android();
+    shared_fastlane_folder(&d, false);
+    let plan = plan(&d, &p, &ImportRules::default());
+    for own in [
+        "en-US/01_phone.png",
+        "en-US/02_phone.png",
+        "metadata/android/en-US/images/phoneScreenshots/01_en-US.png",
+    ] {
+        assert_eq!(skipped(&plan, own).reason, SKIP_EXPORT_NAME);
+    }
+    assert_eq!(plan.items.len(), 2, "{:#?}", plan.items);
+    assert_eq!(plan.count(Action::Unresolved), 0, "{:#?}", plan.items);
+}
+
+#[test]
+fn export_name_rule() {
+    let p = project_with_android();
+    let shot: Vec<String> = vec!["en-US".into(), "x.png".into()];
+    let snap = Route::Snapshot;
+    assert!(looks_exported(&p, &snap, &shot, "01_phone"));
+    assert!(looks_exported(&p, &snap, &shot, "10_pad_app_ipad_pro_129"));
+    assert!(!looks_exported(&p, &snap, &shot, "01_phones"));
+    assert!(!looks_exported(&p, &snap, &shot, "01_home"));
+    assert!(!looks_exported(&p, &snap, &shot, "1_phone"));
+    assert!(!looks_exported(&p, &snap, &shot, "iPhone 15-01_phone"));
+    let grab = Route::Screengrab {
+        locale: "de-DE".into(),
+        kind: "android-phone".into(),
+    };
+    assert!(looks_exported(&p, &grab, &shot, "03_de-DE"));
+    assert!(!looks_exported(&p, &grab, &shot, "03_en-US"));
+    assert!(!looks_exported(&p, &grab, &shot, "01_home_1731234567890"));
+}
