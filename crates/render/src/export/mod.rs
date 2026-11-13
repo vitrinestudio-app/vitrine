@@ -17,7 +17,11 @@
 //! [`vitrine_core::fastlane`]); default folder `<project>/export/fastlane`,
 //! no gallery previews, targets without a deliver/supply slot are left out
 //! with a note, and two targets that would land in one upload set are
-//! reported as conflicts (the later one is not written).
+//! reported as conflicts (the later one is not written). Images in the
+//! upload folders written to that no export of the folder produced (raw
+//! captures, frameit output: deliver/supply would upload them too) are
+//! reported in [`ExportReport::foreign`] with a warning, and deleted only
+//! with [`ExportOptions::remove_foreign`] (ADR 0030).
 //!
 //! `ext` is `png` (24-bit RGB, no alpha, sRGB chunk) or `jpg` for targets
 //! with `format: jpeg` (`quality`, default 90). Alpha is flattened onto
@@ -63,7 +67,7 @@ const FLATTEN_ON: [u8; 3] = [255, 255, 255];
 /// Gallery preview background when the profile has none.
 const GALLERY_BACKGROUND: [u8; 4] = [0xF2, 0xF2, 0xF7, 0xFF];
 /// Name of the incremental-export manifest in the export folder.
-pub const MANIFEST: &str = ".vitrine-export.json";
+pub const MANIFEST: &str = vitrine_core::import::EXPORT_MANIFEST;
 /// Bump when the renderer's output changes, to invalidate incremental
 /// exports made by an older build.
 pub const RENDER_REVISION: u32 = 3;
@@ -133,6 +137,12 @@ pub struct ExportOptions {
     pub gallery_height: u32,
     /// Skip files whose inputs did not change.
     pub incremental: bool,
+    /// fastlane layout: delete the images in the deliver/supply folders
+    /// this export writes into that no export of the folder produced (raw
+    /// captures, frameit output) after a complete export, so deliver/supply
+    /// upload only Vitrine Studio's images ([`ExportReport::foreign`]).
+    /// Off by default: without it they are reported as warnings.
+    pub remove_foreign: bool,
     /// Progress reporting and cancellation (GUI).
     pub hooks: ExportHooks,
 }
@@ -180,6 +190,7 @@ impl Default for ExportOptions {
             pages: true,
             gallery_height: 1200,
             incremental: true,
+            remove_foreign: false,
             hooks: ExportHooks::default(),
         }
     }
@@ -256,6 +267,16 @@ pub struct ExportReport {
     /// Stale files of an earlier export removed (paths).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub removed: Vec<String>,
+    /// Images in the deliver/supply folders this export wrote into that no
+    /// export of the folder produced (fastlane layout): deliver/supply
+    /// would upload them together with the export. Paths relative to the
+    /// export folder; empty after [`ExportOptions::remove_foreign`]
+    /// removed them.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub foreign: Vec<String>,
+    /// Foreign images removed ([`ExportOptions::remove_foreign`]).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub removed_foreign: Vec<String>,
     /// The overview page written (`index.html`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index: Option<String>,
@@ -363,7 +384,7 @@ pub fn export(project: &Project, ctx: &RenderContext, opts: &ExportOptions) -> E
     let old = manifest::read(&manifest_path);
     let tasks = match opts.layout {
         ExportLayout::Standard => standard_tasks(&jobs, opts),
-        ExportLayout::Fastlane => fastlane_tasks(project, &jobs, &old, &out_dir, &mut report),
+        ExportLayout::Fastlane => fastlane_tasks(project, &jobs, &old, &out_dir, opts, &mut report),
     };
     let outputs = run_tasks(ctx, &jobs, &prepared, &tasks, &out_dir, &old, opts);
     if outputs.len() < tasks.len() {
@@ -427,6 +448,9 @@ pub fn export(project: &Project, ctx: &RenderContext, opts: &ExportOptions) -> E
             &mut manifest,
             &mut report,
         );
+        if opts.remove_foreign {
+            remove_foreign(&out_dir, &mut report);
+        }
     }
     if let Err(e) = manifest::write(&manifest_path, &manifest) {
         report
@@ -478,6 +502,7 @@ fn fastlane_tasks(
     jobs: &[Job],
     old: &BTreeMap<String, ManifestEntry>,
     out_dir: &Path,
+    opts: &ExportOptions,
     report: &mut ExportReport,
 ) -> Vec<Task> {
     let mut notes: Vec<LayoutNote> = Vec::new();
@@ -554,12 +579,21 @@ fn fastlane_tasks(
     notes.extend(conflict_notes);
     let mut tasks = Vec::new();
     let mut deliver_dirs: BTreeSet<String> = BTreeSet::new();
+    let mut upload = UploadFolders::default();
     for (n, ((i, img, p), claim)) in planned.into_iter().zip(claims).enumerate() {
         if rejected.contains(&n) {
             continue;
         }
         if p.store == vitrine_core::model::StoreKind::Apple {
             deliver_dirs.insert(p.dir.clone());
+        }
+        match &p.naming {
+            fastlane::Naming::SupplyImage { image_type } => {
+                upload.singles.insert((p.dir.clone(), image_type.clone()));
+            }
+            _ => {
+                upload.sets.insert(p.dir.clone());
+            }
         }
         tasks.push(Task {
             job: i,
@@ -568,7 +602,18 @@ fn fastlane_tasks(
             locale: Some(p.locale),
         });
     }
-    notes.extend(framed_warnings(out_dir, deliver_dirs));
+    if !opts.remove_foreign {
+        notes.extend(framed_warnings(out_dir, deliver_dirs));
+    }
+    let own: BTreeSet<&str> = old
+        .keys()
+        .map(String::as_str)
+        .chain(tasks.iter().map(|t| t.rel.as_str()))
+        .collect();
+    report.foreign = upload.foreign(out_dir, &own);
+    if !opts.remove_foreign {
+        notes.extend(foreign_warnings(&report.foreign));
+    }
     for n in &notes {
         if n.level == NoteLevel::Error {
             report.errors.push(n.message.clone());
@@ -576,6 +621,112 @@ fn fastlane_tasks(
     }
     report.notes = notes;
     tasks
+}
+
+/// The upload folders an export of the fastlane layout writes into.
+#[derive(Default)]
+struct UploadFolders {
+    /// Screenshot set folders: deliver uploads every image of
+    /// `screenshots/<locale>/`, supply every image of
+    /// `metadata/android/<locale>/images/<type>/`.
+    sets: BTreeSet<String>,
+    /// Single Play images (`images` folder, image type): supply uploads the
+    /// last of `<type>.{png,jpg,jpeg}`.
+    singles: BTreeSet<(String, String)>,
+}
+
+impl UploadFolders {
+    /// Images in these folders that deliver/supply would upload together
+    /// with this export but that no export of this folder wrote (not in
+    /// `own`): raw snapshot/screengrab captures, frameit output, files put
+    /// there by hand. Paths relative to the export folder, sorted.
+    fn foreign(&self, out_dir: &Path, own: &BTreeSet<&str>) -> Vec<String> {
+        let exts = &vitrine_core::catalog::fastlane().deliver.extensions;
+        let image = |name: &str| {
+            name.rsplit_once('.')
+                .is_some_and(|(_, e)| exts.iter().any(|x| x.eq_ignore_ascii_case(e)))
+        };
+        let files = |dir: &str| -> Vec<String> {
+            let mut names: Vec<String> = std::fs::read_dir(out_dir.join(dir))
+                .into_iter()
+                .flatten()
+                .flatten()
+                .filter(|e| e.file_type().is_ok_and(|t| t.is_file()))
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .filter(|n| !n.starts_with('.') && image(n))
+                .collect();
+            names.sort();
+            names
+        };
+        let mut out = BTreeSet::new();
+        for dir in &self.sets {
+            for name in files(dir) {
+                out.insert(format!("{dir}/{name}"));
+            }
+        }
+        for (dir, image_type) in &self.singles {
+            for name in files(dir) {
+                if name
+                    .rsplit_once('.')
+                    .is_some_and(|(stem, _)| stem.eq_ignore_ascii_case(image_type))
+                {
+                    out.insert(format!("{dir}/{name}"));
+                }
+            }
+        }
+        out.into_iter()
+            .filter(|p| !own.contains(p.as_str()))
+            .collect()
+    }
+}
+
+/// One warning per folder that holds foreign images.
+fn foreign_warnings(foreign: &[String]) -> Vec<LayoutNote> {
+    let mut by_dir: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    for p in foreign {
+        let (dir, name) = p.rsplit_once('/').unwrap_or(("", p));
+        by_dir.entry(dir).or_default().push(name);
+    }
+    by_dir
+        .into_iter()
+        .map(|(dir, names)| {
+            let shown: Vec<&str> = names.iter().take(3).copied().collect();
+            let more = if names.len() > shown.len() {
+                format!(" and {} more", names.len() - shown.len())
+            } else {
+                String::new()
+            };
+            LayoutNote {
+                level: NoteLevel::Warn,
+                target: String::new(),
+                lang: None,
+                message: format!(
+                    "{dir} holds {} not exported by Vitrine Studio ({}{more}): deliver/supply would upload {} together with Vitrine Studio's images. Keep raw captures in a separate folder (e.g. fastlane/captures) or export with --remove-foreign",
+                    if names.len() == 1 { "1 image" } else { "images" },
+                    shown.join(", "),
+                    if names.len() == 1 { "it" } else { "them" },
+                ),
+            }
+        })
+        .collect()
+}
+
+/// Deletes the foreign images ([`UploadFolders::foreign`]) after the
+/// export, only with [`ExportOptions::remove_foreign`].
+fn remove_foreign(out_dir: &Path, report: &mut ExportReport) {
+    for rel in std::mem::take(&mut report.foreign) {
+        let abs = rel.split('/').fold(out_dir.to_path_buf(), |p, c| p.join(c));
+        match std::fs::remove_file(&abs) {
+            Ok(()) => report.removed_foreign.push(rel),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => {
+                report
+                    .errors
+                    .push(format!("cannot remove {}: {err}", abs.display()));
+                report.foreign.push(rel);
+            }
+        }
+    }
 }
 
 /// frameit leftovers make deliver skip every unframed file of the folder.

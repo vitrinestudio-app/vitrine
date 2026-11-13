@@ -42,6 +42,12 @@ pub struct ExportArgs {
     /// Render every file, ignoring the incremental export cache.
     #[arg(long)]
     pub force: bool,
+    /// fastlane layout: delete the images in the deliver/supply folders
+    /// written to that Vitrine Studio did not export (raw snapshot/
+    /// screengrab captures, frameit output), so deliver/supply upload only
+    /// Vitrine Studio's images. Without it they are listed as warnings.
+    #[arg(long)]
+    pub remove_foreign: bool,
     /// Output format (`json`: the full export report).
     #[arg(long, value_enum, default_value_t = Format::Text)]
     pub format: Format,
@@ -54,6 +60,9 @@ pub fn run(args: &ExportArgs, global: &Global) -> anyhow::Result<u8> {
     project::check_langs(&args.langs)?;
     if args.gallery_only && args.layout != ExportLayout::Standard {
         anyhow::bail!("--gallery-only needs the standard layout");
+    }
+    if args.remove_foreign && args.layout != ExportLayout::Fastlane {
+        anyhow::bail!("--remove-foreign needs --layout fastlane");
     }
     let (ctx, fonts) = crate::frames::render_context(root, &project, global);
     if !global.quiet {
@@ -71,6 +80,7 @@ pub fn run(args: &ExportArgs, global: &Global) -> anyhow::Result<u8> {
             gallery: !args.no_gallery,
             pages: !args.gallery_only,
             incremental: !args.force,
+            remove_foreign: args.remove_foreign,
             ..ExportOptions::default()
         },
     );
@@ -192,6 +202,9 @@ fn print_text(report: &ExportReport, global: &Global) {
         }
         for r in &report.removed {
             println!("{} {r}", style.dim("removed stale"));
+        }
+        for r in &report.removed_foreign {
+            println!("{} {r}", style.dim("removed foreign"));
         }
     }
     for e in &report.errors {

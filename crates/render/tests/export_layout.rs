@@ -183,3 +183,90 @@ fn fastlane_conflict_with_an_earlier_export() {
     assert!(out.join("screenshots/en-US/01_phone-old.png").is_file());
     assert!(!out.join("index.html").exists());
 }
+
+#[test]
+fn fastlane_reports_and_removes_foreign_images() {
+    let dir = tempfile::tempdir().unwrap();
+    let p = project();
+    let out = dir.path().join("fastlane");
+    let ctx = ctx(dir.path());
+    let opts = |remove: bool| ExportOptions {
+        out_dir: Some(out.clone()),
+        layout: ExportLayout::Fastlane,
+        targets: vec!["phone".into(), "play".into(), "fg".into()],
+        langs: vec!["en".into()],
+        remove_foreign: remove,
+        ..ExportOptions::default()
+    };
+    // Raw captures in the folders deliver/supply upload (snapshot's and
+    // screengrab's default output), a frameit image, a file of another
+    // kind, a capture in a folder this export does not write to, and a
+    // second feature graphic supply might pick instead.
+    let put = |rel: &str| {
+        let path = out.join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, b"raw").unwrap();
+    };
+    put("screenshots/en-US/iPhone 17 Pro Max-01Home.png");
+    put("screenshots/en-US/iPhone 17 Pro Max-01Home_framed.png");
+    put("screenshots/en-US/title.strings");
+    put("screenshots/ja/iPhone 17 Pro Max-01Home.png");
+    put("metadata/android/en-US/images/phoneScreenshots/home_1731234567890.PNG");
+    put("metadata/android/en-US/images/featureGraphic.png");
+    put("metadata/android/en-US/images/icon.png");
+
+    let foreign = [
+        "metadata/android/en-US/images/featureGraphic.png",
+        "metadata/android/en-US/images/phoneScreenshots/home_1731234567890.PNG",
+        "screenshots/en-US/iPhone 17 Pro Max-01Home.png",
+        "screenshots/en-US/iPhone 17 Pro Max-01Home_framed.png",
+    ];
+    let first = export(&p, &ctx, &opts(false));
+    assert!(first.errors.is_empty(), "{:?}", first.errors);
+    assert_eq!(first.foreign, foreign);
+    assert!(first.removed_foreign.is_empty());
+    let warned: Vec<&str> = first
+        .notes
+        .iter()
+        .filter(|n| n.message.contains("not exported by Vitrine Studio"))
+        .map(|n| n.message.as_str())
+        .collect();
+    assert_eq!(warned.len(), 3, "{:#?}", first.notes);
+    assert!(
+        warned
+            .iter()
+            .any(|m| m.starts_with("screenshots/en-US holds images"))
+    );
+    for f in foreign {
+        assert!(out.join(f).is_file(), "{f}");
+    }
+
+    // A re-export does not count its own files as foreign.
+    let second = export(&p, &ctx, &opts(true));
+    assert!(second.errors.is_empty(), "{:?}", second.errors);
+    assert_eq!(second.removed_foreign, foreign);
+    assert!(second.foreign.is_empty());
+    assert!(
+        !second
+            .notes
+            .iter()
+            .any(|n| n.message.contains("not exported") || n.message.contains("frameit")),
+        "{:#?}",
+        second.notes
+    );
+    for f in foreign {
+        assert!(!out.join(f).exists(), "{f}");
+    }
+    for kept in [
+        "screenshots/en-US/title.strings",
+        "screenshots/ja/iPhone 17 Pro Max-01Home.png",
+        "metadata/android/en-US/images/icon.png",
+        "screenshots/en-US/01_phone.png",
+        "metadata/android/en-US/images/featureGraphic.jpg",
+        "metadata/android/en-US/images/phoneScreenshots/01_en-US.png",
+    ] {
+        assert!(out.join(kept).is_file(), "{kept}");
+    }
+    let third = export(&p, &ctx, &opts(false));
+    assert!(third.foreign.is_empty(), "{:?}", third.foreign);
+}
