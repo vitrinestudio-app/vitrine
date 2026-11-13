@@ -120,7 +120,7 @@ features:
       text: "`vitrine validate`, `export` und `upload` laufen in Skripten und Pipelines, mit klaren Exit-Codes und JSON-Ausgabe."
     - icon: sparkle
       title: "KI-Assistenten per MCP"
-      text: "Claude und andere MCP-Clients gestalten, übersetzen, prüfen Vorschauen und exportieren – live in deinem Editor, jeder Schritt rückgängig machbar."
+      text: "Claude und andere MCP-Clients gestalten, übersetzen, prüfen Vorschauen und exportieren – live in deinem Editor, und jeden Schritt kannst du wie deinen eigenen zurücknehmen."
     - icon: template
       title: "Vorlagen"
       text: "Mit einer Vorlage starten, eigene Leinwände als Vorlage speichern und teilen – eine Community-Galerie ist unterwegs."

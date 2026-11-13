@@ -120,7 +120,7 @@ features:
       text: "`vitrine validate`, `export` and `upload` work in scripts and pipelines, with clear exit codes and JSON output."
     - icon: sparkle
       title: "AI assistants via MCP"
-      text: "Claude and other MCP clients can design, translate, preview and export – live in your editor, every step undoable."
+      text: "Claude and other MCP clients can design, translate, preview and export – live in your editor, and you can undo every step like your own."
     - icon: template
       title: "Templates"
       text: "Start from a template, save your own canvases as templates and share them – a community gallery is on its way."
