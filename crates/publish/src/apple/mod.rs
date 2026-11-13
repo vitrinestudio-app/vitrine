@@ -1,15 +1,11 @@
-//! App Store Connect API client (screenshots). See ADR 0017.
+//! App Store Connect API client. See ARCHITECTURE.md §10.
 //!
-//! Flow: [`Client::find_app`] → [`Client::editable_version`] →
-//! [`Client::localizations`] → [`Client::ensure_set`] per display type →
-//! [`Client::delete_screenshot`] for the old ones →
-//! [`Client::upload_screenshot`] (reserve → parts → commit with MD5 → poll)
-//! → [`Client::reorder`].
-//!
-//! Note: Apple marked the set-based screenshot resources deprecated in API
-//! 4.5.1 in favour of the App Asset Library (ADR 0017, "Deprecation"). Its
-//! calls live in [`library`] (ADR 0019): asset library, reference data,
-//! images, placements, ordering requests.
+//! Shared calls: [`Client::find_app`] → [`Client::editable_version`] →
+//! [`Client::localizations`] / [`Client::create_localization`]. Screenshots
+//! and creative assets go through the App Asset Library ([`library`]:
+//! asset library, reference data, images, placements, ordering requests);
+//! the deprecated screenshot-set resources (`appScreenshotSets`,
+//! `appScreenshots`) are no longer used (decision 0034).
 
 pub mod library;
 mod model;
@@ -18,7 +14,6 @@ use std::fmt;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use bytes::Bytes;
-use md5::{Digest, Md5};
 use reqwest::{Method, StatusCode, Url};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -33,13 +28,10 @@ pub use library::{
     RefSpec, is_asset_has_placements,
 };
 pub use model::{
-    App, AppRef, AppScreenshot, AppStoreVersion, AppSummary, AppsOverview, DeliveryState,
-    HttpHeader, Localization, Platform, ScreenshotSet, UploadOperation,
+    App, AppRef, AppStoreVersion, AppSummary, AppsOverview, HttpHeader, Localization, Platform,
+    UploadOperation,
 };
-use model::{
-    AppAttrs, Document, ErrorResponse, LocalizationAttrs, Resource, ScreenshotAttrs, SetAttrs,
-    VersionAttrs,
-};
+use model::{AppAttrs, Document, ErrorResponse, LocalizationAttrs, Resource, VersionAttrs};
 
 use crate::error::{ApiErrorDetail, Error, Result};
 use crate::http::{ClientOptions, Http, Reply, Retry, join_segments, parse_base_url, status_error};
@@ -456,275 +448,7 @@ impl Client {
         Ok(doc.data.into())
     }
 
-    /// Screenshot sets of a localization.
-    pub async fn screenshot_sets(&self, localization_id: &str) -> Result<Vec<ScreenshotSet>> {
-        let mut url = self.url(&[
-            "v1",
-            "appStoreVersionLocalizations",
-            localization_id,
-            "appScreenshotSets",
-        ])?;
-        url.query_pairs_mut().append_pair("limit", "200");
-        Ok(self
-            .get_all::<SetAttrs>(url)
-            .await?
-            .into_iter()
-            .map(ScreenshotSet::from)
-            .collect())
-    }
-
-    /// Returns the set for `display_type`, creating it if missing.
-    pub async fn ensure_set(
-        &self,
-        localization_id: &str,
-        display_type: &str,
-    ) -> Result<ScreenshotSet> {
-        if let Some(set) = self
-            .screenshot_sets(localization_id)
-            .await?
-            .into_iter()
-            .find(|s| s.display_type == display_type)
-        {
-            return Ok(set);
-        }
-        let body = json!({
-            "data": {
-                "type": "appScreenshotSets",
-                "attributes": { "screenshotDisplayType": display_type },
-                "relationships": {
-                    "appStoreVersionLocalization": {
-                        "data": { "type": "appStoreVersionLocalizations", "id": localization_id }
-                    }
-                }
-            }
-        });
-        let reply = self
-            .api(
-                Method::POST,
-                self.url(&["v1", "appScreenshotSets"])?,
-                Some(body),
-                Retry::NotIdempotent,
-            )
-            .await?;
-        let doc: Document<Resource<SetAttrs>> = parse_json(&reply)?;
-        Ok(doc.data.into())
-    }
-
-    /// Screenshots of a set, in display order.
-    pub async fn list_screenshots(&self, set_id: &str) -> Result<Vec<AppScreenshot>> {
-        let mut url = self.url(&["v1", "appScreenshotSets", set_id, "appScreenshots"])?;
-        url.query_pairs_mut().append_pair("limit", "200");
-        Ok(self
-            .get_all::<ScreenshotAttrs>(url)
-            .await?
-            .into_iter()
-            .map(AppScreenshot::from)
-            .collect())
-    }
-
-    /// One screenshot (state polling).
-    pub async fn screenshot(&self, id: &str) -> Result<AppScreenshot> {
-        let doc: Document<Resource<ScreenshotAttrs>> = self
-            .get_doc(self.url(&["v1", "appScreenshots", id])?)
-            .await?;
-        Ok(doc.data.into())
-    }
-
-    /// Deletes a screenshot. An already deleted one (404) counts as success,
-    /// so a resumed run can repeat the step.
-    pub async fn delete_screenshot(&self, id: &str) -> Result<()> {
-        match self
-            .api(
-                Method::DELETE,
-                self.url(&["v1", "appScreenshots", id])?,
-                None,
-                Retry::Idempotent,
-            )
-            .await
-        {
-            Ok(_) | Err(Error::NotFound { .. }) => Ok(()),
-            Err(e) => Err(e),
-        }
-    }
-
-    /// Sets the order of the screenshots in a set (all ids of the set).
-    pub async fn reorder(&self, set_id: &str, screenshot_ids: &[String]) -> Result<()> {
-        let data: Vec<Value> = screenshot_ids
-            .iter()
-            .map(|id| json!({ "type": "appScreenshots", "id": id }))
-            .collect();
-        let url = self.url(&[
-            "v1",
-            "appScreenshotSets",
-            set_id,
-            "relationships",
-            "appScreenshots",
-        ])?;
-        self.api(
-            Method::PATCH,
-            url,
-            Some(json!({ "data": data })),
-            Retry::Idempotent,
-        )
-        .await?;
-        Ok(())
-    }
-
     // ---- upload ------------------------------------------------------------
-
-    /// Uploads one screenshot into a set: reserve → upload parts (concurrent,
-    /// as allowed by Apple) → commit with MD5 → poll until `COMPLETE`.
-    ///
-    /// On a failed transfer/commit or `FAILED` processing the reservation is
-    /// deleted (best effort) before the error is returned, as Apple
-    /// recommends. On cancellation or poll timeout it is left in place (the
-    /// caller sees it in [`Client::list_screenshots`] and cleans up on resume).
-    ///
-    /// The executor does not use this (it would block on Apple's processing
-    /// per image): it calls [`Client::upload_screenshot_committed`] for every
-    /// image of a set and polls them together (ADR 0018, "Processing").
-    pub async fn upload_screenshot(
-        &self,
-        set_id: &str,
-        file_name: &str,
-        bytes: impl Into<Bytes>,
-        progress: ProgressFn<'_>,
-    ) -> Result<AppScreenshot> {
-        let bytes: Bytes = bytes.into();
-        let total = bytes.len() as u64;
-        // Keep the last transfer state (parts) for the processing updates.
-        let last = std::sync::Mutex::new(None::<Progress>);
-        let track = |p: &Progress| {
-            *last
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(p.clone());
-            progress(p);
-        };
-        let committed = self
-            .upload_screenshot_committed(set_id, file_name, bytes, &track)
-            .await?;
-        let id = committed.id;
-        let mut p = last
-            .into_inner()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .unwrap_or_else(|| Progress::new(UploadStep::Processing, total));
-        p.step = UploadStep::Processing;
-        p.asset_id = Some(id.clone());
-        p.bytes_sent = total;
-        match self.wait_processed(&id, &mut p, progress).await {
-            Ok(done) => {
-                p.step = UploadStep::Done;
-                progress(&p);
-                Ok(done)
-            }
-            Err(e @ Error::Processing { .. }) => {
-                let _ = self.delete_screenshot(&id).await;
-                Err(e)
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    /// Reserve → upload parts → commit with MD5, without waiting for
-    /// Apple's processing. Returns the screenshot as the commit answered
-    /// (usually `UPLOAD_COMPLETE`); poll it with [`Client::screenshot`].
-    ///
-    /// A failed transfer/commit deletes the reservation (best effort); a
-    /// cancellation leaves it in place.
-    pub async fn upload_screenshot_committed(
-        &self,
-        set_id: &str,
-        file_name: &str,
-        bytes: impl Into<Bytes>,
-        progress: ProgressFn<'_>,
-    ) -> Result<AppScreenshot> {
-        let bytes: Bytes = bytes.into();
-        let total = bytes.len() as u64;
-        if bytes.is_empty() {
-            return Err(Error::config("screenshot file is empty"));
-        }
-        let checksum = md5_hex(&bytes);
-
-        // 1. Reserve.
-        let body = json!({
-            "data": {
-                "type": "appScreenshots",
-                "attributes": { "fileName": file_name, "fileSize": total },
-                "relationships": {
-                    "appScreenshotSet": { "data": { "type": "appScreenshotSets", "id": set_id } }
-                }
-            }
-        });
-        let reply = self
-            .api(
-                Method::POST,
-                self.url(&["v1", "appScreenshots"])?,
-                Some(body),
-                Retry::NotIdempotent,
-            )
-            .await?;
-        let doc: Document<Resource<ScreenshotAttrs>> = parse_json(&reply)?;
-        let reserved: AppScreenshot = doc.data.into();
-        let id = reserved.id.clone();
-        let mut p = Progress::new(UploadStep::Reserve, total);
-        p.asset_id = Some(id.clone());
-        p.parts = Some((0, reserved.upload_operations.len()));
-        progress(&p);
-
-        // 2.–3. Transfer and commit; clean up on definite failures.
-        match self
-            .transfer_and_commit(&reserved, &bytes, &checksum, &mut p, progress)
-            .await
-        {
-            Ok(committed) => Ok(committed.unwrap_or(AppScreenshot {
-                source_file_checksum: Some(checksum),
-                delivery_state: Some(DeliveryState::UploadComplete),
-                upload_operations: Vec::new(),
-                ..reserved
-            })),
-            Err(e) => {
-                if !matches!(e, Error::Cancelled) {
-                    let _ = self.delete_screenshot(&id).await;
-                }
-                Err(e)
-            }
-        }
-    }
-
-    async fn transfer_and_commit(
-        &self,
-        reserved: &AppScreenshot,
-        bytes: &Bytes,
-        checksum: &str,
-        p: &mut Progress,
-        progress: ProgressFn<'_>,
-    ) -> Result<Option<AppScreenshot>> {
-        self.transfer_parts(&reserved.upload_operations, bytes, p, progress)
-            .await?;
-
-        // Commit.
-        let body = json!({
-            "data": {
-                "type": "appScreenshots",
-                "id": reserved.id,
-                "attributes": { "uploaded": true, "sourceFileChecksum": checksum }
-            }
-        });
-        let reply = self
-            .api(
-                Method::PATCH,
-                self.url(&["v1", "appScreenshots", &reserved.id])?,
-                Some(body),
-                Retry::Idempotent,
-            )
-            .await?;
-        p.step = UploadStep::Commit;
-        progress(p);
-        // The commit answers with the resource; tolerate an empty body.
-        Ok(parse_json::<Document<Resource<ScreenshotAttrs>>>(&reply)
-            .ok()
-            .map(|d| d.data.into()))
-    }
 
     /// Sends every part of a reservation to Apple's pre-signed URLs
     /// (concurrently and in any order, as Apple allows), reporting progress
@@ -796,48 +520,6 @@ impl Client {
             return Err(e);
         }
         self.http.check_cancelled()
-    }
-
-    async fn wait_processed(
-        &self,
-        id: &str,
-        p: &mut Progress,
-        progress: ProgressFn<'_>,
-    ) -> Result<AppScreenshot> {
-        let policy = self.http.opts.poll;
-        let deadline = Instant::now() + policy.timeout;
-        let mut interval = policy.initial_interval;
-        p.step = UploadStep::Processing;
-        loop {
-            let shot = self.screenshot(id).await?;
-            match &shot.delivery_state {
-                Some(DeliveryState::Complete) => return Ok(shot),
-                Some(DeliveryState::Failed) => {
-                    return Err(Error::Processing {
-                        asset_id: id.to_owned(),
-                        details: shot.delivery_errors,
-                    });
-                }
-                state => {
-                    let state = state.as_ref().map(|s| s.as_str().to_owned());
-                    if p.state != state {
-                        p.state = state;
-                        progress(p);
-                    }
-                }
-            }
-            let now = Instant::now();
-            if now >= deadline {
-                return Err(Error::Timeout {
-                    message: format!(
-                        "screenshot {id} still processing after {}s",
-                        policy.timeout.as_secs()
-                    ),
-                });
-            }
-            self.http.sleep(interval.min(deadline - now)).await?;
-            interval = (interval * 2).min(policy.max_interval);
-        }
     }
 }
 
@@ -999,20 +681,6 @@ impl Error {
     }
 }
 
-/// Lowercase hex MD5 of the whole file (`sourceFileChecksum`).
-pub fn md5_hex(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    Md5::digest(bytes)
-        .iter()
-        .flat_map(|b| {
-            [
-                HEX[usize::from(b >> 4)] as char,
-                HEX[usize::from(b & 0xf)] as char,
-            ]
-        })
-        .collect()
-}
-
 fn parse_json<T: DeserializeOwned>(reply: &Reply) -> Result<T> {
     serde_json::from_slice(&reply.body).map_err(|e| Error::Transport {
         status: Some(reply.status.as_u16()),
@@ -1046,12 +714,6 @@ fn map_error(status: StatusCode, body: &[u8]) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn md5_matches_known_vector() {
-        assert_eq!(md5_hex(b""), "d41d8cd98f00b204e9800998ecf8427e");
-        assert_eq!(md5_hex(b"abc"), "900150983cd24fb0d6963f7d28e17f72");
-    }
 
     #[test]
     fn state_errors_map_to_conflict() {

@@ -227,7 +227,7 @@ upload:
     - {target: "ios-ipad-13-landscape", lang: "fr-CA", locale: "fr-CA", action: "Blocked", kind: "blocked", images: "3"}
   planFoot: "1 blocked: missing screenshot"
   confirm: "Confirm & upload"
-  note: "App Store Connect (screenshot sets and the App Asset Library for iPhone Duo, header and search-results creatives) and Google Play (screenshots and feature graphic). **Status:** built and tested against fake stores; real-run testing with live accounts is in progress."
+  note: "App Store Connect (screenshots for every device, iPhone Duo and the header and search-results creatives, through the App Asset Library) and Google Play (screenshots and feature graphic). **Status:** built and tested against fake stores; real-run testing with live accounts is in progress."
 
 templates:
   eyebrow: "Templates"

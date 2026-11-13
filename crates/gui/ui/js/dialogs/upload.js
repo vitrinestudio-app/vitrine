@@ -9,7 +9,7 @@
 //   problems), Confirm & upload → per-set progress from `upload-progress`
 //   events → result + "Show log". A run started elsewhere (MCP, another
 //   window) is shown when the dialog opens. Apple: the plan shows the
-//   upload flow (App Asset Library / screenshot sets, ADR 0019) and each
+//   upload flow (always the App Asset Library, ADR 0019) and each
 //   set's placement; "Show App Store asset types" opens the read-only ref
 //   data (`upload_refdata`) to check the runtime placement groups.
 // - `initUploadConfirm()`: an AI assistant asked for an upload over MCP
@@ -131,7 +131,7 @@ export function planView(plan) {
       h(
         'tr',
         { class: `up-row up-${s.action}` },
-        h('td', {}, s.target, s.placement ? h('div', { class: 'small muted mono', title: t('upload.placement.hint') }, s.placement) : null, s.flow ? h('div', { class: 'small muted' }, t(`upload.flow.${s.flow}`)) : null),
+        h('td', {}, s.target, s.placement ? h('div', { class: 'small muted mono', title: t('upload.placement.hint') }, s.placement) : null),
         h('td', {}, s.lang),
         h('td', { class: 'mono' }, s.locale ?? '–'),
         h('td', {}, h('span', { class: `up-action up-action-${s.action}`, title: s.reason ?? '' }, t(`upload.action.${s.action}`))),
@@ -163,7 +163,6 @@ export function planView(plan) {
           h('span', { class: 'muted small' }, ` ${sp.app ?? ''}${sp.account ? ` · ${sp.account}` : ''}${sp.store === 'apple' ? ` · ${t(`upload.flow.${sp.flow}`)}` : ''}`),
         ),
         remote,
-        sp.flow_note ? h('div', { class: 'small up-warn' }, sp.flow_note) : null,
         problemList(sp.problems),
         sp.sets.length
           ? h(
@@ -221,7 +220,7 @@ export async function showAssetTypes(err) {
         h(
           'tr',
           {},
-          h('td', { class: 'mono' }, m.slot, m.asset_library_only ? h('div', { class: 'small muted' }, t('upload.asset_types.library_only')) : null),
+          h('td', { class: 'mono' }, m.slot),
           h(
             'td',
             { class: 'mono small' },

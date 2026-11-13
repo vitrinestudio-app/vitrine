@@ -1,4 +1,7 @@
-//! App Store Connect client against a wiremock server (no real network).
+//! App Store Connect client against a wiremock server (no real network):
+//! JWT, app/version/localization lookup, retries, part uploads (through
+//! asset library images; the library calls themselves are in
+//! `apple_library.rs`).
 
 mod common;
 
@@ -8,12 +11,19 @@ use std::time::{Duration, Instant};
 use common::{BearerJwt, ProgressLog, ec_key, fast_options, recorder, validation};
 use jsonwebtoken::{Algorithm, DecodingKey};
 use serde_json::{Value, json};
-use vitrine_publish::apple::{AppRef, Client, Config, Platform, md5_hex};
+use vitrine_publish::apple::library::CATEGORY_SCREENSHOTS;
+use vitrine_publish::apple::{AppRef, Client, Config, LibraryUpload, Platform};
 use vitrine_publish::{
     ClientOptions, Error, ErrorKind, HttpEventKind, UploadStep, ignore_progress,
 };
 use wiremock::matchers::{
     body_bytes, body_json, body_partial_json, header, method, path, query_param,
+};
+
+const UPLOAD: LibraryUpload<'static> = LibraryUpload {
+    file_name: "01.png",
+    category: CATEGORY_SCREENSHOTS,
+    reference_name: None,
 };
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -60,15 +70,16 @@ impl Fixture {
     }
 }
 
-fn screenshot(id: &str, state: &str, ops: &Value) -> Value {
+fn image(id: &str, state: &str, ops: &Value) -> Value {
     json!({
         "data": {
-            "type": "appScreenshots",
+            "type": "appAssetLibraryImages",
             "id": id,
             "attributes": {
+                "category": "APP_SCREENSHOTS_AND_PREVIEWS",
                 "fileName": "01.png",
                 "fileSize": 10,
-                "assetDeliveryState": { "state": state, "errors": [] },
+                "state": state,
                 "uploadOperations": ops
             }
         }
@@ -105,17 +116,17 @@ fn two_parts(server: &MockServer) -> Value {
 
 async fn mount_reservation(f: &Fixture, id: &str) {
     Mock::given(method("POST"))
-        .and(path("/v1/appScreenshots"))
+        .and(path("/v1/appAssetLibraryImages"))
         .and(f.jwt())
         .and(body_partial_json(json!({
             "data": {
-                "type": "appScreenshots",
+                "type": "appAssetLibraryImages",
                 "attributes": { "fileName": "01.png", "fileSize": 10 },
-                "relationships": { "appScreenshotSet": { "data": { "type": "appScreenshotSets", "id": "set-1" } } }
+                "relationships": { "assetLibrary": { "data": { "type": "appAssetLibraries", "id": "lib-1" } } }
             }
         })))
         .respond_with(
-            ResponseTemplate::new(201).set_body_json(screenshot(id, "AWAITING_UPLOAD", &two_parts(&f.server))),
+            ResponseTemplate::new(201).set_body_json(image(id, "AWAITING_UPLOAD", &two_parts(&f.server))),
         )
         .expect(1)
         .mount(&f.server)
@@ -146,16 +157,12 @@ async fn mount_parts_ok(f: &Fixture) {
 
 async fn mount_commit(f: &Fixture, id: &str) {
     Mock::given(method("PATCH"))
-        .and(path(format!("/v1/appScreenshots/{id}")))
+        .and(path(format!("/v1/appAssetLibraryImages/{id}")))
         .and(f.jwt())
         .and(body_json(json!({
-            "data": {
-                "type": "appScreenshots",
-                "id": id,
-                "attributes": { "uploaded": true, "sourceFileChecksum": md5_hex(&png_bytes()) }
-            }
+            "data": { "type": "appAssetLibraryImages", "id": id, "attributes": { "uploaded": true } }
         })))
-        .respond_with(ResponseTemplate::new(200).set_body_json(screenshot(
+        .respond_with(ResponseTemplate::new(200).set_body_json(image(
             id,
             "UPLOAD_COMPLETE",
             &json!(null),
@@ -165,35 +172,14 @@ async fn mount_commit(f: &Fixture, id: &str) {
         .await;
 }
 
-/// First poll: still processing; afterwards: `final_state`.
-async fn mount_poll(f: &Fixture, id: &str, final_body: Value) {
-    Mock::given(method("GET"))
-        .and(path(format!("/v1/appScreenshots/{id}")))
-        .respond_with(ResponseTemplate::new(200).set_body_json(screenshot(
-            id,
-            "UPLOAD_COMPLETE",
-            &json!(null),
-        )))
-        .up_to_n_times(1)
-        .with_priority(1)
-        .mount(&f.server)
-        .await;
-    Mock::given(method("GET"))
-        .and(path(format!("/v1/appScreenshots/{id}")))
-        .respond_with(ResponseTemplate::new(200).set_body_json(final_body))
-        .with_priority(2)
-        .mount(&f.server)
-        .await;
-}
-
 #[tokio::test]
 #[allow(clippy::too_many_lines)] // one linear scenario
-async fn happy_path_replaces_and_orders_a_set() {
+async fn happy_path_finds_the_version_and_uploads_in_parts() {
     let (events, opts) = recorder();
     let f = fixture(opts).await;
     let s = &f.server;
 
-    // find app → version → localizations (paginated) → sets.
+    // find app → version → localizations (paginated) → image upload.
     Mock::given(method("GET"))
         .and(path("/v1/apps"))
         .and(query_param("filter[bundleId]", "com.example.app"))
@@ -236,60 +222,9 @@ async fn happy_path_replaces_and_orders_a_set() {
         .with_priority(2)
         .mount(s)
         .await;
-    Mock::given(method("GET"))
-        .and(path("/v1/appStoreVersionLocalizations/loc-de/appScreenshotSets"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "data": [ { "type": "appScreenshotSets", "id": "set-1", "attributes": { "screenshotDisplayType": "APP_IPHONE_67" } } ]
-        })))
-        .mount(s)
-        .await;
-    Mock::given(method("POST"))
-        .and(path("/v1/appScreenshotSets"))
-        .and(body_json(json!({
-            "data": {
-                "type": "appScreenshotSets",
-                "attributes": { "screenshotDisplayType": "APP_IPAD_PRO_3GEN_129" },
-                "relationships": { "appStoreVersionLocalization": { "data": { "type": "appStoreVersionLocalizations", "id": "loc-de" } } }
-            }
-        })))
-        .respond_with(ResponseTemplate::new(201).set_body_json(json!({
-            "data": { "type": "appScreenshotSets", "id": "set-2", "attributes": { "screenshotDisplayType": "APP_IPAD_PRO_3GEN_129" } }
-        })))
-        .expect(1)
-        .mount(s)
-        .await;
-    // Existing screenshot in set-1 is deleted.
-    Mock::given(method("GET"))
-        .and(path("/v1/appScreenshotSets/set-1/appScreenshots"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "data": [ { "type": "appScreenshots", "id": "old-1", "attributes": { "fileName": "old.png", "assetDeliveryState": { "state": "COMPLETE" } } } ]
-        })))
-        .mount(s)
-        .await;
-    Mock::given(method("DELETE"))
-        .and(path("/v1/appScreenshots/old-1"))
-        .and(f.jwt())
-        .respond_with(ResponseTemplate::new(204))
-        .expect(1)
-        .mount(s)
-        .await;
     mount_reservation(&f, "new-1").await;
     mount_parts_ok(&f).await;
     mount_commit(&f, "new-1").await;
-    mount_poll(&f, "new-1", screenshot("new-1", "COMPLETE", &json!(null))).await;
-    Mock::given(method("PATCH"))
-        .and(path(
-            "/v1/appScreenshotSets/set-1/relationships/appScreenshots",
-        ))
-        .and(f.jwt())
-        .and(body_json(json!({ "data": [
-            { "type": "appScreenshots", "id": "new-1" },
-            { "type": "appScreenshots", "id": "keep-2" }
-        ] })))
-        .respond_with(ResponseTemplate::new(204))
-        .expect(1)
-        .mount(s)
-        .await;
 
     let c = &f.client;
     let app = c
@@ -305,35 +240,17 @@ async fn happy_path_replaces_and_orders_a_set() {
         locs.iter().map(|l| l.locale.as_str()).collect::<Vec<_>>(),
         ["en-US", "de-DE"]
     );
-    let set = c.ensure_set("loc-de", "APP_IPHONE_67").await.unwrap();
-    assert_eq!(set.id, "set-1");
-    let created = c
-        .ensure_set("loc-de", "APP_IPAD_PRO_3GEN_129")
-        .await
-        .unwrap();
-    assert_eq!(created.id, "set-2");
-
-    for old in c.list_screenshots(&set.id).await.unwrap() {
-        c.delete_screenshot(&old.id).await.unwrap();
-    }
     let log = ProgressLog::default();
-    let shot = c
-        .upload_screenshot(&set.id, "01.png", png_bytes(), &|p| log.push(p))
+    let img = c
+        .upload_library_image_committed("lib-1", &UPLOAD, png_bytes(), &|p| log.push(p))
         .await
         .unwrap();
-    assert_eq!(shot.id, "new-1");
-    c.reorder(&set.id, &["new-1".into(), "keep-2".into()])
-        .await
-        .unwrap();
+    assert_eq!(img.id, "new-1");
 
     let steps: Vec<_> = log.all().iter().map(|p| p.step).collect();
     assert_eq!(steps.first(), Some(&UploadStep::Reserve));
-    assert_eq!(steps.last(), Some(&UploadStep::Done));
-    for s in [
-        UploadStep::Transfer,
-        UploadStep::Commit,
-        UploadStep::Processing,
-    ] {
+    assert_eq!(steps.last(), Some(&UploadStep::Commit));
+    for s in [UploadStep::Transfer, UploadStep::Commit] {
         assert!(steps.contains(&s), "missing {s:?} in {steps:?}");
     }
     let last = log.all().pop().unwrap();
@@ -348,7 +265,7 @@ async fn happy_path_replaces_and_orders_a_set() {
     assert!(
         events
             .iter()
-            .any(|e| matches!(e.kind, HttpEventKind::Response { status: 204, .. }))
+            .any(|e| matches!(e.kind, HttpEventKind::Response { status: 201, .. }))
     );
     let dump = format!("{events:?}");
     assert!(!dump.contains("SECRET"), "signed URL leaked: {dump}");
@@ -398,40 +315,12 @@ async fn part_upload_is_retried_after_server_error() {
         .await;
     mount_parts_ok(&f).await;
     mount_commit(&f, "new-1").await;
-    mount_poll(&f, "new-1", screenshot("new-1", "COMPLETE", &json!(null))).await;
-    let shot = f
+    let img = f
         .client
-        .upload_screenshot("set-1", "01.png", png_bytes(), &ignore_progress)
+        .upload_library_image_committed("lib-1", &UPLOAD, png_bytes(), &ignore_progress)
         .await
         .unwrap();
-    assert_eq!(shot.id, "new-1");
-}
-
-#[tokio::test]
-async fn rejected_part_deletes_the_reservation() {
-    let f = fixture(fast_options()).await;
-    mount_reservation(&f, "new-1").await;
-    Mock::given(method("PUT"))
-        .respond_with(ResponseTemplate::new(403))
-        .mount(&f.server)
-        .await;
-    Mock::given(method("DELETE"))
-        .and(path("/v1/appScreenshots/new-1"))
-        .respond_with(ResponseTemplate::new(204))
-        .expect(1)
-        .mount(&f.server)
-        .await;
-    Mock::given(method("PATCH"))
-        .respond_with(ResponseTemplate::new(200))
-        .expect(0)
-        .mount(&f.server)
-        .await;
-    let err = f
-        .client
-        .upload_screenshot("set-1", "01.png", png_bytes(), &ignore_progress)
-        .await
-        .unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::Validation, "{err}");
+    assert_eq!(img.id, "new-1");
 }
 
 #[tokio::test]
@@ -499,60 +388,6 @@ async fn rate_limit_without_header_retries_with_backoff_then_gives_up() {
 }
 
 #[tokio::test]
-async fn processing_failure_is_reported_and_cleaned_up() {
-    let f = fixture(fast_options()).await;
-    mount_reservation(&f, "new-1").await;
-    mount_parts_ok(&f).await;
-    mount_commit(&f, "new-1").await;
-    mount_poll(
-        &f,
-        "new-1",
-        json!({ "data": { "type": "appScreenshots", "id": "new-1", "attributes": {
-            "assetDeliveryState": { "state": "FAILED", "errors": [
-                { "code": "IMAGE_INCORRECT_DIMENSIONS", "description": "The dimensions of one or more screenshots are wrong." }
-            ] }
-        } } }),
-    )
-    .await;
-    Mock::given(method("DELETE"))
-        .and(path("/v1/appScreenshots/new-1"))
-        .respond_with(ResponseTemplate::new(204))
-        .expect(1)
-        .mount(&f.server)
-        .await;
-    let err = f
-        .client
-        .upload_screenshot("set-1", "01.png", png_bytes(), &ignore_progress)
-        .await
-        .unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::Processing);
-    assert_eq!(err.details()[0].code, "IMAGE_INCORRECT_DIMENSIONS");
-    assert!(err.to_string().contains("dimensions"));
-}
-
-#[tokio::test]
-async fn processing_timeout() {
-    let mut opts = fast_options();
-    opts.poll.timeout = Duration::from_millis(50);
-    let f = fixture(opts).await;
-    mount_reservation(&f, "new-1").await;
-    mount_parts_ok(&f).await;
-    mount_commit(&f, "new-1").await;
-    mount_poll(
-        &f,
-        "new-1",
-        screenshot("new-1", "UPLOAD_COMPLETE", &json!(null)),
-    )
-    .await;
-    let err = f
-        .client
-        .upload_screenshot("set-1", "01.png", png_bytes(), &ignore_progress)
-        .await
-        .unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::Timeout);
-}
-
-#[tokio::test]
 async fn no_editable_version_is_a_conflict() {
     let f = fixture(fast_options()).await;
     Mock::given(method("GET"))
@@ -587,33 +422,6 @@ async fn no_editable_version_is_a_conflict() {
         Some(("1.1".to_owned(), "WAITING_FOR_REVIEW".to_owned()))
     );
     assert_eq!(info.suggestion.as_deref(), Some("1.1.1"));
-}
-
-#[tokio::test]
-async fn state_error_from_api_is_a_conflict() {
-    let f = fixture(fast_options()).await;
-    Mock::given(method("DELETE"))
-        .respond_with(
-            ResponseTemplate::new(409).set_body_json(json!({ "errors": [ {
-            "status": "409", "code": "STATE_ERROR", "title": "The request cannot be fulfilled",
-            "detail": "Screenshots cannot be changed in the current state."
-        } ] })),
-        )
-        .mount(&f.server)
-        .await;
-    let err = f.client.delete_screenshot("x").await.unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::Conflict);
-    assert_eq!(err.details()[0].code, "STATE_ERROR");
-}
-
-#[tokio::test]
-async fn delete_of_missing_screenshot_is_ok() {
-    let f = fixture(fast_options()).await;
-    Mock::given(method("DELETE"))
-        .respond_with(ResponseTemplate::new(404))
-        .mount(&f.server)
-        .await;
-    f.client.delete_screenshot("gone").await.unwrap();
 }
 
 #[tokio::test]

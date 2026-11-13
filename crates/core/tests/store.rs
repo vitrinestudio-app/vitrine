@@ -61,6 +61,24 @@ fn yaml_round_trip() {
     assert_eq!(back.store, p.store);
 }
 
+/// `upload_flow` was retired on 2026-11-13 (the App Asset Library is the
+/// only Apple flow): older projects still load and the key is not written
+/// again.
+#[test]
+fn retired_upload_flow_is_read_and_dropped() {
+    for flow in ["auto", "asset_library", "screenshot_sets"] {
+        let s = store(&format!(
+            "apple: {{account: team-a, app_id: \"1234567890\", upload_flow: {flow}}}"
+        ));
+        let a = s.apple.as_ref().unwrap();
+        assert_eq!(a.account.as_deref(), Some("team-a"));
+        let out = io::to_yaml(&s).unwrap();
+        assert!(!out.contains("upload_flow"), "{out}");
+        assert_eq!(store(&out), s);
+    }
+    assert!(io::from_yaml::<StoreSettings>("apple: {upload_flow: sideways}").is_err());
+}
+
 #[test]
 fn bad_values_are_rejected() {
     assert!(io::from_yaml::<StoreSettings>("apple: {nope: 1}").is_err());

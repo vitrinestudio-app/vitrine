@@ -591,19 +591,12 @@ fn print_plan(plan: &Value, global: &Global) {
             "{} {}",
             style.bold(store_name(sp["store"].as_str().unwrap_or_default())),
             style.dim(&format!(
-                "(account {}, app {}, flow {}{})",
+                "(account {}, app {}, flow {})",
                 sp["account"].as_str().unwrap_or("-"),
                 sp["app"].as_str().unwrap_or("-"),
                 sp["flow"].as_str().unwrap_or_default(),
-                sp["flow_setting"]
-                    .as_str()
-                    .map(|s| format!(", setting {s}"))
-                    .unwrap_or_default()
             ))
         );
-        if let Some(n) = sp["flow_note"].as_str() {
-            println!("  {}", style.warn(n));
-        }
         if let Some(r) = sp.get("remote") {
             if let Some(v) = r["version"].as_str() {
                 println!(
@@ -637,13 +630,7 @@ fn print_plan(plan: &Value, global: &Global) {
                 s["slot"].as_str().unwrap_or_default()
             );
             if let Some(pl) = s["placement"].as_str() {
-                let flow = s["flow"]
-                    .as_str()
-                    .map(|f| format!(" ({f})"))
-                    .unwrap_or_default();
-                println!("    {}", style.dim(&format!("{pl}{flow}")));
-            } else if let Some(f) = s["flow"].as_str() {
-                println!("    {}", style.dim(&format!("flow {f}")));
+                println!("    {}", style.dim(pl));
             }
             if let Some(r) = s["reason"].as_str()
                 && (global.verbose
@@ -804,11 +791,9 @@ mod tests {
             "mapping": [
                 {"slot": "APP_IPHONE_DUO", "placement_types": ["APP_SCREENSHOT"],
                  "display_class": "IPHONE_DUO", "platforms": ["IPHONE_APP_STORE"],
-                 "groups": ["APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE 1398x2034"],
-                 "asset_library_only": true},
+                 "groups": ["APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE 1398x2034"]},
                 {"slot": "header", "placement_types": ["PRODUCT_PAGE_HEADER_ASSET"],
-                 "platforms": ["IPHONE_APP_STORE", "IPAD_APP_STORE"], "groups": [],
-                 "asset_library_only": true}
+                 "platforms": ["IPHONE_APP_STORE", "IPAD_APP_STORE"], "groups": []}
             ],
             "mapping_checked": "2026-11-10"
         });

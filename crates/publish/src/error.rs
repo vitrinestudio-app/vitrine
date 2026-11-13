@@ -98,7 +98,7 @@ pub enum Error {
         /// Store error details.
         details: Vec<ApiErrorDetail>,
     },
-    /// Asset processing failed on the store side (`assetDeliveryState` FAILED).
+    /// Asset processing failed on the store side (asset library image `FAILED`).
     #[error("processing of {asset_id} failed: {}", join_details(details))]
     Processing {
         /// Store id of the asset.

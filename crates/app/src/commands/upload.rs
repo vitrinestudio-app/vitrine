@@ -113,7 +113,6 @@ pub fn upload_execute(app: &AppState, args: UploadExecuteArgs) -> CmdResult<Uplo
                     .map(|a| a.platform)
                     .unwrap_or_default(),
             ),
-            flow: remote::flow_setting(&project),
         })
     } else {
         None
@@ -303,8 +302,6 @@ pub struct RefdataMapping {
     /// Matching groups with their image sizes (`IPHONE_DUO_OUTER_PROFILE
     /// 1398x2034`), per placement type.
     pub groups: Vec<String>,
-    /// Only the asset library can upload it.
-    pub asset_library_only: bool,
 }
 
 /// `upload_refdata`: Apple's catalog plus how Vitrine Studio's mapping resolves.
@@ -448,7 +445,6 @@ fn refdata_mapping(rd: &vitrine_publish::apple::RefData) -> Vec<RefdataMapping> 
                 display_class: sp.display_class,
                 platforms: sp.platforms,
                 groups,
-                asset_library_only: sp.asset_library_only,
             })
         })
         .collect()

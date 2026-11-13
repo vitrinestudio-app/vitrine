@@ -44,7 +44,9 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 ## 5.3 App Store Connect client
 Client part done 2026-11-10 (`vitrine_publish::apple`, ADR 0017). Apple
 deprecated the set-based screenshot API in 4.5.1 (App Asset Library
-replaces it) – open question in ADR 0017.
+replaces it) – open question in ADR 0017. 2026-11-13: the set-based flow
+and `store.apple.upload_flow` were removed again; the App Asset Library is
+the only Apple flow (ARCHITECTURE.md decision 0034).
 - [x] JWT ES256 (15 min, max 20; team + individual keys), apps → editable
       `appStoreVersion` → `appStoreVersionLocalizations` →
       `appScreenshotSets` per display type

@@ -6,7 +6,8 @@
 //! Responsibilities:
 //!
 //! - **App Store Connect API** ([`apple::Client`]): API key (.p8) → ES256
-//!   JWT, screenshot sets per display type, reserve/upload/commit, ordering.
+//!   JWT, app/version/localization lookup and the App Asset Library
+//!   (images: reserve/upload/commit; placements, ordering requests).
 //! - **Google Play Developer API** ([`google::Client`], Android Publisher
 //!   v3): service account → OAuth 2.0 token, edits, `deleteall`, upload,
 //!   commit.

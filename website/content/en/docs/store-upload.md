@@ -121,7 +121,7 @@ Only stores listed here are uploaded. Which images go where comes from each
 target's **Store slot** (App Store display type / Play image type) – the presets
 set it for you.
 
-{{< shot src="images/project-stores.jpg" alt="Project settings, Stores tab: account, app, Apple ID, bundle ID, platform and upload method for the App Store; account and package name for Google Play; store languages." caption="Project settings → **Stores**: the project linked to both stores." >}}
+{{< shot src="images/project-stores.jpg" alt="Project settings, Stores tab: account, app, Apple ID, bundle ID and platform for the App Store; account and package name for Google Play; store languages." caption="Project settings → **Stores**: the project linked to both stores." >}}
 
 ## 3. Plan, confirm, upload
 
@@ -205,23 +205,21 @@ limit the run pauses (*Paused*, up to 15 minutes) and retries.
 Apple also wants each language in the app information before you submit – App
 Store Connect shows that.
 
-### App Store upload method
+### App Store upload method {#app-store-upload-method}
 
-Apple has two upload interfaces: the older **screenshot sets** (deprecated by
-Apple, still working) and the newer **App Asset Library**. iPhone Duo
-screenshots and the App Store **header** and **search results** creatives
-exist only in the asset library.
+Vitrine Studio uploads to App Store Connect through Apple's **App Asset
+Library** – for every device (iPhone, iPad, Mac, Apple Watch, Apple TV,
+Vision Pro, iMessage, iPhone Duo) and for the **header** and **search
+results** creatives. There is nothing to choose. (Earlier versions could use
+Apple's older screenshot-set interface; Apple deprecated it, and Vitrine
+Studio no longer uses it. An old `upload_flow` line in `project.yaml` is
+ignored and disappears on the next save.)
 
-**Project settings → Stores → App Store → Upload method:**
+The API key needs access to the app's asset library. Without it the plan (with
+*Check store state*) says *App Asset Library is not available* and nothing is
+uploaded to the App Store – check the key's role in App Store Connect.
 
-- **Automatic** (default): screenshot sets for all devices – the method
-  verified in real uploads – and the App Asset Library only for iPhone Duo,
-  header and search results.
-- **App Asset Library only** – to try the newer API for everything.
-- **Screenshot sets only (older API)** – iPhone Duo and creatives are then
-  skipped with a warning.
-
-The plan shows which method each set uses. In the asset library, images
+In the asset library, images
 uploaded by Vitrine Studio are named `<file> [<fingerprint>]`; identical images
 are reused across languages, and old images it uploaded are removed once
 nothing uses them (images you uploaded by hand stay).
