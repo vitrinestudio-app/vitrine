@@ -6,6 +6,7 @@
 //! coordinates with the overlay data of the target.
 
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::CallToolResult;
@@ -36,6 +37,7 @@ text: text (translation key), style, box {top, left, right, bottom} (margins to 
 (left|center|right), valign (top|center|bottom), fit {shrink_to, max_lines}, color, font_size, \
 stroke {color, width}, glow {color, radius}, shadow, hyphenate. \
 image: asset, fit, shadow. shape: shape (rect|ellipse|line), radius, fill, stroke, shadow. \
+group: scale (0.1..10, default 1; scales all children around the group pivot, e.g. a variant override {scale: 0.85}). \
 background: fill (\"#RRGGBB\" or {kind: linear-gradient|radial-gradient|image, …})."
     };
 }
@@ -273,6 +275,8 @@ edit_params! {
     pub struct ElementResizeParams {
         pub id: String,
         /// New width in lu (devices: width only, the height follows).
+        /// Canvas lu: inside a scaled group the stored value is divided
+        /// by the group scale. Groups are scaled with `scale` instead.
         #[serde(default)]
         pub width: Option<f64>,
         /// New height in lu.
@@ -342,11 +346,81 @@ pub struct ApplyOpsParams {
     /// {"op": "set_lang_override", "element": "title", "lang": "de",
     /// "patch": {"font_size": 64}}, {"op": "set_string", "lang": "de",
     /// "key": "hero.title", "value": "Hallo"}]`. Every op and field:
-    /// `docs_get {topic: "ops"}`.
-    pub ops: Vec<Value>,
-    /// Undo label (default: derived from the ops).
+    /// `docs_get {topic: "ops"}`. Give `ops` or `file`, not both.
+    #[serde(default)]
+    pub ops: Option<Vec<Value>>,
+    /// Read the ops from this file instead of `ops` – for big batches
+    /// (whole canvases). Path relative to the project folder (no absolute
+    /// paths, no `..`, no symlinks leading out), e.g. `.cache/ops/phone.json`.
+    /// `.json` or `.yaml`/`.yml`, holding the ops array or `{"ops": [...],
+    /// "label": "..."}`. The file is left in place.
+    #[serde(default)]
+    pub file: Option<String>,
+    /// Undo label (default: the file's `label`, else derived from the ops).
     #[serde(default)]
     pub label: Option<String>,
+}
+
+/// Largest ops file `apply_ops {file}` reads (bytes).
+const MAX_OPS_FILE: u64 = 32 * 1024 * 1024;
+
+/// The ops (and label) of an `apply_ops {file}` file inside the project
+/// folder `dir`.
+fn ops_from_file(dir: &Path, file: &str) -> Result<(Vec<Value>, Option<String>), CommandError> {
+    let path = crate::params::project_file(dir, file)?;
+    let size = std::fs::metadata(&path)
+        .map_err(|e| CommandError::io(format!("{file}: {e}")))?
+        .len();
+    if size > MAX_OPS_FILE {
+        return Err(CommandError::invalid(format!(
+            "{file} is too large ({size} bytes, at most {MAX_OPS_FILE})"
+        )));
+    }
+    let text =
+        std::fs::read_to_string(&path).map_err(|e| CommandError::io(format!("{file}: {e}")))?;
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase);
+    let value: Value = match ext.as_deref() {
+        Some("json") => serde_json::from_str(&text)
+            .map_err(|e| CommandError::invalid(format!("{file}: invalid JSON: {e}")))?,
+        Some("yaml" | "yml") => vitrine_core::io::from_yaml(&text)
+            .map_err(|e| CommandError::invalid(format!("{file}: invalid YAML: {e}")))?,
+        _ => {
+            return Err(CommandError::invalid(format!(
+                "{file}: give a .json, .yaml or .yml file"
+            )));
+        }
+    };
+    match value {
+        Value::Array(ops) => Ok((ops, None)),
+        Value::Object(mut m) if m.contains_key("ops") => {
+            if let Some(k) = m.keys().find(|k| *k != "ops" && *k != "label") {
+                return Err(CommandError::invalid(format!(
+                    "{file}: unknown key `{k}` (expected `ops` and optional `label`)"
+                )));
+            }
+            let label = match m.remove("label") {
+                None | Some(Value::Null) => None,
+                Some(Value::String(l)) => Some(l),
+                Some(_) => {
+                    return Err(CommandError::invalid(format!(
+                        "{file}: `label` must be a string"
+                    )));
+                }
+            };
+            match m.remove("ops") {
+                Some(Value::Array(ops)) => Ok((ops, label)),
+                _ => Err(CommandError::invalid(format!(
+                    "{file}: `ops` must be an array"
+                ))),
+            }
+        }
+        _ => Err(CommandError::invalid(format!(
+            "{file}: expected an array of ops or {{ops: [...], label}}"
+        ))),
+    }
 }
 
 /// Compact inspector data of an element (`element_get`).
@@ -824,7 +898,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Power tool: apply raw model ops atomically as ONE undo step (all or nothing). JSON form {\"op\": \"<name>\", …}. update_element always writes the base element; overrides use set_lang_override / reset_lang_override_field / set_variant_override / reset_override_field. Every op and field: call docs_get {topic: \"ops\"} (also resource vitrine://docs/ops). Prefer the specific tools; use this for multi-part changes that must be one step."
+        description = "Power tool: apply raw model ops atomically as ONE undo step (all or nothing). JSON form {\"op\": \"<name>\", …}. update_element always writes the base element; overrides use set_lang_override / reset_lang_override_field / set_variant_override (REPLACES the element's whole variant override – to change single fields use element_update {scope: \"variant\"}, which merges; fields a replace drops are listed in `dropped_override_fields`) / reset_override_field. Big batches (whole canvases): write them to a file in the project folder and pass {\"file\": \".cache/ops/phone.json\"} instead of `ops` (JSON or YAML: the ops array or {\"ops\": [...], \"label\": \"...\"}). Every op and field: call docs_get {topic: \"ops\"} (also resource vitrine://docs/ops). Prefer the specific tools; use this for multi-part changes that must be one step."
     )]
     async fn apply_ops(
         &self,
@@ -832,9 +906,17 @@ impl VitrineMcp {
         ctx: RequestContext<RoleServer>,
     ) -> CallToolResult {
         self.run(&ctx, move |app| {
+            let (ops, file_label) = match (p.ops, p.file) {
+                (Some(_), Some(_)) => {
+                    return Err(CommandError::invalid("give `ops` or `file`, not both"));
+                }
+                (None, None) => return Err(CommandError::invalid("give `ops` or `file`")),
+                (Some(ops), None) => (ops, None),
+                (None, Some(f)) => ops_from_file(app.session()?.dir(), &f)?,
+            };
             // Store mapping (app ids, accounts) is read-only over MCP
             // (Phase 5.1): the user sets it in the GUI.
-            if p.ops
+            if ops
                 .iter()
                 .any(|o| o.get("op").and_then(Value::as_str) == Some("set_store"))
             {
@@ -843,8 +925,8 @@ impl VitrineMcp {
                      the GUI (Project settings → Stores); read it with store_config_get",
                 ));
             }
-            let mut args = json!({ "ops": p.ops });
-            if let Some(l) = p.label {
+            let mut args = json!({ "ops": ops });
+            if let Some(l) = p.label.or(file_label) {
                 args["label"] = json!(l);
             }
             Ok(edited(&cmd(app, "apply_ops", args)?))

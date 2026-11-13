@@ -2,7 +2,8 @@
 title: Nutzung mit fastlane
 linkTitle: Nutzung mit fastlane
 description: "Vitrine Studio in einer fastlane-Lane: snapshot und screengrab nehmen auf, Vitrine Studio gestaltet die Screenshots, deliver und supply laden hoch – Schritt für Schritt."
-weight: 105
+weight: 30
+aliases: ["/de/docs/fastlane/"]
 icon: arrow
 ---
 
@@ -21,7 +22,7 @@ frameit. Auf Wunsch kann es die Screenshots auch selbst hochladen.
 | ein gerahmtes Bild pro Screenshot | eine Leinwand für das ganze Set; Seiten können Hintergründe und Geräte teilen |
 | `Framefile.json` (Hintergrund, Schrift, Abstände) | Leinwand-Hintergründe, Textstile, Gerätepositionen – visuell gestaltet |
 | `title.strings`, `keyword.strings` | die Texte in `i18n/<lang>.yaml` (ein Schlüssel pro Überschrift) |
-| die Geräterahmen von frameit | eingebaute Rahmen oder Apples Bezels, einmal importiert ([Geräte & Rahmen](../devices-frames/)) |
+| die Geräterahmen von frameit | eingebaute Rahmen oder Apples Bezels, einmal importiert ([Geräte & Rahmen](../../devices-frames/)) |
 | `*_framed.png` neben den Aufnahmen | Bilder in `export/` oder direkt in die Ordner von fastlane geschrieben |
 
 ## Schritt für Schritt {#step-by-step}
@@ -47,7 +48,7 @@ frameit. Auf Wunsch kann es die Screenshots auch selbst hochladen.
 3. **Einmal gestalten.** Lege die Leinwand an und übernimm die Überschriften
    aus deinen `title.strings` in die Texte (ein Schlüssel pro Screen, eine
    Datei pro Sprache – oder importiere sie als CSV, siehe
-   [Übersetzer](../languages/#working-with-translators-csv-and-xliff)).
+   [Übersetzer](../../languages/#working-with-translators-csv-and-xliff)).
 
 4. **Exportiere die fastlane-Struktur** in deinen fastlane-Ordner:
 
@@ -89,11 +90,38 @@ end
   Screenshot-Sets im fastlane-Ordnerlayout),
   Größen, die deliver ablehnt, Sprachen ohne Store-Sprache.
 
+## fastlane in der CI {#fastlane-in-ci}
+
+fastlane führt dieselbe Lane auf deinem Mac und in der CI aus – auf Bitrise,
+Codemagic, CircleCI, GitHub Actions, GitLab CI, Jenkins und anderen.
+Installiere auf dem CI-Rechner zuerst das Kommandozeilenwerkzeug
+([Installation in der CI](../../automation/#installing-the-cli-in-ci)); die Lane bleibt
+gleich. Diese hier prüft das Projekt vor dem Export und lässt den Build auch
+bei Warnungen fehlschlagen:
+
+```ruby
+lane :screenshots do
+  sh("vitrine", "--project", "../store-screens", "validate", "--strict")
+  sh("vitrine", "--project", "../store-screens", "export", "--layout", "fastlane", "--out", ".")
+  upload_to_app_store(skip_binary_upload: true, skip_metadata: true, overwrite_screenshots: true)
+end
+```
+
+(`sh` läuft in `fastlane/`, daher schreibt `--out .` nach
+`fastlane/screenshots/` und `fastlane/metadata/android/`.) Der CI-Rechner hat
+keine eigenen Apple-Bezels – siehe [Geräterahmen in der CI](../../automation/#device-frames-in-ci).
+
+{{< callout status >}}
+Ein fastlane-Plugin mit den Actions `vitrine_validate` und `vitrine_export`
+ist geplant; es ist ein **Entwurf** und noch nicht veröffentlicht. Bis dahin
+erledigen die `sh`-Aufrufe oben dasselbe.
+{{< /callout >}}
+
 ## Screenshots mit Vitrine Studio hochladen {#upload-screenshots-with-vitrine-studio}
 
 deliver und supply übertragen weiterhin App-Binary und Metadaten. Die
 Screenshots kann auf Wunsch Vitrine Studio übernehmen: Es lädt
-[direkt hoch](../store-upload/) – zu App Store Connect und Google Play, mit
+[direkt hoch](../../store-upload/) – zu App Store Connect und Google Play, mit
 einem Plan, den du bestätigst, bevor etwas gesendet wird, und inkrementell
 (unveränderte Sets werden übersprungen). In der Lane lässt du die Screenshots
 dann bei deliver und supply aus:
@@ -103,4 +131,4 @@ upload_to_app_store(skip_screenshots: true)          # Binary und Metadaten wie 
 upload_to_play_store(skip_upload_screenshots: true)
 ```
 
-Wie der Upload aus der CI heraus läuft: [Hochladen aus der CI](../ci/#uploading-from-ci).
+Wie der Upload aus der CI heraus läuft: [Hochladen aus der CI](../../automation/#uploading-from-ci).

@@ -168,7 +168,7 @@ Every element has an `id`, a `kind` and a home `page` (0-based). Units are lu
 | `image` | `asset` (e.g. `assets/badge.png`), `fit`, `shadow` |
 | `shape` | `shape` (`rect`/`ellipse`/`line`), `radius`, `fill`, `stroke`, `shadow` |
 | `background` | `fill` – fills the home page |
-| `group` | `children` – elements moved and rotated together |
+| `group` | `children` – elements moved, rotated and scaled together; `scale` (0.1–10, default 1) scales them around the group's pivot |
 
 A text without `box` is a free box centred at `at` with `width`.
 

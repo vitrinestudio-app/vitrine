@@ -32,7 +32,7 @@ oder neuer (Ubuntu 22.04, Debian 12 und neuer); die statischen
 `-musl`-Builds haben keine Abhängigkeiten und laufen auf jedem Linux, auch
 auf Alpine. Für CI gibt es außerdem ein Container-Image mit dem
 Kommandozeilen-Tool (amd64 und arm64):
-`ghcr.io/vitrinestudio-app/vitrine-cli` – siehe [CI/CD](../ci/).
+`ghcr.io/vitrinestudio-app/vitrine-cli` – siehe [Automatisierung](../automation/).
 
 Jedes Release enthält außerdem `SHA256SUMS.txt`, mit dem du deinen Download
 prüfen kannst:

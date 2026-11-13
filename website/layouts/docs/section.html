@@ -1,28 +1,21 @@
 {{ define "bodyclass" }}page page--docs{{ end }}
 {{ define "main" }}
+{{- $root := eq .RelPermalink (site.GetPage "/docs").RelPermalink }}
 <div class="wrap docs">
   {{ partial "docs-nav.html" . }}
   <article class="docs__main">
-    <header class="docs__head">
-      <p class="eyebrow">{{ T "docsTitle" }}</p>
-      <h1>{{ .Title }}</h1>
-      {{- with .Description }}<p class="docs__lead">{{ . }}</p>{{ end }}
-    </header>
+    {{ partial "docs-head.html" . }}
     <div class="prose">
       {{ .Content }}
     </div>
-    <div class="docs-cards">
-      {{- range $i, $p := .Pages.ByWeight }}
-      <a class="docs-card card card--hover" href="{{ .RelPermalink }}">
-        <span class="feature__icon">{{ partial "icon.html" (.Params.icon | default "book") }}</span>
-        <span class="docs-card__text">
-          <strong>{{ .LinkTitle }}</strong>
-          <span>{{ .Description }}</span>
-        </span>
-      </a>
-      {{- end }}
-    </div>
+    {{- if $root }}
+    {{ partial "docs-cards.html" . }}
     <p class="docs__draft">{{ T "docsDraftNote" }}</p>
+    {{- else }}
+    {{- /* A nested section (docs/automation/) places its cards in the text
+           with the section-cards shortcode and gets the pager like a page. */}}
+    {{ partial "docs-pager.html" . }}
+    {{- end }}
   </article>
 </div>
 {{ end }}

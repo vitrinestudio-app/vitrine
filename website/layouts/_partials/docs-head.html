@@ -1,0 +1,17 @@
+{{- /* Title block of a docs page or section: eyebrow ("Documentation", or
+       "Documentation · <section>" inside a nested section such as
+       docs/automation/), title, and the description as the lead box. */ -}}
+{{- $docs := site.GetPage "/docs" -}}
+<header class="docs__head">
+  <p class="eyebrow">
+    {{- T "docsTitle" -}}
+    {{- with .Parent }}{{ if and (ne .RelPermalink $docs.RelPermalink) (ne .Kind "home") }}<span class="docs__crumb-sep" aria-hidden="true"> · </span><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>{{ end }}{{ end -}}
+  </p>
+  <h1>{{ .Title }}</h1>
+  {{- with .Description }}
+  <div class="docs__lead">
+    <span class="docs__lead-label">{{ T "docsLeadLabel" }}</span>
+    <p>{{ . }}</p>
+  </div>
+  {{- end }}
+</header>

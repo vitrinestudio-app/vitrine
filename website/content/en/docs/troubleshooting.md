@@ -73,8 +73,10 @@ Yes. Changes on disk are picked up live. If you changed the same thing in the
 app at the same moment, the app reloads the file and tells you that your last
 edit was not saved.
 
-**My German headline is tiny.**
-Auto-fit shrank it to fit. Give German a [language override](../languages/#language-overrides)
+**My French headline is tiny.**
+Auto-fit shrank it to fit. French often needs noticeably more room than
+English – "Edit photos in seconds" becomes "Retouchez vos photos en quelques
+secondes". Give French a [language override](../languages/#language-overrides)
 with a wider box or a higher minimum size, add a soft hyphen, or switch on
 hyphenation.
 
@@ -116,11 +118,12 @@ Create a new version in App Store Connect, then plan again. See
 **Can I use Vitrine Studio without the app, e.g. in CI?**
 Yes – the [CLI](../cli/) validates, exports, imports and uploads; use the
 standalone CLI archive on build machines and `VITRINE_APP_DIR` for a separate
-settings folder.
+settings folder. See [Automation](../automation/).
 
 **Does Vitrine Studio send data anywhere?**
 Only when you ask it to: store uploads and connection tests go to Apple or
-Google, the gallery commands to `api.vitrinestudio.app`, and the daily update
+Google, the template gallery (in the app or with `vitrine gallery`) to
+`api.vitrinestudio.app`, and the daily update
 check asks GitHub whether a new version exists (switch it off in *App
 settings → Updates*). No statistics, no account.
 
@@ -138,7 +141,6 @@ it live. Store uploads need your click. See [AI assistants](../ai-mcp/).
 - No Swedish hyphenation patterns.
 - Frame packs in `frames/` are not recompiled while the project is open –
   re-open it after changing them.
-- The template gallery can't be browsed from the app yet.
 
 ## Getting help
 
