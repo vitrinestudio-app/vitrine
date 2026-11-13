@@ -183,22 +183,29 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
   transport (window captured with `screencapture -l`).
 
 ## Follow-ups (known gaps, not blocking Phase 2)
+State 2026-11-13 in brackets.
 - Home-page lock (`store.pageLocks`) is UI state only, not persisted.
+  [done in 3.6: model field]
 - A new string key gets its text only in the current language.
+  [done in 3.6: optionally in all languages]
 - Margins ↔ free-box conversion of texts in the inspector is approximate.
 - Variants: no preset-on-create (content scale, overrides from a preset).
+  [partly: "New variant" dialog copies another variant, 2026-11-10]
 - Renaming colours/text styles that elements use is refused (no element
-  rewrite yet).
+  rewrite yet). [done in 3.6: references are updated]
 - No font import UI (fonts are listed; add files to `fonts/`).
+  [still open; installed system fonts are usable and can be stored in the
+  project since 2026-11-12, ADR 0028]
 - Switching the UI language reloads the web view (view context kept).
 - No native menu bar (app menu is a top-bar button).
+  [done 2026-11-10 for macOS, ADR 0020; Windows/Linux keep the in-app menu]
 - Targets editor: store-slot dropdown limited to the preset's values.
 - Banner page ranges are 0-based in the UI.
 - Translation and asset usage ignore variant overrides.
 - Translations table re-validates all targets after each edit.
 - Drag & drop in Tauri: the code paths start without errors, but a real
   file drop onto the window (asset import, folder → open project) is
-  untested.
+  untested. [still untested, see Phase 7 smoke tests]
 - Group pivot reference for margin texts (rotation of groups with
   margin-box texts).
 - Add menu: new texts/devices land centred on the page and may cover
