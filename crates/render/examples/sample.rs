@@ -7,8 +7,9 @@
 //! ```
 //!
 //! The sample project is copied to `<out-dir>/project` and given
-//! screenshots (the Phase 0 spike test screens in `assets/spike/` plus
-//! generated wide "web" and landscape screens), an SVG badge, a `web` target
+//! screenshots (phone screens of the example project in
+//! `tests/fixtures/example/screenshots/` plus generated tablet, wide "web"
+//! and landscape screens), an SVG badge, a `web` target
 //! and a `devices` canvas exercising more frames (landscape phone and tablet,
 //! desktop with browser chrome, frameless screenshot, a missing screenshot
 //! placeholder). Writes `<out-dir>/previews/*`, `<out-dir>/canvas/*` and
@@ -127,22 +128,22 @@ fn setup(out: &Path) -> anyhow::Result<PathBuf> {
         std::fs::remove_dir_all(&project)?;
     }
     copy_dir(&repo.join("crates/core/tests/data/sample"), &project)?;
-    let spike = repo.join("assets/spike");
+    let screens = repo.join("tests/fixtures/example/screenshots");
     let shots = [
-        ("en/ios-phone/home.png", "phone-home.png"),
-        ("en/home.png", "phone-home.png"),
-        ("de/ios-phone/home.png", "phone-harvest.png"),
-        ("en/planner.png", "tablet-planner.png"),
+        ("en/ios-phone/home.png", "en/ios-phone/home.png"),
+        ("en/home.png", "en/ios-phone/home.png"),
+        ("de/ios-phone/home.png", "de/ios-phone/harvest.png"),
     ];
     for (to, from) in shots {
         let to = project.join("screenshots").join(to);
         std::fs::create_dir_all(to.parent().expect("parent"))?;
-        std::fs::copy(spike.join(from), to)?;
+        std::fs::copy(screens.join(from), to)?;
     }
     for (name, w, h, accent) in [
         ("site", 1440, 900, [0x2F, 0x6B, 0x3A]),
         ("dashboard", 1440, 900, [0x3D, 0x5A, 0xA8]),
         ("wide", 2556, 1179, [0xE8, 0xA3, 0x3D]),
+        ("planner", 2752, 2064, [0x5B, 0x8C, 0x5A]),
     ] {
         let to = project.join(format!("screenshots/en/{name}.png"));
         save_png_rgb(&fake_screen(w, h, accent), &to, [255, 255, 255])?;

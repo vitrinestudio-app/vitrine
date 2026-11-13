@@ -235,7 +235,7 @@ fn minimal_project_with_screenshot_validates() {
     let o = vitrine_in(&dir, &["validate"]);
     assert_eq!(code(&o), 1);
     std::fs::copy(
-        repo_file("assets/spike/phone-home.png"),
+        repo_file("tests/fixtures/example/screenshots/en/ios-phone/home.png"),
         dir.join("screenshots/en/home.png"),
     )
     .unwrap();

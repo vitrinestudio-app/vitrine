@@ -57,7 +57,7 @@ hand to Claude Code for it.
 - `cargo test --all` (catalog checks, frame geometry invariants for every model ×
   orientation, smoke tests drawing every model in both styles).
 - Contact sheets: `cargo run -p vitrine-render --release --example frames`
-  → `docs/spike/frames_catalog_{stylized,detailed}.png`; close-ups:
+  → `target/frames/frames_catalog_{stylized,detailed}.png` (or `-- <out-dir>`); close-ups:
   `… --example frames -- --closeup <dir>`. Look at them (downscaled) and check:
   screen corners concentric with the body, cutouts placed right in portrait and
   landscape, buttons on the right edges, colours in both styles, no seams

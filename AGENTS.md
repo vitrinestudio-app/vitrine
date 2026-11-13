@@ -63,13 +63,13 @@ changing the model, renderer or architecture. Glossary: KONZEPT §2
 | `.signpath/` | Windows signing configuration drafts (dormant) |
 | `deny.toml`, `about.toml` | licence allow-list (`cargo deny`), third-party notices (cargo-about) |
 | `docs/KONZEPT.md` | binding concept (German) |
-| `docs/adr/` | architecture decision records `NNNN-title.md` (format: ADR 0000) |
+| `docs/adr/` | architecture decision records `NNNN-title.md` (format: ADR 0000); images they link in `docs/adr/images/` |
 | `docs/plan/` | `STATUS.md` (state + decision log), `phase-N.md` task lists |
 | `docs/guide/` | `NOTES.md` (user-guide notes), `frame-packs.md` |
 | `docs/research/` | dated research notes and MCP test reports |
 | `docs/api/` | `API.md` (gallery API), `DEPLOY.md` (server deployment) |
 | `docs/dev/` | `releasing.md`, `adding-devices.md`, inactive CLA workflow draft |
-| `docs/example/`, `docs/gui/`, `docs/spike/` | images for the README; Phase 0 spike output |
+| `docs/example/`, `docs/gui/` | images for the README |
 
 Version: `[workspace.package] version` in `Cargo.toml` is the single source.
 
