@@ -358,12 +358,13 @@ pub fn canvas_remove(app: &AppState, args: super::inspect::CanvasArgs) -> CmdRes
     }
     // Elements first (their `visible_in` may name the canvas's targets),
     // then the targets, then the canvas itself.
-    let mut ops: Vec<Op> = s
-        .elements
-        .iter()
-        .rev()
-        .map(|e| Op::RemoveElement { id: e.id.clone() })
-        .collect();
+    let mut ops = p.clip_to_release_canvas_ops(&s.id);
+    ops.extend(
+        s.elements
+            .iter()
+            .rev()
+            .map(|e| Op::RemoveElement { id: e.id.clone() }),
+    );
     ops.extend(
         p.targets
             .iter()

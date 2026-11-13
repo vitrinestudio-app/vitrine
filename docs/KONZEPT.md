@@ -4,7 +4,7 @@
 >
 > Open-Source-Desktop-Programm (GPL-3.0-or-later, kostenlos) zum Erstellen von App-Store- und Play-Store-Screenshots mit Device-Frames, Texten, Übersetzungen, Panorama-Sets, Store-Upload und MCP-Schnittstelle.
 >
-> Stand: November 2026 · Status: Entwurf
+> Stand: November 2026 · Status: Entwurf (verbindliches Konzept) · Umsetzung (13.11.2026): Phasen 0–5 gebaut, Phase 6 weitgehend gebaut, Veröffentlichung in Vorbereitung – siehe §12 und `docs/plan/STATUS.md`
 
 ---
 
@@ -24,7 +24,7 @@ Ein lokales, schnelles Werkzeug, mit dem man Store-Screenshots einmal gestaltet 
 
 - App-Preview-Videos
 - Screenshots aufnehmen (Simulator-/Geräte-Steuerung). Dafür gibt es fastlane snapshot, Xcode-UI-Tests usw.; Vitrine Studio importiert deren Ergebnisse.
-- 3D-Perspektive à la Rotato – kommt erst als letzter, optionaler Schritt (Phase 7). Normale 2D-Rotation von Geräten und allen anderen Elementen ist dagegen von Anfang an enthalten.
+- 3D-Perspektive à la Rotato – kommt erst als letzter, optionaler Schritt (Phase 8; bis 13.11.2026 als Phase 7 geführt). Normale 2D-Rotation von Geräten und allen anderen Elementen ist dagegen von Anfang an enthalten.
 - Cloud-Sync, Team-Funktionen, Konten
 
 ---
@@ -170,7 +170,7 @@ Gemeinsame Eigenschaften: `id`, `kind`, `page` (Heimatseite), Position (`at`, re
 | **text** | Übersetzungsschlüssel, Stil, Textbox (Ränder zur Seite oder freie Box), Ausrichtung horizontal/vertikal, Auto-Fit (`shrink_to` Mindestgröße), max. Zeilen, Inline-Formatierung. |
 | **image** | Asset (PNG/JPEG/SVG), optional mit Sprachvarianten (z. B. Badges „Neu“/„New“). |
 | **shape** | Rechteck/abgerundet, Kreis, Linie; Füllung, Kontur, Schatten. Für Hervorhebungen, Pfeile, Sprechblasen. |
-| **group** | Gruppiert Elemente für gemeinsames Verschieben/Rotieren. |
+| **group** | Gruppiert Elemente für gemeinsames Verschieben/Rotieren/Skalieren (`scale` um den Gruppen-Drehpunkt, auch als Varianten-Override; ADR 0030). |
 
 **Text an Seiten binden.** Ein Text mit `page: 2` und `box: { top: 120, left: 80, right: 80 }` liegt auf Seite 3 mit 80 lu Rand links und rechts. Er wird an den Seitengrenzen beschnitten (`clip: page`) und kann nicht versehentlich in die Nachbarseite laufen. Geräte haben standardmäßig `clip: none` und laufen frei über Seitengrenzen.
 
@@ -420,6 +420,8 @@ Die GUI rendert **nicht** selbst im Browser. Sie zeigt die Pixmaps aus Rust und 
 | Weichzeichnen (Schatten) | eigene Box-Blur-Implementierung (3 Durchläufe ≈ Gauß) | tiny-skia hat keinen Blur |
 | Farbmanagement | `qcms` (später) | Display-P3-Screenshots → sRGB |
 
+*Umsetzung (bewusst abweichend):* Textlayout mit `parley` statt `cosmic-text` (Spike, ADR 0001; Glyphen über `skrifa`, Schriftindex über `fontique`, ADR 0028); Farbmanagement mit `moxcms` statt `qcms`, schon in Phase 6 umgesetzt (ADR 0021).
+
 ### 6.3 Export
 
 Drei Export-Arten:
@@ -467,6 +469,7 @@ Upload passiert nie ohne vorherigen Plan und ausdrückliche Bestätigung, auch n
 - Ablauf: App → bearbeitbare App-Store-Version → Lokalisierungen → Screenshot-Sets je Display-Typ → alte Screenshots löschen → neue reservieren, Teile hochladen, mit MD5-Prüfsumme bestätigen → Verarbeitungsstatus abfragen → Reihenfolge setzen.
 - Sprachzuordnung Projekt → Apple-Locale (`de` → `de-DE`), konfigurierbar.
 - Display-Typen, Grenzen und Endpunkte bei der Umsetzung gegen die aktuelle API-Dokumentation verifizieren.
+- *Umsetzung:* Apple hat die Screenshot-Set-API mit ASC API 4.5.1 als veraltet markiert; Nachfolger ist die App Asset Library. Beide Wege sind gebaut (ADR 0017, 0019); Standard `auto` = Screenshot-Sets + Library nur für iPhone Duo und Header-/Suchergebnis-Creatives, `upload_flow: asset_library` stellt pro Projekt ganz um.
 
 ### 7.3 Google – Play Developer API (Android Publisher v3)
 
@@ -487,6 +490,7 @@ Kein SDK, direkte REST-Aufrufe mit `reqwest` + rustls; JWT mit `jsonwebtoken`. E
 - `vitrine mcp [--project <pfad>]` startet einen MCP-Server über stdio (Crate `rmcp`, offizielles Rust-SDK).
 - Einbindung in Claude Desktop / Claude Code über die übliche MCP-Konfiguration; die GUI zeigt den passenden Konfigurationsschnipsel zum Kopieren.
 - Der Server nutzt dieselbe Operations-API wie GUI und CLI, also gelten dieselben Validierungen und es gibt keine Sonderwege.
+- *Umsetzung (erweitert, ADR 0014, 0015):* Die laufende GUI hostet den MCP-Server (lokaler HTTP-Endpunkt mit Token); `vitrine mcp` ist ein stdio-Proxy dorthin (startet die GUI bei Bedarf), `--headless` arbeitet direkt auf dem Ordner. Änderungen des Assistenten erscheinen live in der GUI und sind rückgängig machbar; „Zu Claude Desktop hinzufügen“ schreibt die Konfiguration. Die Tool-Liste ist über die erste Version hinaus gewachsen (`docs/guide/NOTES.md`).
 
 ### 8.2 Tools (erste Version)
 
@@ -585,6 +589,8 @@ vitrine/
 
 Gegenüber dem bisherigen Stack (core/cli/gui) kommen `render`, `publish` und `mcp` hinzu: Rendering ist groß genug für ein eigenes Crate, Netzwerkcode bleibt aus `core` heraus, und der MCP-Server lässt sich getrennt testen.
 
+*Umsetzung (ergänzt):* `app` – gemeinsame Anwendungsschicht ohne Tauri (Sitzung, Commands, Vorschau-Cache, Einstellungen) für GUI und MCP (ADR 0013); `api-server` – Backend von api.vitrinestudio.app (Vorlagen-Galerie, GitHub-Login; ADR 0023, 0025), nicht Teil der Desktop-App. Dazu `website/` (Hugo) und `integrations/` (CI-Anbindungen, MIT).
+
 ### 10.2 Operations-API (Herzstück)
 
 Jede Änderung am Projekt ist eine serialisierbare Operation:
@@ -646,8 +652,11 @@ pub enum Op {
 | **3 – Mehrsprachigkeit & Import** | i18n-Dateien, Übersetzungstabelle, Auto-Fit pro Sprache, Screenshot-Varianten, Import (Ordnerkonvention, fastlane), CSV/XLIFF, Sprachraster-Ansicht, Import der Apple Design Resources. | 3 Sprachen × 3 Ziele mit Fallbacks korrekt exportiert, Überläufe gemeldet; Apple-Bezels importiert und verwendet. |
 | **4 – MCP** | MCP-Server mit den Tools aus Abschnitt 8, `render_preview` als Bild. | Claude kann ein Projekt von null anlegen, gestalten, übersetzen und exportieren. |
 | **5 – Store-Upload** | App Store Connect, danach Google Play; Plan/Dry-Run, Keychain, Upload-Protokoll. | Upload in eine Test-App für beide Stores funktioniert inkl. Reihenfolge. |
-| **6 – Feinschliff** | Vorlagen, eigene Frame-Pakete, Farbmanagement P3 → sRGB, Feature Graphic, Installer/Signierung, Website vitrinestudio.app, Doku. | Release 1.0. |
-| **7 – 3D (optional)** | Perspektivische Neigung von Geräten (Mesh-Warp), Presets wie „leicht gekippt“. | nach 1.0 |
+| **6 – Feinschliff** | Vorlagen, eigene Frame-Pakete, Farbmanagement P3 → sRGB, Feature Graphic, Installer/Signierung, Website vitrinestudio.app, Doku. | Funktionen für 1.0 gebaut; Release-Pipeline läuft. |
+| **7 – Veröffentlichung** | Signierung (macOS, Windows), erste öffentliche Releases, Repo öffentlich, CLA-Bot, Container-Image und CI-Integrationen veröffentlichen, Website mit Rechtstexten live, Galerie-Server im Normalbetrieb, Store-Testläufe, Smoke-Tests pro Betriebssystem (`docs/plan/phase-7.md`). | Release 1.0 veröffentlicht. |
+| **8 – 3D (optional)** | Perspektivische Neigung von Geräten (Mesh-Warp), Presets wie „leicht gekippt“. | nach 1.0 |
+
+**Stand 13.11.2026:** Phasen 0–4 fertig; Phase 5 gebaut, echte Uploads testet der Inhaber noch; Phase 6 weitgehend gebaut (Farbmanagement, Feature Graphic, Vorlagen + Web-Galerie, eigene Frame-Pakete, Installer/Updater, Website, Doku), dazu nicht geplante Ergänzungen (fastlane-Kompatibilität, Systemschriften, Design-Prüfungen, CI-Anbindungen). Die Veröffentlichungsschritte wurden am 13.11.2026 als eigene Phase 7 herausgelöst; 3D rückt auf Phase 8. Details: `docs/plan/phase-*.md`, `docs/plan/STATUS.md`.
 
 ---
 
@@ -668,4 +677,4 @@ pub enum Op {
 
 **Offen**
 
-1. **Lückenbreiten der Galerie-Profile:** müssen einmal an echten Store-Ansichten ausgemessen werden (App-Store-App auf iPhone und iPad, App-Store-Website, Mac App Store, Play-Store-App und -Website).
+1. **Lückenbreiten der Galerie-Profile:** müssen einmal an echten Store-Ansichten ausgemessen werden (App-Store-App auf iPhone und iPad, App-Store-Website, Mac App Store, Play-Store-App und -Website). *Stand 13.11.2026:* Werte der Store-Websites aus dem CSS gemessen; native Apps noch nicht (in `galleries.yaml` als `not yet measured` markiert).

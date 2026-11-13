@@ -47,7 +47,9 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       slot values against the catalog
 - [ ] Measure native store app galleries (iOS App Store, Mac App Store,
       Play Store app) on real devices and replace the placeholders
-      (→ Follow-ups)
+      (→ Follow-ups; still open 2026-11-13 – only the web CSS values are
+      measured; dark store backgrounds added 2026-11-12 as unmeasured
+      estimates, ADR 0029)
 
 ## 1.4 Resolve (`core::resolve`)
 - [x] target × language → resolved scene: variant + overrides, content_scale,
@@ -86,9 +88,10 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
       (grouped: `<nn>_<id1>+<id2>.png`)
 - [x] Parallel with rayon; incremental via per-file hashes
       (`export/.vitrine-export.json`)
-- [ ] Image shadows from the image alpha (currently the image rect);
+- [~] Image shadows from the image alpha (currently the image rect);
       SVG text needs a font database for usvg (text in SVG assets is
-      currently not rendered) (→ Follow-ups)
+      currently not rendered) (→ Follow-ups) – shadows follow the alpha
+      since 2026-11-10 (with text outline + glow); SVG text still open
 
 ## 1.8 Validation (`core::validate`)
 - [x] Text in gap, text overflow per language/page, emergency word break
@@ -145,15 +148,18 @@ Status markers: `[ ]` open · `[~]` in progress · `[x]` done
 - Measure the native store app galleries (gap, corner radius) on real
   devices and replace the `not yet measured` placeholders in
   `galleries.yaml` (1.3).
-- Image shadows from the image alpha instead of the image rect (1.7);
-  the example works around it with shape cards behind SVG icons.
-- Text inside SVG assets (usvg needs a font database; 1.7).
+- ~~Image shadows from the image alpha instead of the image rect (1.7)~~
+  – done 2026-11-10 (like CSS drop-shadow).
+- Text inside SVG assets (usvg needs a font database; 1.7) – open.
 - Golden tests run on macOS locally; the first CI run on Linux/Windows
   shows whether 8/255 and 0.5 % absorb the platform differences
-  (SIMD resampling, libm); widen only with a measured reason.
+  (SIMD resampling, libm); widen only with a measured reason. – CI runs
+  the goldens on macOS, Linux and Windows with the original tolerances.
 - Banner `focus` for `fit: cover` (ADR 0004 open question); the example's
-  blog header uses a `rect` region instead.
-- Per-language element overrides (KONZEPT §5.1) are not modelled yet.
+  blog header uses a `rect` region instead. – open (image fills have a
+  `focus`, banners not).
+- ~~Per-language element overrides (KONZEPT §5.1) are not modelled yet.~~
+  – done in Phase 3 (3.1, `langs`, ADR 0009).
 
 ## Decisions taken with the user
 - Text engine: parley (ADR 0001).

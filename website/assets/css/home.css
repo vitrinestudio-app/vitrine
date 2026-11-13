@@ -623,6 +623,23 @@
 .oss-point .feature__icon { flex-shrink: 0; }
 .oss-point h3 { margin: 4px 0 4px; }
 .oss-point p { margin: 0; color: var(--ink-soft); }
+/* How development is funded (#funding). */
+.funding {
+  margin-top: 30px;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--grad-soft);
+}
+.funding h3 { margin: 0 0 8px; }
+.funding p { margin: 0 0 10px; color: var(--ink-soft); }
+.funding p:last-child { margin-bottom: 0; }
+.funding__aside { font-style: italic; font-size: .95rem; }
+.funding__links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px !important; }
+.funding__soon { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: .93rem; }
+.funding__soon .icon { width: 18px; height: 18px; flex: none; color: var(--magenta); }
+/* An old in-page anchor kept for links (#fastlane → the CI/CD section). */
+.anchor-alias { position: absolute; }
 .codecard .highlight pre, .codecard pre {
   margin: 0;
   padding: 20px 24px;

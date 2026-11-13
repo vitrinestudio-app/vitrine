@@ -8,9 +8,9 @@ use std::collections::BTreeMap;
 
 use super::lookup::{lookup_screenshot, lookup_text};
 use super::scene::{
-    DeviceColor, DiagnosticCode, ImportedFrame, ResolvedDevice, ResolvedElement, ResolvedImage,
-    ResolvedKind, ResolvedShadowLayer, ResolvedShape, ResolvedSpanStyle, ResolvedText,
-    ScreenshotSource, TextFrame,
+    DeviceColor, DiagnosticCode, ImportedFrame, ResolvedClipShape, ResolvedDevice, ResolvedElement,
+    ResolvedImage, ResolvedKind, ResolvedShadowLayer, ResolvedShape, ResolvedSpanStyle,
+    ResolvedText, ScreenshotSource, TextFrame,
 };
 use super::style::StyleResolver;
 use super::{Diags, ResolveOptions};
@@ -48,6 +48,8 @@ struct GroupXf {
     /// Canvas point the group rotates around.
     pivot: Vec2,
     rotation: f64,
+    /// Uniform scale around `pivot` (ADR 0030).
+    scale: f64,
     opacity: f64,
     z: i32,
 }
@@ -58,6 +60,11 @@ struct Walker<'a, 'i> {
     content_scale: f64,
     frame_style: FrameStyle,
     out: Vec<ResolvedElement>,
+    /// Parallel to `out`: is the element drawn? Hidden shapes are resolved
+    /// too when an image may be clipped to them (`clip_to`, ADR 0031).
+    shown: Vec<bool>,
+    /// Some element of the canvas uses `clip_to`.
+    masks: bool,
 }
 
 pub(super) fn resolve_elements(
@@ -99,14 +106,101 @@ pub(super) fn resolve_elements(
             .clone()
             .unwrap_or(FrameStyle::Detailed),
         out: Vec::new(),
+        shown: Vec::new(),
+        masks: uses_clip_to(inp.canvas),
     };
     for e in &inp.canvas.elements {
         w.element(e, d);
     }
     d.element = None;
+    let mut out = w.out;
+    if w.masks {
+        out = clip_images(inp.canvas, out, &w.shown, d);
+    }
     // Stable: equal z keeps list (painting) order.
-    w.out.sort_by_key(|e| e.z);
-    (variant_id, w.out)
+    out.sort_by_key(|e| e.z);
+    (variant_id, out)
+}
+
+/// Does an element of `canvas` (or a variant override) set `clip_to`?
+fn uses_clip_to(canvas: &Canvas) -> bool {
+    let mut any = false;
+    canvas.walk_elements(&mut |e| any |= e.clip_to().is_some());
+    any || canvas
+        .variants
+        .values()
+        .flat_map(|v| v.overrides.values())
+        .any(|p| matches!(p.clip_to, Some(Some(_))))
+}
+
+/// Gives images with `clip_to` the outline of their shape (all resolved
+/// shapes, drawn or not) and drops the hidden elements.
+fn clip_images(
+    canvas: &Canvas,
+    out: Vec<ResolvedElement>,
+    shown: &[bool],
+    d: &mut Diags,
+) -> Vec<ResolvedElement> {
+    let shapes: BTreeMap<ElementId, ResolvedClipShape> = out
+        .iter()
+        .filter_map(|r| match &r.props {
+            ResolvedKind::Shape(s) if s.shape != ShapeKind::Line => Some((
+                r.id.clone(),
+                ResolvedClipShape {
+                    element: r.id.clone(),
+                    page: r.page,
+                    shape: s.shape,
+                    radius: s.radius,
+                    center: r.center,
+                    size: r.size,
+                    rotation: r.rotation,
+                    pivot: r.pivot,
+                },
+            )),
+            _ => None,
+        })
+        .collect();
+    let mut kept = Vec::with_capacity(out.len());
+    for (mut r, show) in out.into_iter().zip(shown.iter().copied()) {
+        if !show {
+            continue;
+        }
+        if let ResolvedKind::Image(img) = &mut r.props
+            && let Some(id) = &img.clip_to
+        {
+            d.element = Some(r.id.clone());
+            if let Some(shape) = shapes.get(id) {
+                if shape.page != r.page {
+                    d.info(
+                        DiagnosticCode::ClipToOtherPage,
+                        format!(
+                            "`clip_to: {id}` names a shape on page {} (the image is on page {})",
+                            shape.page + 1,
+                            r.page + 1
+                        ),
+                    );
+                }
+                img.clip_shape = Some(shape.clone());
+            } else {
+                let why = match canvas.element(id.as_str()).map(|e| &e.kind) {
+                    None => format!("`clip_to` names `{id}`, which is not on this canvas"),
+                    Some(ElementKind::Shape(_)) => {
+                        format!("`clip_to` names `{id}`, a line (use a rect or ellipse)")
+                    }
+                    Some(_) => format!(
+                        "`clip_to` names `{id}`, which is not a shape (use a rect or ellipse)"
+                    ),
+                };
+                d.warn(
+                    DiagnosticCode::InvalidClipTo,
+                    format!("{why}; drawn unclipped"),
+                );
+            }
+        }
+        kept.push(r);
+    }
+    d.element = None;
+    kept
 }
 
 impl Walker<'_, '_> {
@@ -159,11 +253,16 @@ impl Walker<'_, '_> {
                 }))
     }
 
-    /// Resolve `e` (and its children); returns how many elements were added.
+    /// Resolve `e` (and its children). Hidden elements are only resolved
+    /// as possible `clip_to` shapes (quietly) and dropped afterwards.
     fn element(&mut self, e: &Element, d: &mut Diags) {
         d.element = Some(e.id.clone());
         let e = self.patched(e, d);
         if !self.visible(&e) {
+            if self.masks {
+                let mut quiet = Diags::default();
+                self.hidden_element(&e, &mut quiet);
+            }
             return;
         }
         if e.page >= self.inp.canvas.page.count {
@@ -180,14 +279,7 @@ impl Walker<'_, '_> {
             for c in &g.children {
                 self.element(c, d);
             }
-            let xf = GroupXf {
-                id: e.id.clone(),
-                offset: Vec2::new(e.at.x, e.at.y),
-                pivot: self.group_pivot(&e, d),
-                rotation: e.rotation,
-                opacity: e.opacity,
-                z: e.z,
-            };
+            let xf = self.group_xf(&e, d);
             for r in &mut self.out[start..] {
                 apply_group(r, &xf);
                 for a in &e.allow {
@@ -200,6 +292,50 @@ impl Walker<'_, '_> {
         }
         if let Some(r) = self.leaf(&e, d) {
             self.out.push(r);
+            self.shown.push(true);
+        }
+    }
+
+    /// A hidden element (or one inside a hidden group): shapes and groups
+    /// are resolved like visible ones (a hidden shape may still be a
+    /// `clip_to` mask), everything else is skipped. `e` may be patched
+    /// already (patching twice is harmless: overrides are idempotent).
+    fn hidden_element(&mut self, e: &Element, d: &mut Diags) {
+        let e = self.patched(e, d);
+        match &e.kind {
+            ElementKind::Group(g) => {
+                let start = self.out.len();
+                for c in &g.children {
+                    self.hidden_element(c, d);
+                }
+                let xf = self.group_xf(&e, d);
+                for r in &mut self.out[start..] {
+                    apply_group(r, &xf);
+                }
+            }
+            ElementKind::Shape(_) => {
+                if let Some(r) = self.leaf(&e, d) {
+                    self.out.push(r);
+                    self.shown.push(false);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// The transform group `g` applies to its children.
+    fn group_xf(&self, g: &Element, d: &mut Diags) -> GroupXf {
+        GroupXf {
+            id: g.id.clone(),
+            offset: Vec2::new(g.at.x, g.at.y),
+            pivot: self.group_pivot(g, d),
+            rotation: g.rotation,
+            scale: match &g.kind {
+                ElementKind::Group(p) => p.scale,
+                _ => 1.0,
+            },
+            opacity: g.opacity,
+            z: g.z,
         }
     }
 
@@ -267,6 +403,7 @@ impl Walker<'_, '_> {
             size: Vec2::ZERO,
             rotation: e.rotation,
             pivot: e.pivot.map_or(Vec2::ZERO, |p| Vec2::new(p.x, p.y)),
+            scale: 1.0,
             opacity: e.opacity,
             clip: (e.effective_clip() == Clip::Page).then(|| layout.page_rect(page)),
             allow: e.allow.clone(),
@@ -460,7 +597,7 @@ impl Walker<'_, '_> {
             .styles
             .shadow(p.shadow.as_deref(), d)
             .into_iter()
-            .map(|l| scale_shadow(l, k))
+            .map(|l| l.scaled(k))
             .collect();
         Some((
             ResolvedDevice {
@@ -735,6 +872,7 @@ impl Walker<'_, '_> {
             hyphenate: self.inp.styles.hyphenate(t),
             font_fallbacks: self.inp.project.styles.font_fallbacks(),
             default_pivot: Vec2::ZERO,
+            scale: 1.0,
         }
     }
 
@@ -753,6 +891,8 @@ impl Walker<'_, '_> {
                 fit: p.fit.unwrap_or(FitMode::Contain),
                 auto_height: h.is_none(),
                 shadow: self.inp.styles.shadow(p.shadow.as_deref(), d),
+                clip_to: p.clip_to.clone(),
+                clip_shape: None,
             },
             Vec2::new(w, h.unwrap_or(w)),
         )
@@ -847,6 +987,7 @@ pub(super) fn screenshot_only(
             size: Vec2::new(rect.w, rect.h),
             rotation: 0.0,
             pivot: Vec2::ZERO,
+            scale: 1.0,
             opacity: 1.0,
             clip: Some(rect),
             allow: Vec::new(),
@@ -859,28 +1000,54 @@ pub(super) fn screenshot_only(
     out
 }
 
-fn scale_shadow(l: ResolvedShadowLayer, k: f64) -> ResolvedShadowLayer {
-    ResolvedShadowLayer {
-        color: l.color,
-        blur: l.blur * k,
-        x: l.x * k,
-        y: l.y * k,
+/// Scale the size, pivot offset and kind-specific lengths of `r` by `k`
+/// (not its position; text frames keep their centre).
+fn scale_element(r: &mut ResolvedElement, k: f64) {
+    let shadows = |s: &mut Vec<ResolvedShadowLayer>| {
+        for l in s {
+            *l = l.scaled(k);
+        }
+    };
+    r.size = r.size * k;
+    r.pivot = r.pivot * k;
+    match &mut r.props {
+        ResolvedKind::Background { .. } => {}
+        ResolvedKind::Device(d) => shadows(&mut d.shadow),
+        ResolvedKind::Text(t) => t.scale_by(k),
+        ResolvedKind::Image(i) => shadows(&mut i.shadow),
+        ResolvedKind::Shape(s) => {
+            s.radius *= k;
+            if let Some(st) = &mut s.stroke {
+                st.width *= k;
+            }
+            shadows(&mut s.shadow);
+        }
     }
 }
 
 /// Apply a group transform: the child's rotation pivot (a canvas point) is
-/// offset by the group's `at` and rotated around the group pivot; the
-/// child's own rotation, opacity and z are combined with the group's.
+/// scaled and rotated around the group pivot and offset by the group's
+/// `at`; the child's own rotation, opacity and z are combined with the
+/// group's. A scale also multiplies the child's size, pivot offset and
+/// kind-specific lengths, so the result equals transforming the drawn
+/// child (ADR 0030).
 fn apply_group(r: &mut ResolvedElement, g: &GroupXf) {
+    let k = g.scale;
     let world_pivot = r.center + r.pivot;
-    let moved = world_pivot.rotated_around(g.pivot, g.rotation) + g.offset;
-    let delta = moved - world_pivot;
-    r.center = r.center + delta;
+    let scaled = g.pivot + (world_pivot - g.pivot) * k;
+    let moved = scaled.rotated_around(g.pivot, g.rotation) + g.offset;
+    let old_center = r.center;
+    if (k - 1.0).abs() > f64::EPSILON {
+        scale_element(r, k);
+    }
+    r.center = moved - r.pivot;
+    let delta = r.center - old_center;
     if let ResolvedKind::Text(t) = &mut r.props {
         t.frame.rect.x += delta.x;
         t.frame.rect.y += delta.y;
     }
     r.rotation += g.rotation;
+    r.scale *= k;
     r.opacity *= g.opacity;
     r.z += g.z;
     r.groups.insert(0, g.id.clone());
@@ -901,6 +1068,7 @@ mod tests {
             size: Vec2::new(20.0, 20.0),
             rotation: 10.0,
             pivot: Vec2::ZERO,
+            scale: 1.0,
             opacity: 0.5,
             clip: None,
             allow: Vec::new(),
@@ -915,6 +1083,7 @@ mod tests {
             offset: Vec2::new(5.0, 0.0),
             pivot: Vec2::new(100.0, 100.0),
             rotation: 90.0,
+            scale: 1.0,
             opacity: 0.5,
             z: 2,
         };
@@ -924,5 +1093,73 @@ mod tests {
         assert!((r.opacity - 0.25).abs() < 1e-9);
         assert_eq!(r.z, 3);
         assert_eq!(r.groups, [ElementId::new("g")]);
+    }
+
+    #[test]
+    fn group_scale_scales_around_the_group_pivot() {
+        let stroke = super::super::scene::ResolvedStroke {
+            color: Rgba::rgb(0, 0, 0),
+            width: 4.0,
+            join: crate::model::StrokeJoin::Miter,
+        };
+        let mut r = ResolvedElement {
+            id: ElementId::new("c"),
+            groups: Vec::new(),
+            page: 0,
+            z: 0,
+            center: Vec2::new(140.0, 100.0),
+            size: Vec2::new(20.0, 10.0),
+            rotation: 0.0,
+            pivot: Vec2::new(10.0, 0.0),
+            scale: 1.0,
+            opacity: 1.0,
+            clip: None,
+            allow: Vec::new(),
+            props: ResolvedKind::Shape(ResolvedShape {
+                shape: ShapeKind::Rect,
+                radius: 6.0,
+                fill: None,
+                stroke: Some(stroke),
+                shadow: vec![ResolvedShadowLayer {
+                    color: Rgba::rgb(0, 0, 0),
+                    blur: 8.0,
+                    x: 0.0,
+                    y: 4.0,
+                }],
+            }),
+        };
+        let g = GroupXf {
+            id: ElementId::new("g"),
+            offset: Vec2::new(0.0, 10.0),
+            pivot: Vec2::new(100.0, 100.0),
+            rotation: 0.0,
+            scale: 0.5,
+            opacity: 1.0,
+            z: 0,
+        };
+        apply_group(&mut r, &g);
+        // World pivot 150 → 100 + 50 · 0.5 = 125; centre = pivot − 5.
+        assert!((r.center.x - 120.0).abs() < 1e-9 && (r.center.y - 110.0).abs() < 1e-9);
+        assert_eq!((r.size.x, r.size.y), (10.0, 5.0));
+        assert_eq!((r.pivot.x, r.scale), (5.0, 0.5));
+        let ResolvedKind::Shape(s) = &r.props else {
+            unreachable!()
+        };
+        assert_eq!(s.radius, 3.0);
+        assert_eq!(s.stroke.as_ref().map(|s| s.width), Some(2.0));
+        assert_eq!((s.shadow[0].blur, s.shadow[0].y), (4.0, 2.0));
+        // Nested: an outer group multiplies.
+        let outer = GroupXf {
+            id: ElementId::new("o"),
+            offset: Vec2::ZERO,
+            pivot: Vec2::new(120.0, 110.0),
+            rotation: 0.0,
+            scale: 2.0,
+            opacity: 1.0,
+            z: 0,
+        };
+        apply_group(&mut r, &outer);
+        assert_eq!((r.size.x, r.scale), (20.0, 1.0));
+        assert!((r.center.x - 120.0).abs() < 1e-9);
     }
 }

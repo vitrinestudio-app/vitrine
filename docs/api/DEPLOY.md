@@ -244,17 +244,20 @@ official templates" above.
   pages and from the API's responses/documentation.
 - **Privacy policy** (Art. 13 GDPR) covering the gallery:
   - personal data processed: IP addresses (reverse proxy logs; the server
-    keeps them only in memory for rate limiting, max. 1 hour), the
+    keeps them only in memory for rate limiting and drops them when the
+    one-hour window has passed), the
     uploader's GitHub login and numeric id (public, the login is shown as
     uploader), session records (hash of the session token, login, id,
-    expiry; deleted on logout or expiry), the text of abuse reports (may
+    expiry; deleted on logout or, by the housekeeping task, on expiry), the text of abuse reports (may
     contain contact data), download counters (no personal data);
   - legal bases: Art. 6(1)(b) for uploaders (providing the gallery),
     Art. 6(1)(f) for logs/rate limiting/abuse handling;
   - recipients: hosting provider; GitHub (sign-in; data transfer to the US
     under the EU-US Data Privacy Framework);
-  - retention: proxy logs (set e.g. 7–14 days), reports until resolved +
-    a short period, sessions up to `VITRINE_API_SESSION_DAYS`, uploader
+  - retention (stated in the website's privacy policy): proxy logs with
+    anonymised IPs, full IPs only for security-relevant entries, 30 days;
+    reports are deleted when the template is approved or rejected;
+    rejected templates are deleted at once; sessions up to `VITRINE_API_SESSION_DAYS`, uploader
     data until the account/templates are deleted;
   - rights: access, erasure (delete an uploader's templates, sessions and
     login on request – today by hand in SQLite + `templates/<id>/`),

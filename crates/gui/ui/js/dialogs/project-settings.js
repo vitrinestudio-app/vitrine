@@ -370,6 +370,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
           row(t('project.styles.weight'), h('div', { class: 'inline' }, select({ options: [{ value: '', label: t('project.styles.inherit') }, ...WEIGHTS.map(String)], value: st.weight ? String(st.weight) : '', onchange: (v) => set('weight', v ? Number(v) : null) }), checkbox({ label: t('project.styles.italic'), checked: st.italic, onchange: (v) => set('italic', v || null) }))),
           row(t('project.styles.color'), withRefs(colorRefInput(st.color, (v) => set('color', v)))),
           row(t('project.styles.background'), withRefs(colorRefInput(st.background, (v) => set('background', v)))),
+          st.background ? row(t('project.styles.padding'), spanBoxInputs(st, set), t('project.styles.padding.hint')) : null,
           ...effectRows(st, set),
           row(t('project.styles.shadow'), select({ options: [{ value: '', label: t('project.styles.inherit') }, ...shadowNames], value: st.shadow ?? '', onchange: (v) => set('shadow', v || null) })),
         ),
@@ -420,6 +421,23 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
         shadows,
         addRow(t('project.styles.new_name'), (n) => patch({ shadows: { [n]: { layers: [{ color: '#00000040', blur: 30, y: 16 }] } } })),
       ),
+    );
+  }
+
+  /** Padding (x, y) and corner radius of a span's highlight box (lu). */
+  function spanBoxInputs(st, set) {
+    const pad = st.padding == null ? {} : typeof st.padding === 'number' ? { x: st.padding, y: st.padding } : st.padding;
+    const setPad = (k, v) => {
+      const n = { x: pad.x ?? 0, y: pad.y ?? 0, [k]: v ?? 0 };
+      set('padding', n.x === 0 && n.y === 0 ? null : n.x === n.y ? n.x : n);
+    };
+    const mini = (label, value, onchange, title) => h('label', { class: 'mini', title }, h('span', { class: 'muted small' }, label), input({ type: 'number', value, step: 1, min: 0, cls: 'num', placeholder: '0', onchange }));
+    return h(
+      'div',
+      { class: 'inline wrap' },
+      mini('X', pad.x, (v) => setPad('x', v), t('project.styles.padding.x')),
+      mini('Y', pad.y, (v) => setPad('y', v), t('project.styles.padding.y')),
+      mini('◜', st.radius, (v) => set('radius', v || null), t('project.styles.radius')),
     );
   }
 

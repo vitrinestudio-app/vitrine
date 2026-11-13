@@ -107,3 +107,22 @@ pub async fn backfill(state: Arc<AppState>) {
         }
     }
 }
+
+/// How often [`housekeeping`] runs.
+const HOUSEKEEPING_EVERY: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Runs forever (spawned by the binary): drops rate-limit counters whose
+/// one-hour window has passed (they hold client IP addresses) and deletes
+/// expired sessions and web-login states – the retention the privacy
+/// policy states.
+pub async fn housekeeping(state: Arc<AppState>) {
+    let mut tick = tokio::time::interval(HOUSEKEEPING_EVERY);
+    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    loop {
+        tick.tick().await;
+        state.prune_memory();
+        if let Err(e) = crate::auth::session::purge_expired(&state.db()) {
+            eprintln!("housekeeping: {e}");
+        }
+    }
+}

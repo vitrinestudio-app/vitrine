@@ -19,6 +19,8 @@ module Fastlane
         out = File.expand_path(params[:output_directory])
         args = ["export", "--layout", params[:layout], "--out", out, "--format", "json", "--no-html"]
         args << "--force" if params[:force]
+        fastlane_layout = params[:layout] == "fastlane"
+        args << "--remove-foreign" if fastlane_layout && params[:foreign_images] == "remove"
         Array(params[:targets]).each { |t| args.push("--target", t) }
         Array(params[:languages]).each { |l| args.push("--lang", l) }
         stdout, code = Helper::VitrineHelper.run(binary: binary, project: params[:project], args: args)
@@ -28,10 +30,21 @@ module Fastlane
         Array(report["errors"]).each { |e| UI.error(e.to_s) }
         UI.user_error!("Vitrine Studio export failed") if code == 1
 
+        Array(report["removed_foreign"]).each { |f| UI.message("Removed (not from Vitrine Studio): #{f}") }
+        # Images deliver/supply would upload together with Vitrine Studio's:
+        # raw snapshot/screengrab captures, frameit output.
+        foreign = Array(report["foreign"])
+        if foreign.any? && params[:foreign_images] == "fail"
+          foreign.first(10).each { |f| UI.error("not from Vitrine Studio: #{File.join(out, f)}") }
+          UI.user_error!("#{foreign.length} image(s) in the upload folders were not exported by Vitrine Studio; " \
+                         "deliver/supply would upload them too. Let snapshot/screengrab write to fastlane/captures " \
+                         "(output_directory) and import from there, or use foreign_images: \"remove\".")
+        end
+
         written = report["files"].count { |f| !f["skipped"] }
         UI.success("Vitrine Studio: #{written} file(s) written, #{report['files'].length - written} unchanged → #{out}")
         Actions.lane_context[SharedValues::VITRINE_EXPORT_DIR] = out
-        if params[:layout] == "fastlane"
+        if fastlane_layout
           screenshots = File.join(out, "screenshots")
           metadata = File.join(out, "metadata", "android")
           Actions.lane_context[SharedValues::VITRINE_SCREENSHOTS_PATH] = screenshots
@@ -71,7 +84,12 @@ module Fastlane
                                        verify_block: proc { |v| UI.user_error!("layout must be fastlane or standard") unless %w[fastlane standard].include?(v) }),
           FastlaneCore::ConfigItem.new(key: :targets, description: "Only these targets", type: Array, optional: true),
           FastlaneCore::ConfigItem.new(key: :languages, description: "Only these languages", type: Array, optional: true),
-          FastlaneCore::ConfigItem.new(key: :force, description: "Render everything (ignore the export cache)", type: Boolean, default_value: false),
+          FastlaneCore::ConfigItem.new(key: :foreign_images,
+                                       description: "Images in the deliver/supply folders that Vitrine Studio did not export (raw captures, frameit output): " \
+                                                    "fail (default: stop the lane), warn, or remove (delete them after the export)",
+                                       default_value: "fail",
+                                       verify_block: proc { |v| UI.user_error!("foreign_images must be fail, warn or remove") unless %w[fail warn remove].include?(v) }),
+          FastlaneCore::ConfigItem.new(key: :force,description: "Render everything (ignore the export cache)", type: Boolean, default_value: false),
           FastlaneCore::ConfigItem.new(key: :binary, env_name: "VITRINE_CLI", description: "Path of the vitrine binary", optional: true)
         ]
       end

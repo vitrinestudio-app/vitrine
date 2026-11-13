@@ -63,13 +63,30 @@ pub const HELP_URLS: &[&str] = &[
     APPLE_BEZELS_URL,
     // Updates (ADR 0026): release notes / manual download (deb/rpm installs).
     RELEASES_URL,
+    // User guide on the website (top of the Help menu, by UI language).
+    DOCS_URL_EN,
+    DOCS_URL_DE,
 ];
+
+/// The user guide on the website (English; Help menu).
+pub const DOCS_URL_EN: &str = "https://www.vitrinestudio.app/docs/";
+
+/// The user guide on the website (German; Help menu).
+pub const DOCS_URL_DE: &str = "https://www.vitrinestudio.app/de/docs/";
 
 /// Apple Design Resources, Product Bezels section (Help menu).
 pub const APPLE_BEZELS_URL: &str = "https://developer.apple.com/design/resources/#product-bezels";
 
 /// The latest release on GitHub (update notice, manual download).
 pub const RELEASES_URL: &str = "https://github.com/vitrinestudio-app/vitrine/releases/latest";
+
+/// The template gallery on the website (English, German), where templates
+/// are shown large ("New project" → Template gallery). `open_url` also
+/// accepts them with `#<template id>` (that template's detail view).
+pub const GALLERY_PAGE_URLS: &[&str] = &[
+    "https://www.vitrinestudio.app/gallery/",
+    "https://www.vitrinestudio.app/de/galerie/",
+];
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -84,10 +101,19 @@ pub fn app_store_connect_app_url(app_id: &str) -> Option<String> {
         .then(|| format!("https://appstoreconnect.apple.com/apps/{app_id}/distribution"))
 }
 
-/// A link `open_url` may open: one of the [`HELP_URLS`] or an app's page
+/// A link `open_url` may open: one of the [`HELP_URLS`], a gallery page
+/// ([`GALLERY_PAGE_URLS`], optionally `#<template id>`) or an app's page
 /// in App Store Connect ([`app_store_connect_app_url`]).
 pub fn is_allowed_url(url: &str) -> bool {
     HELP_URLS.contains(&url)
+        || GALLERY_PAGE_URLS.iter().any(|page| {
+            url.strip_prefix(page).is_some_and(|rest| {
+                rest.is_empty()
+                    || rest
+                        .strip_prefix('#')
+                        .is_some_and(vitrine_core::template::is_template_id)
+            })
+        })
         || url
             .strip_prefix("https://appstoreconnect.apple.com/apps/")
             .and_then(|rest| rest.strip_suffix("/distribution"))

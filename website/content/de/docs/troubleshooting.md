@@ -25,12 +25,14 @@ häufigsten:
 | `text_missing` | Fehler | den Schlüssel gibt es in keiner Sprache – es wird nichts gezeichnet. |
 | `text_in_gap`, `text_clipped` | Warnung | Text ragt in eine Store-Lücke oder über seine Seite hinaus und wird abgeschnitten. |
 | `text_outside_safe_area` | Warnung | Text außerhalb des sicheren Bereichs des Ziels. |
-| `low_contrast` | Warnung | der Kontrast des Texts gegen das, was tatsächlich dahinter gezeichnet ist (Farbe, Verlauf, Foto, Muster), liegt unter WCAG AA – 4,5:1, große Schrift (ab 80 lu, fett ab 62 lu) 3:1. Die Meldung nennt Verhältnis und Stelle; Farbe ändern, Scrim, Schatten oder Kontur ergänzen. |
+| `low_contrast` | Warnung | der Kontrast des Texts gegen das, was tatsächlich dahinter gezeichnet ist (Farbe, Verlauf, Foto, Muster), liegt unter WCAG AA – 4,5:1, große Schrift (ab 80 lu, fett ab 62 lu) 3:1. Die Meldung nennt Verhältnis, Stelle und was dort liegt (ein Element oder der eigene Schatten/Glow/Kontur des Texts, der als Hintergrund zählt); Farbe ändern, Scrim, Schatten oder Kontur ergänzen. |
 | `text_near_device` | Warnung / Hinweis | Glyphen liegen hinter einem Geräterahmen oder laufen über ihn (Warnung) oder kommen ihm näher als 16 lu (Hinweis). Text ganz auf dem Gerät oder auf einer Karte darüber ist in Ordnung. |
-| `screen_header_covered`, `screen_header_cut` | Hinweis | ein Element verdeckt die obere Leiste (Statusleiste, App-Titel) eines Gerätebildschirms, oder der Seitenrand schneidet sie, sodass eine halbe Leiste stehen bleibt. |
+| `screen_header_covered`, `screen_header_cut` | Hinweis | ein Element verdeckt die obere Leiste (Statusleiste, App-Titel) eines Gerätebildschirms, oder eine Seiten-/Bildkante oder der Beschnitt des Geräts schneidet sie, sodass eine halbe Leiste stehen bleibt (die Meldung nennt die Kante). |
+| `screen_covered` | Hinweis | ein Element über einem Gerät verdeckt 15 % oder mehr seines Bildschirms unterhalb der oberen Leiste – den App-Inhalt, den der Screenshot zeigen soll. |
+| `device_cut` | Hinweis | der linke oder rechte Seitenrand (*Beschnitt: Heimatseite*) oder der äußere Leinwandrand schneidet mehr als 8 lu von einem Gerät ab – meist die Ecken eines gekippten Geräts. Anschnitt oben und unten wird nicht gemeldet. |
 | `seam_overlap` | Hinweis | ein Element, das über eine Seitengrenze reicht, liegt über einem Element der Nachbarseite – Galerie prüfen. |
 | `seam_split` | Hinweis | eine Form als zwei Hälften an einer Seitengrenze gebaut: die Store-Lücke zieht sie auseinander. Nimm **ein** Element mit *Beschnitt: Keiner* über die Grenze – es läuft in jedem Ziel hinter der Lücke durch. |
-| `element_in_corner` | Hinweis | ein Element ragt in eine Bildecke, die der Store abrundet. |
+| `element_in_corner` | Hinweis | ein Element ragt in eine Bildecke, die der Store abrundet (Teile unter einem deckenden Element darüber zählen nicht). |
 | `device_small` | Hinweis | das größte Gerät einer Seite füllt weniger als die Hälfte. |
 | `page_not_covered` | Hinweis | ein Bild oder eine Fläche deckt fast die ganze Seite, lässt aber einen schmalen Streifen frei (typisch, wenn eine Variante die Seitenhöhe ändert). |
 | `page_blends_with_store` | Hinweis | die Ränder der Bilder heben sich kaum vom hellen oder dunklen Store-Hintergrund ab. |
@@ -58,6 +60,7 @@ checks:
   device_distance: 16      # lu zwischen Glyphen und Geräterahmen
   min_contrast: 4.5
   min_contrast_large: 3
+  screen_cover: 0.15       # Anteil eines Bildschirms, den ein Element verdecken darf
   off: [page_blends_with_store]
 ```
 
@@ -72,8 +75,10 @@ Ja. Änderungen auf der Platte werden live übernommen. Hast du im selben
 Moment in der App dasselbe geändert, lädt die App die Datei neu und sagt dir,
 dass deine letzte Änderung nicht gespeichert wurde.
 
-**Meine deutsche Überschrift ist winzig.**
-Das automatische Einpassen hat sie verkleinert. Gib Deutsch einen
+**Meine französische Überschrift ist winzig.**
+Das automatische Einpassen hat sie verkleinert. Französisch braucht oft
+deutlich mehr Platz als Englisch – aus „Edit photos in seconds“ wird
+„Retouchez vos photos en quelques secondes“. Gib Französisch einen
 [Sprach-Override](../languages/#language-overrides) mit breiterer Box oder
 höherer Mindestgröße, füge einen weichen Trennstrich ein oder schalte die
 Silbentrennung ein.
@@ -120,11 +125,12 @@ Meldungen unter [Store-Upload](../store-upload/#troubleshooting).
 **Kann ich Vitrine Studio ohne die App nutzen, z. B. in CI?**
 Ja – die [CLI](../cli/) prüft, exportiert, importiert und lädt hoch; nimm auf
 Build-Rechnern das eigenständige CLI-Archiv und `VITRINE_APP_DIR` für einen
-separaten Einstellungsordner.
+separaten Einstellungsordner. Siehe [Automatisierung](../automation/).
 
 **Schickt Vitrine Studio Daten irgendwohin?**
 Nur wenn du es darum bittest: Store-Uploads und Verbindungstests gehen an
-Apple oder Google, die Galerie-Befehle an `api.vitrinestudio.app`, und die
+Apple oder Google, die Vorlagen-Galerie (in der App oder mit `vitrine gallery`)
+an `api.vitrinestudio.app`, und die
 tägliche Update-Prüfung fragt GitHub, ob es eine neue Version gibt (abschalten
 unter *App-Einstellungen → Updates*). Keine Statistik, kein Konto.
 
@@ -144,7 +150,6 @@ siehst sie live. Store-Uploads brauchen deinen Klick. Siehe
 - Keine schwedischen Trennmuster.
 - Frame-Pakete in `frames/` werden bei geöffnetem Projekt nicht neu eingelesen
   – öffne das Projekt nach Änderungen neu.
-- Die Vorlagen-Galerie lässt sich noch nicht in der App durchsuchen.
 
 ## Hilfe bekommen {#getting-help}
 

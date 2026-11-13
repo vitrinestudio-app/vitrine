@@ -32,6 +32,11 @@ screenshots/
   target form): `ios-phone`, `android-phone`, `ios-tablet`, `mac`, `watch`,
   `wear`, `web` … So the iPhone target shows iPhone captures and the Play
   target Android captures of the same screen, under the same key.
+- **Own variant folders** work too: type any name in the target's
+  *Screenshots* field (e.g. `landscape` for landscape captures) and put the
+  files in `screenshots/<language>/landscape/`. Validation only reports a
+  variant that is neither a catalog variant nor an existing folder (usually
+  a typo).
 - A file **directly in the language folder** (`screenshots/en/home.png`)
   serves every variant – the easiest start, and fine when your iPhone and
   Android captures look alike.
@@ -96,7 +101,9 @@ vitrine import screenshots fastlane/ --save-mapping
 vitrine import screenshots shots/ --device-map "iPhone 17 Pro Max=ios-phone" --lang-map pt-PT=pt --key-map 01_home=home
 ```
 
-More on replacing frameit: [Migrating from fastlane](../fastlane/).
+Images Vitrine Studio exported itself (for example into the same `fastlane/`
+folder) are recognised and skipped. How Vitrine Studio fits into a fastlane
+lane, with the captures in their own folder: [Using with fastlane](../automation/fastlane/).
 
 ## Missing screenshots and placeholders
 

@@ -18,7 +18,7 @@ Every template is CC0-1.0; fonts inside keep the OFL.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/health` | `{"status": "ok", "version": "…", "max_upload_mb": 50}` |
+| GET | `/health` | `{"status": "ok", "version": "…", "max_upload_mb": 50, "terms_url": "https://www.vitrinestudio.app/terms/", "terms_version": "2026-11-13"}` |
 | GET | `/v1/templates?q=&tag=&style=&color=&use=&devices=&limit=&offset=` | approved templates, newest first; `q` searches name, description, tags; `tag` matches any tag or device; facet filters below; `limit` 1–200 (default 50; the answer's `limit` is the one used – page with `offset += limit` until fewer come back) |
 | GET | `/v1/templates/{id}` | one approved template |
 | GET | `/v1/templates/{id}/download` | the `.vitrine-template` (`application/zip`, `Content-Disposition: attachment`); counts a download |
@@ -154,10 +154,16 @@ new login; someone who later takes the old login cannot update them);
 otherwise (static token without id) the logins decide, case-insensitively.
 A new version replaces the files and goes back to `pending`.
 
-Upload terms the client shows before uploading (text to be finalised by
-the owner): the uploader owns the rights to everything in the template,
-grants CC0 1.0 for it, and confirms that it contains no app screenshots of
-others, no vendor device images and only OFL fonts.
+Upload terms: the gallery's terms of use
+(<https://www.vitrinestudio.app/de/nutzungsbedingungen/>, binding German;
+English translation <https://www.vitrinestudio.app/terms/>; draft pending
+legal review). Uploading accepts them; the client shows the link before
+uploading (`vitrine gallery upload`). In short: the uploader holds the
+rights to everything in the template, releases it under CC0 1.0 on
+publication (fonts keep the OFL), and confirms that it contains no app
+screenshots of others, no vendor device images and only OFL fonts.
+`/health` carries `terms_url` and `terms_version` (date of the current
+version, `routes::TERMS_VERSION` – update it with the page).
 
 ## Login with GitHub (ADR 0025)
 
@@ -219,8 +225,8 @@ checked 2026-11-11):
 | Method | Path | Description |
 |---|---|---|
 | GET | `/v1/admin/queue` | `{"pending": [templates], "reports": [open reports]}` |
-| POST | `/v1/admin/templates/{id}/approve` | publish; optional body `{"note": "…"}`; resolves its reports; renders the sprites first if the template has none |
-| POST | `/v1/admin/templates/{id}/reject` | hide (also for taking down a reported template) |
+| POST | `/v1/admin/templates/{id}/approve` | publish; optional body `{"note": "…"}`; deletes its reports (resolved reports are not kept); renders the sprites first if the template has none |
+| POST | `/v1/admin/templates/{id}/reject` | **delete** at once (also for taking down a reported template): the row, its reports and all files (package, previews, sprites) → `{"id", "status": "rejected", "deleted": true}`; the id becomes free again. Privacy policy: rejected templates and resolved reports are not kept |
 | POST | `/v1/admin/templates/{id}/rerender` | render previews and sprites again from the stored package (any status) → `{"id", "sprites": [metadata]}` |
 
 Admin CLI: `vitrine gallery admin queue|approve <id…>|reject <id…>
@@ -229,9 +235,15 @@ variable (`--admin-token-env VAR`, default `VITRINE_API_ADMIN_TOKEN`).
 
 On start the server fills what rows from before schema version 1 lack
 (devices, sample count, facet tags from the stored package) and renders
-missing sprites of approved templates in the background.
+missing sprites of approved templates in the background. It also deletes
+what older versions kept: templates marked `rejected` (row + files) and
+reports marked resolved.
 
-Not yet: deleting files of rejected templates (manual for now), uploader
+Housekeeping (`maintenance::housekeeping`, every 10 s): rate-limit counters
+(keyed by client IP, in memory) are dropped as soon as their one-hour
+window has passed; expired sessions and web-login states are deleted.
+
+Not yet: uploader
 self-service (list/delete own templates), notification of the uploader.
 
 ## Clients

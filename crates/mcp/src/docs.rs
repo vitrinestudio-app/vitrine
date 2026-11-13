@@ -133,7 +133,7 @@ const FIELD_DOCS: &[(&str, &str)] = &[
     ),
     (
         "allow",
-        "[finding codes] – design findings meant on purpose for this element (and a group's children), not reported by validate: text_near_device, low_contrast, text_clipped, text_in_gap, text_outside_safe_area, element_outside, screen_header_covered, screen_header_cut, seam_overlap, seam_split, element_in_corner, device_small, page_not_covered, page_blends_with_store, hyphenated, variant_suggested, screenshot_upscale (e.g. `allow: [text_clipped, low_contrast]` on giant decorative type)",
+        "[finding codes] – design findings meant on purpose for this element (and a group's children), not reported by validate: text_near_device, low_contrast, text_clipped, text_in_gap, text_outside_safe_area, element_outside, screen_header_covered, screen_header_cut, screen_covered, device_cut, seam_overlap, seam_split, element_in_corner, device_small, page_not_covered, page_blends_with_store, clip_to_other_page, hyphenated, variant_suggested, screenshot_upscale (e.g. `allow: [text_clipped, low_contrast]` on giant decorative type)",
     ),
     // device
     (
@@ -261,6 +261,10 @@ const FIELD_DOCS: &[(&str, &str)] = &[
         "image.shadow",
         "string – shadow preset; follows the image's alpha (default: none)",
     ),
+    (
+        "clip_to",
+        "element id – clip the image to the outline of a shape element (rect with its radius, or ellipse) of the same canvas, as placed in the target (variant overrides, group, rotation). The shape is drawn as usual; give it `visible: false` to use it only as the mask. The shape's fill/stroke/opacity do not matter; the page clip still applies; the image's shadow is clipped too (put a shadow on the shape instead). validate: invalid_clip_to (unknown id, not a rect/ellipse, other canvas), clip_to_other_page (info). Renaming the shape updates it; element_remove of the shape drops it (a raw remove_element op is refused while referenced)",
+    ),
     // shape
     ("shape", "rect | ellipse | line (required)"),
     ("radius", "number lu – corner radius of rect (default 0)"),
@@ -289,10 +293,18 @@ const FIELD_DOCS: &[(&str, &str)] = &[
         "not used (the children have their own sizes)",
     ),
     ("group.height", "not used"),
+    (
+        "group.pivot",
+        "{x, y} lu – origin of the group's rotation and scale as offset from the centre of its children's reference points (default: that centre). E.g. {x: -200, y: 0} keeps a point 200 lu left of the centre in place when scaling",
+    ),
     // group
     (
+        "scale",
+        "number 0.1..10 – scales the whole group like a transform around its pivot (default 1): child positions, sizes, font sizes (text is laid out at the scaled size, stays sharp), strokes, corner radii, shadows and glows. Typical as a variant override (`scale: 0.85` for Play) instead of overriding every child. Nested groups multiply",
+    ),
+    (
         "children",
-        "list of elements – moved/rotated together; `at` of children is relative to the group's home page",
+        "list of elements – moved/rotated/scaled together; `at` of children is relative to the group's home page",
     ),
     (
         "langs",

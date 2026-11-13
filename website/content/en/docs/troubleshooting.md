@@ -25,12 +25,14 @@ common ones:
 | `text_missing` | error | the key exists in no language – nothing is drawn. |
 | `text_in_gap`, `text_clipped` | warning | text reaches into a store gap or past its page and is cut off. |
 | `text_outside_safe_area` | warning | text outside the target's safe area. |
-| `low_contrast` | warning | the text's contrast against what is actually drawn behind it (colour, gradient, photo, pattern) is below WCAG AA – 4.5:1, large text (from 80 lu, bold from 62 lu) 3:1. The message names the ratio and where; change the colour, add a scrim, shadow or outline. |
+| `low_contrast` | warning | the text's contrast against what is actually drawn behind it (colour, gradient, photo, pattern) is below WCAG AA – 4.5:1, large text (from 80 lu, bold from 62 lu) 3:1. The message names the ratio, where, and what lies there (an element, or the text's own shadow/glow/outline, which counts as backdrop); change the colour, add a scrim, shadow or outline. |
 | `text_near_device` | warning / info | glyphs hidden behind or running over a device frame (warning), or closer than 16 lu to it (info). Text lying completely on a device, or on a card over it, is fine. |
-| `screen_header_covered`, `screen_header_cut` | info | an element covers the top bar (status bar, app title) of a device's screen, or the page edge cuts through it so half a bar shows. |
+| `screen_header_covered`, `screen_header_cut` | info | an element covers the top bar (status bar, app title) of a device's screen, or a page/image edge or the device's clip cuts through it so half a bar shows (the message names the edge). |
+| `screen_covered` | info | an element drawn over a device covers 15 % or more of its screen below the top bar – the app content the screenshot is there to show. |
+| `device_cut` | info | the left or right page edge (*Clip: Home page*) or the outer canvas edge cuts more than 8 lu off a device – typically the corners of a tilted device. Top and bottom crops are not reported. |
 | `seam_overlap` | info | an element reaching across a page border is drawn over an element of the next page – check the gallery. |
 | `seam_split` | info | one shape built as two halves at a page border: the store gap pulls them apart. Use **one** element with *Clip: none* across the border – it stays continuous behind the gap in every target. |
-| `element_in_corner` | info | an element reaches into an image corner the store rounds off. |
+| `element_in_corner` | info | an element reaches into an image corner the store rounds off (parts hidden under an opaque element above don't count). |
 | `device_small` | info | the largest device of a page fills less than half of it. |
 | `page_not_covered` | info | a picture or panel covers almost the whole page but leaves a thin strip (typical after a variant changed the page height). |
 | `page_blends_with_store` | info | the edges of the images are hardly distinguishable from the store's light or dark background. |
@@ -57,6 +59,7 @@ checks:
   device_distance: 16      # lu between glyphs and a device frame
   min_contrast: 4.5
   min_contrast_large: 3
+  screen_cover: 0.15       # share of a screen an element may cover
   off: [page_blends_with_store]
 ```
 
@@ -70,8 +73,10 @@ Yes. Changes on disk are picked up live. If you changed the same thing in the
 app at the same moment, the app reloads the file and tells you that your last
 edit was not saved.
 
-**My German headline is tiny.**
-Auto-fit shrank it to fit. Give German a [language override](../languages/#language-overrides)
+**My French headline is tiny.**
+Auto-fit shrank it to fit. French often needs noticeably more room than
+English – "Edit photos in seconds" becomes "Retouchez vos photos en quelques
+secondes". Give French a [language override](../languages/#language-overrides)
 with a wider box or a higher minimum size, add a soft hyphen, or switch on
 hyphenation.
 
@@ -113,11 +118,12 @@ Create a new version in App Store Connect, then plan again. See
 **Can I use Vitrine Studio without the app, e.g. in CI?**
 Yes – the [CLI](../cli/) validates, exports, imports and uploads; use the
 standalone CLI archive on build machines and `VITRINE_APP_DIR` for a separate
-settings folder.
+settings folder. See [Automation](../automation/).
 
 **Does Vitrine Studio send data anywhere?**
 Only when you ask it to: store uploads and connection tests go to Apple or
-Google, the gallery commands to `api.vitrinestudio.app`, and the daily update
+Google, the template gallery (in the app or with `vitrine gallery`) to
+`api.vitrinestudio.app`, and the daily update
 check asks GitHub whether a new version exists (switch it off in *App
 settings → Updates*). No statistics, no account.
 
@@ -135,7 +141,6 @@ it live. Store uploads need your click. See [AI assistants](../ai-mcp/).
 - No Swedish hyphenation patterns.
 - Frame packs in `frames/` are not recompiled while the project is open –
   re-open it after changing them.
-- The template gallery can't be browsed from the app yet.
 
 ## Getting help
 

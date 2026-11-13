@@ -28,9 +28,9 @@ pub use color::{ColorRef, Rgba};
 pub use common::{AnchorY, Aspect, Clip, FitMode, PixelSize, Point, VisibleIn};
 pub use element::{
     Align, Appearance, BackgroundProps, COMMON_FIELDS, Chrome, DeviceProps, Element, ElementKind,
-    ElementKindTag, ElementPatch, ElementWire, FitValue, Fold, GroupProps, ImageProps,
-    LANG_OVERRIDE_FIELDS, Orientation, ShapeKind, ShapeProps, Stroke, StrokeJoin, StrokePosition,
-    TextBox, TextFit, TextProps, VAlign,
+    ElementKindTag, ElementPatch, ElementWire, FitValue, Fold, GROUP_SCALE_RANGE, GroupProps,
+    ImageProps, LANG_OVERRIDE_FIELDS, Orientation, ShapeKind, ShapeProps, Stroke, StrokeJoin,
+    StrokePosition, TextBox, TextFit, TextProps, VAlign,
 };
 pub use fill::{Fill, GradientStop, ImageFillMode};
 pub use ids::{CanvasId, ElementId, Lang, StringKey, TargetId, VariantId, is_valid_id};
@@ -40,8 +40,8 @@ pub use store::{
     StoreSettings,
 };
 pub use style::{
-    BUILTIN_SHADOWS, FontSettings, FrameStyle, Glow, ShadowLayer, ShadowPreset, SpanStyle,
-    StyleKind, Styles, TextStyle, TextTransform, is_valid_family_name,
+    BUILTIN_SHADOWS, FontSettings, FrameStyle, Glow, ShadowLayer, ShadowPreset, SpanPadding,
+    SpanStyle, StyleKind, Styles, TextStyle, TextTransform, is_valid_family_name,
 };
 pub use target::{
     AppleSlot, BannerFit, CreativePlacement, GalleryRef, Gaps, GoogleSlot, ImageFormat, Region,

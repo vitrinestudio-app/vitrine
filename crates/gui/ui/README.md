@@ -76,11 +76,15 @@ js/dialogs/*.js       targets.js = canvases & targets editor (canvas pane: new /
                       upload.js = "Upload to stores…" (plan table → confirm →
                       progress → result/log) + MCP upload confirmation dialog;
                       templates.js = template picker cards (New project,
-                      insert), "Save as template…", canvases dialog "From
-                      template" (template_* commands, ADR 0023);
+                      insert), "Save as template…" (app menu), canvases
+                      dialog "From template" (template_* commands, ADR 0023);
                       image-preview.js = image preview of screenshots/images
                       (`asset_thumbnail` + `asset_info`, ←/→, used-by chips)
 styles/templates.css  template cards, previews, reports
+js/dialogs/template-gallery.js  New project → "Template gallery" tab (online
+                      gallery: lazy list, search + facet filters, previews via
+                      `gallery_preview`, download + create; ADR 0025) and its
+                      styles/template-gallery.css
 styles/{dialogs,targets,start,settings}.css   styles of the above
 styles/{textedit,translations,assets}.css      text editor, translations, assets
 styles/assistant.css  indicator, activity popover, toasts, glow, settings section
@@ -91,7 +95,10 @@ styles/help.css       keyboard & mouse sheet, quick guide, "?" button
 Dialogs use `openModal({ title, body, footer, size })` from
 `dialogs/modal.js`; model changes go through a backend command that
 builds the ops (e.g. `target_patch`, `styles_patch`) and then
-`editor.apply(Promise.resolve(result))`.
+`editor.apply(Promise.resolve(result))`. Long-running work inside a
+dialog calls `m.setBusy(true)` (blocks Escape, the close button and
+backdrop clicks; `m.close()` still works), shows a busy bar and closes
+the dialog with an `editor.toast` when done ("Save as template").
 
 ## Conventions
 

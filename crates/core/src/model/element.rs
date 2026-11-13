@@ -205,6 +205,11 @@ pub struct ImageProps {
     pub asset: String,
     pub fit: Option<FitMode>,
     pub shadow: Option<String>,
+    /// Clip the image to the outline of this shape element (`rect` with
+    /// its `radius`, or `ellipse`) of the same canvas, as resolved for the
+    /// target (variant overrides, groups, rotation). The shape is drawn as
+    /// usual; with `visible: false` it only serves as the mask (ADR 0031).
+    pub clip_to: Option<ElementId>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -217,13 +222,31 @@ pub struct ShapeProps {
     pub shadow: Option<String>,
 }
 
-/// Groups elements for moving/rotating them together. Children keep their
-/// own home page and position; the group's `at` is added as offset and its
-/// rotation/opacity apply to all children (resolve, task 1.4).
-#[derive(Clone, Debug, PartialEq, Default)]
+/// Groups elements for moving/rotating/scaling them together. Children
+/// keep their own home page and position; the group's `at` is added as
+/// offset and its scale/rotation/opacity apply to all children (resolve,
+/// task 1.4; ADR 0030).
+#[derive(Clone, Debug, PartialEq)]
 pub struct GroupProps {
     pub children: Vec<Element>,
+    /// Uniform scale of the whole group around its pivot (the centre of
+    /// its children plus `pivot`, like rotation): positions, sizes, font
+    /// sizes, strokes, radii and effects of all children. Within
+    /// [`GROUP_SCALE_RANGE`], default 1 (ADR 0030).
+    pub scale: f64,
 }
+
+impl Default for GroupProps {
+    fn default() -> Self {
+        Self {
+            children: Vec::new(),
+            scale: 1.0,
+        }
+    }
+}
+
+/// Allowed values of a group's `scale`.
+pub const GROUP_SCALE_RANGE: std::ops::RangeInclusive<f64> = 0.1..=10.0;
 
 /// `kind:` tag of an element.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -282,9 +305,9 @@ impl ElementKindTag {
                 "hyphenate",
                 "langs",
             ],
-            Self::Image => &["asset", "fit", "shadow"],
+            Self::Image => &["asset", "clip_to", "fit", "shadow"],
             Self::Shape => &["shape", "radius", "fill", "stroke", "shadow"],
-            Self::Group => &["children"],
+            Self::Group => &["scale", "children"],
         }
     }
 }
@@ -637,6 +660,16 @@ macro_rules! element_fields {
 }
 
 impl ElementPatch {
+    /// Replace an element reference (`clip_to`) set by this patch by
+    /// `map` (old id → new id).
+    pub fn remap_element_refs(&mut self, map: &BTreeMap<ElementId, ElementId>) {
+        if let Some(Some(c)) = &mut self.clip_to
+            && let Some(to) = map.get(c)
+        {
+            *c = to.clone();
+        }
+    }
+
     /// Rename style references set by this patch (`kind` `from` → `to`):
     /// colours (`@name` in `color`, `fill`, `stroke`, `glow`), the text
     /// style and the shadow preset.
@@ -695,6 +728,9 @@ element_fields! {
     rotation: f64,
     pivot: Point,
     anchor_y: AnchorY,
+    // group
+    #[serde(serialize_with = "num")]
+    scale: f64,
     // device
     model: String,
     orientation: Orientation,
@@ -717,6 +753,7 @@ element_fields! {
     hyphenate: bool,
     // image
     asset: String,
+    clip_to: ElementId,
     // shape
     shape: ShapeKind,
     #[serde(serialize_with = "num")]
@@ -821,6 +858,16 @@ impl TryFrom<ElementWire> for Element {
         {
             return Err(format!("element `{}`: opacity must be within 0..1", w.id));
         }
+        if let Some(k) = w.scale
+            && !GROUP_SCALE_RANGE.contains(&k)
+        {
+            return Err(format!(
+                "element `{}`: scale must be within {}..{}, got {k}",
+                w.id,
+                GROUP_SCALE_RANGE.start(),
+                GROUP_SCALE_RANGE.end()
+            ));
+        }
         let props = match kind {
             ElementKindTag::Background => ElementKind::Background(BackgroundProps {
                 fill: w.fill.clone().ok_or_else(|| missing("fill"))?,
@@ -901,6 +948,7 @@ impl TryFrom<ElementWire> for Element {
                 asset: w.asset.clone().ok_or_else(|| missing("asset"))?,
                 fit: fit_mode(w.fit.clone())?,
                 shadow: w.shadow.clone(),
+                clip_to: w.clip_to.clone(),
             }),
             ElementKindTag::Shape if w.stroke.as_ref().is_some_and(|s| s.position.is_some()) => {
                 return Err(format!(
@@ -917,6 +965,7 @@ impl TryFrom<ElementWire> for Element {
             }),
             ElementKindTag::Group => ElementKind::Group(GroupProps {
                 children: w.children.clone().unwrap_or_default(),
+                scale: w.scale.unwrap_or(1.0),
             }),
         };
         Ok(Element {
@@ -958,6 +1007,7 @@ impl From<Element> for ElementWire {
             rotation: (e.rotation != 0.0).then_some(e.rotation),
             pivot: e.pivot,
             anchor_y: e.anchor_y,
+            scale: None,
             model: None,
             orientation: None,
             frame: None,
@@ -976,6 +1026,7 @@ impl From<Element> for ElementWire {
             font_size: None,
             hyphenate: None,
             asset: None,
+            clip_to: None,
             shape: None,
             radius: None,
             stroke: None,
@@ -1031,6 +1082,7 @@ impl From<Element> for ElementWire {
             ElementKind::Image(p) => {
                 w.kind = ElementKindTag::Image;
                 w.asset = Some(p.asset);
+                w.clip_to = p.clip_to;
                 w.fit = p.fit.map(FitValue::Mode);
                 w.shadow = p.shadow;
             }
@@ -1044,6 +1096,7 @@ impl From<Element> for ElementWire {
             }
             ElementKind::Group(p) => {
                 w.kind = ElementKindTag::Group;
+                w.scale = ((p.scale - 1.0).abs() > f64::EPSILON).then_some(p.scale);
                 w.children = (!p.children.is_empty()).then_some(p.children);
             }
         }
@@ -1122,6 +1175,29 @@ impl Element {
         match &mut self.kind {
             ElementKind::Group(g) => Some(&mut g.children),
             _ => None,
+        }
+    }
+
+    /// The shape element this image is clipped to (`clip_to`).
+    pub fn clip_to(&self) -> Option<&ElementId> {
+        match &self.kind {
+            ElementKind::Image(p) => p.clip_to.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Replace element references (`clip_to`) of this element and its
+    /// descendants by `map` (old id → new id); unmapped ids stay.
+    pub fn remap_element_refs(&mut self, map: &BTreeMap<ElementId, ElementId>) {
+        if let ElementKind::Image(p) = &mut self.kind
+            && let Some(to) = p.clip_to.as_ref().and_then(|c| map.get(c))
+        {
+            p.clip_to = Some(to.clone());
+        }
+        if let Some(children) = self.children_mut() {
+            for c in children {
+                c.remap_element_refs(map);
+            }
         }
     }
 

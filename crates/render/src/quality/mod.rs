@@ -14,7 +14,9 @@
 //! | `text_near_device` | glyphs cross, hide behind or come closer than `device_distance` to a device |
 //! | `low_contrast` | WCAG contrast of the glyphs against their surroundings, per 1 em cell |
 //! | `screen_header_covered` | an element above a device covers the top bar of its screen |
-//! | `screen_header_cut` | a page edge cuts a screen through its top bar |
+//! | `screen_header_cut` | a page or image edge (or the clip) cuts a screen through its top bar |
+//! | `screen_covered` | an element above a device covers ≥ `screen_cover` of the screen below the top bar |
+//! | `device_cut` | a side page edge (or the outer canvas edge) cuts more than 8 lu off a device |
 //! | `seam_overlap` | an element reaching into the next page overlaps one of that page |
 //! | `element_in_corner` | an element reaches into a rounded corner of a store image |
 //! | `page_blends_with_store` | image edges close to the store's light / dark background |
@@ -29,7 +31,9 @@ mod report;
 use vitrine_core::geometry::{Rect, Vec2, Viewport};
 use vitrine_core::model::TargetKind;
 use vitrine_core::resolve::{ResolvedDevice, ResolvedElement, ResolvedKind, ResolvedScene};
-use vitrine_core::validate::{FindingCode, SceneFinding, SceneInspector, Severity, Thresholds};
+use vitrine_core::validate::{
+    DEVICE_CUT_MIN, FindingCode, SceneFinding, SceneInspector, Severity, Thresholds,
+};
 
 pub use report::{
     DeviceCover, DeviceReport, OverlapReport, Quad, SceneReport, ScreenReport, scene_report,
@@ -37,8 +41,10 @@ pub use report::{
 
 use probe::{
     Draw, Probe, contrast, distance_map, intersection, luminance, outset, point, quantile,
-    rotated_quad, view_for,
+    rotated_bounds, rotated_quad, view_for,
 };
+
+use tiny_skia::Pixmap;
 
 use crate::frames;
 use crate::scene::{Quality, RenderContext, RenderOptions, Scale};
@@ -116,6 +122,7 @@ impl SceneInspector for Inspector<'_> {
         }
         if first {
             cx.screens(&mut out);
+            cx.device_cuts(&mut out);
             cx.corners(&mut out);
             cx.blends(&mut out);
         }
@@ -360,7 +367,8 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
         // what shows right around the glyphs (everything painted up to the
         // text, including its own outline / glow / shadow and highlights).
         let mut inner: Vec<Vec<[f64; 3]>> = vec![Vec::new(); cw * ch];
-        let mut ring: Vec<Vec<[f64; 3]>> = vec![Vec::new(); cw * ch];
+        // Ring pixel indices per cell.
+        let mut ring: Vec<Vec<usize>> = vec![Vec::new(); cw * ch];
         for k in 0..w * h {
             let c = (k / w / cell) * cw + (k % w) / cell;
             if alpha[k] >= 128 && shown[k] {
@@ -376,10 +384,19 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
                 && shown[k]
                 && clip.is_none_or(|r| r.contains(point(&view, k)))
             {
-                ring[c].push(rgb(px[k]));
+                ring[c].push(k);
             }
         }
-        let mut worst: Option<(f64, usize, f64, f64)> = None;
+        // Contrast of the text (colour `fill_c`, shown with opacity `op`)
+        // against backdrop colour `b`; also returns the text luminance.
+        let ratio_of = |fill_c: [f64; 3], b: [f64; 3]| {
+            let shown_text = [0, 1, 2].map(|i| op * fill_c[i] + (1.0 - op) * b[i]);
+            let t_l = probe::rel_luminance(shown_text[0], shown_text[1], shown_text[2]);
+            let b_l = probe::rel_luminance(b[0], b[1], b[2]);
+            (contrast(t_l, b_l), t_l, b_l)
+        };
+        // (ratio, cell, text luminance, median backdrop luminance, fill)
+        let mut worst: Option<(f64, usize, f64, f64, [f64; 3])> = None;
         for c in 0..cw * ch {
             if inner[c].len() < 3 || ring[c].len() < 6 {
                 continue;
@@ -391,20 +408,18 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
             let mut ratios: Vec<f64> = Vec::with_capacity(ring[c].len());
             let mut bgs: Vec<f64> = Vec::with_capacity(ring[c].len());
             let mut tl = 0.0;
-            for b in &ring[c] {
-                let shown_text = [0, 1, 2].map(|i| op * fill_c[i] + (1.0 - op) * b[i]);
-                let t_l = probe::rel_luminance(shown_text[0], shown_text[1], shown_text[2]);
-                let b_l = probe::rel_luminance(b[0], b[1], b[2]);
+            for &k in &ring[c] {
+                let (r, t_l, b_l) = ratio_of(fill_c, rgb(px[k]));
                 tl = t_l;
-                ratios.push(contrast(t_l, b_l));
+                ratios.push(r);
                 bgs.push(b_l);
             }
             let r = quantile(&mut ratios, RING_QUANTILE);
             if worst.is_none_or(|w| r < w.0) {
-                worst = Some((r, c, tl, quantile(&mut bgs, 0.5)));
+                worst = Some((r, c, tl, quantile(&mut bgs, 0.5), fill_c));
             }
         }
-        let Some((ratio, c, text_l, bg_l)) = worst else {
+        let Some((ratio, c, text_l, bg_l, fill_c)) = worst else {
             return;
         };
         let need = self.th.required_contrast(fs, t.style.weight);
@@ -419,6 +434,14 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
         } else {
             "darken the text or lighten what is behind it"
         };
+        // The ring pixels of the worst cell below the needed ratio: where
+        // do they come from?
+        let bad: Vec<usize> = ring[c]
+            .iter()
+            .copied()
+            .filter(|&k| ratio_of(fill_c, rgb(px[k])).0 < need)
+            .collect();
+        let source = self.contrast_source(i, &view, &comp, &bad);
         out.push(SceneFinding {
             level: Severity::Warn,
             code: FindingCode::LowContrast,
@@ -426,15 +449,107 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
             lang_dependent: true,
             message: format!(
                 "text `{key}` has a contrast of {ratio:.1}:1 against what is behind it near \
-                 x {x:.0}, y {y:.0} lu (WCAG AA needs {need}:1 for {fs:.0} lu text); {fix}, \
-                 or add a scrim, shadow or outline"
+                 x {x:.0}, y {y:.0} lu{source} (WCAG AA needs {need}:1 for {fs:.0} lu text); \
+                 {fix}, or add a scrim, shadow or outline"
             ),
         });
     }
 
+    /// Where the low-contrast ring pixels `bad` (indices into `view`) of
+    /// text `i` come from, as a message fragment: the text's own shadow,
+    /// glow or outline (they count as backdrop on purpose), or the element
+    /// drawn there (topmost below the text), or nothing if unclear.
+    fn contrast_source(&self, i: usize, view: &Viewport, comp: &Pixmap, bad: &[usize]) -> String {
+        if bad.is_empty() {
+            return String::new();
+        }
+        let scene = self.scene();
+        let e = &scene.elements[i];
+        let own_effects = match &e.props {
+            ResolvedKind::Text(t) => {
+                t.style.stroke.is_some()
+                    || t.style.glow.is_some()
+                    || !t.style.shadow.is_empty()
+                    || self.probe.prepared.text(i).is_some_and(|p| {
+                        !p.layout.highlights.is_empty()
+                            || p.layout
+                                .effects
+                                .iter()
+                                .any(|f| *f != vitrine_core::resolve::TextEffects::default())
+                    })
+            }
+            _ => false,
+        };
+        if own_effects {
+            // The same scene with the text drawn bare: pixels that change
+            // are the text's own effects.
+            let plain = self.probe.paint(view, true, |j, _| match j.cmp(&i) {
+                std::cmp::Ordering::Less => Some(Draw::Full),
+                std::cmp::Ordering::Equal => Some(Draw::Bare),
+                std::cmp::Ordering::Greater => None,
+            });
+            let (a, b) = (comp.pixels(), plain.pixels());
+            let changed = bad
+                .iter()
+                .filter(|&&k| {
+                    let (p, q) = (rgb(a[k]), rgb(b[k]));
+                    (0..3).map(|c| (p[c] - q[c]).abs()).sum::<f64>() > 0.1
+                })
+                .count();
+            if 2 * changed >= bad.len() {
+                return " – mostly the text's own shadow, glow, outline or highlight (they count \
+                        as backdrop: give them a colour that contrasts with the text)"
+                    .to_owned();
+            }
+        }
+        // Topmost element below the text at each bad pixel.
+        let region = Rect::new(
+            view.origin_x,
+            view.origin_y,
+            f64::from(view.width_px) / view.scale,
+            f64::from(view.height_px) / view.scale,
+        );
+        let mut owner: Vec<Option<usize>> = vec![None; bad.len()];
+        let mut left = bad.len();
+        for j in (0..i).rev() {
+            if left == 0 {
+                break;
+            }
+            let o = &scene.elements[j];
+            if o.opacity < 0.3 || !self.bounds[j].is_some_and(|b| b.intersects(&region)) {
+                continue;
+            }
+            let m = self.probe.mask(view, j);
+            for (n, &k) in bad.iter().enumerate() {
+                if owner[n].is_none() && m[k] {
+                    owner[n] = Some(j);
+                    left -= 1;
+                }
+            }
+        }
+        let mut counts: Vec<(Option<usize>, usize)> = Vec::new();
+        for o in owner {
+            match counts.iter_mut().find(|(x, _)| *x == o) {
+                Some(c) => c.1 += 1,
+                None => counts.push((o, 1)),
+            }
+        }
+        let Some((top, n)) = counts.into_iter().max_by_key(|c| c.1) else {
+            return String::new();
+        };
+        if 2 * n < bad.len() {
+            return String::new();
+        }
+        match top {
+            Some(j) => format!(" (mostly `{}` there)", scene.elements[j].id),
+            None => " (mostly the canvas background there)".to_owned(),
+        }
+    }
+
     // ---------------------------------------------------------- screens
 
-    /// `screen_header_cut` and `screen_header_covered` of every device.
+    /// `screen_header_cut`, `screen_header_covered` and `screen_covered` of
+    /// every device.
     fn screens(&self, out: &mut Vec<SceneFinding>) {
         let scene = self.scene();
         for (j, e) in scene.elements.iter().enumerate() {
@@ -449,54 +564,146 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
             if !allows(e, FindingCode::ScreenHeaderCut) {
                 self.header_cut(e, screen, band, out);
             }
-            let quad = rotated_quad(band, e);
-            let band_box = probe::bounds_of(&quad);
-            let Some(band_box) = intersection(&band_box, &scene.frame.canvas) else {
-                continue;
-            };
-            let view = view_for(band_box, (96.0 / band.w).clamp(0.1, 1.0));
-            let (w, h) = (view.width_px as usize, view.height_px as usize);
-            let band_mask = quad_mask(&view, &quad);
-            let total = band_mask.iter().filter(|b| **b).count();
-            if total == 0 {
-                continue;
-            }
-            for (k, o) in scene.elements.iter().enumerate().skip(j + 1) {
+            self.header_covered(j, e, band, out);
+            self.screen_covered(j, e, screen, band, out);
+        }
+    }
+
+    /// Elements other than devices and page backgrounds drawn above device
+    /// `j` whose bounds meet `region`.
+    fn above(&self, j: usize, region: &Rect, code: FindingCode) -> Vec<usize> {
+        let scene = self.scene();
+        scene
+            .elements
+            .iter()
+            .enumerate()
+            .skip(j + 1)
+            .filter(|(k, o)| {
                 // Another device over the screen is a deliberate stack.
-                if matches!(
+                !matches!(
                     o.props,
                     ResolvedKind::Background { .. } | ResolvedKind::Device(_)
-                ) || self.backdrop[k]
-                    || o.opacity < 0.3
-                    || allows(o, FindingCode::ScreenHeaderCovered)
-                    || !self.bounds[k].is_some_and(|b| b.intersects(&band_box))
-                {
-                    continue;
-                }
-                let m = self.probe.mask(&view, k);
-                let covered = (0..w * h).filter(|&p| band_mask[p] && m[p]).count();
-                let share = covered as f64 / total as f64;
-                if share >= HEADER_COVER_MIN {
-                    out.push(SceneFinding {
-                        level: Severity::Info,
-                        code: FindingCode::ScreenHeaderCovered,
-                        element: Some(o.id.clone()),
-                        lang_dependent: matches!(o.props, ResolvedKind::Text(_)),
-                        message: format!(
-                            "`{}` covers {:.0} % of the top bar (status bar, app title) of the \
-                             screen of `{}`; move it below the bar or onto the frame",
-                            o.id,
-                            share * 100.0,
-                            e.id
-                        ),
-                    });
-                }
+                ) && !self.backdrop[*k]
+                    && o.opacity >= 0.3
+                    && !allows(o, code)
+                    && self.bounds[*k].is_some_and(|b| b.intersects(region))
+            })
+            .map(|(k, _)| k)
+            .collect()
+    }
+
+    /// `screen_header_covered`: an element above the device covers at
+    /// least [`HEADER_COVER_MIN`] of the top bar.
+    fn header_covered(
+        &self,
+        j: usize,
+        e: &ResolvedElement,
+        band: Rect,
+        out: &mut Vec<SceneFinding>,
+    ) {
+        let scene = self.scene();
+        let quad = rotated_quad(band, e);
+        let Some(band_box) = intersection(&probe::bounds_of(&quad), &scene.frame.canvas) else {
+            return;
+        };
+        let view = view_for(band_box, (96.0 / band.w).clamp(0.1, 1.0));
+        let band_mask = quad_mask(&view, &quad);
+        let total = band_mask.iter().filter(|b| **b).count();
+        if total == 0 {
+            return;
+        }
+        for k in self.above(j, &band_box, FindingCode::ScreenHeaderCovered) {
+            let o = &scene.elements[k];
+            let m = self.probe.mask(&view, k);
+            let covered = band_mask.iter().zip(&m).filter(|(b, m)| **b && **m).count();
+            let share = covered as f64 / total as f64;
+            if share >= HEADER_COVER_MIN {
+                out.push(SceneFinding {
+                    level: Severity::Info,
+                    code: FindingCode::ScreenHeaderCovered,
+                    element: Some(o.id.clone()),
+                    lang_dependent: matches!(o.props, ResolvedKind::Text(_)),
+                    message: format!(
+                        "`{}` covers {:.0} % of the top bar (status bar, app title) of the \
+                         screen of `{}`; move it below the bar or onto the frame",
+                        o.id,
+                        share * 100.0,
+                        e.id
+                    ),
+                });
             }
         }
     }
 
-    /// A horizontal page or image edge cutting the (unrotated) screen
-    /// through its top bar.
+    /// `screen_covered`: an element above the device covers at least
+    /// [`Thresholds::screen_cover`] of the screen below its top bar (the
+    /// app content the screenshot is meant to show).
+    fn screen_covered(
+        &self,
+        j: usize,
+        e: &ResolvedElement,
+        screen: Rect,
+        band: Rect,
+        out: &mut Vec<SceneFinding>,
+    ) {
+        let scene = self.scene();
+        let body = Rect::new(
+            screen.x,
+            band.bottom(),
+            screen.w,
+            screen.bottom() - band.bottom(),
+        );
+        if body.h <= 0.0 || self.th.screen_cover >= 1.0 {
+            return;
+        }
+        let quad = rotated_quad(body, e);
+        let Some(body_box) = intersection(&probe::bounds_of(&quad), &scene.frame.canvas) else {
+            return;
+        };
+        let view = view_for(body_box, (160.0 / screen.w.max(1.0)).clamp(0.05, 1.0));
+        // Only the visible part of the screen counts (a screen cut by the
+        // page edge is measured on what the export shows).
+        let body_mask: Vec<bool> = quad_mask(&view, &quad)
+            .into_iter()
+            .enumerate()
+            .map(|(p, m)| {
+                m && {
+                    let q = point(&view, p);
+                    self.shown(q) && e.clip.is_none_or(|c| c.contains(q))
+                }
+            })
+            .collect();
+        let total = body_mask.iter().filter(|b| **b).count();
+        if total == 0 {
+            return;
+        }
+        for k in self.above(j, &body_box, FindingCode::ScreenCovered) {
+            let o = &scene.elements[k];
+            let m = self.probe.mask(&view, k);
+            let covered = body_mask.iter().zip(&m).filter(|(b, m)| **b && **m).count();
+            let share = covered as f64 / total as f64;
+            if share >= self.th.screen_cover {
+                out.push(SceneFinding {
+                    level: Severity::Info,
+                    code: FindingCode::ScreenCovered,
+                    element: Some(o.id.clone()),
+                    lang_dependent: matches!(o.props, ResolvedKind::Text(_)),
+                    message: format!(
+                        "`{}` covers {:.0} % of the screen of `{}` below its top bar (the app \
+                         content; reported from {:.0} %, `checks.screen_cover`); move it onto the \
+                         frame or beside the device, or make it smaller",
+                        o.id,
+                        share * 100.0,
+                        e.id,
+                        self.th.screen_cover * 100.0
+                    ),
+                });
+            }
+        }
+    }
+
+    /// A horizontal page or image edge, or the device's clip, cutting the
+    /// (unrotated) screen through its top bar.
     fn header_cut(
         &self,
         e: &ResolvedElement,
@@ -509,27 +716,49 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
             return; // tilted: no straight cut line
         }
         let scene = self.scene();
-        let mut cuts: Vec<f64> = scene
+        let page_at = |y: f64, x0: f64, x1: f64| {
+            scene
+                .frame
+                .pages
+                .iter()
+                .find(|p| (p.rect.y - y).abs() < 0.5 && p.rect.x < x1 && p.rect.right() > x0)
+        };
+        // (cut y, cause)
+        let mut cuts: Vec<(f64, String)> = scene
             .frame
             .images
             .iter()
             .filter(|img| img.source.x < screen.right() && img.source.right() > screen.x)
-            .map(|img| img.source.y)
+            .map(|img| {
+                let y = img.source.y;
+                let cause = match page_at(y, screen.x, screen.right()) {
+                    Some(p) => format!("the top edge of page {}", p.index + 1),
+                    None => format!("the top edge of export image {}", img.index + 1),
+                };
+                (y, cause)
+            })
             .collect();
         if let Some(c) = e.clip {
-            cuts.push(c.y);
+            let cause = match page_at(c.y, c.x, c.right()) {
+                Some(p) => format!(
+                    "its clip (`clip: page`, the top edge of page {})",
+                    p.index + 1
+                ),
+                None => "its clip".to_owned(),
+            };
+            cuts.push((c.y, cause));
         }
         let lo = screen.y + 0.005 * screen.h;
-        if let Some(cut) = cuts.into_iter().find(|&c| c > lo && c < band.bottom()) {
+        if let Some((cut, cause)) = cuts.into_iter().find(|&(c, _)| c > lo && c < band.bottom()) {
             out.push(SceneFinding {
                 level: Severity::Info,
                 code: FindingCode::ScreenHeaderCut,
                 element: Some(e.id.clone()),
                 lang_dependent: false,
                 message: format!(
-                    "the page edge cuts the screen of `{}` {:.0} lu below its top, through the \
-                     status bar / app title ({:.0} lu); move the device so the cut lies below \
-                     the bar or the whole bar shows",
+                    "{cause} cuts the screen of `{}` {:.0} lu below its top, through the \
+                     status bar / app title ({:.0} lu): part of the bar shows; move the device \
+                     so the cut lies below the bar or the whole bar shows",
                     e.id,
                     cut - screen.y,
                     band.h
@@ -538,6 +767,108 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
         }
     }
 
+    // ------------------------------------------------------ device cuts
+
+    /// `device_cut`: a device cut off by more than [`DEVICE_CUT_MIN`] lu at
+    /// the left or right edge of its page (`clip: page`) or of the canvas
+    /// (`clip: none`). Cuts at the top and bottom are a common deliberate
+    /// crop and not reported; a device running on into the next page
+    /// without clip is not cut.
+    fn device_cuts(&self, out: &mut Vec<SceneFinding>) {
+        let scene = self.scene();
+        for (j, e) in scene.elements.iter().enumerate() {
+            if !matches!(e.props, ResolvedKind::Device(_))
+                || e.opacity <= 0.0
+                || allows(e, FindingCode::DeviceCut)
+            {
+                continue;
+            }
+            let edge = e.clip.unwrap_or(scene.frame.canvas);
+            // Unclipped bounds incl. buttons (3 % margin, as `Probe::bounds`).
+            let m = e.size.x.max(e.size.y) * 0.03;
+            let b = rotated_bounds(
+                Rect::centered(e.center, e.size.x + 2.0 * m, e.size.y + 2.0 * m),
+                e,
+            );
+            let (y0, y1) = (b.y.max(edge.y), b.bottom().min(edge.bottom()));
+            if y1 <= y0 || b.right() <= edge.x || b.x >= edge.right() {
+                continue; // nothing visible (`element_outside`)
+            }
+            let mut sides = Vec::new();
+            for left in [true, false] {
+                let (lo, hi) = if left {
+                    (b.x, edge.x)
+                } else {
+                    (edge.right(), b.right())
+                };
+                if hi - lo <= DEVICE_CUT_MIN {
+                    continue;
+                }
+                // The part beyond the edge, within the visible height.
+                let view = view_for(Rect::new(lo, y0, hi - lo, y1 - y0), 0.5);
+                let alpha = self.probe.alpha_unclipped(&view, j);
+                let half = 0.5 / view.scale;
+                let lost = alpha
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, a)| **a >= 128)
+                    .map(|(k, _)| {
+                        let p = point(&view, k);
+                        if left {
+                            edge.x - p.x + half
+                        } else {
+                            p.x + half - edge.right()
+                        }
+                    })
+                    .fold(0.0, f64::max);
+                if lost > DEVICE_CUT_MIN {
+                    sides.push((left, lost));
+                }
+            }
+            if sides.is_empty() {
+                continue;
+            }
+            let what = if e.clip.is_some() {
+                format!("page {}", e.page + 1)
+            } else {
+                "the canvas".to_owned()
+            };
+            let parts: Vec<String> = sides
+                .iter()
+                .map(|(left, lost)| {
+                    format!(
+                        "{lost:.0} lu at the {} edge of {what}",
+                        if *left { "left" } else { "right" }
+                    )
+                })
+                .collect();
+            let tilt = if e.rotation.rem_euclid(360.0) == 0.0 {
+                String::new()
+            } else {
+                format!(
+                    " (tilted {:.0}°: half its rotated width is w/2·cos + h/2·sin)",
+                    e.rotation
+                )
+            };
+            let fix = match sides.as_slice() {
+                [(true, lost)] => format!("move it {lost:.0} lu right"),
+                [(false, lost)] => format!("move it {lost:.0} lu left"),
+                _ => "make it smaller".to_owned(),
+            };
+            out.push(SceneFinding {
+                level: Severity::Info,
+                code: FindingCode::DeviceCut,
+                element: Some(e.id.clone()),
+                lang_dependent: false,
+                message: format!(
+                    "device `{}` is cut off: {}{tilt}; {fix}, make it smaller or tilt it \
+                     less, or `allow: [device_cut]` if the crop is intended",
+                    e.id,
+                    parts.join(" and ")
+                ),
+            });
+        }
+    }
     // ---------------------------------------------------------- corners
 
     /// `element_in_corner`: elements (not devices) reaching into the part
@@ -591,7 +922,8 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
                     }
                     let view = view_for(*sq, (48.0 / rx).clamp(0.1, 2.0));
                     let alpha = self.probe.alpha(&view, k);
-                    let m: Vec<bool> = alpha.iter().map(|a| *a >= 128).collect();
+                    let mut m: Vec<bool> = alpha.iter().map(|a| *a >= 128).collect();
+                    self.hide_covered(k, &view, sq, &mut m);
                     let n = m
                         .iter()
                         .enumerate()
@@ -637,6 +969,26 @@ impl<'p, 'c, 's> Checks<'p, 'c, 's> {
                     rx
                 ),
             });
+        }
+    }
+
+    /// Clears the pixels of `mask` (element `k` in `view` over `region`)
+    /// that opaque elements drawn above `k` hide: only what shows can look
+    /// cut off.
+    fn hide_covered(&self, k: usize, view: &Viewport, region: &Rect, mask: &mut [bool]) {
+        for (o, oe) in self.scene().elements.iter().enumerate().skip(k + 1) {
+            if !mask.iter().any(|x| *x) {
+                return;
+            }
+            if matches!(oe.props, ResolvedKind::Background { .. })
+                || oe.opacity < 0.9
+                || !self.bounds[o].is_some_and(|b| b.intersects(region))
+            {
+                continue;
+            }
+            for (x, h) in mask.iter_mut().zip(self.probe.mask(view, o)) {
+                *x &= !h;
+            }
         }
     }
 

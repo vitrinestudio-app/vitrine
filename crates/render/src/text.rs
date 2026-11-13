@@ -179,8 +179,13 @@ pub fn to_paths(layout: &TextLayout, fonts: &FontLibrary) -> TextPaths {
             .iter()
             .filter_map(|h| {
                 let r = tiny_skia::Rect::from_xywh(h.rect.x, h.rect.y, h.rect.w, h.rect.h)?;
+                let path = if h.radius > 0.0 {
+                    crate::paint::round_rect(r.x(), r.y(), r.width(), r.height(), h.radius)?
+                } else {
+                    PathBuilder::from_rect(r)
+                };
                 Some(HighlightPath {
-                    path: PathBuilder::from_rect(r),
+                    path,
                     color: rgba(h.color),
                     effects: h.effects,
                 })
@@ -467,6 +472,57 @@ mod tests {
         let paths = to_paths(&layout, l.fonts());
         assert_eq!(paths.highlights.len(), 1);
         assert_eq!(paths.highlights[0].color, [255, 0, 0, 255]);
+    }
+
+    /// Span `padding` grows the highlight box around the glyphs without
+    /// moving them; `radius` rounds its corners (a pill).
+    #[test]
+    fn padded_pill_highlights() {
+        let mut l = TextLayouter::new(FontLibrary::bundled());
+        let style = ResolvedTextStyle {
+            size: 60.0,
+            ..ResolvedTextStyle::default()
+        };
+        let span = |padding, radius| {
+            let mut spans = std::collections::BTreeMap::new();
+            spans.insert(
+                "pill".to_owned(),
+                vitrine_core::layout::ResolvedSpanStyle {
+                    background: Some(vitrine_core::model::Rgba::rgb(255, 0, 0)),
+                    padding,
+                    radius,
+                    ..Default::default()
+                },
+            );
+            spans
+        };
+        let (flat, pill) = (span((0.0, 0.0), 0.0), span((20.0, 10.0), 999.0));
+        let input = |spans| TextInput {
+            spans: Some(spans),
+            ..TextInput::new("ab [pill]NEW[/] cd", &style, 1000.0)
+        };
+        let a = l.layout(&input(&flat));
+        let b = l.layout(&input(&pill));
+        assert_eq!(a.runs, b.runs, "padding must not move the glyphs");
+        let (ra, rb) = (a.highlights[0].rect, b.highlights[0].rect);
+        assert!((rb.x - (ra.x - 20.0)).abs() < 0.01 && (rb.w - (ra.w + 40.0)).abs() < 0.01);
+        assert!((rb.y - (ra.y - 10.0)).abs() < 0.01 && (rb.h - (ra.h + 20.0)).abs() < 0.01);
+        // Drawn: the middle of the left edge is red, the corner is not.
+        let paths = to_paths(&b, l.fonts());
+        let mut pm = Pixmap::new(1000, 200).unwrap();
+        draw_layout(
+            &mut pm,
+            &b,
+            l.fonts(),
+            Transform::from_translate(0.0, 40.0),
+            None,
+        );
+        let px = |x: f32, y: f32| pm.pixel(x as u32, (y + 40.0) as u32).unwrap();
+        let mid = px(rb.x + 2.0, rb.y + rb.h / 2.0);
+        assert_eq!((mid.red(), mid.green()), (255, 0), "{mid:?}");
+        assert_eq!(px(rb.x + 1.0, rb.y + 1.0).alpha(), 0);
+        let hb = paths.highlights[0].path.bounds();
+        assert!((hb.left() - rb.x).abs() < 0.01 && (hb.width() - rb.w).abs() < 0.01);
     }
 
     /// Every bundled family loads and draws a line (no golden image: this

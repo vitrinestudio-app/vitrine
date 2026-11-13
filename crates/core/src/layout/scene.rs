@@ -34,6 +34,8 @@ impl From<&resolve::ResolvedSpanStyle> for ResolvedSpanStyle {
             italic: s.italic,
             color: s.color,
             background: s.background,
+            padding: (s.padding.x as f32, s.padding.y as f32),
+            radius: s.radius as f32,
             stroke: s.stroke,
             glow: s.glow,
             shadow: s.shadow.clone(),
@@ -167,6 +169,16 @@ pub fn layout_text(
     spans: &BTreeMap<String, ResolvedSpanStyle>,
 ) -> Option<PlacedText> {
     let markup = text.text.as_deref()?;
+    let scaled: BTreeMap<String, ResolvedSpanStyle>;
+    let spans = if (text.scale - 1.0).abs() > f64::EPSILON {
+        scaled = spans
+            .iter()
+            .map(|(k, v)| (k.clone(), v.scaled(text.scale)))
+            .collect();
+        &scaled
+    } else {
+        spans
+    };
     let style = ResolvedTextStyle::from(&text.style);
     let rect = text.frame.rect;
     let layout = layouter.layout(&TextInput {

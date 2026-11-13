@@ -21,7 +21,10 @@ styles:
                hyphenate?: false}
   spans:                  # inline styles for [name]…[/] in translations
     accent: {color: "@accent", weight?: 800, italic?: true, font?: …,
-             background?: colour, stroke?, glow?, shadow?}
+             background?: colour, padding?: 8 | {x: 16, y: 4}, radius?: 20,
+             stroke?, glow?, shadow?}
+    # padding/radius shape the background box (a pill: radius ≥ half its
+    # height); padding grows the box, it does not move the text
   shadows:                # presets; soft, hard, none are built in
     lifted: {layers: [{color: "#00000033", blur: 30, x: 0, y: 20}]}
   frame: detailed         # default device frame: stylized | detailed | imported:apple | pack:<id> (frames_list)
@@ -76,11 +79,14 @@ dots: `hero.title: Plan your garden **in minutes**`).
 
 Folders: `screenshots/<lang>/[<variant>/]<key>.png` (device elements show the
 screenshot of their `screenshot` key; the variant folder comes from the
-target's `screenshots`), `assets/` (images for image elements and image
+target's `screenshots`; besides the catalog variants any own folder name works,
+e.g. `screenshots/en/landscape/` with `screenshots: landscape` – only a name
+with no such folder is reported as `unknown_screenshot_variant`), `assets/` (images for image elements and image
 fills), `fonts/` (TTF/OTF; family names usable in styles).
 
 Tools per section: languages → language_add / language_remove (default
-language and fallbacks: apply_ops set_languages), styles → styles_update,
+language and fallbacks: apply_ops set_languages), styles (also
+`fonts.<family>.fallback`) → styles_update,
 canvases → canvas_add / canvas_duplicate / canvas_rename / canvas_remove /
 canvas_update, elements → element_*, variants →
 canvas_variant / element_update {scope: variant}, targets → target_add /

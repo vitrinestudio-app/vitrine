@@ -42,6 +42,14 @@ impl Storage {
         Ok(bytes.len() as u64)
     }
 
+    /// Deletes all files of a template (package, previews, sprites).
+    pub fn remove(&self, id: &str) -> std::io::Result<()> {
+        match std::fs::remove_dir_all(self.dir(id)) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+            _ => Ok(()),
+        }
+    }
+
     pub fn package(&self, id: &str) -> std::io::Result<Vec<u8>> {
         std::fs::read(self.dir(id).join(PACKAGE))
     }

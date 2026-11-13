@@ -30,7 +30,7 @@ where you don't need the app. The regular Linux builds need glibc 2.35 or
 newer (Ubuntu 22.04, Debian 12 and later); the static `-musl` builds have no
 dependencies and run on any Linux, including Alpine. For CI there is also a
 container image with the command line tool (amd64 and arm64):
-`ghcr.io/vitrinestudio-app/vitrine-cli` – see [CI/CD](../ci/).
+`ghcr.io/vitrinestudio-app/vitrine-cli` – see [Automation](../automation/).
 
 Every release also has `SHA256SUMS.txt` to check your download:
 
@@ -59,8 +59,12 @@ The release notes say which builds are signed. A build that is not signed
 - **Windows SmartScreen:** *More info* → *Run anyway*.
 
 When you first start a newly signed version, macOS may ask once whether
-Vitrine Studio may use the keychain entries of your store keys – allow it
-(the entry is bound to the app's signature).
+Vitrine Studio may keep using its own keychain entries – allow it (an entry
+is bound to the app's signature, which has changed). This is only about the
+entries Vitrine Studio created itself: the store keys you added in the app
+and, if you use it, your template gallery login (service
+`app.vitrinestudio`). The app does not read any other entries
+in your keychain.
 
 ## The command line tool
 
@@ -127,7 +131,7 @@ offers it.
 You need [rustup](https://rustup.rs) (the pinned Rust toolchain installs
 itself) and, for the desktop app, the
 [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) of your
-system. No Node.js or npm.
+system.
 
 ```sh
 git clone https://github.com/vitrinestudio-app/vitrine.git

@@ -675,3 +675,12 @@ select.field {
   overflow: auto;
   margin: 6px 0 0;
 }
+
+/* "Help" submenu of the app menu (js/menu.js), opened to the right. */
+.menu-item[aria-expanded='true'] {
+  background: var(--bg-hover);
+}
+
+.menu-item[data-submenu] .icon {
+  flex: none;
+}

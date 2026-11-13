@@ -79,7 +79,7 @@ You rarely need a second canvas for another device size. Instead:
 A phone canvas designed for iPhone (page aspect 1320:2868) also renders for
 Google Play (1080:2160): the page gets a little shorter. Each element keeps its
 distance to the edge named by its **Anchor** – headlines at the top stay at the
-top (*Top*), phones at the bottom stay at the bottom (*Bottom*). If a target's
+top, phones at the bottom stay at the bottom. If a target's
 page is much taller or shorter than the canvas page, validation suggests a
 variant (`variant_suggested`).
 

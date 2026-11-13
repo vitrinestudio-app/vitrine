@@ -33,6 +33,11 @@ screenshots/
   Ziel-Formular): `ios-phone`, `android-phone`, `ios-tablet`, `mac`, `watch`,
   `wear`, `web` … So zeigt das iPhone-Ziel iPhone-Aufnahmen und das Play-Ziel
   Android-Aufnahmen desselben Bildschirms, unter demselben Schlüssel.
+- **Eigene Variantenordner** gehen auch: Trag im Feld *Screenshots* des Ziels
+  einen beliebigen Namen ein (etwa `landscape` für Querformat-Aufnahmen) und
+  leg die Dateien in `screenshots/<Sprache>/landscape/`. Die Prüfung meldet
+  nur eine Variante, die weder im Katalog steht noch als Ordner existiert
+  (meist ein Tippfehler).
 - Eine Datei **direkt im Sprachordner** (`screenshots/en/home.png`) gilt für
   jede Variante – der einfachste Einstieg, und gut genug, wenn deine iPhone-
   und Android-Aufnahmen gleich aussehen.
@@ -101,14 +106,17 @@ vitrine import screenshots fastlane/ --save-mapping
 vitrine import screenshots shots/ --device-map "iPhone 17 Pro Max=ios-phone" --lang-map pt-PT=pt --key-map 01_home=home
 ```
 
-Mehr zum Ablösen von frameit: [Umstieg von fastlane](../fastlane/).
+Bilder, die Vitrine Studio selbst exportiert hat (etwa in denselben
+`fastlane/`-Ordner), werden erkannt und übersprungen. Wie Vitrine Studio in
+eine fastlane-Lane passt, mit den Aufnahmen in einem eigenen Ordner:
+[Nutzung mit fastlane](../automation/fastlane/).
 
 ## Fehlende Screenshots und Platzhalter {#missing-screenshots-and-placeholders}
 
 Ein Schlüssel ohne Datei in irgendeiner Sprache der Kette zeigt im Editor
 einen **Platzhalter**, damit du gestalten kannst, bevor du Aufnahmen hast. Die
 Prüfung meldet ihn als Fehler (`screenshot_missing`), und der Store-Upload
-blockiert jeden Satz, der noch einen enthält – so landet kein Platzhalter
+blockiert jedes Screenshot-Set, das noch einen enthält – so landet kein Platzhalter
 versehentlich im Store. (Ein Export schreibt das Bild trotzdem mit Platzhalter,
 was für Reviews praktisch ist.) Während du gestaltest, behandelt der
 **Vorschau-Modus** in der Prüfliste (oder `vitrine validate --preview`) sie als

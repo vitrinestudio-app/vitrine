@@ -62,9 +62,14 @@ as <kbd>Alt</kbd> throughout this guide.
 | **Shape** | rectangle (with corner radius), ellipse or line, with fill and outline |
 | **Page background** | a fill (colour, gradient or image) for one page, on top of the canvas background |
 
-**Groups** combine elements so they move and rotate together:
+**Groups** combine elements so they move, rotate and scale together:
 <kbd>⌘</kbd><kbd>G</kbd> groups the selection, <kbd>⇧</kbd><kbd>⌘</kbd><kbd>G</kbd>
-ungroups.
+ungroups. A group's **Scale** in the inspector resizes everything inside it
+– positions, sizes, font sizes, outlines, corner radii and shadows – around
+its pivot (the centre of its members, moved by **Pivot**). Texts are laid
+out at the new size, so they stay sharp. Set it in a variant to make a card
+or ticket smaller for one format with a single change. A scaled group
+cannot be ungrouped; set its scale back to 100 % first.
 
 Backgrounds that run across **all** pages belong to the canvas: deselect
 everything and edit **Canvas backgrounds** in the inspector.

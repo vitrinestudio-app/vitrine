@@ -20,9 +20,9 @@ use. Plain colours are `#RRGGBB` or `#RRGGBBAA` (with transparency).
 A text style sets *Font*, *Weight*, *Italic*, *Size* (in lu), *Line height*,
 *Tracking*, *Colour*, *Highlight* (a background behind the text), *Case* (*as
 written*, *UPPERCASE*, *lowercase*), *Shadow*, outline and glow, and whether to
-*Hyphenate automatically when needed*. Text elements pick a style in the
-inspector (*Style*) and can override single values (colour, font size,
-effects) for themselves.
+*Hyphenate automatically when needed*. In the inspector you pick a style for
+a text element (*Style*) and can override single values (colour, font size,
+effects) for just that element.
 
 Sizes are in lu: on a 1000 lu wide page, a 90 lu headline is 9 % of the page
 width – on every device size.
@@ -41,6 +41,20 @@ set colour, weight, italic, font, highlight and effects. `**bold**` and
 `_italic_` work without a span style. See the
 [markup reference](../languages/#text-markup).
 
+A highlight can become a pill or a marker: **padding** (one value or
+`{x, y}`, in lu) grows the box around the words, **radius** rounds its
+corners – a radius of at least half the box height gives a pill. The padding
+never moves the text or changes line breaks, so leave a space next to the
+pill. Words that wrap get one box per line. In the app: Project settings →
+Styles → span style → *Highlight box*.
+
+```yaml
+styles:
+  spans:
+    tag: {color: "#FFFFFF", weight: 800, background: "@accent",
+          padding: {x: 14, y: 2}, radius: 40}
+```
+
 ## Shadows
 
 **Shadow presets** are built in (`soft`, `hard`, `none`) or your own: one or
@@ -52,13 +66,15 @@ texts use presets by name. Shadows of transparent images follow their shape
 
 Texts can have an **Outline** (width in lu, *Outside* or *Centred*), a
 **Glow** (radius, opacity, spread) and a **Shadow**. Set them on the text style,
-on a span style or on the element – the most specific wins (span > element >
-style). To switch off an inherited effect, set outline width 0, glow opacity 0
+on the element or on a span style. The text style provides the base values,
+an effect set on the element replaces the style's, and a span style applies to
+its marked words ahead of both – the most specific wins (span before element
+before text style). To switch off an inherited effect, set outline width 0, glow opacity 0
 or shadow *none*. Effect sizes are in lu and don't shrink with auto-fit.
 
 ## Bundled fonts
 
-Eleven families are built in – always available in the app, the CLI and for AI
+These families are built in – always available in the app, the CLI and for AI
 assistants, no files needed, all under the SIL Open Font License:
 
 | Family | Category | Weights | Italic |
@@ -84,7 +100,7 @@ assistants, no files needed, all under the SIL Open Font License:
   Display, Lora, Nunito, Oswald, Caveat, JetBrains Mono. **Greek:** Inter and
   JetBrains Mono. **Vietnamese:** all but Bebas Neue and Caveat.
 
-Six more bundled families cover other scripts and are used automatically –
+More bundled families cover other scripts and are used automatically –
 see [Supported scripts](#supported-scripts).
 
 `vitrine fonts` lists the families of a project (`--installed`: also every
@@ -206,7 +222,8 @@ font that matches your headline font):
 2. **Project settings → Fonts** → the family you use → **Add fallback family**
    → Noto Sans JP.
 
-Validation reports characters no font can draw (`missing_glyphs`) and
+Validation reports characters no font can draw as a warning
+(`missing_glyphs`) and
 characters drawn with an installed fallback font (`system_font_fallback`,
 info).
 

@@ -6,14 +6,14 @@ weight: 10
 icon: formats
 ---
 
-Wenn du Store-Screenshots schon mit Figma oder mit fastlane frameit gebaut
-hast, kennst du das: ein Artboard pro Screenshot, pro Gerät, pro Sprache – und
-jede Änderung heißt, alle anzufassen. Vitrine Studio dreht das um: Du
-gestaltest **einmal**, und die App rendert jedes Bild, das du brauchst.
+Store-Screenshots vervielfachen sich schnell: mehrere Seiten, mehrere
+Geräteklassen, mehrere Sprachen, zwei Stores. Vitrine Studio baut auf einer
+Idee auf: Du gestaltest **einmal**, und die App rendert jedes Bild, das du
+brauchst.
 
 ```text
 Projekt ─┬─ Leinwand "phone"  ── Seiten 1 … 6, Hintergründe, Geräte, Texte
-         └─ Leinwand "mac"    ── …
+         └─ Leinwand "mac"    ── Seiten 1 … 4, Hintergründe, Geräte, Texte
 
 Ziel × Sprache × Variante  →  fertige Bilder
 (iPhone 6,9″, Google Play Phone, iPad 13″ …) × (en, de, fr …)
@@ -91,11 +91,12 @@ Ein Ziel kann die Leinwand anpassen, ohne sie zu duplizieren:
   **Anker**.
 - **Gruppieren.** `Seiten pro Bild: 2` setzt zwei Hochformat-Seiten
   nebeneinander in ein Querformat-Bild – ein iPad-Querformat-Set aus der
-  Phone-Leinwand.
+  Phone-Leinwand. Tablets können natürlich auch eine eigene Leinwand
+  bekommen; das Gruppieren ist nur eine bequeme Abkürzung.
 - **Geräte-Tausch.** Das Play-Ziel ersetzt die iPhone-Frames durch
   Android-Frames.
 - **Banner.** Ein Bild aus einem Ausschnitt der Leinwand, z. B. die
-  Feature-Grafik.
+  Feature-Grafik oder ein Header für einen Blogpost.
 
 ## Varianten {#variants}
 

@@ -5,7 +5,9 @@ for part of the outputs:
 
 - **Variant override** (`canvases[].variants.<variant>.overrides.<id>`): for the
   targets that use the variant (e.g. `tablet-landscape` for iPad with
-  `group: 2`). Any element field except `id`, `kind`, `children`.
+  `group: 2`). Any element field except `id`, `kind`, `children`. For objects
+  built as a group (cards, tickets, polaroids) one override of the group's
+  `scale` (and `at`) resizes all its children – no override per child.
 - **Language override** (`langs.<lang>` on a text element): for one language
   and its sub-languages (`de` also applies to `de-AT`). Only at, width,
   height, anchor_y, style, box, align, valign, fit, color, font_size, stroke,
@@ -41,7 +43,9 @@ lang?, variant?, patch}, …]}`; ids may come from several canvases.
 ## With apply_ops
 `update_element` always writes the base element. Overrides:
 `set_variant_override {canvas, variant, element, patch | null}` (replaces the
-whole override), `reset_override_field {canvas, variant, element, field}`,
+whole override: fields left out are lost, listed in the result as
+`dropped_override_fields`; to change single fields use element_update
+{scope: "variant"}, which merges), `reset_override_field {canvas, variant, element, field}`,
 `set_lang_override {element, lang, patch | null}` (replaces the whole
 override), `reset_lang_override_field {element, lang, field}`.
 

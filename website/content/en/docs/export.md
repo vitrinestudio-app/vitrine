@@ -69,8 +69,8 @@ export renders only images whose input changed – a changed text, screenshot,
 style or setting – and skips the rest. *Re-render everything* / `--force`
 renders all of them.
 
-When a set gets shorter (fewer pages, renamed page ids), the export removes the
-images **it wrote earlier** for those targets and languages but no longer
+When a target produces fewer or different images than in the last export
+(say you deleted pages or renamed page ids), the export removes the images **it wrote earlier** for those targets and languages but no longer
 produces. It never deletes other files in the folder.
 
 `export/` and `.cache/` are listed in the project's `.gitignore` – exports are
@@ -103,7 +103,7 @@ metadata/android/en-US/images/featureGraphic.png
 - If the folder still contains frameit `*_framed.png` files, you get a warning
   – deliver would upload only those.
 
-Step by step: [Migrating from fastlane](../fastlane/).
+Step by step: [Using with fastlane](../automation/fastlane/).
 
 ## Exporting from the command line
 

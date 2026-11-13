@@ -23,6 +23,9 @@ pub(super) enum Draw {
     /// Opaque, without shadows, glows, outlines or span highlights: the
     /// element's own shape (masks).
     Bare,
+    /// [`Draw::Bare`] without the element's clip: the whole shape, also
+    /// where a page edge cuts it off.
+    Unclipped,
 }
 
 /// A prepared scene plus the render context, for partial renders.
@@ -51,7 +54,10 @@ impl Probe<'_, '_> {
             let Some(mode) = pick(i, e) else { continue };
             let mut el = e.clone();
             let mut text = self.prepared.text(i).cloned();
-            if mode == Draw::Bare {
+            if mode == Draw::Unclipped {
+                el.clip = None;
+            }
+            if mode != Draw::Full {
                 strip(&mut el);
                 if let Some(t) = &mut text {
                     t.layout
@@ -96,6 +102,12 @@ impl Probe<'_, '_> {
     /// Alpha of one element drawn bare.
     pub fn alpha(&self, view: &Viewport, index: usize) -> Vec<u8> {
         let pm = self.paint(view, false, |i, _| (i == index).then_some(Draw::Bare));
+        pm.pixels().iter().map(|p| p.alpha()).collect()
+    }
+
+    /// Alpha of one element drawn bare and without its clip.
+    pub fn alpha_unclipped(&self, view: &Viewport, index: usize) -> Vec<u8> {
+        let pm = self.paint(view, false, |i, _| (i == index).then_some(Draw::Unclipped));
         pm.pixels().iter().map(|p| p.alpha()).collect()
     }
 

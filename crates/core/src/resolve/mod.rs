@@ -30,10 +30,10 @@ pub use lookup::{
 };
 pub use scene::{
     DeviceColor, Diagnostic, DiagnosticCode, Frame, GalleryInfo, ImportedFrame, Level, OutputImage,
-    PageFrame, ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedGlow, ResolvedImage,
-    ResolvedKind, ResolvedScene, ResolvedScreenshot, ResolvedShadowLayer, ResolvedShape,
-    ResolvedSpanStyle, ResolvedStop, ResolvedStroke, ResolvedText, ResolvedTextStroke,
-    ResolvedTextStyle, ScreenshotSource, TextEffects, TextFrame,
+    PageFrame, ResolvedClipShape, ResolvedDevice, ResolvedElement, ResolvedFill, ResolvedGlow,
+    ResolvedImage, ResolvedKind, ResolvedScene, ResolvedScreenshot, ResolvedShadowLayer,
+    ResolvedShape, ResolvedSpanStyle, ResolvedStop, ResolvedStroke, ResolvedText,
+    ResolvedTextStroke, ResolvedTextStyle, ScreenshotSource, TextEffects, TextFrame,
 };
 pub use style::{DEFAULT_FONT, StyleResolver, UNKNOWN_COLOR, builtin_shadow, default_text_style};
 

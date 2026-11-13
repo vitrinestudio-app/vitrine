@@ -140,6 +140,45 @@ Sources: `frameit/lib/frameit/runner.rb`, `editor.rb`, `strings_parser.rb`.
   API's `listing.language`).
 - **Limit:** supply enforces no count; Play allows 8 per type.
 
+## Captures and uploads share folders (checked 2026-11-13)
+
+Read from fastlane `master` on 2026-11-13 (raw GitHub URLs as above).
+Decision: ADR 0032.
+
+- **snapshot** (`snapshot/lib/snapshot/options.rb`, `runner.rb`):
+  `output_directory` defaults to `fastlane/screenshots` (or `screenshots`
+  without a `fastlane` folder) – the folder deliver uploads.
+  `clear_previous_screenshots` defaults to `false`; when on, it deletes
+  `File.join(output_directory, "*", "*.png")`, i.e. every PNG of every
+  locale folder, not only snapshot's own.
+- **screengrab** (`screengrab/lib/screengrab/options.rb`, `runner.rb`):
+  `output_directory` defaults to `fastlane/metadata/android`; files land in
+  `<output_directory>/<locale>/images/<device_type>Screenshots/` – the
+  folder supply uploads. `clear_previous_screenshots` defaults to `false`;
+  when on, it deletes `**/<device_type>Screenshots/*.png` (and
+  `**/screenshots/*.png`) below `output_directory`.
+- **deliver** (`deliver/lib/deliver/loader.rb`): `LanguageFolder#file_paths`
+  globs `*.{png,jpg,jpeg}` (case-insensitive) per locale folder and uploads
+  all of them; when `*_framed.*` files exist, only paths containing
+  `framed` or `watch` are kept. (`upload_screenshots.rb`): with
+  `overwrite_screenshots` the remote sets of the uploaded locales are
+  deleted first; without it local files are added to the remote set and
+  skipped only when their MD5 matches a remote screenshot; at most 10 per
+  set, remote ones counting.
+- **supply** (`supply/lib/supply/uploader.rb`): `upload_screenshots`
+  globs `<locale>/images/<type>/*.{png,jpg,jpeg}` (case-insensitive,
+  `.sort`) and uploads all; without `sync_image_upload` it first clears all
+  remote screenshots of that type (with it, matching SHA-256 are kept, the
+  rest deleted). `upload_images` takes `Dir.glob(<type>.{png,jpg,jpeg}).last`.
+  `skip_upload_screenshots` / `skip_upload_images` turn either off.
+
+Consequence: with the default output folders, the captures sit in the
+upload folders. Exporting Vitrine Studio's images into the same folders
+makes deliver/supply upload both, and re-importing the folder sees
+Vitrine Studio's images as captures. Recommended: snapshot/screengrab
+`output_directory` below `fastlane/captures/` (same structure), import from
+there, export into `fastlane/`.
+
 ## Consequences for Vitrine Studio
 
 **Import** (`vitrine import screenshots <dir> --format fastlane|auto`):

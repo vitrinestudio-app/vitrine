@@ -22,6 +22,9 @@ texts in every language, images and fonts. It is a single
 
 Start screen → **New project** → pick a template card (or **Import file…**
 for a `.vitrine-template` file) → name, location, languages → **Create**.
+The tab **Template gallery** lists the online gallery (search, filters,
+a link to the large view on the website); **Download and create**
+downloads the chosen template once and keeps it under **Local templates**.
 
 - All canvases of the template come along.
 - **Texts:** each of your languages gets the template's text in the same
@@ -85,11 +88,24 @@ template; others are refused ("may not be redistributed" or "licence
 unclear"). The licence file is kept or generated (`fonts/<name>-OFL.txt`).
 Bundled fonts need nothing.
 
+On the command line, `vitrine template save` saves **all canvases** of the
+project. If you only want some of them, name them with `--canvas` – once per
+canvas (`--canvas phone --canvas tablet`). Tags are set with `--style`,
+`--color` and `--use`; each option can be repeated or take several values
+separated by commas (`--color gradient --color dark` is the same as
+`--color gradient,dark`). Free tags (`--tag`) are no longer accepted – only
+the values in the table above.
+
 ```sh
-vitrine template save --name "Bold gradient" --canvas phone \
-  --style bold --color gradient,dark --use travel -o bold.vitrine-template
+# all canvases of the project
+vitrine template save --name "Bold gradient" \
+  --style bold --color gradient --color dark --use travel -o bold.vitrine-template
+# only the phone and tablet canvases
+vitrine template save --name "Calm set" --canvas phone --canvas tablet \
+  --style minimal --color light,pastel --use productivity,health-fitness
+# with your own screenshots as samples
 vitrine template save --name "Demo set" --style minimal --color light --use productivity \
-  --sample-screenshots                     # with your own screenshots as samples
+  --sample-screenshots
 vitrine template tags                      # all tag values
 ```
 
@@ -140,9 +156,8 @@ may share this way.
 
 {{< callout status >}}
 The gallery is being filled. Browse it on the website ([template
-gallery](/gallery/)) or with `vitrine gallery list`; browsing it inside the
-app is not built yet – download a template and use **Import file…** in the
-*New project* dialog.
+gallery](/gallery/)), in the app (*New project* → **Template gallery**) or
+with `vitrine gallery list`.
 {{< /callout >}}
 
 - **Browsing and downloading** need no account.

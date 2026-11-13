@@ -41,6 +41,18 @@ pub struct Session {
     pub expires_at: i64,
 }
 
+/// Deletes expired sessions and web-login states (on every new session and
+/// periodically by `maintenance::housekeeping`).
+pub fn purge_expired(db: &Connection) -> rusqlite::Result<()> {
+    let now = now();
+    db.execute("DELETE FROM sessions WHERE expires_at <= ?1", params![now])?;
+    db.execute(
+        "DELETE FROM oauth_states WHERE expires_at <= ?1",
+        params![now],
+    )?;
+    Ok(())
+}
+
 /// Issues a new session token for the GitHub user (and drops expired
 /// sessions and states). Returns the token (shown once) and its expiry.
 pub fn issue(
@@ -55,11 +67,7 @@ pub fn issue(
     );
     let now = now();
     let expires_at = now + i64::from(days) * 86_400;
-    db.execute("DELETE FROM sessions WHERE expires_at <= ?1", params![now])?;
-    db.execute(
-        "DELETE FROM oauth_states WHERE expires_at <= ?1",
-        params![now],
-    )?;
+    purge_expired(db)?;
     db.execute(
         "INSERT INTO sessions (token_hash, login, github_id, created_at, expires_at)
          VALUES (?1, ?2, ?3, ?4, ?5)",

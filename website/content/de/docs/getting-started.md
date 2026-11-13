@@ -74,7 +74,7 @@ Andere Wege:
   übernimmt sie sofort.
 
 Sprachen ohne eigene Screenshots nutzen die der Standardsprache – du kannst
-also erst einmal nur mit Englisch anfangen.
+also erst einmal nur mit Englisch oder deiner eigenen Sprache anfangen.
 
 ## 4. Überschriften schreiben {#4-write-your-headlines}
 
@@ -99,13 +99,17 @@ rot und der Text markiert – siehe
 - Zieh Elemente, um sie zu verschieben – sie rasten an Seitenrändern, Mitten
   und anderen Elementen ein. Mit den Anfassern skalierst und drehst du.
 - Ein Gerät kann über zwei Seiten liegen; zieh es über die Grenze.
-- Auf leerer Fläche ziehen verschiebt die Ansicht, <kbd>⌘</kbd>/<kbd>Strg</kbd>
-  + Scrollen oder Pinch zoomt, <kbd>⌘</kbd><kbd>0</kbd> passt ans Fenster an.
+- Ziehen auf einer leeren Fläche verschiebt die Ansicht. Zum Zoomen
+  scrollst du mit gedrückter <kbd>⌘</kbd>-Taste (macOS) bzw.
+  <kbd>Strg</kbd>-Taste (Windows, Linux) oder ziehst zwei Finger auf dem
+  Trackpad auseinander; <kbd>⌘</kbd><kbd>0</kbd> passt die Ansicht ans
+  Fenster an.
 - Vertan? <kbd>⌘</kbd><kbd>Z</kbd>. Jede Änderung ist ein Rückgängig-Schritt
   und sofort gespeichert.
 
-Alles Weitere steht auf der [Editor-Seite](../editor/); <kbd>?</kbd> zeigt
-alle Tastenkürzel.
+Unter Windows und Linux steht <kbd>Strg</kbd> überall dort, wo hier
+<kbd>⌘</kbd> steht. Alles Weitere steht auf der [Editor-Seite](../editor/);
+der **?**-Button unten rechts zeigt alle Tastenkürzel.
 
 ## 6. Alle Formate prüfen {#6-check-all-formats}
 
@@ -129,7 +133,7 @@ Die Bilder landen im Ordner `export/` des Projekts:
 
 ```text
 export/
-  index.html                  ← Übersicht aller Bilder, öffnet in jedem Browser
+  index.html                  ← Übersicht aller Bilder
   ios-iphone-69/en/01_welcome.png
   ios-iphone-69/en/02_features.png
   ios-iphone-69/en/03_start.png
@@ -154,8 +158,10 @@ vitrine validate --project my-app              # was fehlt oder nicht passt
 vitrine export --project my-app                # → my-app/export/
 ```
 
-Die Texte bearbeitest du in `my-app/i18n/en.yaml` und `de.yaml` – oder du
-öffnest den Ordner in der App. Siehe [CLI-Referenz](../cli/).
+Die Texte bearbeitest du direkt in `my-app/i18n/en.yaml` und `de.yaml` –
+oder du öffnest das Projekt (den Ordner `my-app`) in der Desktop-App und
+schreibst sie dort wie oben beschrieben. Beides geht auch gemischt: Die App
+lädt Änderungen an den Dateien sofort neu. Siehe [CLI-Referenz](../cli/).
 
 ## Wie geht's weiter? {#next-steps}
 

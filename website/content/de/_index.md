@@ -16,12 +16,12 @@ hero:
   ctaGithub: "Auf GitHub ansehen"
   note: "Pre-Alpha: Installer sind noch nicht veröffentlicht. Der Quellcode liegt auf GitHub."
   pages:
-    - ["Plane deinen", "Garten"]
-    - ["Beet für", "Beet"]
-    - ["Am Schreib-", "tisch"]
-    - ["oder direkt", "im Beet"]
-    - ["Von der", "Saat"]
-    - ["bis zur", "Ernte"]
+    - ["Einmal", "gestalten"]
+    - ["Jede", "Sprache"]
+    - ["Jedes", "Gerät"]
+    - ["Jeder", "Store"]
+    - ["Direkt", "hochladen"]
+    - ["Frei &", "Open Source"]
   notesLabel: "Was die Animation zeigt"
   notes:
     - "Ein Hintergrund über alle Seiten"
@@ -113,17 +113,17 @@ features:
       title: "Farbverwaltete Ausgabe"
       text: "Display-P3-Screenshots werden einmal nach sRGB umgerechnet; Exporte sind deckend, inkrementell und kommen mit einer `index.html`-Übersicht."
     - icon: fonts
-      title: "11 mitgelieferte Schriftfamilien"
-      text: "Inter, Montserrat, Playfair Display, Lora, Bebas Neue und mehr – alle unter SIL OFL, immer verfügbar, ohne Schriftdateien im Projekt."
+      title: "Schriften"
+      text: "Mitgelieferte Familien mit freier Lizenz wie Inter, Montserrat und Playfair Display, dazu deine eigenen: Schriftdateien im Projekt oder die auf deinem Rechner installierten – auf Wunsch im Projekt gespeichert, damit CI und Team genauso rendern."
     - icon: terminal
       title: "CLI für CI"
       text: "`vitrine validate`, `export` und `upload` laufen in Skripten und Pipelines, mit klaren Exit-Codes und JSON-Ausgabe."
     - icon: sparkle
       title: "KI-Assistenten per MCP"
-      text: "Claude und andere MCP-Clients gestalten, übersetzen, prüfen Vorschauen und exportieren – live in deinem Editor, jeder Schritt rückgängig machbar."
+      text: "Claude und andere MCP-Clients gestalten, übersetzen, prüfen Vorschauen und exportieren – live in deinem Editor, und jeden Schritt kannst du wie deinen eigenen zurücknehmen."
     - icon: template
       title: "Vorlagen"
-      text: "Mit einer Vorlage starten, eigene Leinwände als Vorlage speichern und teilen – eine Community-Galerie ist unterwegs."
+      text: "Mit einer Vorlage starten, eigene Leinwände als Vorlage speichern und teilen – oder direkt in der App in der Community-Galerie stöbern."
 
 showcase:
   eyebrow: "Gemacht mit Vitrine Studio"
@@ -166,6 +166,7 @@ ai:
     - "Jede Änderung ist **ein Rückgängig-Schritt**, beschriftet mit dem Namen des Assistenten"
     - "Der Assistent **sieht das Ergebnis**: `render_preview` liefert das gerenderte PNG"
     - "Läuft **lokal** auf 127.0.0.1 mit Token – Store-Uploads brauchen trotzdem **deinen Klick**"
+    - "Nicht nur kleine Änderungen: Die ersten [Vorlagen der Galerie](galerie/) – rund 50 – hat **Claude Opus 5.5 über MCP** gestaltet. Ein Assistent kann den Großteil der eigentlichen Gestaltung übernehmen"
   more: "KI-Assistent einrichten"
   chat:
     label: "Ein Chat mit einem KI-Assistenten, der fehlende Texte ins Französische übersetzt und Seite 2 prüft."
@@ -179,27 +180,29 @@ ai:
     reply: "Fertig – 14 Texte übersetzt. Seite 2 passt; eine Überschrift wurde automatisch getrennt, schau sie dir kurz an."
     toast: "Claude Desktop: Französische Texte setzen · Rückgängig"
 
-fastlane:
-  eyebrow: "Du kommst von fastlane?"
-  title: "Ein direkter Ersatz für frameit"
-  lead: "snapshot, screengrab, deliver und supply bleiben. Vitrine Studio liest deine Aufnahmen und schreibt genau die Ordner, die deliver und supply hochladen."
-  terminalLabel: "Terminal: fastlane-Screenshots importieren und im fastlane-Layout exportieren."
-  more: "Zur Umstiegsanleitung"
+automation:
+  eyebrow: "CLI & Automatisierung"
+  title: "Passt in dein CI/CD"
+  lead: "Das Kommandozeilenwerkzeug `vitrine` kann mit deinem Projekt alles, was die App kann – ohne Oberfläche, in jeder Pipeline. Prüf die Screenshots bei jedem Pull Request, exportiere sie als Build-Artefakte und lade sie aus dem Release-Job hoch."
+  terminalLabel: "Terminal: Store-Screenshots in einem CI-Job prüfen, exportieren und hochladen."
+  more: "Doku zur Automatisierung"
   points:
-    - "Importiert ganze `fastlane/`-Ordner – snapshot- **und** screengrab-Ausgaben, Store-Locales, `01Home`-Namen"
-    - "Überspringt frameit-Reste (`_framed.png`, `Framefile.json`) mit Begründung"
-    - "Exportiert das **deliver/supply-Layout** mit Store-Locale-Ordnern, Konfliktprüfung und Limits"
-    - "Oder lass deliver für Screenshots weg und nutze den eingebauten Store-Upload"
+    - "**Jede CI:** `validate`, `export` und `upload` mit klaren Exit-Codes, GitHub-Annotationen, GitLab Code Quality und JUnit-Berichten – [Überblick](docs/automation/)"
+    - "**Container-Image** `ghcr.io/vitrinestudio-app/vitrine-cli` für GitLab, Jenkins, CircleCI und andere"
+    - "**GitHub Actions:** [Workflow-Beispiele](docs/automation/github-actions/); eine fertige Action ist in Arbeit (Entwurf)"
+    - "**GitLab CI:** [Job-Beispiele](docs/automation/gitlab-ci/); CI/CD-Komponenten sind in Arbeit (Entwurf)"
+    - "**fastlane:** importiert snapshot- und screengrab-Ausgaben, exportiert das deliver/supply-Layout – [Nutzung mit fastlane](docs/automation/fastlane/); ein Plugin ist in Arbeit (Entwurf)"
+    - "**Andere Systeme:** Jenkins, Xcode Cloud, Bitrise, Codemagic und mehr – [Hinweise](docs/automation/other-systems/)"
   terminal:
-    - {comment: "1 · Aufnahmen holen (frameit-Dateien werden ignoriert)"}
-    - {cmd: "vitrine import screenshots fastlane/"}
-    - {out: "✓ 48 screenshots · 4 languages · 2 devices"}
-    - {comment: "2 · einmal in der App gestalten, dann für deliver/supply exportieren"}
+    - {comment: "1 · jeden Pull Request prüfen (Annotationen im Diff)"}
+    - {cmd: "vitrine validate --format github --strict"}
+    - {comment: "2 · als Build-Artefakt exportieren – oder in die fastlane-Ordner"}
+    - {cmd: "vitrine export --out export"}
     - {cmd: "vitrine export --layout fastlane --out fastlane"}
-    - {out: "✓ screenshots/de-DE/01_ios-iphone-69.png …"}
-    - {out: "✓ metadata/android/de-DE/images/phoneScreenshots/ …"}
-    - {comment: "3 · frameit aus dem Fastfile streichen – hochladen wie bisher"}
-    - {cmd: "fastlane deliver"}
+    - {comment: "3 · aus dem Release-Job hochladen: planen, dann bestätigen"}
+    - {cmd: "vitrine upload plan --remote --format json > plan.json"}
+    - {cmd: "token=$(jq -r .confirm_token plan.json)"}
+    - {cmd: "vitrine upload execute --confirm \"$token\" --yes"}
 
 upload:
   eyebrow: "Store-Upload"
@@ -271,6 +274,13 @@ oss:
         model: iphone-island
         screenshot: home
   yamlCaption: "Ein Projekt ist lesbares YAML – vergleichen, reviewen, skripten."
+  funding:
+    title: "Wie die Entwicklung finanziert wird"
+    text: "Vitrine Studio bleibt kostenlos. Wir denken über faire Wege nach, die Entwicklung zu finanzieren – zum Beispiel eine in die App integrierte KI-Bildgenerierung oder später direkten Support zu fairen Preisen. Sponsoren sind herzlich willkommen, große Firmen genauso wie kleine Beiträge."
+    aside: "Und ganz ehrlich: Mit einem MacBook mit mehr als 16 GB RAM und einer Festplatte, die nicht ständig voll ist, wäre die Entwicklung deutlich entspannter gelaufen."
+    github: "Auf GitHub sponsern"
+    liberapay: "Über Liberapay spenden"
+    soon: "Sponsoring über GitHub Sponsors und Liberapay startet bald. Firmen bekommen eine ordentliche Rechnung."
 
 faq:
   eyebrow: "FAQ"
@@ -278,7 +288,7 @@ faq:
   items:
     - q: "Ist Vitrine Studio wirklich 100 % kostenlos?"
       open: true
-      a: "Ja – 100 % kostenlos, wirklich. Vitrine Studio ist freie Open-Source-Software unter der GPL-3.0-or-later. Es gibt kein Abo, keine Bezahlversion, kein Konto und kein Wasserzeichen auf deinen Screenshots – und keine Begrenzung bei Sprachen, Geräten oder Exporten. Auch für kommerzielle Apps darfst du sie nutzen."
+      a: "Ja – 100 % kostenlos, wirklich. Vitrine Studio ist freie Open-Source-Software unter der GPL-3.0-or-later. Es gibt kein Abo, keine Bezahlversion, kein Konto und kein Wasserzeichen auf deinen Screenshots – und keine Begrenzung bei Sprachen, Geräten oder Exporten. Auch für kommerzielle Apps darfst du sie nutzen. Wie wir die Entwicklung finanzieren wollen: [hier](#funding)."
     - q: "Wann kann ich sie herunterladen?"
       a: "Vitrine Studio ist im Pre-Alpha-Stadium. Signierte Installer für macOS, Windows und Linux sind in Vorbereitung; bis dahin kannst du die App mit Rust [aus dem Quellcode bauen](https://github.com/vitrinestudio-app/vitrine)."
     - q: "Brauche ich ein Konto oder eine Internetverbindung?"
@@ -286,7 +296,7 @@ faq:
     - q: "Sind Apple-Geräterahmen dabei?"
       a: "Vitrine Studio zeichnet seine Geräterahmen selbst und liefert keine Hersteller-Grafiken mit. Apples Product Bezels kannst du selbst importieren (von Apple Design Resources geladen) oder eigene Rahmenpakete verwenden."
     - q: "Kann ich mein fastlane-Setup behalten?"
-      a: "Ja. Vitrine Studio importiert snapshot- und screengrab-Ausgaben und exportiert genau das Ordnerlayout, das deliver und supply hochladen – es ersetzt frameit, nicht den Rest deiner Lane."
+      a: "Ja. Vitrine Studio importiert snapshot- und screengrab-Ausgaben und exportiert genau das Ordnerlayout, das deliver und supply hochladen – Vitrine Studio übernimmt in deiner Lane die Gestaltung der Screenshots, alles andere bleibt bei fastlane."
     - q: "Welche KI-Assistenten funktionieren damit?"
       a: "Jeder MCP-Client. Claude Desktop richtest du mit einem Klick in den App-Einstellungen ein, Claude Code mit einem Befehl. Assistenten können Store-Uploads planen, ausführen erst nach deiner Bestätigung in der App."
     - q: "Welche Sprachen werden unterstützt?"

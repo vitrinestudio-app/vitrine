@@ -30,7 +30,7 @@ mod canvas;
 mod lang;
 mod overlay;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -936,7 +936,8 @@ impl<'a> Editor<'a> {
     /// - margin text boxes: the margins move (left/right for the width,
     ///   top/bottom for the height; a box without `bottom` gets one only
     ///   when a height is given);
-    /// - groups and page backgrounds cannot be resized.
+    /// - groups and page backgrounds cannot be resized;
+    /// - inside scaled groups the size is divided by their scale (ADR 0030).
     pub fn resize(&self, id: &str, size: ResizeSpec, fixed: Handle) -> Result<Vec<Op>, EditError> {
         let e = self.effective(id)?;
         let scene = self.scene_focused(id)?;
@@ -957,6 +958,8 @@ impl<'a> Editor<'a> {
             1.0
         };
         let cur = self.drawn_size(r);
+        // Canvas lu → model lu inside scaled groups.
+        let gk = r.scale;
         let mut patch = ElementPatch::default();
         match &e.kind {
             ElementKind::Group(_) | ElementKind::Background(_) => {
@@ -967,8 +970,8 @@ impl<'a> Editor<'a> {
             }
             ElementKind::Device(_) => {
                 let k = match &r.props {
-                    ResolvedKind::Device(d) => d.content_scale,
-                    _ => 1.0,
+                    ResolvedKind::Device(d) => d.content_scale * gk,
+                    _ => gk,
                 };
                 let w = match (size.width, size.height) {
                     (Some(w), _) => w,
@@ -981,7 +984,7 @@ impl<'a> Editor<'a> {
                 let b = t.r#box.unwrap_or_default();
                 let mut nb = b;
                 if let Some(w) = size.width {
-                    let dw = w - cur.x;
+                    let dw = (w - cur.x) / gk;
                     let u = fixed.unit().x;
                     // The fixed side keeps its margin; the other one moves.
                     let (dl, dr) = (f64::midpoint(u, 1.0) * dw, f64::midpoint(1.0, -u) * dw);
@@ -989,7 +992,7 @@ impl<'a> Editor<'a> {
                     nb.right = Some(clean(b.right.unwrap_or(0.0) - dr));
                 }
                 if let Some(h) = size.height {
-                    let dh = (h - cur.y) / sy;
+                    let dh = (h - cur.y) / (sy * gk);
                     let u = fixed.unit().y;
                     let (dt, db) = (f64::midpoint(u, 1.0) * dh, f64::midpoint(1.0, -u) * dh);
                     let top = b.top.unwrap_or(0.0);
@@ -1007,10 +1010,10 @@ impl<'a> Editor<'a> {
             }
             ElementKind::Text(_) | ElementKind::Image(_) | ElementKind::Shape(_) => {
                 if let Some(w) = size.width {
-                    patch.width = Some(Some(clean(w)));
+                    patch.width = Some(Some(clean(w / gk)));
                 }
                 if let Some(h) = size.height {
-                    patch.height = Some(Some(clean(h / sy)));
+                    patch.height = Some(Some(clean(h / (sy * gk))));
                 }
             }
         }
@@ -1106,11 +1109,11 @@ impl<'a> Editor<'a> {
         let k = match &r.props {
             ResolvedKind::Device(d) => d.content_scale,
             _ => 1.0,
-        };
+        } * r.scale;
         // The stored offset is relative to the default pivot (the content
         // centre of auto-height texts, else the element centre).
         let base = match &r.props {
-            ResolvedKind::Text(t) => t.default_pivot,
+            ResolvedKind::Text(t) => t.default_pivot * (1.0 / t.scale),
             _ => Vec2::ZERO,
         };
         // Drawn centre V = c + p − R·p; the new world pivot P = c' + p'
@@ -1222,6 +1225,8 @@ impl<'a> Editor<'a> {
         let mut taken = BTreeSet::new();
         let mut renames = Vec::new();
         rename_tree(self.project, &mut copy, &mut taken, &mut renames);
+        let ref_map: BTreeMap<ElementId, ElementId> = renames.iter().cloned().collect();
+        copy.remap_element_refs(&ref_map);
         let new_id = copy.id.clone();
         // Offset: `at` (or the margins) of the copy itself.
         let sy = {
@@ -1248,6 +1253,7 @@ impl<'a> Editor<'a> {
             for (old, new) in &renames {
                 if let Some(p) = v.overrides.get(old) {
                     let mut p = p.clone();
+                    p.remap_element_refs(&ref_map);
                     if old.as_str() == id && offset != Vec2::ZERO {
                         let base = self.base_element(id)?;
                         if let Ok((eff, _)) = base.patched(&p) {
@@ -1331,6 +1337,8 @@ impl<'a> Editor<'a> {
             shift_pages(&mut copy, shift, count);
             let mut renames = Vec::new();
             rename_tree(self.project, &mut copy, &mut taken, &mut renames);
+            let ref_map: BTreeMap<ElementId, ElementId> = renames.iter().cloned().collect();
+            copy.remap_element_refs(&ref_map);
             let sy = if copy.effective_anchor_y() == crate::model::AnchorY::Stretch {
                 stretch
             } else {
@@ -1356,6 +1364,7 @@ impl<'a> Editor<'a> {
                 for (old, new) in &renames {
                     let Some(p) = map.get(old) else { continue };
                     let mut p = p.clone();
+                    p.remap_element_refs(&ref_map);
                     if movable
                         && old == &item.element.id
                         && let Ok((eff, _)) = item.element.patched(&p)
@@ -1389,10 +1398,15 @@ impl<'a> Editor<'a> {
         Ok((ops, created))
     }
 
-    /// Remove `id` with its children and their variant overrides.
+    /// Remove `id` with its children and their variant overrides. Images
+    /// clipped to it (`clip_to`) lose the clip in the same step.
     pub fn remove(&self, id: &str) -> Result<Vec<Op>, EditError> {
         let e = self.base_element(id)?;
-        Ok(vec![Op::RemoveElement { id: e.id.clone() }])
+        let mut ids = Vec::new();
+        collect_ids(e, &mut ids);
+        let mut ops = self.project.clip_to_release_ops(&ids.into_iter().collect());
+        ops.push(Op::RemoveElement { id: e.id.clone() });
+        Ok(ops)
     }
 
     /// Put `ids` (siblings of one list) into a new group at the position of
@@ -1477,6 +1491,20 @@ impl<'a> Editor<'a> {
         let ElementKind::Group(props) = &g.kind else {
             return Err(EditError::Invalid(format!("`{id}` is not a group")));
         };
+        // A scale cannot be folded into the children without rewriting all
+        // their lengths (and overrides); ask for an unscaled group instead.
+        let scaled_variant = self.canvas.variants.iter().find(|(_, v)| {
+            v.overrides
+                .get(&g.id)
+                .is_some_and(|p| matches!(p.scale, Some(Some(k)) if (k - 1.0).abs() > f64::EPSILON))
+        });
+        if (props.scale - 1.0).abs() > f64::EPSILON || scaled_variant.is_some() {
+            let place =
+                scaled_variant.map_or_else(String::new, |(v, _)| format!(" (variant `{v}`)"));
+            return Err(EditError::Unsupported(format!(
+                "group `{id}` is scaled{place}: reset its scale to 1 before ungrouping"
+            )));
+        }
         let parent = parent_of(self.canvas, id).map(|p| p.id.clone());
         let index = siblings(self.canvas, id)
             .iter()

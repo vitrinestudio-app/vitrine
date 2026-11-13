@@ -13,7 +13,7 @@ bitte alles, was dir merkwürdig vorkommt.
 {{< /callout >}}
 
 Vitrine Studio lädt deine Screenshots, die Feature-Grafik für Google Play und
-die App-Store-Creatives direkt hoch – ohne fastlane. Das läuft immer in drei
+die App-Store-Creatives direkt hoch. Das läuft immer in drei
 Schritten: **planen → bestätigen → hochladen**. Nichts landet in einem Store
 ohne einen Plan, den du gesehen und bestätigt hast.
 
@@ -35,6 +35,11 @@ Anmeldeinformationsverwaltung, Linux Secret Service, Dienst
 `app.vitrinestudio`); die App-Einstellungen verweisen nur darauf. Vitrine
 Studio schreibt Schlüssel nie ins Projekt oder in Protokolle und zeigt ihren
 Inhalt nie an.
+
+Deine Schlüssel verlassen den Computer nicht: Vitrine Studio schickt sie an
+keinen eigenen Server und in keine Cloud. Die App signiert mit dem Schlüssel
+lokal eine kurzlebige Anmeldung und sendet nur diese direkt an Apple (App
+Store Connect API) bzw. Google (Google-Anmeldung und Play Developer API).
 
 ### App-Store-Connect-API-Schlüssel {#app-store-connect-api-key}
 
@@ -176,9 +181,12 @@ Optionen:
 
 **Bestätigen & hochladen** fragt noch einmal nach („… Set(s) mit … Bild(ern)
 gehen zu … und ersetzen die Screenshots dort“) und zeigt dann den Fortschritt
-pro Set. **Upload abbrechen** stoppt jederzeit. Die Bestätigung gilt 30
-Minuten, einmal, und nur für den Projektstand des Plans – nach jeder Änderung
-neu planen.
+pro Set. **Upload abbrechen** stoppt jederzeit. Eine Bestätigung gehört
+genau zu ihrem Plan: Sie gilt 30 Minuten und nur für einen Upload. Vor dem
+Hochladen prüft Vitrine Studio, ob Projekt und Bilder noch genau dem Stand des
+Plans entsprechen. Hast du seitdem etwas geändert oder sind die 30 Minuten
+vorbei, wird nichts hochgeladen – erstelle dann einfach einen neuen Plan. So
+landet nie etwas anderes im Store als das, was du im Plan gesehen hast.
 
 - **App Store:** Jedes Set enthält danach genau die geplanten Bilder in der
   geplanten Reihenfolge: Screenshots mit demselben Inhalt bleiben, die übrigen

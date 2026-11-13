@@ -53,7 +53,7 @@ pub(super) fn target_checks(s: &Scope<'_>, ctx: &Ctx, out: &mut Sink) {
                     .filter_map(|p| p.screenshots.as_deref()),
             )
             .collect();
-        if !known.contains(v) {
+        if !known.contains(v) && !variant_folder_exists(s, v) {
             out.push(ctx.finding(
                 Severity::Info,
                 C::UnknownScreenshotVariant,
@@ -61,12 +61,32 @@ pub(super) fn target_checks(s: &Scope<'_>, ctx: &Ctx, out: &mut Sink) {
                 None,
                 None,
                 format!(
-                    "screenshot variant `{v}` is not a catalog variant (expected one of {})",
+                    "screenshot variant `{v}` is neither a catalog variant ({}) nor a folder \
+                     `screenshots/<lang>/{v}/` of the project (typo?)",
                     known.into_iter().collect::<Vec<_>>().join(", ")
                 ),
             ));
         }
     }
+}
+
+/// Is `v` a custom screenshot variant: does `screenshots/<lang>/<v>/` exist
+/// for a language the target can draw screenshots from (its languages and
+/// their fallback chains)? Devices resolve screenshots only from such a
+/// folder, so this also covers every variant actually in use.
+fn variant_folder_exists(s: &Scope<'_>, v: &str) -> bool {
+    let p = s.project;
+    let langs = p
+        .languages
+        .available
+        .iter()
+        .chain(s.target.langs.iter().flatten())
+        .chain(std::iter::once(&p.languages.default));
+    let mut seen = BTreeSet::new();
+    langs
+        .flat_map(|l| crate::resolve::lang_chain(p, l.as_str()))
+        .filter(|l| seen.insert(l.clone()))
+        .any(|l| s.options.assets.dir_exists(&format!("screenshots/{l}/{v}")))
 }
 
 /// The catalog presets for the target's store slot (empty = none / no slot).
@@ -382,30 +402,49 @@ fn device_size_checks(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mut
     }
 }
 
+/// The opaque, unrotated area an element paints for the cover checks:
+/// its rect cut by its clip; `None` for other kinds, rotated or
+/// translucent elements. `Background` elements fill their page (column).
+fn opaque_rect(e: &ResolvedElement) -> Option<Rect> {
+    if !matches!(
+        e.props,
+        ResolvedKind::Image(_) | ResolvedKind::Shape(_) | ResolvedKind::Background { .. }
+    ) || e.rotation.rem_euclid(360.0) != 0.0
+        || e.opacity < 0.99
+    {
+        return None;
+    }
+    let r = Rect::centered(e.center, e.size.x, e.size.y);
+    match e.clip {
+        Some(c) => intersection(&r, &c),
+        None => Some(r),
+    }
+}
+
+/// Does `r` contain `strip` (with [`COVER_MIN_STRIP`] tolerance)?
+fn contains_rect(r: &Rect, strip: &Rect) -> bool {
+    r.x <= strip.x + COVER_MIN_STRIP
+        && r.y <= strip.y + COVER_MIN_STRIP
+        && r.right() >= strip.right() - COVER_MIN_STRIP
+        && r.bottom() >= strip.bottom() - COVER_MIN_STRIP
+}
+
 /// `page_not_covered`: an unrotated picture or panel covering ≥ 85 % of
 /// its home page and reaching three page edges misses the fourth by a
 /// strip of at most 15 % of the page (typical after a variant changed the
-/// page height).
+/// page height). Quiet when something painted below it fills that strip:
+/// a `background` element or an opaque picture/panel covering ≥ 90 % of
+/// the page; only the canvas background showing there is reported.
 fn page_cover_checks(scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
-    for e in &scene.elements {
-        if !matches!(e.props, ResolvedKind::Image(_) | ResolvedKind::Shape(_))
-            || e.rotation.rem_euclid(360.0) != 0.0
-            || e.opacity < 0.99
-        {
+    for (idx, e) in scene.elements.iter().enumerate() {
+        if matches!(e.props, ResolvedKind::Background { .. }) {
             continue;
         }
+        let Some(r) = opaque_rect(e) else { continue };
         let Some(page) = scene.frame.pages.get(e.page as usize) else {
             continue;
         };
         let p = page.rect;
-        let r = Rect::centered(e.center, e.size.x, e.size.y);
-        let r = match e.clip {
-            Some(c) => match intersection(&r, &c) {
-                Some(r) => r,
-                None => continue,
-            },
-            None => r,
-        };
         let Some(i) = intersection(&r, &p) else {
             continue;
         };
@@ -413,17 +452,28 @@ fn page_cover_checks(scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
             continue;
         }
         let strips = [
-            ("left", i.x - p.x, p.w),
-            ("top", i.y - p.y, p.h),
-            ("right", p.right() - i.right(), p.w),
-            ("bottom", p.bottom() - i.bottom(), p.h),
+            ("left", i.x - p.x, p.w, Rect::new(p.x, p.y, i.x - p.x, p.h)),
+            ("top", i.y - p.y, p.h, Rect::new(p.x, p.y, p.w, i.y - p.y)),
+            (
+                "right",
+                p.right() - i.right(),
+                p.w,
+                Rect::new(i.right(), p.y, p.right() - i.right(), p.h),
+            ),
+            (
+                "bottom",
+                p.bottom() - i.bottom(),
+                p.h,
+                Rect::new(p.x, i.bottom(), p.w, p.bottom() - i.bottom()),
+            ),
         ];
         let open: Vec<_> = strips
             .iter()
-            .filter(|(_, gap, _)| *gap > COVER_MIN_STRIP)
+            .filter(|(_, gap, _, _)| *gap > COVER_MIN_STRIP)
             .collect();
-        if let [(side, gap, len)] = open[..]
+        if let [(side, gap, len, strip)] = open[..]
             && *gap <= 0.15 * len
+            && !covered_below(scene, idx, &p, strip)
         {
             out.push(ctx.finding(
                 Severity::Info,
@@ -440,6 +490,20 @@ fn page_cover_checks(scene: &ResolvedScene, ctx: &Ctx, out: &mut Sink) {
             ));
         }
     }
+}
+
+/// Is `strip` of page `p` filled by an element painted below
+/// `scene.elements[idx]`: a `background` element, or an opaque picture or
+/// panel covering ≥ 90 % of the page?
+fn covered_below(scene: &ResolvedScene, idx: usize, p: &Rect, strip: &Rect) -> bool {
+    scene.elements[..idx].iter().any(|b| {
+        let Some(r) = opaque_rect(b) else {
+            return false;
+        };
+        let big = matches!(b.props, ResolvedKind::Background { .. })
+            || intersection(&r, p).is_some_and(|i| i.w * i.h >= 0.9 * p.w * p.h);
+        big && contains_rect(&r, strip)
+    })
 }
 
 // ---------------------------------------------------- per target × lang
@@ -520,6 +584,8 @@ fn resolve_diagnostics(s: &Scope<'_>, scene: &ResolvedScene, ctx: &Ctx, out: &mu
             D::ImportedColorFallback => (C::ImportedColorFallback, Severity::Info, false),
             D::ScreenshotOnlyEmpty => (C::ScreenshotOnlyEmpty, Severity::Warn, false),
             D::BackgroundHidden => (C::BackgroundHidden, Severity::Warn, false),
+            D::InvalidClipTo => (C::InvalidClipTo, Severity::Warn, false),
+            D::ClipToOtherPage => (C::ClipToOtherPage, Severity::Info, false),
         };
         let page = d.element.as_ref().and_then(|id| s.page_of(id));
         out.push(ctx.finding(

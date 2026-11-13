@@ -58,7 +58,7 @@ vitrine validate --format junit -o validate.xml   # Bericht in eine Datei, Text 
 Befunde werden pro Ziel und Sprache als `error`, `warn` oder `info` mit einem
 Code aufgelistet (siehe [Fehlerbehebung](../troubleshooting/#validation-findings)).
 Die CI-Formate `github`, `gitlab` (Code Quality) und `junit` beschreibt
-[CI/CD](../ci/).
+[Automatisierung](../automation/).
 
 {{< cli-help "vitrine validate" >}}
 
@@ -147,7 +147,7 @@ mitgelieferten und die aus dem Ordner `fonts/` des Projekts.
 
 ```sh
 vitrine template list
-vitrine template save --name "Bold gradient" --tag dark -o bold.vitrine-template
+vitrine template save --name "Bold gradient" --style bold --color dark -o bold.vitrine-template
 vitrine template insert bold-gradient --dry-run
 vitrine template import bold.vitrine-template --replace
 vitrine template export bold-gradient -o bold.vitrine-template
@@ -191,7 +191,7 @@ vitrine upload refdata                      # App-Store-Asset-Typen, nur lesend
 
 Siehe [Store-Upload](../store-upload/#on-the-command-line). In der CI kommen
 die Schlüssel aus Umgebungsvariablen statt aus dem Schlüsselbund – siehe
-[CI/CD](../ci/#uploading-from-ci).
+[Automatisierung](../automation/#uploading-from-ci).
 
 {{< cli-help "vitrine upload plan" >}}
 {{< cli-help "vitrine upload execute" >}}
@@ -225,5 +225,5 @@ installieren…* in der App macht dasselbe.
 | `VITRINE_APP_DIR` | diesen Ordner für die App-Daten (Einstellungen, Store-Konten, Rahmen, Vorlagen) statt des Plattform-Ordners verwenden |
 | `NO_COLOR` | keine Farben in der Ausgabe |
 | `VITRINE_KEYRING=mock` | Store-Schlüssel nur im Arbeitsspeicher halten (Tests) – der Schlüsselbund des Systems bleibt unberührt |
-| `VITRINE_ASC_KEY_ID`, `VITRINE_ASC_ISSUER_ID`, `VITRINE_ASC_KEY` / `VITRINE_ASC_KEY_PATH` | nur `upload`: App-Store-Connect-Schlüssel aus der Umgebung (CI), statt des Kontos im Projekt – siehe [CI/CD](../ci/#uploading-from-ci) |
+| `VITRINE_ASC_KEY_ID`, `VITRINE_ASC_ISSUER_ID`, `VITRINE_ASC_KEY` / `VITRINE_ASC_KEY_PATH` | nur `upload`: App-Store-Connect-Schlüssel aus der Umgebung (CI), statt des Kontos im Projekt – siehe [Automatisierung](../automation/#uploading-from-ci) |
 | `VITRINE_PLAY_SERVICE_ACCOUNT` / `VITRINE_PLAY_SERVICE_ACCOUNT_PATH` | nur `upload`: Google-Play-Dienstkonto aus der Umgebung (CI) |
