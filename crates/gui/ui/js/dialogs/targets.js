@@ -131,7 +131,7 @@ export async function openTargets(focus, opts = {}) {
             },
           },
           icon('canvases'),
-          h('span', { class: 'grow mono' }, canvas.id),
+          h('span', { class: 'grow mono', title: canvas.id }, canvas.id),
           h('span', { class: 'muted small' }, `${canvas.page.count} ${t('panel.canvases.pages')}${canvas.variants.length ? ` · ${canvas.variants.length} ${t('canvases.variants.short')}` : ''}`),
         ),
         h(
@@ -151,7 +151,7 @@ export async function openTargets(focus, opts = {}) {
                   renderPane();
                 },
               },
-              h('span', { class: 'grow' }, x.id),
+              h('span', { class: 'grow', title: x.id }, x.id),
               h('span', { class: 'muted small' }, x.kind === 'banner' ? t('targets.kind.banner') : sizeLabel(x.size)),
             ),
           ),

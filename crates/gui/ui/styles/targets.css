@@ -7,7 +7,7 @@
 
 .tg-layout {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: 290px minmax(0, 1fr);
   flex: 1;
   min-height: 0;
 }
@@ -149,11 +149,21 @@
   color: rgb(255 255 255 / 75%);
 }
 
-.tg-canvas-head .grow {
+/* Ids never break at hyphens (`tablet-land`): one line, ellipsis, full id
+   in the tooltip; the counts and sizes keep their width. */
+.tg-canvas-head .grow,
+.tg-group .list-item .grow {
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.tg-canvas-head .muted,
+.tg-group .list-item .muted {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .tg-canvas-head .muted {
