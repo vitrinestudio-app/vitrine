@@ -497,7 +497,10 @@ jobs:
       - name: Unpack the release archive into the build context
         run: |
           mkdir -p dist/image
-          tar xzf "cli-archive/vitrine-cli_${{ matrix.platform }}.tar.gz" -C dist/image --strip-components=1
+          # Archive name as written by collect-artifacts.sh:
+          # linux-x86_64-musl → vitrine-cli_linux_x86_64-musl.tar.gz
+          platform="${{ matrix.platform }}"
+          tar xzf "cli-archive/vitrine-cli_linux_${platform#linux-}.tar.gz" -C dist/image --strip-components=1
           file dist/image/vitrine
           ls dist/image/licenses
 
