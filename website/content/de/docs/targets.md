@@ -84,8 +84,8 @@ Stattdessen:
 Eine Smartphone-Leinwand, die fürs iPhone gestaltet ist (Seitenverhältnis
 1320:2868), wird auch für Google Play (1080:2160) gerendert: Die Seite wird
 etwas kürzer. Jedes Element hält den Abstand zu der Kante, die sein **Anker**
-nennt – Überschriften oben bleiben oben (*Oben*), Smartphones unten bleiben
-unten (*Unten*). Ist die Seite eines Ziels viel höher oder kürzer als die
+nennt – Überschriften oben bleiben oben, Smartphones unten bleiben
+unten. Ist die Seite eines Ziels viel höher oder kürzer als die
 Leinwandseite, schlägt die Prüfung eine Variante vor (`variant_suggested`).
 
 ### Querformat aus Hochformat-Seiten: Gruppierung {#landscape-from-portrait-pages-grouping}
