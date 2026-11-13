@@ -836,8 +836,21 @@ export function mount(el, ctx) {
     return section('image', t('kind.image'), [
       row(t('inspector.asset'), [textInput({ key: 'asset', value: e.asset ?? '', list, mono: true, title: t('inspector.asset'), onCommit: (v) => v && set({ asset: v }) }), previewBtn], { field: 'asset', info, hint: e.asset && !list.includes(e.asset) ? t('inspector.asset.unknown') : null }),
       row(t('inspector.fit'), fitSelect(e.fit, 'contain', (v) => set({ fit: v || null })), { field: 'fit', info }),
+      clipToRow(info, e, set),
       shadowSelect(info, e, set),
     ]);
+  }
+
+  /** `clip_to`: a rect/ellipse shape of this canvas as the image's mask (ADR 0031). */
+  function clipToRow(info, e, set) {
+    const shapes = (currentCanvas(store.get())?.elements ?? []).filter((x) => x.kind === 'shape' && x.label !== 'line');
+    const known = !e.clip_to || shapes.some((x) => x.id === e.clip_to);
+    const options = [
+      { value: '', label: t('inspector.clip_to.none') },
+      ...shapes.map((x) => ({ value: x.id, label: `${x.id} · ${t(`inspector.shape.${x.label}`)}${x.visible ? '' : ` (${t('inspector.clip_to.hidden')})`}` })),
+      ...(known ? [] : [{ value: e.clip_to, label: e.clip_to }]),
+    ];
+    return row(t('inspector.clip_to'), selectInput({ key: 'clip_to', options, value: e.clip_to ?? '', title: t('inspector.clip_to.title'), onChange: (v) => set({ clip_to: v || null }) }), { field: 'clip_to', info, hint: known ? null : t('inspector.clip_to.unknown') });
   }
 
   function shapeSection(info, e, extra, set) {

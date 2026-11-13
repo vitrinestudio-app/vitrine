@@ -27,10 +27,10 @@ failed: …`.
 - `{"op": "add_element", "canvas": "phone", "element": {"id": "badge", "kind": "shape", "page": 0, "at": {"x": 820, "y": 300}, "width": 200, "height": 80, "shape": "rect", "radius": 40, "fill": "@accent"}, "parent"?: "group-id", "index"?: 0}`
   (`index`: position in the list, 0 = bottom; default top)
 - `{"op": "update_element", "id": "title", "patch": {"font_size": 80, "align": "left"}}`
-- `{"op": "remove_element", "id": "badge"}`
+- `{"op": "remove_element", "id": "badge"}` (refused while an image is clipped to it: clear its `clip_to` first, or use element_remove)
 - `{"op": "move_element", "id": "badge", "index": 0}` (painting order)
 - `{"op": "move_element_to", "id": "badge", "parent": "group-id" | null, "index"?: n}`
-- `{"op": "rename_element", "from": "text-2", "to": "title-beds"}`
+- `{"op": "rename_element", "from": "text-2", "to": "title-beds"}` (overrides and `clip_to` references follow)
 
 Element kinds and their fields:
 - device: `model` (catalog_devices), `screenshot` (key), `width` (height
@@ -40,7 +40,7 @@ Element kinds and their fields:
   (margins to the page) or `at` + `width` (+ `height`) for a free box,
   `align`, `valign`, `fit: {shrink_to, max_lines}`, `font_size`, `color`,
   `stroke`, `glow`, `shadow`, `hyphenate`, `langs: {de: {…patch…}}`
-- image: `asset`, `width`, `height`, `fit`, `shadow`
+- image: `asset`, `width`, `height`, `fit`, `shadow`, `clip_to` (id of a rect/ellipse shape on the canvas: the image is clipped to its outline; hide the shape with `visible: false` to use it only as a mask)
 - shape: `shape` (rect|ellipse|line), `width`, `height`, `radius`, `fill`, `stroke`, `shadow`
 - background: `fill` (a per-page background; canvas backgrounds are canvas `backgrounds`)
 - group: `children: [elements]`
