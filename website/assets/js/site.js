@@ -96,7 +96,7 @@
     var siteHeader = document.querySelector('[data-header]');
     var wideMQ = window.matchMedia('(min-width: 1100px)');
     var hero = targets[0];
-    var current = -1, scrolling = false, open = false, scrollTimer = 0, heroGone = false;
+    var current = -1, scrolling = false, open = false, hovering = false, scrollTimer = 0, heroGone = false;
     var lastPointer = 'mouse';
     secnav.hidden = false;
 
@@ -115,7 +115,7 @@
       });
     };
     var setShown = function () {
-      secnav.classList.toggle('is-shown', open || scrolling || (wideMQ.matches && heroGone));
+      secnav.classList.toggle('is-shown', open || scrolling || hovering || (wideMQ.matches && heroGone));
       secnav.classList.toggle('is-scrolling', scrolling && !open);
       secnav.classList.toggle('is-open', open);
     };
@@ -151,14 +151,18 @@
     if ('ResizeObserver' in window) new ResizeObserver(function () { update(); }).observe(document.body);
     update();
 
-    // Touch: the first tap on the rail opens the card with all labels, a tap
-    // on a label then jumps; a tap elsewhere or Escape closes it.
+    // A mouse over the index keeps it from fading out under the pointer.
+    secnav.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') { hovering = true; setShown(); } });
+    secnav.addEventListener('pointerleave', function () { if (hovering) { hovering = false; setShown(); } });
+
+    // Touch (tablets): a tap on a visible label jumps; a tap on the rail
+    // opens the card with all labels; a tap elsewhere or Escape closes it.
     var setOpen = function (value) { open = value; setShown(); };
     secnav.addEventListener('pointerdown', function (e) { lastPointer = e.pointerType; });
     secnav.addEventListener('click', function (e) {
       var a = e.target.closest('a');
       if (!a) return;
-      if (e.detail > 0 && lastPointer !== 'mouse' && !open) {
+      if (e.detail > 0 && lastPointer !== 'mouse' && !open && e.target.closest('.secnav__tick')) {
         e.preventDefault();
         setOpen(true);
         return;

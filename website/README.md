@@ -56,9 +56,10 @@ ignored by Git.
   prominent, the others recede with distance (`data-d` 0–3: paler,
   smaller, slightly blurred). From 1420 px the labels sit in the margin
   all the time (after the hero); below, the index shows while scrolling
-  over a frosted strip and fades out 1.4 s after scrolling stops. Hover
-  or keyboard focus shows all labels on a card, on touch the first tap
-  opens the card. Hidden without JS. A new home section needs an `id` and
+  over a frosted strip and fades out 1.4 s after scrolling stops. Visible
+  labels are links right where they are; hover or keyboard focus shows
+  all labels on a card, on touch a tap on the rail opens it. No index
+  below 700 px (phones). Hidden without JS. A new home section needs an `id` and
   an entry there. The old anchors (`#features`, `#ai`, `#automation`,
   `#fastlane`) stay; the footer uses them.
 - Privacy: no third-party requests at all (fonts and images are local), no
