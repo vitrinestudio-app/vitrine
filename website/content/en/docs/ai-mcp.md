@@ -121,6 +121,34 @@ use the app's current view, and `selection_get` reads your selection – so
   that overlaps."
 - "Export iPhone and iPad for all languages."
 
+## Agent skill
+
+An assistant with the MCP connection can edit anything – the **agent skill**
+also teaches it *how* to make good store screenshots for your own app with
+Vitrine Studio: finding your app's benefits, writing short headlines, laying
+out the pages (panoramas across pages too), languages, the store rules, the
+checks, the export and – only on your confirmation – the upload. It is a
+vendor-neutral skill in the open [Agent Skills](https://agentskills.io)
+format, read by many assistants and coding agents; it only needs an MCP
+client connected to Vitrine Studio (above).
+
+Install it with the cross-agent `skills` command line tool (Node.js):
+
+```sh
+npx skills add vitrinestudio-app/vitrine-agent-skill            # pick your agents interactively
+npx skills add vitrinestudio-app/vitrine-agent-skill -g -a <agent>   # global, for a chosen agent
+npx skills add vitrinestudio-app/vitrine-agent-skill@v1.0.0     # pin a release
+```
+
+Without it: copy the folder `skills/vitrine-store-screenshots/` into your
+agent's skills folder (keep the folder name), or – for clients that take
+skill uploads – upload it as a zip. A ready-made zip will be on the
+repository's releases page with the first release. Then ask for something
+like "make App Store screenshots for my app in Vitrine Studio".
+
+Source, per-client notes and licence (MIT):
+[github.com/vitrinestudio-app/vitrine-agent-skill](https://github.com/vitrinestudio-app/vitrine-agent-skill).
+
 ## Uploads
 
 An assistant can always make an upload plan (`upload_plan`) – it's a dry run.

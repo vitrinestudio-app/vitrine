@@ -41,6 +41,8 @@ vendor-neutral and only assumes an MCP client connected to Vitrine Studio.
 
 ## Install
 
+Also described on the website: https://www.vitrinestudio.app/docs/ai-mcp/#agent-skill
+
 With the cross-agent `skills` CLI (Node.js 22.20+; it knows the skills folders of Claude
 Code, Codex, Cursor, Gemini, GitHub Copilot, OpenCode and many more):
 

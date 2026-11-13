@@ -227,7 +227,7 @@ All need a published release with CLI archives (7.3). Doc:
       announce it. Optional: add the badge
       `[![skills.sh](https://skills.sh/b/vitrinestudio-app/vitrine-agent-skill)](https://skills.sh/vitrinestudio-app/vitrine-agent-skill)`
       to the README.
-- [ ] **Agent** – website: page "AI assistants" (en + de) gets an "Agent skill" section with
+- [x] **Agent** – website: page "AI assistants" (en + de) gets an "Agent skill" section with
       the `npx skills add` command, the zip download for clients with skill upload, and a
       link to the repo; link it from the skill README.
 - [ ] Optional (owner decision) – a Claude Code plugin marketplace entry

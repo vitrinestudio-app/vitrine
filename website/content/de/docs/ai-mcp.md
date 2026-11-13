@@ -127,6 +127,36 @@ deine Auswahl – so funktioniert „mach *das hier* 20 % kleiner“.
   alles, was sich überlappt.“
 - „Exportiere iPhone und iPad für alle Sprachen.“
 
+## Agent-Skill {#agent-skill}
+
+Mit der MCP-Verbindung kann ein Assistent alles bearbeiten – der
+**Agent-Skill** bringt ihm zusätzlich bei, *wie* gute Store-Screenshots für
+deine eigene App mit Vitrine Studio entstehen: die Vorteile deiner App
+finden, kurze Überschriften schreiben, die Seiten aufbauen (auch Panoramen
+über mehrere Seiten), Sprachen, die Store-Regeln, die Prüfungen, der Export
+und – nur nach deiner Bestätigung – der Upload. Es ist ein herstellerneutraler
+Skill im offenen [Agent-Skills](https://agentskills.io)-Format, das viele
+Assistenten und Coding-Agents lesen; er braucht nur einen MCP-Client, der mit
+Vitrine Studio verbunden ist (siehe oben).
+
+Installiere ihn mit dem Kommandozeilen-Tool `skills`, das viele Agents kennt
+(Node.js):
+
+```sh
+npx skills add vitrinestudio-app/vitrine-agent-skill            # Agents interaktiv auswählen
+npx skills add vitrinestudio-app/vitrine-agent-skill -g -a <agent>   # global, für einen bestimmten Agent
+npx skills add vitrinestudio-app/vitrine-agent-skill@v1.0.0     # auf ein Release festlegen
+```
+
+Ohne das Tool: Kopiere den Ordner `skills/vitrine-store-screenshots/` in den
+Skills-Ordner deines Agents (Ordnername beibehalten), oder lade ihn – bei
+Clients, die Skill-Uploads annehmen – als Zip hoch. Ein fertiges Zip kommt
+mit dem ersten Release auf die Releases-Seite des Repositorys. Dann bitte
+z. B. um „Mach App-Store-Screenshots für meine App in Vitrine Studio“.
+
+Quelltext, Hinweise je Client und Lizenz (MIT):
+[github.com/vitrinestudio-app/vitrine-agent-skill](https://github.com/vitrinestudio-app/vitrine-agent-skill).
+
 ## Uploads {#uploads}
 
 Einen Upload-Plan (`upload_plan`) kann ein Assistent immer erstellen – das ist

@@ -168,6 +168,7 @@ ai:
     - "The assistant **sees the result**: `render_preview` returns the rendered PNG"
     - "Runs **locally** on 127.0.0.1 with a token – store uploads still need **your click**"
     - "Not just small edits: the first [gallery templates](gallery/) – about 50 – were designed by **Claude Opus 5.5 via MCP**. An assistant can do most of the actual design work"
+    - "The open-source **[agent skill](docs/ai-mcp/#agent-skill)** teaches any assistant that reads the Agent Skills format the whole workflow, from the copy to the store rules"
   more: "Set up an AI assistant"
   chat:
     label: "A chat with an AI assistant that translates missing texts into French and checks page 2."

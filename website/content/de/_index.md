@@ -168,6 +168,7 @@ ai:
     - "Der Assistent **sieht das Ergebnis**: `render_preview` liefert das gerenderte PNG"
     - "Läuft **lokal** auf 127.0.0.1 mit Token – Store-Uploads brauchen trotzdem **deinen Klick**"
     - "Nicht nur kleine Änderungen: Die ersten [Vorlagen der Galerie](galerie/) – rund 50 – hat **Claude Opus 5.5 über MCP** gestaltet. Ein Assistent kann den Großteil der eigentlichen Gestaltung übernehmen"
+    - "Der quelloffene **[Agent-Skill](docs/ai-mcp/#agent-skill)** bringt jedem Assistenten, der das Agent-Skills-Format liest, den ganzen Ablauf bei – vom Text bis zu den Store-Regeln"
   more: "KI-Assistent einrichten"
   chat:
     label: "Ein Chat mit einem KI-Assistenten, der fehlende Texte ins Französische übersetzt und Seite 2 prüft."
