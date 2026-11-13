@@ -30,6 +30,8 @@ pub enum DocTopic {
     Targets,
     /// Base / variant / language overrides: setting and resetting.
     Scopes,
+    /// Every validate finding: level, measurement, thresholds, allow.
+    Checks,
 }
 
 impl DocTopic {
@@ -42,6 +44,7 @@ impl DocTopic {
             Self::Markup => "markup",
             Self::Targets => "targets",
             Self::Scopes => "scopes",
+            Self::Checks => "checks",
         }
     }
 }
@@ -49,14 +52,14 @@ impl DocTopic {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DocsGetParams {
-    /// overview | elements | ops | project | markup | targets | scopes.
+    /// overview | elements | ops | project | markup | targets | scopes | checks.
     pub topic: DocTopic,
 }
 
 #[tool_router(router = docs_tools, vis = "pub(crate)")]
 impl VitrineMcp {
     #[tool(
-        description = "Reference documentation as markdown. Topics: overview (concepts, workflow), elements (every element kind with all fields, types, defaults and allowed values, fill shapes incl. image fit/focus), ops (every apply_ops op incl. override ops, examples), project (project.yaml structure), markup (text markup, auto-fit, hyphenation), targets (presets, sizes, gallery gaps, group), scopes (base/variant/language overrides, resetting). Call it before guessing field names. Example: {\"topic\": \"elements\"}.",
+        description = "Reference documentation as markdown. Topics: overview (concepts, workflow), elements (every element kind with all fields, types, defaults and allowed values, fill shapes incl. image fit/focus), ops (every apply_ops op incl. override ops, examples), project (project.yaml structure), markup (text markup, auto-fit, hyphenation), targets (presets, sizes, gallery gaps, group), scopes (base/variant/language overrides, resetting), checks (every validate finding code: level, what is measured, thresholds, allow / checks.off, layout_report fields). Call it before guessing field names. Example: {\"topic\": \"elements\"}.",
         annotations(read_only_hint = true)
     )]
     async fn docs_get(

@@ -498,7 +498,7 @@ fn mcp_overrides_batches_docs_and_asset_mapping() {
 
     // Docs as a tool: every topic.
     for topic in [
-        "overview", "elements", "ops", "project", "markup", "targets", "scopes",
+        "overview", "elements", "ops", "project", "markup", "targets", "scopes", "checks",
     ] {
         let r = c.call_raw("docs_get", json!({"topic": topic}));
         assert_eq!(r["isError"], false, "{topic}: {r}");
