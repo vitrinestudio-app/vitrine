@@ -149,10 +149,60 @@ pub struct RenderGalleryArgs {
     /// profile's), `dark` (the store's dark mode) or `#RRGGBB`.
     #[serde(default)]
     pub background: Option<String>,
+    /// Only part of the gallery: the output images from the first to the
+    /// last image holding one of these pages (0-based page numbers or page
+    /// ids), with their store gaps. Missing or empty: all images.
+    #[serde(default)]
+    pub pages: Option<Vec<PageRef>>,
     #[serde(default)]
     pub interactive: bool,
     #[serde(default)]
     pub format: PixelFormat,
+}
+
+/// A page given by its 0-based number or its id (`hero`, `page-02`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged)]
+pub enum PageRef {
+    Index(u32),
+    Id(String),
+}
+
+impl std::fmt::Display for PageRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PageRef::Index(i) => write!(f, "{i}"),
+            PageRef::Id(id) => write!(f, "`{id}`"),
+        }
+    }
+}
+
+/// The contiguous range of output images (first..=last) holding `pages`.
+fn image_range(scene: &ResolvedScene, pages: &[PageRef]) -> CmdResult<(usize, usize)> {
+    let mut range: Option<(usize, usize)> = None;
+    for r in pages {
+        let page = scene
+            .frame
+            .pages
+            .iter()
+            .find(|p| match r {
+                PageRef::Index(i) => p.index == *i,
+                PageRef::Id(id) => p.id == *id || p.index.to_string() == *id,
+            })
+            .ok_or_else(|| {
+                let ids: Vec<&str> = scene.frame.pages.iter().map(|p| p.id.as_str()).collect();
+                CommandError::invalid(format!(
+                    "page {r} does not exist (numbers 0..{}, ids {})",
+                    scene.frame.pages.len().saturating_sub(1),
+                    ids.join(", ")
+                ))
+            })?;
+        let image = page.image.ok_or_else(|| {
+            CommandError::invalid(format!("page {r} is in no output image of the target"))
+        })? as usize;
+        range = Some(range.map_or((image, image), |(a, b)| (a.min(image), b.max(image))));
+    }
+    range.ok_or_else(|| CommandError::invalid("`pages` is empty"))
 }
 
 fn yes() -> bool {
@@ -567,6 +617,16 @@ pub fn render_gallery(app: &AppState, args: RenderGalleryArgs) -> CmdResult<Arc<
             "target `{target}` has no store gallery (banner targets have none)"
         )));
     }
+    let mut scene = scene;
+    let mut part = String::new();
+    if let Some(pages) = args.pages.as_deref().filter(|p| !p.is_empty()) {
+        let (first, last) = image_range(&scene, pages)?;
+        if first > 0 || last + 1 < scene.frame.images.len() {
+            scene.frame.images.truncate(last + 1);
+            scene.frame.images.drain(..first);
+            part = format!("-i{first}-{last}");
+        }
+    }
     let mut height = args.height.unwrap_or(DEFAULT_GALLERY_HEIGHT).max(1);
     if args.interactive {
         height = ((f64::from(height) * INTERACTIVE_FACTOR).round() as u32).max(1);
@@ -585,8 +645,8 @@ pub fn render_gallery(app: &AppState, args: RenderGalleryArgs) -> CmdResult<Arc<
         lang,
         view: View::Gallery,
         size: match background {
-            Some([r, g, b]) => format!("h{height}-bg{r:02x}{g:02x}{b:02x}"),
-            None => format!("h{height}"),
+            Some([r, g, b]) => format!("h{height}{part}-bg{r:02x}{g:02x}{b:02x}"),
+            None => format!("h{height}{part}"),
         },
         quality: "export".into(),
         format: args.format,

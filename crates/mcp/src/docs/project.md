@@ -76,11 +76,14 @@ dots: `hero.title: Plan your garden **in minutes**`).
 
 Folders: `screenshots/<lang>/[<variant>/]<key>.png` (device elements show the
 screenshot of their `screenshot` key; the variant folder comes from the
-target's `screenshots`), `assets/` (images for image elements and image
+target's `screenshots`; besides the catalog variants any own folder name works,
+e.g. `screenshots/en/landscape/` with `screenshots: landscape` – only a name
+with no such folder is reported as `unknown_screenshot_variant`), `assets/` (images for image elements and image
 fills), `fonts/` (TTF/OTF; family names usable in styles).
 
 Tools per section: languages → language_add / language_remove (default
-language and fallbacks: apply_ops set_languages), styles → styles_update,
+language and fallbacks: apply_ops set_languages), styles (also
+`fonts.<family>.fallback`) → styles_update,
 canvases → canvas_add / canvas_duplicate / canvas_rename / canvas_remove /
 canvas_update, elements → element_*, variants →
 canvas_variant / element_update {scope: variant}, targets → target_add /
