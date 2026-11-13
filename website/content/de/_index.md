@@ -180,16 +180,16 @@ ai:
     toast: "Claude Desktop: Französische Texte setzen · Rückgängig"
 
 fastlane:
-  eyebrow: "Du kommst von fastlane?"
-  title: "Ein direkter Ersatz für frameit"
+  eyebrow: "Du nutzt fastlane?"
+  title: "Passt in deine fastlane-Lane"
   lead: "snapshot, screengrab, deliver und supply bleiben. Vitrine Studio liest deine Aufnahmen und schreibt genau die Ordner, die deliver und supply hochladen."
   terminalLabel: "Terminal: fastlane-Screenshots importieren und im fastlane-Layout exportieren."
-  more: "Zur Umstiegsanleitung"
+  more: "Nutzung mit fastlane"
   points:
     - "Importiert ganze `fastlane/`-Ordner – snapshot- **und** screengrab-Ausgaben, Store-Locales, `01Home`-Namen"
     - "Überspringt frameit-Reste (`_framed.png`, `Framefile.json`) mit Begründung"
     - "Exportiert das **deliver/supply-Layout** mit Store-Locale-Ordnern, Konfliktprüfung und Limits"
-    - "Oder lass deliver für Screenshots weg und nutze den eingebauten Store-Upload"
+    - "Optional lädt Vitrine Studio die Screenshots selbst hoch – deliver und supply übertragen weiter Binary und Metadaten"
   terminal:
     - {comment: "1 · Aufnahmen holen (frameit-Dateien werden ignoriert)"}
     - {cmd: "vitrine import screenshots fastlane/"}
@@ -198,7 +198,7 @@ fastlane:
     - {cmd: "vitrine export --layout fastlane --out fastlane"}
     - {out: "✓ screenshots/de-DE/01_ios-iphone-69.png …"}
     - {out: "✓ metadata/android/de-DE/images/phoneScreenshots/ …"}
-    - {comment: "3 · frameit aus dem Fastfile streichen – hochladen wie bisher"}
+    - {comment: "3 · hochladen wie bisher"}
     - {cmd: "fastlane deliver"}
 
 upload:
@@ -286,7 +286,7 @@ faq:
     - q: "Sind Apple-Geräterahmen dabei?"
       a: "Vitrine Studio zeichnet seine Geräterahmen selbst und liefert keine Hersteller-Grafiken mit. Apples Product Bezels kannst du selbst importieren (von Apple Design Resources geladen) oder eigene Rahmenpakete verwenden."
     - q: "Kann ich mein fastlane-Setup behalten?"
-      a: "Ja. Vitrine Studio importiert snapshot- und screengrab-Ausgaben und exportiert genau das Ordnerlayout, das deliver und supply hochladen – es ersetzt frameit, nicht den Rest deiner Lane."
+      a: "Ja. Vitrine Studio importiert snapshot- und screengrab-Ausgaben und exportiert genau das Ordnerlayout, das deliver und supply hochladen – Vitrine Studio übernimmt in deiner Lane die Gestaltung der Screenshots, alles andere bleibt bei fastlane."
     - q: "Welche KI-Assistenten funktionieren damit?"
       a: "Jeder MCP-Client. Claude Desktop richtest du mit einem Klick in den App-Einstellungen ein, Claude Code mit einem Befehl. Assistenten können Store-Uploads planen, ausführen erst nach deiner Bestätigung in der App."
     - q: "Welche Sprachen werden unterstützt?"

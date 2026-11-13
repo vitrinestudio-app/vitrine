@@ -167,7 +167,7 @@ include:
 
 Die meisten Mobile-Pipelines laufen über fastlane. Exportiere direkt in die
 fastlane-Ordner – deliver und supply laden sie unverändert hoch (siehe
-[Umstieg von fastlane](../fastlane/)):
+[Nutzung mit fastlane](../fastlane/)):
 
 ```ruby
 lane :screenshots do

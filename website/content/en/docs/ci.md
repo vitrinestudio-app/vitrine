@@ -161,7 +161,7 @@ include:
 
 Most mobile pipelines run fastlane. Export straight into fastlane's
 folders, and deliver/supply upload them unchanged (see
-[fastlane migration](../fastlane/)):
+[Using with fastlane](../fastlane/)):
 
 ```ruby
 lane :screenshots do

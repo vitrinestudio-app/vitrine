@@ -103,7 +103,7 @@ metadata/android/en-US/images/featureGraphic.png
 - If the folder still contains frameit `*_framed.png` files, you get a warning
   – deliver would upload only those.
 
-Step by step: [Migrating from fastlane](../fastlane/).
+Step by step: [Using with fastlane](../fastlane/).
 
 ## Exporting from the command line
 

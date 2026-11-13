@@ -18,6 +18,6 @@ Each page says where something is not finished.
 **New here?** Read [How Vitrine Studio works](concepts/) (five minutes), then
 follow [Getting started](getting-started/) to make and export your first set.
 
-**Coming from fastlane frameit?** Go straight to
-[Migrating from fastlane](fastlane/). **Using Claude?** See
+**Using fastlane?** See
+[Using with fastlane](fastlane/). **Using Claude?** See
 [AI assistants (MCP)](ai-mcp/).
