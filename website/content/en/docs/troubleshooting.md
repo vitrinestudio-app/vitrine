@@ -63,6 +63,25 @@ checks:
   off: [page_blends_with_store]
 ```
 
+`page_blends_with_store` and `variant_suggested` belong to no element, so
+`allow` can't silence them; switch them off for the whole project with
+`checks.off`.
+
+**Which language is checked.** Everything about texts (`low_contrast`,
+`text_near_device`, the text layout findings) and overlaps across page
+borders that involve a text is checked in **every** language. The checks
+about devices, pages and corners run only on the **first language of each
+target** (the first of the project's languages, or of the target's own
+language list): `screen_header_covered`, `screen_covered`,
+`screen_header_cut`, `device_cut`, `device_small`, `element_in_corner`,
+`page_not_covered`, `seam_split`, `page_blends_with_store`,
+`variant_suggested`, `seam_overlap` between two non-text elements, and the
+store rules (`store_size`, `store_count`, `store_format`). A German
+screenshot that changes how a device or a corner looks is therefore not
+checked by a run over all languages. To check another language, run
+`vitrine validate --lang de`, or pick that language in the app – the badge
+checks the current target and language – and look at its pages.
+
 ## Questions
 
 **Where is the Save button?**
