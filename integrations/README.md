@@ -1,7 +1,10 @@
 # Integrations – DRAFTS
 
-Nothing in this folder is published yet. Each integration needs a published
-Vitrine Studio release first (CLI archives + `SHA256SUMS.txt` on GitHub
+None of the CI integrations is released yet: the GitHub Action's repository
+is online without a release tag or Marketplace listing, GitLab and fastlane
+are not published; the agent skill is online (see the `README.md`
+integrations table). Each CI integration needs a published Vitrine Studio
+release first (the first is 1.0.0) (CLI archives + `SHA256SUMS.txt` on GitHub
 Releases, ADR 0026) and, for the container-based ones, the CLI image
 `ghcr.io/vitrinestudio-app/vitrine-cli` (built and pushed by
 `.github/workflows/release.yml` from the static musl archives). Research,

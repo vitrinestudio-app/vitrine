@@ -1,11 +1,12 @@
 ---
 title: Download
 eyebrow: "Download"
-description: "Vitrine Studio für macOS, Windows und Linux – Installer folgen bald; bis dahin aus dem Quellcode bauen."
-lead: "Vitrine Studio ist im **Pre-Alpha**-Stadium. Installer für macOS, Windows und Linux sind in Vorbereitung – bis dahin lässt sich die App aus dem Quellcode bauen."
+description: "Vitrine Studio 1.0 für macOS, Windows und Linux – Installer, Kommandozeilen-Tool und Quellcode."
+lead: "**Vitrine Studio 1.0** – kostenlos für macOS, Windows und Linux. Alle Dateien, Prüfsummen und die Kommandozeilen-Archive liegen auf [GitHub Releases](https://github.com/vitrinestudio-app/vitrine/releases/latest)."
+lead_pending: "**Vitrine Studio 1.0.0** erscheint gerade. Die Downloads gehen hier mit dem Release online – bis dahin lässt sich die App aus dem Quellcode bauen."
 ---
 
-{{< os-cards soon="Bald verfügbar" get="Herunterladen" macos="Geplant: signiertes und notarisiertes .dmg." windows="Geplant: Setup (.exe), vorerst nicht code-signiert – Windows zeigt beim ersten Start einen SmartScreen-Hinweis." linux="Geplant: AppImage und .deb." >}}
+{{< os-cards soon="Mit dem Release 1.0.0" get="Herunterladen" macos="Universelles .dmg (Apple Silicon und Intel), von Apple signiert und notarisiert." windows="Setup (.exe) für dein Benutzerkonto. Noch nicht code-signiert – SmartScreen fragt einmal nach: Weitere Informationen → Trotzdem ausführen." linux="AppImage, .deb und .rpm (x86_64). Unsigniert; mit SHA256SUMS.txt prüfen." >}}
 
 ## Aus dem Quellcode bauen
 
@@ -28,8 +29,9 @@ vitrine export --project tests/fixtures/example           # am Beispielprojekt a
 - **Das Kommandozeilen-Tool** (`vitrine`) – prüfen, rendern, exportieren, übersetzen, importieren und hochladen aus Skripten und CI.
 
 Beide arbeiten mit denselben Projektordnern. Releases erscheinen auf
-[GitHub](https://github.com/vitrinestudio-app/vitrine) mit Prüfsummen und dem
-zugehörigen Quellcode.
+[GitHub](https://github.com/vitrinestudio-app/vitrine/releases) mit Prüfsummen
+und dem zugehörigen Quellcode. Installieren, der Befehl `vitrine` und Updates:
+[Installieren & aktualisieren](/de/docs/install/).
 
 ## Lizenz
 

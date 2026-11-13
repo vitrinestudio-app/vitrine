@@ -149,7 +149,7 @@ pub struct Manifest {
     /// marked as samples there; all other screenshots are placeholders.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub samples: Vec<String>,
-    /// Program that wrote the package (`Vitrine Studio 0.1.0`).
+    /// Program that wrote the package (`Vitrine Studio 1.0.0`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generator: Option<String>,
 }

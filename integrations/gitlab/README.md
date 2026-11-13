@@ -53,7 +53,7 @@ use the job directly:
 
 ```yaml
 vitrine-validate:
-  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0
+  image: ghcr.io/vitrinestudio-app/vitrine-cli:1.0.0
   script:
     - vitrine --project store-screens validate --format gitlab -o gl-code-quality-report.json
   artifacts:
@@ -70,7 +70,7 @@ protected branch. An upload is always plan → `execute --confirm <token> --yes`
 
 ```yaml
 upload-screenshots:
-  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0
+  image: ghcr.io/vitrinestudio-app/vitrine-cli:1.0.0
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: manual

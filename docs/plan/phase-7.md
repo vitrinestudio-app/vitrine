@@ -1,9 +1,11 @@
-# Phase 7 – Release: first public version → 1.0
+# Phase 7 – Release: first public version 1.0.0
 
 Scope: KONZEPT (`docs/archive/KONZEPT-de.md`, superseded by `ARCHITECTURE.md`) §12, Phase 7 (split out of Phase 6 on 2026-11-13; 3D moved
 to Phase 8). Every remaining step from today's state to the first published
-version (`v0.1.0` public) and on to 1.0: signing, publishing, legal, servers,
-integrations, store test runs, real-app checks and open owner decisions.
+version – **`v1.0.0`** (owner decision 2026-11-13: the first public release
+is 1.0.0, not 0.1.0; no public 0.x) – and the work around it: signing,
+publishing, legal, servers, integrations, store test runs, real-app checks
+and open owner decisions.
 Phase 6 holds the feature work (`docs/plan/phase-6.md`); this list is about
 getting it out. Done when release 1.0 is published, the website with its
 legal pages is live and the integrations point at a real release.
@@ -14,11 +16,20 @@ publishing, his machines) · **Agent** = a Claude session can do it in the
 repo · **Owner + Agent** = agent prepares, owner applies/approves.
 "Needs" = prerequisite; "Doc" = where the step is explained.
 
-Release order in short: fix Linux bundling → re-tag `v0.1.0` → test the draft
-on all three OS → publish → ghcr image public → website live with downloads
-and legal pages → integrations published → 0.1.x updates (tests the
-updater) → 1.0. Windows ships unsigned (owner decision 2026-11-13, 7.1);
-SignPath / Azure signing is deferred.
+Release order in short: fix Linux bundling (AppImage) → tag `v1.0.0` →
+test the draft on all three OS → publish → ghcr image public → website
+downloads switch + legal pages live → integrations published → 1.0.x
+updates (test the updater). Windows ships unsigned (owner decision
+2026-11-13, 7.1); SignPath / Azure signing is deferred.
+
+**Version decision (owner, 2026-11-13):** the first public release is
+**1.0.0**. The repo is prepared (workspace version 1.0.0, docs, website
+texts, integration pins `1.0.0` / image tag `1.0`). The tag `v0.1.0` exists
+from the failed run of 2026-11-12 (3152f19, no release; if that run pushed
+a `vitrine-cli:0.1.0` image to ghcr, delete that package version too):
+**Owner** deletes it (`git push origin :refs/tags/v0.1.0` and
+`git tag -d v0.1.0`) – or simply leaves it; nothing refers to it, and the
+release is `v1.0.0` either way. Do not reuse 0.1.0.
 
 ## 7.1 Code signing & notarization
 
@@ -61,7 +72,7 @@ SignPath / Azure signing is deferred.
       minisign signature (`TAURI_SIGNING_PRIVATE_KEY` → `…-setup.exe.sig`,
       entry `windows-x86_64` in `latest.json`), not Authenticode; the
       unsigned build path creates that `.sig` like on macOS/Linux, so
-      0.1.x updates install from the app. The update is downloaded by the
+      1.0.x updates install from the app. The update is downloaded by the
       app itself (no browser "downloaded from the internet" mark), so
       SmartScreen is not expected to ask again – to confirm in the updater
       test (7.3). Switching to a signed build later needs no change for
@@ -95,8 +106,8 @@ users ask; doc: `docs/dev/releasing.md` §4,
 - [ ] **Agent** – fix AppImage bundling on CI (`linuxdeploy` fails even with
       `APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true` + libfuse2). Needs: the
       verbose log tail of "Build and bundle" from the owner (Actions →
-      Release v0.1.0 → Build linux) – or **Owner** decides to ship 0.1.0
-      with deb/rpm only (STATUS hand-off).
+      Release v0.1.0 → Build linux). **Owner** (2026-11-13): repair the
+      AppImage before releasing 1.0.0 (the website and README list it).
 - [ ] Linux packages stay unsigned (checksums in `SHA256SUMS.txt`); signed
       deb/rpm repositories are not planned (optional later).
 
@@ -136,19 +147,24 @@ users ask; doc: `docs/dev/releasing.md` §4,
       anywhere yet; owner decides.
 - [ ] **Owner** – after the first tag run with a push: ghcr package
       `vitrine-cli` → visibility **Public**, linked to the repo, Actions
-      access Write; try `docker run --rm ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0 vitrine --version`.
+      access Write; try `docker run --rm ghcr.io/vitrinestudio-app/vitrine-cli:1.0.0 vitrine --version`.
       Doc: `releasing.md` §5.
 
-## 7.3 First release (v0.1.0) and the release process
+## 7.3 First release (v1.0.0) and the release process
 - [x] Release workflow, draft releases, checksums, `latest.json`, licence
       notices, CLI archives, container image jobs (ADR 0026).
 - [x] Tag `v0.1.0` pushed on 3152f19 (no draft release created: Linux failed).
 - [ ] **Owner** – first `workflow_dispatch` run with `sign` on the current
       `main` (checks the new `cli`/`image` jobs, arm runners, musl smoke
       tests – never run on GitHub so far). Doc: `releasing.md` §6.
-- [ ] **Owner + Agent** – re-tag: delete the `v0.1.0` tag (remote + local)
-      and push it again on the current `main` (no release exists yet), or
-      bump to `0.1.1`. Doc: `releasing.md` "Releasing a version".
+- [x] **Agent** – repo prepared for 1.0.0 (2026-11-13): workspace version
+      + `Cargo.lock`, AGENTS/ARCHITECTURE/README state, integration and
+      automation-doc pins (`1.0.0`, GitLab default image `vitrine-cli:1.0`;
+      the fastlane gem keeps its own version 0.1.0), website release texts
+      with pending variants behind the downloads switch.
+- [ ] **Owner** – delete the stale tag `v0.1.0` (remote + local, see the
+      version decision above) or leave it; then tag `v1.0.0` on `main`
+      once the AppImage fix is in. Doc: `releasing.md` "Releasing a version".
 - [ ] **Agent** – release highlights for the draft notes (no CHANGELOG file
       exists; decide whether to start one – **Owner**).
 - [ ] **Owner** – smoke tests per OS on the draft's files:
@@ -166,14 +182,21 @@ users ask; doc: `docs/dev/releasing.md` §4,
   - Everywhere: real file drop onto the window (asset import, folder →
     open project; never tested in Tauri), updates section in app settings.
 - [ ] **Owner** – publish the draft; check `releases/latest/download/latest.json`.
-- [ ] **Owner** – updater end to end: install 0.1.0, publish 0.1.1, the app
+- [ ] **Owner** – updater end to end: install 1.0.0, publish 1.0.1, the app
       offers the update, installs and restarts (macOS, Windows, AppImage;
       deb/rpm only notify). Windows: note whether SmartScreen asks again
       for the app-downloaded update (expected not to, 7.1).
-- [ ] **Agent** – after publishing: website `downloads_available = true` +
-      `[params.downloads]` URLs (`releasing.md` step 7), remove the
-      "pre-release" `status` callouts (`install.md`, docs `_index.md`),
-      README status.
+- [ ] **Agent/Owner** – after publishing (not while a draft): the website
+      downloads switch in `website/hugo.toml` – `downloads_available = true`
+      and `[params.downloads]` `macos` =
+      `https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_macos_universal.dmg`,
+      `windows` = `…/latest/download/VitrineStudio_windows_x64-setup.exe`,
+      `linux` = `…/latest/download/VitrineStudio_linux_x86_64.AppImage`
+      (without an AppImage: `…/releases/latest`); check each with
+      `curl -sI` (302), rebuild, deploy. Nothing else: the release texts
+      are in place and the pending variants (download lead, home hero note
+      + FAQ, `callout status pending` in `install.md`) switch with the flag.
+      Snippet: `website/README.md` "Release switch".
 - [ ] **Agent** – link the third-party notices from the About panel and
       `vitrine --help` (phase 6.5 "later").
 - [ ] **Owner** – announcement (where: own channels, Mastodon/Bluesky,
@@ -388,7 +411,9 @@ Compact list; details in `docs/plan/STATUS.md` ("Open owner decisions",
 "Open questions", "Decisions taken with the user") and the named ADRs.
 - [ ] Release defaults: universal macOS build, no MSI, per-user NSIS,
       macOS ≥ 11, daily update check on, app not sandboxed (ADR 0026).
-- [ ] Ship 0.1.0 without AppImage if the fix takes long (7.1).
+- [x] Ship without AppImage? No – owner 2026-11-13: repair the AppImage
+      before 1.0.0 (7.1).
+- [x] First public version number: **1.0.0**, not 0.1.0 (owner 2026-11-13).
 - [x] Apple upload flow → App Asset Library only, screenshot-set API
       dropped (question (a), decided 2026-11-13, decision 0035).
 - [ ] MCP upload policy (question (b)): GUI click, headless off by default.
@@ -453,13 +478,14 @@ Compact list; details in `docs/plan/STATUS.md` ("Open owner decisions",
 - [x] Repo housekeeping: Inter in `assets/fonts/inter/`, Phase 0 spike
       images removed (ADR images in `docs/adr/images/`, now `docs/archive/adr/images/`),
       `next-2026-11-11.md` → `phase-6.2.md`, CLI image tags in the docs
-      pinned to the first release `0.1.0`.
+      pinned to the first release `0.1.0` (since 2026-11-13: `1.0.0`).
 
 ## 7.11 Before tagging 1.0
 - [ ] All of 7.1–7.8 done or consciously moved after 1.0; 7.9 answered.
 - [ ] `cargo deny check licenses` green, third-party notices regenerated,
       golden tests green on all three OS.
-- [ ] Docs: README status "1.0", AGENTS.md "Current state", ARCHITECTURE.md, STATUS.md,
-      website "pre-release" callouts removed, release notes.
-- [ ] Version `1.0.0` in `[workspace.package]`, tag `v1.0.0`, publish,
-      announce.
+- [x] Docs: README status "1.0", AGENTS.md "Current state", ARCHITECTURE.md, STATUS.md,
+      website "pre-release" callouts replaced by release texts (2026-11-13).
+- [ ] Release notes (highlights at the top of the draft, 7.3).
+- [x] Version `1.0.0` in `[workspace.package]` (2026-11-13).
+- [ ] Tag `v1.0.0`, publish, downloads switch (7.3), announce.

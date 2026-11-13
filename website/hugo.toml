@@ -44,10 +44,12 @@ disableKinds = ['taxonomy', 'term', 'rss']
   # HUGO_PARAMS_GALLERYAPI=http://127.0.0.1:8787 hugo server
   galleryAPI = 'https://api.vitrinestudio.app'
   company = 'Looking4Cache UG (haftungsbeschränkt)'
-  # Flip to true and fill `downloads` below once signed installers are
-  # published (phase 6.5). Until then every download button says
-  # "coming soon" and links to GitHub. Stable links (asset names have no
-  # version, docs/dev/releasing.md):
+  # The downloads switch (website/README.md "Release switch"): set to true
+  # and fill `downloads` below once the GitHub release is PUBLISHED (not
+  # while it is a draft). While false, the download buttons say "with the
+  # 1.0.0 release", the download page shows `lead_pending`, the home page
+  # `notePending`/`aPending` and the `callout status pending` boxes appear.
+  # Stable links (asset names have no version, docs/dev/releasing.md):
   # https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_macos_universal.dmg
   # …/VitrineStudio_windows_x64-setup.exe, …/VitrineStudio_linux_x86_64.AppImage
   downloads_available = false

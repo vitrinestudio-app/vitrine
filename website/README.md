@@ -290,8 +290,8 @@ visibly). No placeholders are left in the docs.
 Still open: a dedicated 1200×630 Open Graph image.
 
 The repo README uses separate, smaller copies (not used by the site):
-`docs/gui/` (`editor`, `gallery-view`, `text-editing`, `new-project`, each
-with `-dark`) and `docs/example/` (`iphone-gallery-pop-art` and
+`docs/gui/` (`editor`, `gallery-view`, `text-editing`, `new-project`,
+`upload-plan`, each with `-dark`) and `docs/example/` (`iphone-gallery-pop-art` and
 `play-gallery-synthwave` from `iphone-gallery-en`/`play-gallery-en`,
 `warm-stay-matrix` composed from the `matrix/` images); 1600 px wide
 (dialogs 1200 px), JPEG quality ~80. Refresh them when the originals change.
@@ -304,14 +304,43 @@ with `-dark`) and `docs/example/` (`iphone-gallery-pop-art` and
   both when a feature changes; the developer-side notes stay in
   `docs/guide/NOTES.md`.
 - Shortcodes: `shot` (image from `assets/images` with caption), `placeholder`
-  (missing screenshot), `callout` (`note`, `tip`, `status` = pre-release,
-  `warn`), `cli-help "vitrine <cmd>"` (the `--help` text from
+  (missing screenshot), `callout` (`note`, `tip`, `status` = release state,
+  `warn`; a second argument `pending` / `live` shows it only before /
+  after the downloads switch), `cli-help "vitrine <cmd>"` (the `--help` text from
   `data/cli_help.json`).
 - CLI reference data: `scripts/docs/cli-help.sh [path/to/vitrine]` regenerates
   `data/cli_help.json` from the real `--help` output – run it after changing
   a command or flag.
 - Link check: `hugo --minify && python3 scripts/check-links.py` (internal links
   and `#fragments` of `public/`; exit 1 when something is broken).
+
+## Release switch (downloads)
+
+The texts are written for 1.0.0 and read correctly both before and after
+the release; only `hugo.toml` changes. **After** the GitHub release
+`v1.0.0` is published (not while it is a draft – `releases/latest` only
+points at published releases), set in `hugo.toml`:
+
+```toml
+  downloads_available = true
+  [params.downloads]
+    macos = 'https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_macos_universal.dmg'
+    windows = 'https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_windows_x64-setup.exe'
+    linux = 'https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_linux_x86_64.AppImage'
+```
+
+If a release ships without the AppImage, use
+`https://github.com/vitrinestudio-app/vitrine/releases/latest` for `linux`
+(deb/rpm and the CLI archives are linked from the release page anyway).
+Check each URL answers with a redirect (`curl -sI <url>` → 302), rebuild
+and deploy.
+
+What the switch changes: the download buttons (`downloadSoon` →
+`downloadNow`), the OS cards on `/download/` (badge → button), the download
+page lead (`lead_pending` → `lead`), the home page hero note
+(`hero.notePending` → `hero.note`) and FAQ answers (`aPending` → `a`), and
+the `{{< callout status pending >}}` boxes disappear (`docs/install.md`).
+Nothing else mentions the release state as "coming".
 
 ## TODO (owner)
 
@@ -320,10 +349,9 @@ with `-dark`) and `docs/example/` (`iphone-gallery-pop-art` and
   for 30 days, full IPs only for security-relevant entries). Configure the
   web server and the API's nginx accordingly before go-live, and keep the
   privacy policy in line with the code when data flows change.
-- **Downloads:** when installers exist, set `downloads_available = true` and
-  the URLs under `[params.downloads]` in `hugo.toml`.
-- **Docs:** review the user guide (en + de); once installers exist, update the "pre-release"
-  callouts (`install.md`, docs `_index.md`).
+- **Downloads:** after the GitHub release is published, flip the release
+  switch (below).
+- **Docs:** review the user guide (en + de).
 - **Gallery:** set `VITRINE_API_CORS_ORIGINS` on the API server (above);
   rebuild the site after approving templates (snapshot for no-JS/SEO and
   the home page cards).

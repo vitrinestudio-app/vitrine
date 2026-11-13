@@ -34,7 +34,7 @@ and the [download page](https://www.vitrinestudio.app/download/):
 |---|---|---|
 | macOS 11+ (Apple silicon and Intel) | universal `.dmg` | signed with a Developer ID and notarised by Apple |
 | Windows 10/11 (x64) | setup `.exe` (per user, no admin rights) | **not code-signed** – SmartScreen warns once about an "Unknown publisher": *More info* → *Run anyway* |
-| Linux (x86_64) | `.deb` and `.rpm` (AppImage to follow) | unsigned packages; verify with `SHA256SUMS.txt` |
+| Linux (x86_64) | AppImage, `.deb` and `.rpm` | unsigned packages; verify with `SHA256SUMS.txt` |
 | Build servers / CI | command line archives (macOS, Windows, Linux x86_64 and aarch64, static musl builds) and the container image `ghcr.io/vitrinestudio-app/vitrine-cli` | checksums in `SHA256SUMS.txt` |
 
 Installing, updating and verifying downloads:
@@ -180,6 +180,14 @@ Editing a headline, with its settings in the inspector:
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/gui/new-project-dark.jpg">
   <img src="docs/gui/new-project.jpg" width="760" alt="The New project dialog on the Template gallery tab: template cards with previews and filters for style, colour, app category and devices">
+</picture>
+
+The store upload plan – what will be uploaded, replaced or skipped – before
+anything is sent:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/gui/upload-plan-dark.jpg">
+  <img src="docs/gui/upload-plan.jpg" width="760" alt="The upload plan for the App Store: a note that the required iPhone 6.3″ set is missing, six sets (two targets × three languages) marked Upload, and the Confirm &amp; upload button">
 </picture>
 
 ### Renders

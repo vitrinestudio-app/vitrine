@@ -1,7 +1,14 @@
 {{- /* A highlighted note. {{< callout status >}}…markdown…{{< /callout >}}
-       Kinds: note (default), tip, status (pre-release state), warn. */ -}}
+       Kinds: note (default), tip, status (release state), warn.
+       Optional second argument ties it to the downloads switch
+       (site.Params.downloads_available): `pending` = shown only while the
+       downloads are not live yet, `live` = only once they are. */ -}}
 {{- $kind := .Get 0 | default "note" -}}
+{{- $when := .Get 1 | default "" -}}
+{{- $live := site.Params.downloads_available -}}
+{{- if or (eq $when "") (and (eq $when "pending") (not $live)) (and (eq $when "live") $live) }}
 <aside class="callout callout--{{ $kind }}">
   <strong class="callout__label">{{ T (printf "callout_%s" $kind) }}</strong>
   {{ .Inner | .Page.RenderString (dict "display" "block") }}
 </aside>
+{{- end }}

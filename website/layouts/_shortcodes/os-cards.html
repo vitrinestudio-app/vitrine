@@ -1,5 +1,6 @@
-{{- /* Download cards per OS. Until installers exist they say "coming soon"
-       and link to GitHub (site.Params.downloads_available). */ -}}
+{{- /* Download cards per OS. Until site.Params.downloads_available is true
+       (and the OS has a URL in site.Params.downloads) they show the `soon`
+       badge instead of a download button. */ -}}
 {{- $soon := .Get "soon" | default "Coming soon" -}}
 {{- $get := .Get "get" | default "Download" -}}
 {{- $d := site.Params.downloads -}}

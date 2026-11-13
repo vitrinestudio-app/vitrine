@@ -5,10 +5,10 @@ weight: 20
 icon: download
 ---
 
-{{< callout status >}}
-The first release is being prepared. Until it is published, the download
-buttons say "coming soon" – [build from source](#build-from-source) in the
-meantime. The steps below describe the release builds.
+{{< callout status pending >}}
+Version 1.0.0 is being released. The download buttons go live with the
+release – until then, [build from source](#build-from-source). The steps
+below describe the release builds.
 {{< /callout >}}
 
 ## Download

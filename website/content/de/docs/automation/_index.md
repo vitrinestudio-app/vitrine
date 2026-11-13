@@ -20,11 +20,12 @@ Bilder als Build-Artefakte exportieren oder sie aus einem Release-Job in die
 Stores hochladen.
 
 {{< callout status >}}
-Die CLI-Archive und das Container-Image kommen mit dem ersten Release. Die
-fertigen Integrationen (GitHub Action, GitLab-Komponenten, fastlane-Plugin)
-sind **Entwürfe** und noch nicht veröffentlicht; alles in diesem Abschnitt,
-was nur das Kommandozeilenwerkzeug oder das Image nutzt, funktioniert ab dem
-ersten Release.
+Die CLI-Archive und das Container-Image erscheinen mit jedem Release, ab
+1.0.0. Von den fertigen Integrationen ist das Repository der GitHub Action
+online, hat aber noch keinen Release-Tag und keinen Marketplace-Eintrag; die
+GitLab-Komponenten und das fastlane-Plugin sind **Entwürfe** und noch nicht
+veröffentlicht. Alles in diesem Abschnitt, was nur das
+Kommandozeilenwerkzeug oder das Image nutzt, funktioniert ab 1.0.0.
 {{< /callout >}}
 
 Diese Seite beschreibt, was alle Setups gemeinsam haben. Schritt für Schritt
@@ -46,7 +47,7 @@ dazu `SHA256SUMS.txt`:
 | Windows x64 | `vitrine-cli_windows_x64.zip` |
 
 ```sh
-v=0.1.0
+v=1.0.0
 base=https://github.com/vitrinestudio-app/vitrine/releases/download/v$v
 curl -sSfLO "$base/vitrine-cli_linux_x86_64.tar.gz"
 curl -sSfL "$base/SHA256SUMS.txt" | grep ' vitrine-cli_linux_x86_64.tar.gz$' | sha256sum -c -
@@ -68,8 +69,8 @@ veröffentlicht jedes Release außerdem das Image
 
 | Tag | |
 |---|---|
-| `0.1.0` | genau dieses Release (empfohlen für reproduzierbare Builds) |
-| `0.1` | das neueste `0.1.x` |
+| `1.0.0` | genau dieses Release (empfohlen für reproduzierbare Builds) |
+| `1.0` | das neueste `1.0.x` |
 | `latest` | das neueste Release |
 
 Es ist ein Alpine mit dem statischen `vitrine`, `git`, `jq`,
@@ -80,7 +81,7 @@ liegen in `/usr/share/doc/vitrine/licenses/`.
 
 ```sh
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" \
-  ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0 vitrine --project store-screens validate
+  ghcr.io/vitrinestudio-app/vitrine-cli:1.0.0 vitrine --project store-screens validate
 ```
 
 ## Was das Werkzeug für CI bietet {#what-the-cli-offers-ci}

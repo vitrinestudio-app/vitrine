@@ -1,11 +1,12 @@
 ---
 title: Download
 eyebrow: "Download"
-description: "Vitrine Studio for macOS, Windows and Linux – installers are coming soon; build from source in the meantime."
-lead: "Vitrine Studio is in **pre-alpha**. Installers for macOS, Windows and Linux are being prepared – until then you can build it from source."
+description: "Vitrine Studio 1.0 for macOS, Windows and Linux – installers, the command line tool and the source."
+lead: "**Vitrine Studio 1.0** – free for macOS, Windows and Linux. All files, checksums and the command line archives are on [GitHub Releases](https://github.com/vitrinestudio-app/vitrine/releases/latest)."
+lead_pending: "**Vitrine Studio 1.0.0** is being released. The downloads go live here with the release – until then you can build it from source."
 ---
 
-{{< os-cards soon="Coming soon" macos="Planned: signed and notarised .dmg." windows="Planned: setup (.exe), not code-signed for now – Windows shows a SmartScreen notice on first start." linux="Planned: AppImage and .deb." >}}
+{{< os-cards soon="With the 1.0.0 release" macos="Universal .dmg (Apple silicon and Intel), signed and notarised by Apple." windows="Setup (.exe) for your user account. Not code-signed yet – SmartScreen asks once: More info → Run anyway." linux="AppImage, .deb and .rpm (x86_64). Unsigned; verify with SHA256SUMS.txt." >}}
 
 ## Build from source
 
@@ -27,9 +28,10 @@ vitrine export --project tests/fixtures/example           # try it on the exampl
 - **The desktop app** (`vitrine-gui`) – the editor with its built-in MCP server for AI assistants.
 - **The command line tool** (`vitrine`) – validate, render, export, translate, import and upload from scripts and CI.
 
-Both work on the same project folders. Releases will be published on
-[GitHub](https://github.com/vitrinestudio-app/vitrine) with checksums and the
-corresponding source.
+Both work on the same project folders. Releases are published on
+[GitHub](https://github.com/vitrinestudio-app/vitrine/releases) with checksums
+and the corresponding source. Installing, the `vitrine` command and updates:
+[Install & update](/docs/install/).
 
 ## Licence
 

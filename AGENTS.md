@@ -290,7 +290,8 @@ checked-in text normalise `\r\n` anyway.
 
 ## Current state
 
-Pre-alpha, version 0.1.0. The features planned for 1.0 are built (phases
-0–6); Phase 7 is the release work: signing, publishing the first version,
-website and gallery going live, integrations, store test runs. Details and
+Version 1.0.0, being released: the first public release is 1.0.0 (owner
+decision 2026-11-13; there is no public 0.x). The features are built
+(phases 0–6); Phase 7 is the release work: signing, publishing 1.0.0,
+website downloads and gallery going live, integrations, store test runs. Details and
 open owner decisions: `docs/plan/STATUS.md` and `docs/plan/phase-7.md`.
