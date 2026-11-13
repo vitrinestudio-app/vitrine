@@ -439,7 +439,7 @@ guide pages in both languages.
   - CJK (zh, ja, ko) has no bundled font (10–20 MB each): installed fonts (default on) or a font in `fonts/` (Noto Sans JP/SC/TC/KR, OFL). Proposal for an optional download: `docs/research/2026-11-12-cjk-font-packs.md`.
 - Images still rendering show a grey placeholder with a small spinner (only until the first picture arrives; re-renders after edits keep the old picture until the new one is there). Rendering follows the zoom: zooming in requests sharper images.
 - All languages: language labels sit in a fixed column on the left; Fit keeps rows at least ~140 px high and lets you scroll (pan) through many languages.
-- Dev bridge (developers only): run the UI in a browser – see CLAUDE.md.
+- Dev bridge (developers only): run the UI in a browser – see AGENTS.md.
 - macOS menu bar (ADR 0020): the app menu's entries also sit in the system menu bar – Vitrine Studio menu (About, App settings… ⌘,, Services, Hide, Quit), File / Ablage (New ⌘N, Open ⌘O, Project settings, Targets, Export ⌘E, Upload, Import screenshots, Save as template, Close project; project items greyed out without a project), Edit (Undo ⌘Z / Redo ⇧⌘Z = project history, or the text field's own undo while typing; Cut/Copy/Paste/Select All), Window, Help (website docs, quick guide, keyboard sheet, bezels and store API key docs). Labels follow the UI language. Windows/Linux: only the in-app menu (☰ in the top bar).
 - No browser context menu (Reload / Inspect Element) on right-click; text fields and selected text keep theirs (copy/paste, spelling). Developers: ⌥/Alt + right-click shows the web view's menu anywhere ("Inspect Element" in debug builds).
 
