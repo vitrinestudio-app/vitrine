@@ -347,7 +347,7 @@ Doc: `docs/plan/phase-5.md`, ADR 0016–0019, website `docs/store-upload`.
 - [ ] **Owner** – first real Google Play run (incl. feature graphic).
 - [x] **Owner** – decide (a): decided 2026-11-13 – the App Asset Library
       is the only Apple flow, the screenshot-set flow and
-      `store.apple.upload_flow` are removed (ARCHITECTURE.md decision 0034).
+      `store.apple.upload_flow` are removed (ARCHITECTURE.md decision 0035).
 - [ ] **Owner** – look at the store UI in the real app: app settings →
       Stores (help panels, Test connection with real keys), project
       settings → Stores, upload dialog + MCP confirmation dialog.
@@ -388,7 +388,7 @@ Compact list; details in `docs/plan/STATUS.md` ("Open owner decisions",
       macOS ≥ 11, daily update check on, app not sandboxed (ADR 0026).
 - [ ] Ship 0.1.0 without AppImage if the fix takes long (7.1).
 - [x] Apple upload flow → App Asset Library only, screenshot-set API
-      dropped (question (a), decided 2026-11-13, decision 0034).
+      dropped (question (a), decided 2026-11-13, decision 0035).
 - [ ] MCP upload policy (question (b)): GUI click, headless off by default.
 - [ ] Templates (question (f)): placeholders not copied into new projects;
       insert default "keep both"; no stored previews for built-ins;

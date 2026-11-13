@@ -74,7 +74,10 @@ zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2
 flate2 = { version = "1.1.11", default-features = false, features = ["rust_backend"] }
 skrifa = "0.44.0"
 # Text layout (ARCHITECTURE.md §6; former ADRs 0001, 0003).
-# No system font discovery: only bundled/project fonts are used.
+# Without parley's `system` feature: no font discovery through parley/fontique's
+# platform backends. Vitrine builds its own font collection
+# (core::layout::setup::project_library: bundled → project → stored → installed;
+# installed fonts are indexed by core::layout::system with fontique's path loader).
 parley = { version = "0.12.0", default-features = false, features = ["std", "complex-scripts"] }
 rayon = "1.12.0"
 # SVG assets (logos, backgrounds). No text/system fonts, no raster images inside SVGs.

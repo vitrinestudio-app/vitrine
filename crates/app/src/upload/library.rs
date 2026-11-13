@@ -1,6 +1,6 @@
 //! The App Asset Library flow (ASC API 4.5.1, ADR 0019): the only way
 //! Vitrine Studio uploads to App Store Connect (the screenshot-set API was
-//! removed by decision 0034).
+//! removed by decision 0035).
 //!
 //! Per set (store locale × slot):
 //!

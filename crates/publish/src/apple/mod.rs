@@ -5,7 +5,7 @@
 //! and creative assets go through the App Asset Library ([`library`]:
 //! asset library, reference data, images, placements, ordering requests);
 //! the deprecated screenshot-set resources (`appScreenshotSets`,
-//! `appScreenshots`) are no longer used (decision 0034).
+//! `appScreenshots`) are no longer used (decision 0035).
 
 pub mod library;
 mod model;

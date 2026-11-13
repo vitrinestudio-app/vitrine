@@ -252,8 +252,28 @@ language; most design findings are **info** – call `validate` to see them.
 | `store_locale_unknown` | error | `store.locales` code not a store locale |
 | `store_locale_missing`, `store_locale_duplicate`, `store_no_slot`, `store_slot_duplicate` | warn | upload mapping problems |
 | `store_locale_unused` | info | locale entry for a language the project lacks |
+| `required_store_set_missing` | warn (off) | no target fills a set App Store Connect requires (below) |
 
-None of these is allowable.
+None of these is allowable, except `required_store_set_missing` via
+`checks.off` (it names no element).
+
+### required_store_set_missing (warn; only `checks.off`)
+- Data: Apple presets in `targets.yaml` with `requirement: required` –
+  today iPhone 6.3″ (`ios-iphone-63`, `APP_IPHONE_61`), iPad 13″
+  (`ios-ipad-13`, `APP_IPAD_PRO_3GEN_129`), Mac (`mac`, `APP_DESKTOP`).
+  Watch presets are `conditional` (any one watch size) and never reported.
+- A required set counts for its platform once the project targets it: the
+  platforms of the presets matching the slots of the project's Apple
+  targets. iPad / Mac are asked for only when the project already has an
+  iPad / Mac target (whether the app runs on iPad cannot be known
+  otherwise). Mapped to the App Store (`store.apple`) without iPhone/iPad
+  targets: `store.apple.platform` decides (`ios` → iPhone, `macos` → Mac).
+- Filled by any target with the same store slot (any size the slot takes).
+- Warn, not error: export and upload of the other sets still work; App
+  Store Connect refuses to submit the version without it. Also a
+  non-blocking upload readiness step (`fix: targets`).
+- Fix: add the target from the named preset (`target_add {preset, canvas}`), or
+  `checks.off` when the set comes from elsewhere.
 
 ## Switching findings off
 
@@ -278,13 +298,13 @@ Element field `allow: [codes]`:
   `seam_split`, `element_in_corner`, `device_small`, `page_not_covered`,
   `page_blends_with_store`, `clip_to_other_page`, `text_clipped`,
   `text_in_gap`, `text_outside_safe_area`, `element_outside`,
-  `hyphenated`, `variant_suggested`, `screenshot_upscale`. Errors and
-  missing content never.
+  `hyphenated`, `variant_suggested`, `screenshot_upscale`,
+  `required_store_set_missing`. Errors and missing content never.
 - It silences findings **whose `element` is that element** (for
   `screen_header_covered` / `screen_covered`: the covering element; for
   `seam_overlap` either of the two). Findings without an element
-  (`page_blends_with_store`, `variant_suggested`) only go with
-  `checks.off`.
+  (`page_blends_with_store`, `variant_suggested`,
+  `required_store_set_missing`) only go with `checks.off`.
 - On a group it applies to all children (merged with their own lists).
 - A common field: a variant override `allow` applies only to that
   variant's targets.

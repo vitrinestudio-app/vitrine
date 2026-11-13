@@ -86,7 +86,7 @@ pub struct StoreSettings {
 
 /// App Store Connect app.
 ///
-/// Uploads always go through the App Asset Library (decision 0034).
+/// Uploads always go through the App Asset Library (decision 0035).
 /// The retired key `upload_flow` (`auto`, `asset_library`,
 /// `screenshot_sets`) is still accepted when reading and ignored, so older
 /// projects load; the canonical writer drops it on the next save.

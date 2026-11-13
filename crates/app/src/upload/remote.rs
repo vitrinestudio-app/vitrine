@@ -5,7 +5,7 @@
 //! **Apple.** Screenshots and creative assets go through the App Asset
 //! Library only ([`super::library::AssetLibraryFlow`]; ARCHITECTURE.md
 //! §10). The deprecated screenshot-set API (`appScreenshotSets`) was
-//! removed by decision 0034.
+//! removed by decision 0035.
 
 use std::sync::Mutex;
 use std::time::Duration;
