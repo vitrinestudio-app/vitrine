@@ -81,7 +81,7 @@ galHow1: 'Install <a href="{download}">Vitrine Studio</a> – free for macOS, Wi
 galHow2: "Start screen → <b>New project</b> → <b>Import file…</b> → pick the downloaded <code>.vitrine-template</code>, choose name, folder and languages → <b>Create</b>."
 galHow3: "Replace the screenshots with your own. Texts, devices, variants and store targets are already set up – export or upload."
 galHowCli: "Or on the command line:"
-galHowNote: "Browsing the gallery inside the app comes in a later version."
+galHowNote: "Or right in the app: New project → Template gallery lists every template here – pick one and click Download and create."
 galEmptyTitle: "No templates here yet"
 galEmptyText: "The gallery has no templates right now. Start from the built-in templates in the app – or save your own design as a template and share it."
 galErrorTitle: "The gallery could not be loaded"
