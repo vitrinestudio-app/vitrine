@@ -58,6 +58,14 @@ The release notes say which builds are signed. A build that is not signed
   Security → Open Anyway*.
 - **Windows SmartScreen:** *More info* → *Run anyway*.
 
+**About Windows:** the Windows version is not code-signed for now, so every
+release shows this warning. Windows displays "Windows protected your PC"
+with *Publisher: Unknown publisher* – that only means the setup carries no
+certificate, not that something is wrong with it. If you like, check the
+download against `SHA256SUMS.txt` first (`Get-FileHash` in PowerShell shows
+the SHA-256), then choose *More info* → *Run anyway*. Updates installed from
+inside the app are checked against Vitrine Studio's own update signature.
+
 When you first start a newly signed version, macOS may ask once whether
 Vitrine Studio may keep using its own keychain entries – allow it (an entry
 is bound to the app's signature, which has changed). This is only about the

@@ -61,6 +61,16 @@ nicht signierte Version zeigt beim ersten Start eine Warnung:
   Datenschutz & Sicherheit → Dennoch öffnen*.
 - **Windows SmartScreen:** *Weitere Informationen* → *Trotzdem ausführen*.
 
+**Zu Windows:** Die Windows-Version ist vorerst nicht code-signiert, deshalb
+zeigt jede Version diese Warnung. Windows meldet „Der Computer wurde durch
+Windows geschützt“ mit *Herausgeber: Unbekannter Herausgeber* – das heißt
+nur, dass das Setup kein Zertifikat trägt, nicht dass etwas damit nicht
+stimmt. Wenn du magst, prüfst du den Download vorher mit `SHA256SUMS.txt`
+(`Get-FileHash` in der PowerShell zeigt die SHA-256-Prüfsumme) und wählst
+dann *Weitere Informationen* → *Trotzdem ausführen*. Updates, die du in der
+App installierst, werden gegen die eigene Update-Signatur von Vitrine Studio
+geprüft.
+
 Beim ersten Start einer neu signierten Version fragt macOS eventuell einmal,
 ob Vitrine Studio seine eigenen Schlüsselbund-Einträge weiter verwenden darf –
 erlaube es (ein Eintrag ist an die Signatur der App gebunden, die sich
