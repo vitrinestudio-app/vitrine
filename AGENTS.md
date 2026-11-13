@@ -59,7 +59,7 @@ explanation: `website/content/en/docs/concepts.md`. "ADR 00NN" and
 | `website/` | www.vitrinestudio.app (Hugo, no theme): landing page, user guide `content/{en,de}/docs/`, template gallery page; see `website/README.md` |
 | `integrations/` | unpublished MIT drafts, each folder self-contained for its own repo: `github-action/`, `gitlab/`, `fastlane-plugin/`, `skill/` (agent skill); see `integrations/README.md` |
 | `scripts/release/` | release helpers (licence files, CLI sidecar, Linux CLI builds, collect artifacts, `latest.json`) |
-| `scripts/docs/cli-help.sh` | regenerates `website/data/cli_help.json` |
+| `scripts/docs/` | `cli-help.sh` regenerates `website/data/cli_help.json`; `app-screenshots.mjs` + shot list `app-shots.mjs` take the website's app screenshots (`website/README.md`, "Taking the app screenshots") |
 | `docker/cli/` | Dockerfile of the CLI image `ghcr.io/vitrinestudio-app/vitrine-cli` |
 | `.github/workflows/` | `ci.yml` (fmt/clippy/test per OS + licences), `release.yml` (tag `v*` → draft release + CLI image) |
 | `.signpath/` | Windows signing configuration drafts (dormant) |
@@ -155,8 +155,10 @@ Version: `[workspace.package] version` in `Cargo.toml` is the single source.
     texts if they mention it, and `website/data/cli_help.json` for CLI
     changes;
   - screenshots in `website/assets/images/` (and `docs/gui/`) that show
-    changed UI – retake them as light/dark pairs (`website/README.md`,
-    "Screenshots") or note them as stale in `docs/plan/STATUS.md`;
+    changed UI – retake them as light/dark pairs with
+    `scripts/docs/app-screenshots.mjs shoot --only <names>`
+    (`website/README.md`, "Taking the app screenshots") or note them as
+    stale in `docs/plan/STATUS.md`;
   - MCP docs (`crates/mcp/src/instructions.md`, `ops.md`, `docs/*.md`) and
     the agent skill (`integrations/skill/`) when tools, fields or
     behaviour change;
@@ -225,6 +227,10 @@ hugo server
 hugo --minify -d /tmp/site && python3 scripts/check-links.py /tmp/site
 scripts/docs/cli-help.sh                      # (repo root) after changing CLI commands/flags
 
+# website app screenshots (Node >= 22, Chrome, release dev bridge + CLI; website/README.md)
+node scripts/docs/app-screenshots.mjs init --root /tmp/vitrine-shots    # sample projects, once
+node scripts/docs/app-screenshots.mjs shoot --root /tmp/vitrine-shots --only editor,upload-plan
+
 # regenerate the example screenshots (deterministic fake app UI)
 cargo run -p vitrine-render --release --example screens -- tests/fixtures/example/screenshots
 ```
@@ -277,7 +283,7 @@ checked-in text normalise `\r\n` anyway.
 | `docs/api/API.md`, `docs/api/DEPLOY.md` | gallery API, server deployment |
 | `docs/dev/releasing.md` | releases, signing, secrets |
 | `docs/dev/adding-devices.md` | adding devices and frames |
-| `website/README.md` | website structure, screenshots, gallery page, deployment |
+| `website/README.md` | website structure, screenshots (how to take them: "Taking the app screenshots"), gallery page, deployment |
 | `integrations/README.md` | CI integration and skill drafts |
 | `CONTRIBUTING.md`, `CLA.md` | contribution rules, CLA |
 | `website/content/{en,de}/docs/` | the user guide |

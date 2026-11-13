@@ -80,10 +80,11 @@ ignored by Git.
   `<html>`, so it works without JS and switches without a flash. The hidden
   image is `display: none` and lazy, so the browser does not download it.
   Pass `"theme" false` to opt out. Store-gallery renders have one version.
-- App screenshots are taken in the dev bridge (`?lang=en`, `?theme=light|dark`)
-  at a 1600×1000 CSS px window with device scale 2, from projects made from
-  the gallery templates *Pop-Art Panels*, *Synthwave Sunset* and *Park
-  Poster*; galleries and banners are rendered with `vitrine render
+- App screenshots are taken by a script in the dev bridge (`?lang=en`,
+  `?theme=light|dark`) at a 1600×1000 CSS px window with device scale 2,
+  from projects made from the gallery templates *Pop-Art Panels*,
+  *Synthwave Sunset* and *Park Poster* – see *Taking the app screenshots*
+  below. Galleries and banners are rendered with `vitrine render
   --gallery` / `--image`.
 - **Matrix on the home page** ("Every language. Every device. Every
   store."): `assets/images/matrix/<target>-<lang>.jpg`, image 1 of each
@@ -102,6 +103,93 @@ ignored by Git.
   after the heading, cleared by the next heading, not floated below 640 px).
 - The docs still support `{{</* placeholder "…" */>}}` for screenshots that
   cannot be taken yet.
+
+### Taking the app screenshots
+
+`scripts/docs/app-screenshots.mjs` (Node ≥ 22, no npm dependencies) drives
+a headless Chrome over the DevTools protocol against the dev bridge and
+writes every app screenshot as a light/dark pair. The shots themselves are
+a declarative list in `scripts/docs/app-shots.mjs` (format in its header
+comment); `node scripts/docs/app-screenshots.mjs list` prints them with the
+project each one uses.
+
+**Prerequisites**
+
+- Release builds of the dev bridge and the CLI, plus the synthetic bezel
+  package generator for the `frame-import` shot (any `CARGO_TARGET_DIR`;
+  pass the paths if it is not `target/`):
+
+  ```sh
+  cargo build --release -p vitrine-gui --features devbridge --bin vitrine-devbridge
+  cargo build --release -p vitrine-cli
+  cargo build --release -p vitrine-core --example synthetic_bezels
+  ```
+
+- Chrome or Chromium: `CHROME=/path/to/chrome`, otherwise the usual macOS
+  and Linux install paths are tried.
+- A **sample workspace** in a temp folder (never commit it):
+
+  ```sh
+  node scripts/docs/app-screenshots.mjs init --root /tmp/vitrine-shots
+  ```
+
+  It needs network once: it runs `vitrine gallery download <id>` for the
+  three gallery templates, `vitrine template import` (into the workspace's
+  `app/` folder, so *Local templates* lists them) and `vitrine new
+  Projects/<Name> --template <id> --lang …`, then applies the edits listed
+  in `app-shots.mjs`:
+
+  | Project | Template | Languages | Edits | Shots |
+  |---|---|---|---|---|
+  | `Glowtape` | `synthwave-sunset` | en | banner target `blog-header` | `editor` |
+  | `Swoonly` | `pop-art-panels` | en, de, fr | – | `gallery-view`, `context-menu`, `app-menu`, `project-fonts` (font Bangers), `save-template`, `new-project`, `new-project-local` |
+  | `Ridgecast` | `park-poster` | en, de, fr | French partly translated (fallbacks, one overflowing title), `samples.yaml` removed, landscape tablet targets without store slot, `store:` mapping, a fastlane snapshot folder (`fastlane/`) | all others |
+
+  Besides the projects it writes fake store keys (`keys/`: an EC key named
+  `AuthKey_7QK4M2XJ9P.p8`, a Google service-account JSON with a generated
+  RSA key – well-formed, valid nowhere) and `bezels/Product Bezels.zip`.
+  Existing parts are kept; delete a project folder to recreate it.
+
+**Taking the shots**
+
+```sh
+node scripts/docs/app-screenshots.mjs shoot --root /tmp/vitrine-shots \
+  [--only upload-plan,project-stores] [--theme light|dark|both] [--port 7860] \
+  [--bridge path/to/vitrine-devbridge] [--out DIR]
+```
+
+It starts a dev bridge on the port (`--app-dir <root>/app --mcp`, in-memory
+keychain; stopped again at the end – or uses one already listening there),
+imports the two store accounts from the fake keys, opens each shot's
+project, loads `/?lang=en&theme=…`, runs the steps, waits for previews and
+fonts, and captures. Files go to `website/assets/images/<name>.jpg` and
+`<name>-dark.jpg` (JPEG quality 84). The capture is cropped to the shot's
+`clip` (a dialog, the inspector, a popover, the window) and scaled down to
+`maxWidth` (1520 px for dialogs, 2400 px for the full window), so dialogs
+come out at 1520×1334 and the editor at 2400×1500, as before. A full run
+(22 shots × 2 themes) takes about three minutes; the upload plan renders
+the sets first.
+
+Privacy is handled in the page before each capture: the workspace folder
+becomes `/Users/you` (so projects show as `/Users/you/Projects/<Name>`),
+its `app/data` the macOS app data folder, the dev CLI path in the MCP
+settings `/usr/local/bin/vitrine`, and every MCP bearer token a fixed fake
+one (`PRIVACY` in `app-shots.mjs`). The dev bridge's "Test mode" keychain
+note is hidden. Still look at every image before committing.
+
+**Adding a shot:** append an entry to `shots` in `app-shots.mjs` (next to
+the other shots of the same project): `name`, `project`, `steps` (page
+snippets that call the UI modules, e.g. `open('dialogs/export',
+'openExport')`, `projectSettings('fonts')`, `ctx({…selection})`, or real
+mouse input such as `{rightClick: 'polygon.ov-sel'}`, `zoom()`, `pan()`),
+`clip` and `maxWidth`. Steps that change the project need an `after: [{cmd:
+'undo'}]`. Run it with `--only <name>`, check both images, add it to the
+table below and embed it with the `shot` shortcode.
+
+Not scripted yet: `export-overview` (the exported `index.html` in a
+browser, not a dev bridge page) – export the Ridgecast project with
+`vitrine export` and capture its `export/index.html` with one image
+enlarged by hand.
 
 ### Regenerating the font subsets
 
@@ -193,7 +281,7 @@ visibly). No placeholders are left in the docs.
 
 | Images | Used on | Made from |
 |---|---|---|
-| App screenshots, each a light/dark pair (`x.jpg` + `x-dark.jpg`): `editor`, `inspector-text`, `text-editing`, `gallery-view`, `all-languages`, `context-menu`, `app-menu`, `translations`, `validation`, `new-project`, `new-project-local`, `export-dialog`, `export-overview`, `canvas-dialog`, `targets-add`, `import-screenshots`, `frame-import`, `save-template`, `project-fonts`, `project-stores`, `store-accounts`, `upload-plan`, `mcp-settings` | home (editor, floating inspector) and the docs | dev bridge, see *Screenshots* above; projects made from the gallery templates *Pop-Art Panels*, *Synthwave Sunset* and *Park Poster* (the sample apps Swoonly, Glowtape and Ridgecast) |
+| App screenshots, each a light/dark pair (`x.jpg` + `x-dark.jpg`): `editor`, `inspector-text`, `text-editing`, `gallery-view`, `all-languages`, `context-menu`, `app-menu`, `translations`, `validation`, `new-project`, `new-project-local`, `export-dialog`, `export-overview`, `canvas-dialog`, `targets-add`, `import-screenshots`, `frame-import`, `save-template`, `project-fonts`, `project-stores`, `store-accounts`, `upload-plan`, `mcp-settings` | home (editor, floating inspector) and the docs | `scripts/docs/app-screenshots.mjs`, see *Taking the app screenshots* above (all but `export-overview`); projects made from the gallery templates *Pop-Art Panels*, *Synthwave Sunset* and *Park Poster* (the sample apps Swoonly, Glowtape and Ridgecast) |
 | `iphone-gallery-en`, `iphone-gallery-fr`, `ipad-gallery-de`, `play-gallery-en`, `ipad-landscape-gallery-en`, `blog-header-en` | home showcase tabs (`showcase:` in `_index.md`); `play-gallery-en` and `blog-header-en` also in concepts / targets; `iphone-gallery-en` is the Open Graph image (cropped to 1200×630 in `head.html`) | `vitrine render --gallery` / `--image` of the same three template projects; one version (store renders, no dark pair) |
 | `canvas-phone-en` | concepts | the *Synthwave Sunset* phone canvas, `vitrine render --canvas --width 2400` |
 | `matrix/<target>-<lang>.jpg`, `ipad-grouped-gallery-en` | home matrix, targets | the *Warm Stay* project, see *Matrix on the home page* above |
