@@ -90,6 +90,7 @@ fn new_creates_project_folder() {
             "ios-iphone-69",
             "ios-iphone-63",
             "play-phone",
+            "play-feature-graphic",
             "blog-header"
         ]
     );
@@ -155,7 +156,7 @@ fn round_trip_new_validate_export() {
     assert_eq!(code(&o), 0, "{}\n{}", stdout(&o), stderr(&o));
     let out = stdout(&o);
     assert!(out.contains("play-phone"), "{out}");
-    assert!(out.contains("26 files written"), "{out}");
+    assert!(out.contains("28 files written"), "{out}");
     let export = dir.join("export");
     assert_eq!(
         png_size(&export.join("ios-iphone-69/en/01_welcome.png")),
@@ -171,12 +172,16 @@ fn round_trip_new_validate_export() {
     );
     assert!(export.join("ios-iphone-69/de/_gallery.png").is_file());
     assert!(export.join("blog-header/en/banner.jpg").is_file());
+    assert_eq!(
+        png_size(&export.join("play-feature-graphic/de/banner.png")),
+        (1024, 500)
+    );
 
     // Incremental: nothing changed; --force renders again.
     let o = vitrine_in(&dir, &["export", "--format", "json"]);
     let json: Value = serde_json::from_str(&stdout(&o)).unwrap();
     let files = json["files"].as_array().unwrap();
-    assert_eq!(files.len(), 26);
+    assert_eq!(files.len(), 28);
     assert!(files.iter().all(|f| f["skipped"] == true));
     let o = vitrine_in(
         &dir,

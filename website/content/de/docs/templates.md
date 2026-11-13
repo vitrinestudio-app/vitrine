@@ -13,8 +13,8 @@ Sie ist eine einzige **`.vitrine-template`**-Datei.
 ## Mitgelieferte und eigene Vorlagen {#built-in-and-your-own-templates}
 
 - **Phone** – drei Seiten mit je einer Überschrift und einem Phone; Ziele
-  iPhone 6,9″ und 6,3″ (das Set, das Apple verlangt), Google-Play-Phone und
-  ein Blog-Header. Die Vorgabe.
+  iPhone 6,9″ und 6,3″ (das Set, das Apple verlangt), Google-Play-Phone, die
+  Play-Feature-Grafik und ein Blog-Header. Die Vorgabe.
 - **Minimal** – eine iPhone-Seite.
 - **Deine eigenen** Vorlagen – gespeichert, importiert oder heruntergeladen –
   liegen im App-Datenordner (`templates/`) und stehen in jedem Projekt zur

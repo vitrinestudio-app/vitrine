@@ -138,13 +138,17 @@ Typical target set for both stores (presets from `catalog_targets`; add with
 | App Store iPhone 6.3″ | `ios-iphone-63` | 1206×2622 | ios-phone | marked required |
 | App Store iPhone 6.9″ | `ios-iphone-69` | 1320×2868 | ios-phone | optional, the largest |
 | App Store iPad 13″ | `ios-ipad-13` | 2064×2752 | ios-tablet | required if the app runs on iPad |
-| Play phone | `play-phone` | 1080×1920 (9:16) | android-phone | `device_map` → Android frames, own variant |
+| Play phone | `play-phone` | 1080×1920 (9:16) | android-phone | required (≥ 2 images); `device_map` → Android frames, own variant |
 | Play 10″ tablet | `play-tablet-10` | 1440×2560 | android-tablet | optional |
 | Play feature graphic | `play-feature-graphic` | 1024×500 | – | required; `banner_add` |
 
 - **One upload target per store slot.** Portrait and landscape targets of the same device
   share a slot and collide in the upload plan (readiness `store_slot_conflict`, validate
   `store_slot_duplicate`). Keep the other as a non-upload alternative.
+- **Required sets.** A required set or graphic that no target fills is the validate warning
+  `required_store_set_missing` (also a readiness note): App Store iPhone 6.3″ (iPad 13″ / Mac
+  once the project has such targets), Play phone screenshots and feature graphic once the
+  project has Play targets or `store.google`. Its message names the preset to add.
 - iPad landscape from portrait pages: `group: 2` (two pages form one image) plus a variant.
 - Play pages are lower (9:16) → devices anchored at the bottom overlap headlines or leave gaps.
   Give the Play target its own variant (`canvas_variant`) with adjusted `at`, `width`,

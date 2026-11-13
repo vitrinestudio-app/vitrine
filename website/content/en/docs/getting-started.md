@@ -19,7 +19,8 @@ onto the window).
 2. **Name:** your app's name, e.g. `Fernwood`.
 3. **Location:** the parent folder – the project becomes a new folder in it.
 4. **Template:** keep **Phone** – three pages with a headline and a phone
-   each, rendered for iPhone 6.9″ and 6.3″, Google Play and a blog header. (*Minimal*
+   each, rendered for iPhone 6.9″ and 6.3″, Google Play (phone and feature
+   graphic) and a blog header. (*Minimal*
    is a single iPhone page; your own templates appear here too.)
 5. **Languages:** comma-separated, the first one is the default language,
    e.g. `en, de`.

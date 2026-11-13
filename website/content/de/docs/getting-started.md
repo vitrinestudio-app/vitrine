@@ -21,7 +21,7 @@ einen Projektordner auf das Fenster ziehen).
    neuer Ordner.
 4. **Vorlage:** lass **Phone** stehen – drei Seiten mit je einer Überschrift
    und einem Smartphone, gerendert für iPhone 6,9″ und 6,3″, Google Play
-   und einen Blog-Header. (*Minimal* ist eine einzelne iPhone-Seite; deine eigenen
+   (Smartphone und Feature-Grafik) und einen Blog-Header. (*Minimal* ist eine einzelne iPhone-Seite; deine eigenen
    Vorlagen erscheinen hier auch.)
 5. **Sprachen:** durch Kommas getrennt, die erste ist die Standardsprache,
    z. B. `en, de`.

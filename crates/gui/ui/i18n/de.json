@@ -1118,7 +1118,7 @@
   "upload.ready.no_store_locale": "{store}: einige Sprachen haben keine Store-Sprache und werden übersprungen.",
   "upload.ready.no_store_slots": "{store}: kein Ziel hat einen Store-Platz – in den Zielen den Anzeigetyp / Bildtyp wählen.",
   "upload.ready.store_slot_conflict": "{store}: zwei Ziele füllen denselben Store-Platz für dieselbe Sprache.",
-  "upload.ready.required_store_set_missing": "{store}: kein Satz {label} – App Store Connect verlangt ihn. Ziel {preset} hinzufügen (Leinwände & Ziele → Ziel hinzufügen); die anderen Sätze werden trotzdem hochgeladen.",
+  "upload.ready.required_store_set_missing": "{store}: {label} ({slot}) fehlt – {store} verlangt das. Ziel {preset} hinzufügen (Leinwände & Ziele → Ziel hinzufügen); alles andere wird trotzdem hochgeladen.",
   "upload.fix.app_settings_stores": "App-Einstellungen öffnen",
   "upload.fix.project_settings_stores": "Projekteinstellungen öffnen",
   "upload.fix.targets": "Ziele öffnen",
