@@ -21,7 +21,7 @@ ignored by Git.
 | `content/en/`, `content/de/` | pages per language (`contentDir`); same file name = translation |
 | `content/*/_index.md` | the home page: **all landing-page texts live in its front matter** (hero, features, FAQ, …) |
 | `content/*/docs/` | documentation (`weight` = order, `icon` = sidebar icon, `untranslated: true` shows the "translation follows" note) |
-| `content/*/impressum.md`, `datenschutz.md` | legal pages – **placeholders, see TODO** |
+| `content/*/impressum.md`, `datenschutz.md` | legal pages (`/de/impressum/`, `/de/datenschutz/`; English `/legal-notice/`, `/privacy/`): German binding, English translations say so at the top; **open items marked `[OFFEN: …]` / `[OPEN: …]`, see TODO** |
 | `i18n/en.yaml`, `de.yaml` | UI strings |
 | `layouts/` | `baseof.html`, `home.html`, `page.html`, `docs/{section,page}.html`, `404.html`, `_partials/`, `_shortcodes/` (Hugo ≥ 0.146 template layout) |
 | `assets/css/` | `base.css` (tokens, fonts, light/dark), `layout.css`, `components.css`, `home.css`, `docs.css`, `gallery.css` – concatenated, minified and fingerprinted by Hugo Pipes |
@@ -188,8 +188,11 @@ Used today: `editor-dark.jpg` (getting started, outdated: says "Strip"),
 
 ## TODO (owner)
 
-- **Legal pages:** `content/de/impressum.md`, `content/de/datenschutz.md` (and
-  the English pointers) are placeholders – the site must not go live with them.
+- **Legal pages:** Impressum (company data as on grove.eco) and privacy
+  policy are drafted; fill every `[OFFEN: …]` / `[OPEN: …]` (contact e-mail,
+  hosting providers, log scope and retention, deletion periods), then remove
+  the "before going live" callouts. Keep the privacy policy in line with
+  the code when data flows change (API server, updater, gallery client).
 - **Downloads:** when installers exist, set `downloads_available = true` and
   the URLs under `[params.downloads]` in `hugo.toml`.
 - **Docs:** review the user guide (en + de), replace the screenshot
