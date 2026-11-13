@@ -51,23 +51,24 @@ matrix:
   eyebrow: "One layout, many formats"
   title: "Every language. Every device. Every store."
   lead: "Add a language or a target and the whole set appears – translated, re-laid-out and checked for overflowing text."
-  alt: "A grid of rendered screenshots: four languages times four device formats, all from one layout."
+  alt: "Real renders from one project made from the Warm Stay template: rows in English, German and French; columns for the iPhone (App Store), an Android phone (Google Play), the iPad in landscape (App Store), a Mac banner for the website and the Google Play feature graphic."
   points:
     - "**Fallback chains**: `fr-CA` inherits from `fr`, missing screenshots come from the default language"
     - "**Per-language overrides** and opt-in automatic hyphenation for long words"
     - "**Two portrait pages → one landscape image** for iPad sets"
     - "**Validation** per target × language: missing screenshots, overflowing text, store rules"
-  countLabel: "images from one layout – and counting"
+  count: 114
+  countLabel: "images from this one project: 3 languages × 6 store sets + 2 banners"
   devices:
-    - {name: "iPhone 6.9″", shape: "phone"}
-    - {name: "Android", shape: "android"}
-    - {name: "iPad 13″", shape: "landscape"}
-    - {name: "Mac", shape: "mac"}
+    - {name: "iPhone", store: "App Store", target: "ios-iphone-69", shape: "phone"}
+    - {name: "Android", store: "Google Play", target: "play-phone", shape: "android"}
+    - {name: "iPad", store: "App Store", target: "ios-ipad-13-landscape", shape: "landscape"}
+    - {name: "Mac", store: "Website", target: "web-banner", shape: "mac"}
+    - {name: "Feature graphic", store: "Google Play", target: "play-feature-graphic", shape: "banner"}
   langs:
-    - {code: "EN", headline: "Plan your garden", headline2: "Know the partners"}
-    - {code: "DE", headline: "Plane deinen Garten", headline2: "Finde Partner"}
-    - {code: "FR", headline: "Planifiez votre jardin", headline2: "Trouvez les alliés"}
-    - {code: "ES", headline: "Planifica tu jardín", headline2: "Conoce los aliados"}
+    - {code: "EN", lang: "en"}
+    - {code: "DE", lang: "de"}
+    - {code: "FR", lang: "fr"}
 
 editor:
   eyebrow: "The editor"

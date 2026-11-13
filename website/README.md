@@ -67,8 +67,22 @@ ignored by Git.
   at a 1600×1000 CSS px window with device scale 2, from projects made from
   the gallery templates *Pop-Art Panels*, *Synthwave Sunset* and *Park
   Poster*; galleries and banners are rendered with `vitrine render
-  --gallery` / `--image`. `example-ipad-grouped-de.jpg` is a render of
-  `tests/fixtures/example` (the targets page describes that project).
+  --gallery` / `--image`.
+- **Matrix on the home page** ("Every language. Every device. Every
+  store."): `assets/images/matrix/<target>-<lang>.jpg`, image 1 of each
+  target rendered with `--image 1 --max-edge 400` from one project made
+  from the *Warm Stay* template (`vitrine new … --lang en --lang de --lang
+  fr`, French texts added by hand) plus two banner targets added to it:
+  `web-banner` (1600×1000, `canvas: tablet-land`, region `{page: 2, x: 596,
+  y: 220, width: 848, height: 530}` – the MacBook) and `play-feature-graphic`
+  (1024×500, region `{page: 0, x: 0, y: 0, width: 1000, height: 488}`).
+  Columns, targets and the image count (`count`, a real `vitrine export`
+  of that project) live in the `matrix:` front matter of `_index.md`.
+  `ipad-grouped-gallery-en.jpg` (targets page) is the gallery of a target
+  `{canvas: tablet, group: 2, size: [2752, 2064]}` in the same project.
+- Narrow panel screenshots float beside the text: `{{</* shot … float="right"
+  width="360" */>}}` (CSS px, capped at half the image width; placed right
+  after the heading, cleared by the next heading, not floated below 640 px).
 - The docs still support `{{</* placeholder "…" */>}}` for screenshots that
   cannot be taken yet.
 
@@ -164,7 +178,7 @@ New screenshots will be generated once templates exist. Today's images:
 | `assets/images/editor-dark.jpg` | home "The editor" | a current editor screenshot (this one still says "Strip" instead of "Canvas"), ideally 2× (≥ 2400 px wide), light and dark versions |
 | `assets/images/inspector-text.jpg` | home, floating over the editor | a 2× crop of the inspector with a selected text (today cut from `/docs/gui/text-editing.jpg`, only 359 px wide) |
 | `assets/images/iphone-gallery-en.jpg`, `iphone-gallery-fr.jpg`, `ipad-gallery-de.jpg`, `mac-gallery-en.jpg`, `web-gallery-en.jpg`, `blog-header-de.jpg` | home showcase tabs; `iphone-gallery-en.jpg` is also the Open Graph image (cropped to 1200×630) | galleries rendered from the new templates (`vitrine render --gallery`), 2× width; a dedicated 1200×630 OG image |
-| CSS/SVG mock-ups: hero canvas, language × device matrix, AI chat, terminal, upload plan, template cards | home | may stay as illustrations; the template cards are replaced automatically by live gallery cards once the snapshot has templates |
+| CSS/SVG mock-ups: hero canvas, AI chat, terminal, upload plan, template cards | home | may stay as illustrations; the template cards are replaced automatically by live gallery cards once the snapshot has templates |
 
 ### Docs screenshots (placeholders today)
 

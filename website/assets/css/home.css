@@ -298,6 +298,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.matrix__colhead { align-self: end; white-space: normal; line-height: 1.2; letter-spacing: .02em; }
+.matrix__colhead small {
+  display: block;
+  margin-top: 2px;
+  font-size: .9em;
+  font-weight: 500;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .matrix__rowhead {
   display: grid;
   place-items: center;
@@ -310,48 +321,23 @@
 
 .tile {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 3px;
-  height: 112px;
+  height: 132px;
+  min-width: 0;
 }
-.tile__page {
-  position: relative;
+.tile picture { display: block; min-width: 0; }
+.tile img {
   display: block;
-  height: 100%;
-  overflow: hidden;
-  border-radius: 7px;
-  background: linear-gradient(160deg, #6a5bff, #c04bf2 60%, #ff7a59);
-  box-shadow: 0 6px 14px -8px rgba(64, 32, 150, .6);
+  border-radius: 6px;
+  box-shadow: 0 6px 14px -8px rgba(30, 20, 60, .55), 0 0 0 1px var(--line);
 }
-.tile--phone .tile__page { aspect-ratio: 1320 / 2868; }
-.tile--android .tile__page { aspect-ratio: 1 / 2; background: linear-gradient(160deg, #3d2fd6, #6a5bff 55%, #c04bf2); }
-.tile--landscape .tile__page { aspect-ratio: 1320 / 2868; }
-.tile--landscape { gap: 0; }
-.tile--landscape .tile__page:first-child { border-radius: 7px 0 0 7px; }
-.tile--landscape .tile__page:last-child { border-radius: 0 7px 7px 0; background: linear-gradient(160deg, #c04bf2, #ff7a59); }
-.tile--mac { align-items: center; }
-.tile--mac .tile__page { height: auto; width: 100%; aspect-ratio: 16 / 10; background: linear-gradient(150deg, #241b5c, #6a5bff 70%, #c04bf2); }
-.tile__title {
-  position: absolute;
-  left: 8%; right: 8%; top: 7%;
-  font: 700 7px/1.15 var(--font-display);
-  color: #fff;
-  text-align: center;
-  hyphens: auto;
-  overflow-wrap: anywhere;
-}
-.tile__device {
-  position: absolute;
-  left: 22%; right: 22%; bottom: -6%;
-  height: 62%;
-  border-radius: 6px 6px 0 0;
-  background: #fbfaff;
-  border: 2px solid #15131f;
-  border-bottom: 0;
-}
-.tile--android .tile__device { border-radius: 4px 4px 0 0; }
-.tile--mac .tile__title { left: 6%; right: 52%; top: 30%; text-align: left; font-size: 7px; }
-.tile--mac .tile__device { left: 50%; right: 6%; top: 22%; bottom: -4%; height: auto; border-radius: 4px 4px 0 0; border-width: 1.5px; }
+/* Portrait store images fill the row height, landscape ones the column width. */
+.tile--phone picture, .tile--android picture { height: 100%; }
+.tile--phone img, .tile--android img { height: 100%; width: auto; }
+.tile--landscape picture, .tile--mac picture, .tile--banner picture { width: 100%; }
+.tile--landscape img, .tile--mac img, .tile--banner img { width: 100%; height: auto; }
+.tile--banner img, .tile--mac img { border-radius: 4px; }
 
 @media (prefers-reduced-motion: no-preference) {
   .js .matrix__visual .tile {
@@ -381,8 +367,6 @@
 }
 @media (max-width: 520px) {
   .tile { height: 64px; }
-  .tile__title { font-size: 5px; }
-  .tile--mac .tile__title { font-size: 5px; }
   .matrix__grid { gap: 6px; grid-template-columns: 28px repeat(var(--cols), minmax(0, 1fr)); }
   .matrix__colhead { font-size: .62rem; }
 }
