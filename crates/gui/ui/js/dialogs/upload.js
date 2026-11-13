@@ -56,6 +56,15 @@ function storeLabel(store) {
   return store === 'apple' ? t('stores.kind.apple') : t('stores.kind.google');
 }
 
+/**
+ * `<colgroup>` of a fixed-layout table (`up-fixed`): widths come from
+ * `.up-col-<name>` in upload.css, never from the cell text, so statuses
+ * changing during a run (or a re-plan) do not move the columns.
+ */
+function columns(...names) {
+  return h('colgroup', {}, names.map((n) => h('col', { class: `up-col-${n}` })));
+}
+
 /** Problem list (`{level, code, message, blocking}`). */
 function problemList(problems, cls = '') {
   if (!problems?.length) return null;
@@ -128,7 +137,7 @@ export function planView(plan) {
         h('td', {}, h('span', { class: `up-action up-action-${s.action}`, title: s.reason ?? '' }, t(`upload.action.${s.action}`))),
         h(
           'td',
-          { class: 'num' },
+          { class: 'up-num' },
           s.action === 'skip' ? '–' : `${s.images.length}${s.remote_count != null ? ` (${fmt(t('upload.in_store'), { n: s.remote_count })})` : ''}`,
           s.processing ? h('div', { class: 'small up-processing' }, fmt(t('upload.processing_in_store'), { n: s.processing })) : null,
           s.reusable ? h('div', { class: 'small muted' }, fmt(t('upload.reusable'), { n: s.reusable })) : null,
@@ -159,8 +168,9 @@ export function planView(plan) {
         sp.sets.length
           ? h(
               'table',
-              { class: 'up-table' },
-              h('thead', {}, h('tr', {}, ['upload.col.target', 'upload.col.lang', 'upload.col.locale', 'upload.col.action', 'upload.col.images', 'upload.col.problems'].map((k) => h('th', {}, t(k))))),
+              { class: 'up-table up-fixed up-plan-table' },
+              columns('target', 'lang', 'locale', 'action', 'images', 'problems'),
+              h('thead', {}, h('tr', {}, ['upload.col.target', 'upload.col.lang', 'upload.col.locale', 'upload.col.action', 'upload.col.images', 'upload.col.problems'].map((k) => h('th', { class: k === 'upload.col.images' ? 'up-num' : '', title: t(k) }, t(k))))),
               h('tbody', {}, rows),
             )
           : h('p', { class: 'muted small' }, t('upload.no_sets')),
@@ -388,13 +398,25 @@ export function openUpload() {
       .filter((x) => x.status !== 'skipped')
       .map((x) => {
         const status = h('span', { class: `up-status up-status-${x.status}` }, t(`upload.status.${x.status}`));
-        const files = h('span', { class: 'muted small num' }, `${x.files_done}/${x.files_total}`);
+        const files = h('span', { class: 'muted small' }, `${x.files_done}/${x.files_total}`);
         const error = h('div', { class: 'up-error small', hidden: !x.error }, x.error ?? '');
-        const detail = h('div', { class: 'up-detail small muted', hidden: !x.note }, x.note ?? '');
+        // One line, cut with … (full text as tooltip): the step text changes
+        // with every progress event and must not resize the row.
+        const detail = h('div', { class: 'up-detail small muted', hidden: !x.note, title: x.note ?? '' }, x.note ?? '');
         setRows.set(x.key, { status, files, error, detail });
-        return h('tr', {}, h('td', {}, storeLabel(x.store)), h('td', {}, `${x.target} · ${x.lang}`), h('td', { class: 'mono' }, x.locale ?? ''), h('td', {}, status, detail, error), h('td', {}, files));
+        const set = `${x.target} · ${x.lang}`;
+        return h(
+          'tr',
+          {},
+          h('td', { class: 'up-cut', title: storeLabel(x.store) }, storeLabel(x.store)),
+          h('td', { class: 'up-cut', title: set }, set),
+          h('td', { class: 'mono up-cut', title: x.locale ?? '' }, x.locale ?? ''),
+          h('td', {}, status, detail, error),
+          h('td', { class: 'up-num' }, files),
+        );
       });
-    progress.replaceChildren(line, bar, h('table', { class: 'up-table' }, h('tbody', {}, rows)));
+    const head = h('thead', {}, h('tr', {}, ['upload.col.store', 'upload.col.set', 'upload.col.locale', 'upload.col.status', 'upload.col.images'].map((k, i) => h('th', { class: i === 4 ? 'up-num' : '', title: t(k) }, t(k)))));
+    progress.replaceChildren(line, bar, h('table', { class: 'up-table up-fixed up-run-table' }, columns('store', 'set', 'locale', 'status', 'files'), head, h('tbody', {}, rows)));
   }
 
   function updateSet(x) {
@@ -413,6 +435,7 @@ export function openUpload() {
     if (!r) return;
     r.detail.hidden = !text;
     r.detail.textContent = text;
+    r.detail.title = text;
   }
 
   /** What the current image of a set is doing (`upload-progress` step). */

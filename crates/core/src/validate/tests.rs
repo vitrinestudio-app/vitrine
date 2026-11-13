@@ -426,6 +426,45 @@ fn screenshot_aspect_mismatch() {
     assert!(run_with(&p, &files).is_empty());
 }
 
+/// iPhone captures reused on the Android frame of a Play target (owner's
+/// real run 2026-11-13): +2.7 % only crops a thin edge – an info that
+/// names the Android folder, not a "wrong device?" warning.
+#[test]
+fn screenshot_aspect_cross_platform_crop_is_an_info() {
+    let target = "  screenshots: ios-phone\n  device_map: {iphone-island: android-punchhole}\n";
+    let p = project(PHONE, target);
+    let files = shots(&[("screenshots/en/ios-phone/home.png", (1284, 2778))]);
+    let r = run_with(&p, &files);
+    let f = find(&r, FindingCode::ScreenshotAspect);
+    assert_eq!(f.level, Severity::Info, "{}", f.message);
+    assert!(
+        f.message.contains("cropped at the left and right"),
+        "{}",
+        f.message
+    );
+    assert!(
+        f.message.contains("screenshots/<lang>/android-phone/"),
+        "{}",
+        f.message
+    );
+    assert!(!f.message.contains("wrong device"), "{}", f.message);
+    // `contain` would leave bars: still a warning.
+    let p = project(&format!("{PHONE}\n    fit: contain"), target);
+    let f = find(&run_with(&p, &files), FindingCode::ScreenshotAspect).clone();
+    assert_eq!(f.level, Severity::Warn);
+    assert!(
+        f.message.contains("empty bars – wrong device?"),
+        "{}",
+        f.message
+    );
+    // A tablet capture on the phone stays a warning.
+    let p = project(PHONE, target);
+    let tablet = shots(&[("screenshots/en/ios-phone/home.png", (2064, 2752))]);
+    let f = find(&run_with(&p, &tablet), FindingCode::ScreenshotAspect).clone();
+    assert_eq!(f.level, Severity::Warn);
+    assert!(f.message.contains("android-phone"), "{}", f.message);
+}
+
 #[test]
 fn screenshot_upscale() {
     let p = project(PHONE, "  screenshots: ios-phone\n");

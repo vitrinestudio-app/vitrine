@@ -15,7 +15,7 @@ use crate::model::{
 };
 use crate::resolve::{
     DiagnosticCode, Frame, Level, ResolvedDevice, ResolvedElement, ResolvedKind, ResolvedScene,
-    ResolvedText, ScreenshotSource,
+    ResolvedScreenshot, ResolvedText, ScreenshotSource,
 };
 
 /// Tolerance (lu) before a text counts as leaving its clip rect.
@@ -822,19 +822,8 @@ fn screenshot_checks(
         };
         let dev = (sw / sh) / want - 1.0;
         if dev.abs() > th.screenshot_aspect {
-            push(
-                Severity::Warn,
-                C::ScreenshotAspect,
-                false,
-                format!(
-                    "screenshot `{file}` ({}x{}, {:.3}) differs from the `{}` display ({want:.3}) by {:+.1} %; wrong device?",
-                    size.w,
-                    size.h,
-                    sw / sh,
-                    d.model,
-                    dev * 100.0
-                ),
-            );
+            let (level, message) = aspect_message(s, d, shot, file, size, want, dev);
+            push(level, C::ScreenshotAspect, false, message);
         }
     }
     let scale = image_scale(&scene.frame, e.page);
@@ -855,6 +844,82 @@ fn screenshot_checks(
             ),
         );
     }
+}
+
+/// Level and message of a screenshot whose aspect differs from the
+/// display by `dev` (relative, beyond the tolerance). With `fit: cover`
+/// a small difference only crops a thin edge – the usual case when a
+/// phone screenshot of the other platform is reused (iPhone captures on
+/// the Android frame of a Play target): an info. Larger differences, or
+/// any with `contain`/`stretch` (bars, distortion), stay a warning – a
+/// tablet or old-phone capture on a phone is a real mistake.
+fn aspect_message(
+    s: &Scope<'_>,
+    d: &ResolvedDevice,
+    shot: &ResolvedScreenshot,
+    file: &str,
+    size: PixelSize,
+    want: f64,
+    dev: f64,
+) -> (Severity, String) {
+    let have = f64::from(size.w) / f64::from(size.h);
+    let what = format!(
+        "screenshot `{file}` ({}x{}, aspect {have:.3})",
+        size.w, size.h
+    );
+    let display = format!(
+        "the `{}` display ({want:.3}, {:+.1} %)",
+        d.model,
+        dev * 100.0
+    );
+    // The folder the device's own captures belong in, when the target
+    // takes its screenshots from another one (`play-phone` with `ios-phone`).
+    let own = d
+        .device
+        .screenshot
+        .variant
+        .as_deref()
+        .filter(|v| shot.variant.as_deref().is_some_and(|used| used != *v));
+    let used = shot.variant.as_deref().unwrap_or("-");
+    if d.fit == FitMode::Cover && dev.abs() <= s.options.thresholds.screenshot_aspect_crop {
+        // Share of the screenshot cut off: width when it is wider, height
+        // when it is taller.
+        let (cut, sides) = if dev > 0.0 {
+            (dev / (1.0 + dev), "left and right")
+        } else {
+            (-dev, "top and bottom")
+        };
+        let fix = match own {
+            Some(v) => format!(
+                ". The target takes its screenshots from `{used}`; for an exact fit add screenshots of this device in screenshots/<lang>/{v}/, or keep the crop"
+            ),
+            None => String::new(),
+        };
+        let message = format!(
+            "{what} is slightly off {display}: {:.1} % of it is cropped at the {sides}{fix}",
+            cut * 100.0
+        );
+        return (Severity::Info, message);
+    }
+    let effect = match d.fit {
+        FitMode::Cover => "is cropped",
+        FitMode::Contain => "leaves empty bars",
+        FitMode::Stretch => "is distorted",
+    };
+    let fix = match own {
+        Some(v) => format!(
+            "The target takes its screenshots from `{used}`; add screenshots of this device in screenshots/<lang>/{v}/ or change the target's screenshot folder"
+        ),
+        None => format!(
+            "Use screenshots of this device in screenshots/<lang>/{}or change the device model",
+            shot.variant
+                .as_deref()
+                .map(|v| format!("{v}/ "))
+                .unwrap_or_default()
+        ),
+    };
+    let message = format!("{what} differs from {display} and {effect} – wrong device? {fix}");
+    (Severity::Warn, message)
 }
 
 /// A screenshot whose colour profile cannot be used (drawn as sRGB).

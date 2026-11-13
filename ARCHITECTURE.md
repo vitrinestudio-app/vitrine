@@ -791,8 +791,8 @@ ends only format it.
 | Situation | Level |
 |---|---|
 | unknown device model, unknown `@colour`, page out of range, text missing in every language, text overflow (per element × language), store size/format/count violations, missing screenshot (export mode), unknown store locale code | error |
-| text from the default language (not translated), emergency break, unbalanced markup, unknown span/font, missing glyphs, text in a gap, text clipped, screenshot aspect off by > 2 %, upscale > 1.15×, element outside every page, store mapping conflicts (missing/duplicate locale, slot conflicts) | warn |
-| text from a prefix or configured fallback, screenshot fallback, hyphenated, variant suggested (page height differs > 15 % without a variant), colour profile unsupported, imported frame missing, sample screenshot | info |
+| text from the default language (not translated), emergency break, unbalanced markup, unknown span/font, missing glyphs, text in a gap, text clipped, screenshot aspect off by > 2 % (> 5 % under `fit: cover`, or any with `contain`/`stretch`), upscale > 1.15×, element outside every page, store mapping conflicts (missing/duplicate locale, slot conflicts) | warn |
+| text from a prefix or configured fallback, screenshot fallback, screenshot aspect off by 2–5 % under `fit: cover` (only a thin edge cropped, e.g. iPhone captures on a Play target's Android frame), hyphenated, variant suggested (page height differs > 15 % without a variant), colour profile unsupported, imported frame missing, sample screenshot | info |
 
 Store rules (`targets.yaml` `rules`, found via presets with the target's
 slot): accepted formats, exact sizes or ranges with aspect limits, counts.

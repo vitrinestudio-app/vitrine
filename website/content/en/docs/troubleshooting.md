@@ -16,7 +16,7 @@ common ones:
 |---|---|---|
 | `screenshot_missing` | error | no screenshot with this key in the language or its fallbacks – a placeholder is shown. Add the file, or use *Preview mode* / `--preview` while designing. |
 | `screenshot_fallback` | info | the screenshot comes from a fallback language – fine. |
-| `screenshot_aspect` | warning | the capture's aspect differs from the device display – wrong device or wrong screenshot variant folder? |
+| `screenshot_aspect` | warning (note) | the capture's aspect differs from the device display – wrong device or wrong screenshot variant folder? Up to 5 % with *Fit: Cover* it is only a note: a thin edge is cropped, e.g. iPhone screenshots on the Android frame of a Google Play target. Fine to keep; for an exact fit add Android screenshots in `screenshots/<lang>/android-phone/`. |
 | `screenshot_upscale` | warning | the capture is enlarged more than 15 % and may look soft – use a capture from a larger device. |
 | `text_overflow` | error | the text doesn't fit even at its minimum size – see [Fitting long texts](../languages/#fitting-long-texts). |
 | `emergency_break` | warning | a word was broken without a hyphen – add a soft hyphen `\-`. |

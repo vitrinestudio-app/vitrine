@@ -16,7 +16,7 @@ häufigsten:
 |---|---|---|
 | `screenshot_missing` | Fehler | kein Screenshot mit diesem Schlüssel in der Sprache oder ihren Fallbacks – ein Platzhalter wird gezeigt. Datei hinzufügen, oder beim Gestalten *Vorschau-Modus* / `--preview` nutzen. |
 | `screenshot_fallback` | Hinweis | der Screenshot kommt aus einer Fallback-Sprache – in Ordnung. |
-| `screenshot_aspect` | Warnung | das Seitenverhältnis der Aufnahme weicht vom Display des Geräts ab – falsches Gerät oder falscher Ordner der Screenshot-Variante? |
+| `screenshot_aspect` | Warnung (Hinweis) | das Seitenverhältnis der Aufnahme weicht vom Display des Geräts ab – falsches Gerät oder falscher Ordner der Screenshot-Variante? Bis 5 % mit *Einpassung: Füllen* nur ein Hinweis: ein schmaler Rand wird abgeschnitten, z. B. iPhone-Screenshots im Android-Rahmen eines Google-Play-Ziels. Kann so bleiben; für eine exakte Passung Android-Screenshots in `screenshots/<lang>/android-phone/` ablegen. |
 | `screenshot_upscale` | Warnung | die Aufnahme wird mehr als 15 % vergrößert und wirkt evtl. unscharf – nimm eine Aufnahme von einem größeren Gerät. |
 | `text_overflow` | Fehler | der Text passt selbst in der Mindestgröße nicht – siehe [Lange Texte einpassen](../languages/#fitting-long-texts). |
 | `emergency_break` | Warnung | ein Wort wurde ohne Bindestrich umbrochen – füge einen weichen Trennstrich `\-` ein. |
