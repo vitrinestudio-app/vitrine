@@ -1136,6 +1136,11 @@ fn thresholds_take_the_project_checks() {
     assert!(c.check().is_ok());
     c.min_contrast = Some(40.0);
     assert!(c.check().is_err());
+    c.min_contrast = None;
+    c.screen_cover = Some(0.3);
+    assert!((Thresholds::default().with_checks(&c).screen_cover - 0.3).abs() < f64::EPSILON);
+    c.screen_cover = Some(1.5);
+    assert!(c.check().is_err());
 }
 
 /// An inspector reporting one finding per scene, to check the plumbing.

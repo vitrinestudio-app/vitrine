@@ -133,7 +133,7 @@ const FIELD_DOCS: &[(&str, &str)] = &[
     ),
     (
         "allow",
-        "[finding codes] – design findings meant on purpose for this element (and a group's children), not reported by validate: text_near_device, low_contrast, text_clipped, text_in_gap, text_outside_safe_area, element_outside, screen_header_covered, screen_header_cut, seam_overlap, seam_split, element_in_corner, device_small, page_not_covered, page_blends_with_store, clip_to_other_page, hyphenated, variant_suggested, screenshot_upscale (e.g. `allow: [text_clipped, low_contrast]` on giant decorative type)",
+        "[finding codes] – design findings meant on purpose for this element (and a group's children), not reported by validate: text_near_device, low_contrast, text_clipped, text_in_gap, text_outside_safe_area, element_outside, screen_header_covered, screen_header_cut, screen_covered, device_cut, seam_overlap, seam_split, element_in_corner, device_small, page_not_covered, page_blends_with_store, clip_to_other_page, hyphenated, variant_suggested, screenshot_upscale (e.g. `allow: [text_clipped, low_contrast]` on giant decorative type)",
     ),
     // device
     (

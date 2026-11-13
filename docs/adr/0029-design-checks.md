@@ -140,3 +140,36 @@ apps not measured; `measured: no` in reports).
   still need measuring on devices.
 - Contrast of text over device screenshots compares with the screenshot
   pixels; text inside the screenshot itself is not checked.
+
+## Amendment 2026-11-13: device cuts, covered screens, messages
+
+After the second MCP test round (`docs/research/2026-11-13-mcp-test-results2.md`):
+
+- `device_cut` (info, allowable, first language): a device loses more
+  than `DEVICE_CUT_MIN` (8 lu) at the **left or right** edge of its page
+  (`clip: page`) or of the canvas (`clip: none`). Measured on the device
+  drawn without its clip (`Draw::Unclipped`), only within the visible
+  height, so a tilted device's rotated corners count exactly (testers
+  computed `w/2·cos + h/2·sin` by hand). Top and bottom crops are a common
+  deliberate look and not reported; a device running on into the next page
+  without clip is not cut.
+- `screen_covered` (info, allowable): an element drawn above a device
+  covers ≥ `checks.screen_cover` (default 0.15) of the visible screen
+  **below** the top bar (`screen_header_covered` keeps the bar). Same
+  exclusions (other devices, page backgrounds, opacity < 0.3).
+- `low_contrast` names what lies under the failing ring pixels of the
+  worst cell: "mostly the text's own shadow, glow, outline or highlight"
+  (pixels that change when the text is drawn bare; still counted on
+  purpose) or "mostly `<element>` there" (topmost element below the text).
+- `screen_header_cut` names the edge: the top edge of page N, of export
+  image N, or the device's clip.
+- `element_in_corner` ignores the parts of an element hidden by opaque
+  elements (opacity ≥ 0.9) drawn above it.
+- Rotated texts: the reported false `low_contrast` on rotated card names
+  (1.0–1.3:1, gone with a narrower box) did not reproduce. The ring around
+  the glyphs is measured on the rotated glyph mask; ratios are identical at
+  0°, ±3°, ±7° and do not depend on how far an empty text box reaches over
+  a dark frame (regression test). A narrower box changes line breaks
+  (and, left/right aligned, the glyph position) – a wrapped line can move
+  onto a dark edge, which is a real finding; the message now names that
+  element.

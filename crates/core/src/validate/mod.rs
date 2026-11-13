@@ -245,6 +245,14 @@ finding_codes! {
     /// The page edge cuts a device's screen through its top bar: half a
     /// status bar or title stays visible.
     ScreenHeaderCut = "screen_header_cut",
+    /// An element drawn over a device covers at least
+    /// [`Thresholds::screen_cover`] of its screen below the top bar (the
+    /// app content the screenshot shows).
+    ScreenCovered = "screen_covered",
+    /// A device is cut by the left or right page edge (`clip: page`) or the
+    /// outer canvas edge by more than [`DEVICE_CUT_MIN`] lu (often a tilted
+    /// device whose rotated corners stick out).
+    DeviceCut = "device_cut",
     /// An element reaching across a page border overlaps an element of the
     /// neighbouring page.
     SeamOverlap = "seam_overlap",
@@ -283,6 +291,8 @@ pub const ALLOWABLE: &[FindingCode] = &[
     FindingCode::LowContrast,
     FindingCode::ScreenHeaderCovered,
     FindingCode::ScreenHeaderCut,
+    FindingCode::ScreenCovered,
+    FindingCode::DeviceCut,
     FindingCode::SeamOverlap,
     FindingCode::SeamSplit,
     FindingCode::ElementInCorner,
@@ -394,6 +404,14 @@ pub const DEFAULT_LARGE_TEXT_BOLD: f64 = 62.0;
 /// should fill at least half of the page height (or width).
 pub const DEFAULT_DEVICE_SMALL: f64 = 0.5;
 
+/// Default for [`Thresholds::screen_cover`]: an element may cover up to
+/// 15 % of a screen below its top bar before `screen_covered` reports it.
+pub const DEFAULT_SCREEN_COVER: f64 = 0.15;
+
+/// Lu of a device frame a side page edge may cut off before `device_cut`
+/// reports it (side buttons and anti-aliasing stay below it).
+pub const DEVICE_CUT_MIN: f64 = 8.0;
+
 /// Configurable limits.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Thresholds {
@@ -417,6 +435,9 @@ pub struct Thresholds {
     /// Min share of the page the largest device fills
     /// ([`DEFAULT_DEVICE_SMALL`]).
     pub device_small: f64,
+    /// Share of a screen (below the top bar) an element drawn over the
+    /// device may cover ([`DEFAULT_SCREEN_COVER`]).
+    pub screen_cover: f64,
 }
 
 impl Default for Thresholds {
@@ -431,6 +452,7 @@ impl Default for Thresholds {
             large_text: DEFAULT_LARGE_TEXT,
             large_text_bold: DEFAULT_LARGE_TEXT_BOLD,
             device_small: DEFAULT_DEVICE_SMALL,
+            screen_cover: DEFAULT_SCREEN_COVER,
         }
     }
 }
@@ -447,6 +469,9 @@ impl Thresholds {
         }
         if let Some(r) = c.min_contrast_large {
             self.min_contrast_large = r;
+        }
+        if let Some(s) = c.screen_cover {
+            self.screen_cover = s;
         }
         self
     }
