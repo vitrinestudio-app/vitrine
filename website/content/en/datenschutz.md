@@ -11,11 +11,6 @@ This text is a translation for information only. Only the German original
 version, the [Datenschutzerklärung](/de/datenschutz/), is legally binding.
 {{< /callout >}}
 
-{{< callout warn >}}
-**Before going live:** items marked “[OPEN: …]” still have to be filled in
-by the owner.
-{{< /callout >}}
-
 This privacy policy informs you about the nature, scope and purpose of the
 processing of your personal data. It applies to all services of Vitrine
 Studio by Looking4Cache UG (haftungsbeschränkt) (hereinafter “we” or “our”).
@@ -47,10 +42,10 @@ Looking4Cache UG (haftungsbeschränkt)<br>
 Oberer Wasen 12<br>
 74626 Bretzfeld<br>
 Germany<br>
-Email: [OPEN: contact address, as in the [legal notice](/legal-notice/)]
+Email: info@grove.eco
 
 We have not appointed a data protection officer, as we are not required to
-do so. [OPEN: please confirm]
+do so.
 
 ## 2. Legal bases of the processing
 
@@ -76,30 +71,36 @@ explicitly requested (§ 25(2) no. 2 TDDDG).
 
 ### 3.1. Hosting and web server log files
 
-The website consists of static pages. It is hosted by [OPEN: hosting
-provider / data centre, name and address, server location; data processing
-agreement under Art. 28 GDPR].
+The website consists of static pages. It is hosted on servers of Hetzner
+Online GmbH, Industriestr. 25, 91710 Gunzenhausen, Germany, in data centres
+in Germany. We have concluded a data processing agreement with Hetzner
+under Art. 28 GDPR.
 
 Every access to the website is recorded by the web server in log files.
 The following is stored:
 
-- IP address [OPEN: full or shortened/anonymised]
+- IP address in anonymised (shortened) form
 - date and time
 - requested URL, HTTP method and status, amount of data transferred
 - referrer URL (the previously visited page), if your browser sends it
 - browser identification (user agent)
 
-[OPEN: check the scope of logging against the actual web server
-configuration.]
-
 The purpose of logging is to deliver the website, to trace errors and to
-fend off attacks. The data is not linked to your person.
+analyse the stability of the server. The data is not linked to your
+person.
 
-**Legal basis:** our legitimate interest in secure and stable operation,
-Art. 6(1)(f) GDPR.
+The IP address is not shortened for security-relevant events, such as
+recognisable attempts to attack the server. These entries are stored with
+the full IP address so that attacks can be detected, fended off and, where
+necessary, prosecuted.
 
-**Storage period:** the logs are deleted automatically after [OPEN: number]
-days.
+**Legal basis:** our legitimate interest in secure and stable operation and
+in defending against attacks, Art. 6(1)(f) GDPR.
+
+**Storage period:** the logs are deleted automatically after at most 30
+days. We keep individual entries longer only if they are needed as evidence
+to investigate a specific security incident, and only until it is
+concluded.
 
 ### 3.2. No cookies, local storage for the colour scheme
 
@@ -138,22 +139,23 @@ provisions apply.
 
 In the gallery you can browse and download templates without an account.
 To upload your own templates, you sign in with your GitHub account. The
-gallery is hosted by [OPEN: hosting provider / data centre, name and
-address, server location; data processing agreement under Art. 28 GDPR].
+gallery is also hosted on servers of Hetzner Online GmbH in Germany
+(address and data processing agreement as in section 3.1).
 
 ### 4.1. Requests, logs and rate limiting
 
 Every request to the gallery – from the website, the app or the command
 line – passes a web server in front of it (reverse proxy) that logs
-requests as described in section 3.1. [OPEN: scope and storage period of
-these logs.] The app and the command line send the program identifier
+requests as described in section 3.1 (anonymised IP address, full only for
+security-relevant events; deleted after at most 30 days). The app and the command line send the program identifier
 `VitrineStudio/<version number>` as user agent.
 
 To protect against abuse and overload, the gallery limits the number of
 requests per sender and hour (e.g. reads, uploads, reports, sign-in
 attempts). To do so, it counts requests per IP address in a one-hour
 window. These counters are kept in memory only, are never written to disk
-and are lost whenever the server restarts.
+and are deleted automatically once their one-hour window has passed
+(immediately when the server restarts).
 
 Downloading a template increases the template's download counter; who
 downloaded it is not stored.
@@ -183,10 +185,9 @@ GitHub.
 **Legal basis:** Art. 6(1)(b) GDPR (providing the upload function); for the
 sign-in cookie also § 25(2) no. 2 TDDDG.
 
-**Storage period:** a session is valid for [OPEN: 90 days, unless the server
-setting was changed]. Signing out deletes it immediately; expired sessions
-are no longer accepted and are deleted from the server at the next sign-in.
-Used or expired intermediate sign-in states are deleted as well.
+**Storage period:** a session is valid for 90 days. Signing out deletes it
+immediately; expired sessions are deleted automatically. Used or expired
+intermediate sign-in states are deleted as well.
 
 GitHub is responsible for the sign-in at GitHub (see section 6).
 
@@ -210,8 +211,8 @@ request; the GitHub ID ensures that only you can upload new versions of
 your templates).
 
 **Storage period:** as long as the template is offered in the gallery. On
-request by email we delete your templates and the related data. We delete
-rejected templates [OPEN: period, e.g. within 30 days]. We cannot recall
+request by email we delete your templates and the related data. If we reject
+a template, it is deleted immediately with all its files and data. We cannot recall
 copies that have already been downloaded.
 
 ### 4.4. Reports of templates
@@ -225,8 +226,10 @@ text, we process them to be able to reply to you.
 Act) and Art. 6(1)(f) GDPR (protecting the gallery against illegal
 content).
 
-**Storage period:** until the report has been dealt with and then
-[OPEN: period].
+**Storage period:** until the report has been dealt with. As soon as we
+have decided on the reported template (it stays published, or it is
+rejected and deleted), all reports about that template are deleted
+immediately.
 
 ## 5. Desktop app and command line
 
@@ -278,11 +281,10 @@ Privacy statement: https://docs.github.com/en/site-policy/privacy-policies/githu
 ## 7. Recipients and transfers to third countries
 
 We do not sell data or pass it on for advertising. Recipients of personal
-data are only the hosting providers of the website and the gallery
-(sections 3.1 and 4), with whom we conclude data processing agreements, and
+data are only our hosting provider Hetzner Online GmbH (sections 3.1 and
+4), with whom we have concluded a data processing agreement, and
 authorities where we are legally obliged to disclose. We do not transfer
-data to third countries [OPEN: confirm once the hosting providers are
-settled]; for GitHub see section 6.
+data to third countries; for GitHub see section 6.
 
 ## 8. Storage period
 

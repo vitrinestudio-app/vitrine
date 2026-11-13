@@ -5,11 +5,6 @@ description: "Impressum von Vitrine Studio (www.vitrinestudio.app)."
 noindex: true
 ---
 
-{{< callout warn >}}
-**Vor dem Livegang:** Stellen mit „[OFFEN: …]“ müssen vom Inhaber ergänzt
-werden.
-{{< /callout >}}
-
 ## Angaben gemäß § 5 DDG
 
 Looking4Cache UG (haftungsbeschränkt)<br>
@@ -21,8 +16,7 @@ Deutschland
 Heilmann, Thorsten
 
 **Kontakt:**<br>
-E-Mail: [OFFEN: Kontaktadresse – z. B. info@vitrinestudio.app (Postfach
-einrichten) oder die bestehende Adresse der Looking4Cache UG]
+E-Mail: info@grove.eco
 
 **Registereintrag:**<br>
 Eintragung im Handelsregister.<br>

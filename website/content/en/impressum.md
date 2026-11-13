@@ -11,11 +11,6 @@ This text is a translation for information only. Only the German original
 version, the [Impressum](/de/impressum/), is legally binding.
 {{< /callout >}}
 
-{{< callout warn >}}
-**Before going live:** items marked “[OPEN: …]” still have to be filled in
-by the owner.
-{{< /callout >}}
-
 ## Information according to § 5 DDG
 
 Looking4Cache UG (haftungsbeschränkt)<br>
@@ -27,8 +22,7 @@ Germany
 Heilmann, Thorsten
 
 **Contact:**<br>
-Email: [OPEN: contact address – e.g. info@vitrinestudio.app (to be set up)
-or the existing address of Looking4Cache UG]
+Email: info@grove.eco
 
 **Commercial register entry:**<br>
 Registered in the Commercial Register.<br>
