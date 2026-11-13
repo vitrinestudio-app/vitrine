@@ -274,6 +274,13 @@ oss:
         model: iphone-island
         screenshot: home
   yamlCaption: "Ein Projekt ist lesbares YAML – vergleichen, reviewen, skripten."
+  funding:
+    title: "Wie die Entwicklung finanziert wird"
+    text: "Vitrine Studio bleibt kostenlos. Wir denken über faire Wege nach, die Entwicklung zu finanzieren – zum Beispiel eine in die App integrierte KI-Bildgenerierung oder später direkten Support zu fairen Preisen. Sponsoren sind herzlich willkommen, große Firmen genauso wie kleine Beiträge."
+    aside: "Und ganz ehrlich: Mit einem MacBook mit mehr als 16 GB RAM und einer Festplatte, die nicht ständig voll ist, wäre die Entwicklung deutlich entspannter gelaufen."
+    github: "Auf GitHub sponsern"
+    liberapay: "Über Liberapay spenden"
+    soon: "Sponsoring über GitHub Sponsors und Liberapay startet bald. Firmen bekommen eine ordentliche Rechnung."
 
 faq:
   eyebrow: "FAQ"
@@ -281,7 +288,7 @@ faq:
   items:
     - q: "Ist Vitrine Studio wirklich 100 % kostenlos?"
       open: true
-      a: "Ja – 100 % kostenlos, wirklich. Vitrine Studio ist freie Open-Source-Software unter der GPL-3.0-or-later. Es gibt kein Abo, keine Bezahlversion, kein Konto und kein Wasserzeichen auf deinen Screenshots – und keine Begrenzung bei Sprachen, Geräten oder Exporten. Auch für kommerzielle Apps darfst du sie nutzen."
+      a: "Ja – 100 % kostenlos, wirklich. Vitrine Studio ist freie Open-Source-Software unter der GPL-3.0-or-later. Es gibt kein Abo, keine Bezahlversion, kein Konto und kein Wasserzeichen auf deinen Screenshots – und keine Begrenzung bei Sprachen, Geräten oder Exporten. Auch für kommerzielle Apps darfst du sie nutzen. Wie wir die Entwicklung finanzieren wollen: [hier](#funding)."
     - q: "Wann kann ich sie herunterladen?"
       a: "Vitrine Studio ist im Pre-Alpha-Stadium. Signierte Installer für macOS, Windows und Linux sind in Vorbereitung; bis dahin kannst du die App mit Rust [aus dem Quellcode bauen](https://github.com/vitrinestudio-app/vitrine)."
     - q: "Brauche ich ein Konto oder eine Internetverbindung?"

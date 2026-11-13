@@ -274,6 +274,13 @@ oss:
         model: iphone-island
         screenshot: home
   yamlCaption: "A project is readable YAML – diff it, review it, script it."
+  funding:
+    title: "How development is funded"
+    text: "Vitrine Studio stays free. We are thinking about fair ways to fund its development – for example AI image generation built into the app, or direct support at fair prices later on. Sponsors are very welcome, larger companies as well as small contributions."
+    aside: "And honestly: with a MacBook with more than 16 GB of RAM and a disk that isn't constantly full, this would have gone a good deal more smoothly."
+    github: "Sponsor on GitHub"
+    liberapay: "Donate via Liberapay"
+    soon: "Sponsoring via GitHub Sponsors and Liberapay opens soon. Companies get a proper invoice."
 
 faq:
   eyebrow: "FAQ"
@@ -281,7 +288,7 @@ faq:
   items:
     - q: "Is Vitrine Studio really 100 % free?"
       open: true
-      a: "Yes – 100 % free, really. Vitrine Studio is free, open-source software under the GPL-3.0-or-later. There is no subscription, no paid tier, no account and no watermark on your screenshots, and no limit on languages, devices or exports. Using it for commercial apps is fine."
+      a: "Yes – 100 % free, really. Vitrine Studio is free, open-source software under the GPL-3.0-or-later. There is no subscription, no paid tier, no account and no watermark on your screenshots, and no limit on languages, devices or exports. Using it for commercial apps is fine. How we plan to fund development: [here](#funding)."
     - q: "When can I download it?"
       a: "Vitrine Studio is in pre-alpha. Signed installers for macOS, Windows and Linux are being prepared; until then you can [build it from source](https://github.com/vitrinestudio-app/vitrine) with Rust."
     - q: "Do I need an account or an internet connection?"
