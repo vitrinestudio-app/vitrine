@@ -203,5 +203,5 @@ element, language and target (MCP `layout_report`, validation).
   (parley `complex-scripts` is off), CJK fallback fonts, per-language
   font overrides. (Text shadows, outlines and glows exist since the
   *Text effects* amendment.)
-- `docs/spike/text-layout.png` (spike example) shows auto-fit, soft
+- [`images/text-layout.png`](images/text-layout.png) (spike example) shows auto-fit, soft
   hyphen, emergency break, overflow, italic and highlights.

@@ -21,7 +21,10 @@ and be easy to adapt.
 
 ## Folder layout
 
-One folder per template, named with the template slug (kebab-case):
+One folder per template, named with the template slug (kebab-case), in
+the template author's own working area – not in this repository (its
+`assets/` holds the bundled fonts and brand files; `assets/src/` below
+is the template folder's own):
 
 ```
 <slug>/
@@ -142,7 +145,8 @@ it.
 2. Create assets and fictional screens first (sizes above).
 3. `project_create {dir, name, template: "minimal", langs: ["en","de"]}`;
    copy screens and assets into the project with the shell.
-4. Generator script (`assets/src/build_ops.py`) → ops per canvas incl.
+4. Generator script (`assets/src/build_ops.py` in the template's own
+   working folder `<slug>/` above, not in this repository) → ops per canvas incl.
    targets, variants, overrides and strings → `.cache/ops/<canvas>.json` →
    `apply_ops {file}`. Phone canvas → render → fix. Then tablet canvas(es) →
    render → fix. Keep the previous output to diff.

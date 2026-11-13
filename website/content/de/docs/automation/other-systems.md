@@ -21,7 +21,7 @@ Agent. Den JUnit-Bericht veröffentlichst du mit dem `junit`-Schritt:
 
 ```groovy
 pipeline {
-  agent { docker { image 'ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0' } }
+  agent { docker { image 'ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0' } }
   stages {
     stage('Store screenshots') {
       steps {

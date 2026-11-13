@@ -3,91 +3,16 @@
 Living hand-off document so work can continue after a context reset. Keep it
 current: update after each phase/merge and whenever the user decides something.
 
-## Coordinator hand-off (2026-11-12, before a context compaction)
+## Coordinator hand-off (2026-11-12, historical)
 
-Read this first when resuming. Repo: github.com/vitrinestudio-app/vitrine
-(remote `origin`; old repo = remote `old-arrangia`, to be archived/deleted
-by the owner). Local folder still `/Users/thorsten/Dev/arrangia`.
-
-**Subagents running at hand-off time** (worktrees under `.claude/worktrees/`,
-each reports back; merge with `--no-ff`, resolve STATUS/NOTES/i18n
-conflicts by keeping both sides, run the gate, push, check CI per OS):
-- MCP findings A – bugs (render_preview height 0, multiple canvas
-  backgrounds, 80 s timeouts), docs gaps, export/preview P2.4–P2.6, P2.1–P2.3,
-  P3 triage → answers in `docs/research/2026-11-12-mcp-test-results.md`.
-- MCP findings B – quality checks P1.1–P1.8 (text near device, screen box,
-  contrast, seams, pixel overlap, gap per target, gallery corners).
-- GUI polish – menu order ("Projekt schließen"), Apple bezels help link,
-  ☰ on app icon/project name, "Leinwände & Ziele", resizable wider
-  inspector, image preview lightbox, **background elements editable**.
-- Website gallery page (started 2026-11-12, owner: "really cool"): all templates loaded once, local filters (style/color/use/devices, AND across facets) with FLIP enter/leave/reorder animation; phone canvas shown unless a device filter selects another canvas; floating rounded pages from the sprites, mouse tilt; detail view + download; build-time snapshot + live refresh, CORS on the API if needed; dev data from copies of the owner's templates via a local API server.
-- Fonts – system fonts first-class (+ "store used system fonts in the
-  project", licence warning), template save without non-OFL fonts
-  (`--skip-unlicensed-fonts`), bundled Noto for Arabic/Hebrew/Devanagari/
-  Bengali/Tamil/Thai, CJK via system fonts + font-pack proposal.
-
-**Release 0.1.0** (tag `v0.1.0` on 3152f19, draft release not yet created):
-macOS universal signed + notarized ✅, Windows NSIS (unsigned) ✅, Linux ❌ –
-AppImage bundling fails in `linuxdeploy` even with
-`APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true` + libfuse2. Waiting for the owner
-to paste the verbose log tail (Actions → Release v0.1.0 → Build linux →
-"Build and bundle"), or the OK to ship 0.1.0 without AppImage (deb/rpm only).
-Then: delete + re-push the tag (no release exists yet), owner reviews and
-publishes the draft, makes the ghcr package `vitrine-cli` public, enables
-website downloads. Public API (no auth) for run/job status:
-`api.github.com/repos/vitrinestudio-app/vitrine/actions/runs/<id>/jobs`
-(steps + conclusions; logs need auth – ask the owner). Helper scripts used:
-`scratchpad/ci2.sh <sha>` (CI per OS), `scratchpad/run.sh <run id>`.
-
-**Server** api.vitrinestudio.app (owner's Docker/Portainer, nginx): running
-`vitrine-api` (renamed from gallery-server), GitHub login verified
-(`vitrine gallery login` as Looking4Cache). Pending owner step: upgrade per
-`docs/api/DEPLOY.md` "Upgrade 2026-11-12" (tags/samples/sprites migration),
-then save + dry-run + upload the ~50 templates
-(`/Users/thorsten/cloud.grove.eco/App Development/App Vitrine-Studio/Vorlagen/`,
-read-only for agents) with the `vitrinestudio-app` token, approve via
-`vitrine gallery admin`. Next coordinator task after that: **website
-gallery page** on the sprite API (floating rounded pages reacting to the
-mouse, like the hero; filters by style/color/use/devices).
-
-**Website gallery page done (2026-11-12, worktree agent):** `/gallery/`,
-`/de/galerie/`, nav "Templates/Vorlagen", home teaser with live cards;
-API server: CORS allow list `VITRINE_API_CORS_ORIGINS`, list `limit` up to
-200, `canvases[].devices` (schema 2, backfilled on start). Owner steps:
-upgrade the server and set `VITRINE_API_CORS_ORIGINS=https://www.vitrinestudio.app,https://vitrinestudio.app`;
-rebuild the site after approving templates. Template size (decided
-2026-11-12, worktree agent tplsize): sample screenshots are packed as JPEG
-quality 60, client limit 250 MB, server limit stays `VITRINE_API_MAX_UPLOAD_MB`
-(default 50) with a clear 413 `too_large`; polaroid-wall (50.3 MB) is the one
-measured template just over 50 MB → owner: set `VITRINE_API_MAX_UPLOAD_MB=100`
-and nginx `client_max_body_size 110m` before the bulk upload.
-
-**Open owner decisions (collected):**
-- CJK font pack (download on demand?) – after the fonts agent's proposal.
-- Gallery defaults to confirm (sample limits 10 MB/6000 px, WebP q80, local
-  templates may leave tag facets empty); gallery rule for templates with
-  "required, not included" fonts.
-- German wording: "Frame" vs "Rahmen" (UI mixes both); translate device/
-  colour names?
-- Release defaults to confirm: universal macOS build, no MSI, macOS ≥ 11,
-  daily update check on.
-- Switch Apple upload default to the App Asset Library after one real run
-  with "asset library only"; remove the screenshot-set API later (owner
-  asked 2026-11-12; answer: keep as fallback until verified/Apple date).
-- (g4) more CI integrations on demand; (g5) fastlane variable names.
-- Publish: GitLab project `vitrinestudio/vitrine-gitlab-ci` (owner creates,
-  coordinator pushes `integrations/gitlab/`), Marketplace release of
-  `vitrinestudio-app/vitrine-github-action` (pushed 7d1645d) after the
-  first Vitrine release; fastlane plugin gem.
-- ~~SignPath application~~ deferred: Windows ships unsigned for now
-  (owner 2026-11-13, see decisions).
-- Website: Impressum/Datenschutz texts, deploy (www + redirect), images.
-- Gallery terms of use (2026-11-13, draft, needs legal review):
-  `website/content/{de,en}/nutzungsbedingungen.md` (/de/nutzungsbedingungen/,
-  /terms/); owner fills `[OFFEN: …]` (e-mail, periods, age limit, Art. 19 DSA
-  check, how to notify uploaders – the gallery knows no e-mail addresses;
-  no technical uploader ban yet). CLI upload prints the link, `/health`
-  has `terms_url`/`terms_version`; the GUI has no upload/login yet.
+Repo: github.com/vitrinestudio-app/vitrine (remote `origin`; old repo =
+remote `old-arrangia`, archive/delete: `phase-7.md` 7.2). Local folder still
+`/Users/thorsten/Dev/arrangia`. The hand-off of 2026-11-12 listed the agents
+running then (MCP findings A/B, GUI polish, website gallery page, fonts);
+all were merged (f6226a1, 9454d1a, 622de25, 25e8b38, 986c48e). Its open
+items – release 0.1.0 (AppImage, re-tag), server upgrade + template bulk
+upload, owner decisions, integrations publishing, terms of use – now live
+in `docs/plan/phase-7.md` (7.1–7.9). Full text: Git history of this file.
 
 **Lessons for coordinating:**
 - Worktree agents sometimes start from `origin/main`: push main before
@@ -103,6 +28,7 @@ and nginx `client_max_body_size 110m` before the bulk upload.
   (e.g. CLA.md, logo files, tauri.conf.json pubkey) in the same tree.
 
 ## Current state (2026-11-12)
+- 2026-11-13 Repo housekeeping: Inter + Inter Display moved into `assets/fonts/inter/` (with Inter's `OFL.txt`) like every other family; embedded bytes and goldens unchanged. `assets/spike/` removed (the CLI test and the render `sample` example use the example project's screenshots); `docs/spike/` removed – the ten images ADR 0001/0003 link moved to `docs/adr/images/`, the rest is in the Git history (903a271); the `frames` example writes to `target/frames/` or `-- <out-dir>`. `docs/plan/next-2026-11-11.md` renamed `phase-6.2.md` (convention: `phase-N.2.md` = a finished side work package of phase N). CLI image/version examples in the automation docs and integrations now pin `0.1.0` (was `0.2.0`).
 - 2026-11-13 Agent guidance moved to `AGENTS.md` (vendor-neutral: product, concepts, repo map, "where do I change X", rules, commands, tests, doc index); `CLAUDE.md` only imports it (`@AGENTS.md`) plus Claude-Code notes. Keep commands/rules there, state here.
 - 2026-11-13 GUI owner feedback: dialog section headings larger and flush with their content (shared CSS); drag a screenshot from Assets onto a device sets its `screenshot` key (pointer drag, drop highlight, images refused with a hint, key-based like everywhere); device inspector has a screenshot key picker with thumbnails (free text kept). Real Tauri window not checked by hand (bridge in Chrome only).
 - 2026-11-13 Fix: templates used with fewer languages than they have (GUI "New project" default = one language) emptied language-only `visible_in` to `{}` (= everywhere: German cards shown in English projects). Now remapped via the text source language, elements of missing languages removed; `{}` never written. The 62 gallery packages are clean (checked: no `visible_in: {}`; EN + DE intact) – no re-upload or server fix needed; only projects made from them before the fix need the `*-de` elements removed. Also: canvas/target ids in the "Canvases & targets" list no longer wrap (nowrap + ellipsis + tooltip, list 290 px).
@@ -141,10 +67,10 @@ and nginx `client_max_body_size 110m` before the bulk upload.
 - GUI: canvas and variant management (2026-11-10 user feedback "keine Leinwand anlegbar", "Variante finde ich nirgends"): one place = the targets dialog, renamed "Canvases & targets" / "Leinwände & Ausgabeziele" (canvas headers open a canvas pane: rename, duplicate, remove with impact, targets, variants; "+ New canvas": empty / headline + device / copy of a canvas, optional first target from a preset). New "New variant" dialog (based on another variant, targets that show it). Top-bar pickers end with "+ …" entries (canvas, target, language, variant). App commands `canvas_add` (incl. duplicate), `canvas_rename`, `canvas_remove`; `canvas_variant` add `from`/`targets`, remove detaches targets; core `edit::copy_canvas`. MCP `canvas_add` (starter, target_preset), `canvas_duplicate`, `canvas_rename`, `canvas_remove`. Not yet looked at by the user in the real app.
 - Phase 6.2 + 6.4 (2026-11-11, worktree agent D): (6.2) feature graphic checked end to end – example target `play-feature-graphic` (+ golden), opaque exports, Play upload as one `featureGraphic` image per language (fake-store test), specs re-checked (targets.yaml G1/G4/AC1); quick action **"Banner from this canvas"** (Play feature graphic, App Store header / search results / universal; page range fitted to the aspect, same store's screenshots/device map/variant): app `canvas_banner_options`/`target_add_banner`, GUI canvas pane, MCP `banner_add`. (6.4) **own frame packs** (ADR 0024, `docs/guide/frame-packs.md`): `frame.yaml` + PNG/SVG, project `frames/<id>/` or app-wide `<app data>/frames/packs/<id>/`, `frame: pack:<id>`, compiled caches, screen detection / explicit rect / mask / `cut_screen`, packs without `models` fit any device; GUI frame packages dialog + inspector/project pickers, CLI `frames import|list --packs|remove --pack`, MCP `frames_list` packs. Vendor research `docs/research/2026-11-11-vendor-frames.md`. GUI parts not looked at in the real app (no browser for the agent).
   - Next: owner looks at the frame packages dialog (import the synthetic pack: `cargo run -p vitrine-core --example synthetic_frame_pack -- /tmp/clay.zip`), the inspector picker and the canvas pane banners; confirms the `frame.yaml` format and `pack:` syntax (ADR 0024).
-- Fonts & import fixes (2026-11-11, worktree agent C, `docs/plan/next-2026-11-11.md`): (1) bug fixed – project settings → Fonts showed "Not used (see the app settings)" with the system-font setting on, because system families are only loaded for characters no bundled/project font covers (empty list for Latin projects); `catalog_fonts` now returns `system_enabled` and the pane says "On, but not needed". (2) bundled-fonts proposal `docs/research/2026-11-11-bundled-fonts.md` (9 OFL families, lazy embedding, no CJK embedding) – decided and implemented, see "Bundled fonts" below. (3) frames import: `skip`-rule files (iPhone Duo `Outer Open`) are reported as "skipped on purpose" with the reason (CLI + GUI), separate from "ignored (your choice)" and unmatched.
+- Fonts & import fixes (2026-11-11, worktree agent C, `docs/plan/phase-6.2.md`): (1) bug fixed – project settings → Fonts showed "Not used (see the app settings)" with the system-font setting on, because system families are only loaded for characters no bundled/project font covers (empty list for Latin projects); `catalog_fonts` now returns `system_enabled` and the pane says "On, but not needed". (2) bundled-fonts proposal `docs/research/2026-11-11-bundled-fonts.md` (9 OFL families, lazy embedding, no CJK embedding) – decided and implemented, see "Bundled fonts" below. (3) frames import: `skip`-rule files (iPhone Duo `Outer Open`) are reported as "skipped on purpose" with the reason (CLI + GUI), separate from "ignored (your choice)" and unmatched.
 - 2026-11-11 Rename **strip → canvas** done (pure rename, no behaviour change): YAML `strips:` → `canvases:`, target `strip:` → `canvas:` (format stays `vitrine/1`; an old `strips:` key is refused with the fix, no migration), Rust `Strip`/`StripId` → `Canvas`/`CanvasId`, modules `model::canvas`, `edit::canvas`, `commands::canvases`; app commands + MCP tools `canvas_get|patch|variant|add|duplicate|rename|remove|update`; ops `add_canvas|update_canvas|remove_canvas|rename_canvas`; view state / args `canvas`; overlay JSON `canvas_id` (its `canvas` stays the canvas rect); UI "Canvas/Canvases", i18n keys `canvas.*`/`canvases.*`; default id of a new canvas `canvas` (was `strip`). Owner's own projects need the two key renames by hand.
-- In-app help (2026-11-11, worktree agent B, `docs/plan/next-2026-11-11.md`): "Keyboard & mouse" sheet generated from one list `crates/gui/ui/js/help/gestures.js` (6 groups, platform modifier names; `?` key, bottom-bar "?" button, Help menu) and the quick guide "How Vitrine Studio is organised" (`js/help/guide.js`: Project → Canvas → Target × Language × Variant = Images, elements, project vs app settings, where each thing is edited; Help menu, start-screen link, once on the first project open via the new app setting `guide_seen`; the dev bridge only with `?guide=first`). Help entries at the end of the ☰ menu and on top of the native macOS Help menu. Pending canvas gesture changes (drag = pan, ⇧+drag = frame, scrollbars, element context menu) are in the list behind `FEATURES` flags – flipped on by the canvas-gestures change (agent A, same day). Not yet looked at in the real app.
-- GUI interaction (2026-11-11, worktree agent A, `docs/plan/next-2026-11-11.md`): canvas drag on empty space pans, Shift+drag = marquee, cursor feedback; overlay scrollbars in all centre views (`viewport.js`); canvas context menu (`js/context-menu.js`: cut/copy/paste/duplicate/delete, z-order, group/ungroup, lock/unlock, hide/show; empty space: paste on page, select all on page, select all, fit; ⇧F10/menu key); new Rust element clipboard per session (`edit_copy|cut|paste|clipboard`, core `Editor::copy_item`/`paste`, not in MCP), new element field `locked` (editor-only, always written to the base; overlay `locked`). Bugs fixed: "Export again" re-ran instantly with everything up to date and looked like a flicker (now min. progress time, run time + "nothing to write" note + forced re-render button); after Close project → open another project the canvas kept the old slot signature and showed "Nothing to show." without pixmaps when the new overlay had the same geometry (fixed in `views/canvas.js`; Rust regression test `close_then_open_another_project_starts_fresh`). Not yet looked at in the real app.
+- In-app help (2026-11-11, worktree agent B, `docs/plan/phase-6.2.md`): "Keyboard & mouse" sheet generated from one list `crates/gui/ui/js/help/gestures.js` (6 groups, platform modifier names; `?` key, bottom-bar "?" button, Help menu) and the quick guide "How Vitrine Studio is organised" (`js/help/guide.js`: Project → Canvas → Target × Language × Variant = Images, elements, project vs app settings, where each thing is edited; Help menu, start-screen link, once on the first project open via the new app setting `guide_seen`; the dev bridge only with `?guide=first`). Help entries at the end of the ☰ menu and on top of the native macOS Help menu. Pending canvas gesture changes (drag = pan, ⇧+drag = frame, scrollbars, element context menu) are in the list behind `FEATURES` flags – flipped on by the canvas-gestures change (agent A, same day). Not yet looked at in the real app.
+- GUI interaction (2026-11-11, worktree agent A, `docs/plan/phase-6.2.md`): canvas drag on empty space pans, Shift+drag = marquee, cursor feedback; overlay scrollbars in all centre views (`viewport.js`); canvas context menu (`js/context-menu.js`: cut/copy/paste/duplicate/delete, z-order, group/ungroup, lock/unlock, hide/show; empty space: paste on page, select all on page, select all, fit; ⇧F10/menu key); new Rust element clipboard per session (`edit_copy|cut|paste|clipboard`, core `Editor::copy_item`/`paste`, not in MCP), new element field `locked` (editor-only, always written to the base; overlay `locked`). Bugs fixed: "Export again" re-ran instantly with everything up to date and looked like a flicker (now min. progress time, run time + "nothing to write" note + forced re-render button); after Close project → open another project the canvas kept the old slot signature and showed "Nothing to show." without pixmaps when the new overlay had the same geometry (fixed in `views/canvas.js`; Rust regression test `close_then_open_another_project_starts_fresh`). Not yet looked at in the real app.
 - Templates (2026-11-11, worktree agent E, phase 6.3, ADR 0023): `.vitrine-template` package (template.yaml + project subset, one or more canvases, CC0, OFL fonts with kept/generated licence files, generated placeholder screenshots, previews), safe import (limits, paths, no symlinks, file kinds by content, project validated), app-wide store `<app data>/templates/`, built-in `phone`/`minimal` now templates of the same format (`core::templates` → `core::template`); save (GUI "Save as template…" in the app menu since 2026-11-13, before in the canvases dialog, CLI `vitrine template save`, MCP `template_save`), new project (start screen template cards incl. "Import file…", `vitrine new --template <name|id|file>`, MCP `project_create {template}`), insert canvases (canvases dialog "From template", `vitrine template insert`, MCP `template_insert`; one undo step; merge rules in ADR 0023, default "keep both" = rename conflicting template styles). Gallery backend `crates/api-server` (renamed from `gallery-server` 2026-11-11, binary `vitrine-api`, axum + SQLite + Docker; GitHub login since 2026-11-11, ADR 0025); API `docs/api/API.md`, deployment/GDPR notes `docs/api/DEPLOY.md`. GUI parts not looked at visually.
 - Bundled fonts (2026-11-11, worktree agent-fonts2): Montserrat, Playfair Display, Lora, Nunito, Oswald, Bebas Neue, Caveat, Dancing Script, JetBrains Mono added to Inter (all OFL 1.1, variable `[wght]` files from github.com/google/fonts at commit `5bb28733`, italics for Montserrat/Playfair/Lora/Nunito/JetBrains Mono; 14 files, 4.23 MB; `assets/fonts/<family>/` + `OFL.txt`, `assets/fonts/SOURCES.md` with SHA-256). Embedded manifest `core::layout::bundled` (family, default weight, `wght` range, italic, category, licence file; tests check it against every file and the OFL name-table entries); `FontLibrary::bundled()` reads no font file; the layouter registers a bundled family on first use (one process-wide blob per file). `FontFace.weights` + weight-range matching in `match_face` (CSS Fonts 4; layout itself goes through fontique, which sets `wght` to the requested weight). `catalog_fonts` gains `bundled_info` (category, weights, italic, licence); GUI project settings → Styles pickers show the category, → Fonts lists the bundled families compactly (fallback rows only for used/project/configured families); CLI `vitrine fonts [--format json]`; MCP tool description, instructions and docs list the families. Goldens unchanged. Size (release, macOS arm64): `vitrine` 45.32 → 49.57 MB (+4.25 MB), `vitrine-gui` 62.89 → 67.10 MB (+4.21 MB) – exactly the font bytes (the manifest is a `static`; a `const` table had copied the bytes ~5× into the CLI, +22 MB). Start-up (`cargo run -p vitrine-core --release --example font_bench`): `FontLibrary::bundled()` 1.4 µs (parsing all 18 files eagerly: 0.6 ms), `TextLayouter::new` 1.1 µs, first layout of a family incl. registration 40–85 µs, later layouts 12–15 µs. GUI parts not looked at in the real app.
 - System fonts, stored fonts, scripts (2026-11-12, worktree agent-fonts3, ADR 0028; owner feedback 2026-11-12): (1) **installed fonts first-class** – styles can name any installed family (lookup bundled → project `fonts/` → stored `fonts/system/` → installed; bundled wins name collisions), searchable grouped font pickers (Vitrine Studio · This project · Installed on this computer) in project settings → Styles; one app setting **"Use installed fonts"** (`system_fonts`, on by default) replaces the opt-in `system_font_fallback` (read as alias) and covers named families and the fallback for missing characters; CLI uses them too (`--no-system-fonts`, env `VITRINE_SYSTEM_FONTS=off`); one builder for GUI/CLI/MCP (`core::layout::setup::project_library`, `RenderContext::for_project`); process-wide index of the font folders (fontique path scan, ~1 s first scan on macOS, only when a project needs it; "Rescan installed fonts"); validation infos `system_font_used`, `system_font_fallback`, `system_fonts_stored`. (2) **"Store used system fonts in the project"** (Project settings → Fonts, `vitrine fonts embed|unembed [--dry-run]`, app `fonts_embed_status|fonts_embed|fonts_unembed|fonts_refresh`): copies only the files of the faces the styles' weights pick into `fonts/system/` + `fonts.yaml` (licence from the name table: OFL / restricted (Apple, Microsoft) / other / unknown) + README licence notice; licence warning on every surface; never in templates; not an MCP tool. (3) **Templates**: `fonts_required` in `template.yaml` (`license` / `not_in_project`), save option `skip_unlicensed_fonts` (CLI `--skip-unlicensed-fonts`, GUI checkbox + "Save without these fonts" retry, MCP `template_save` param), insert/new report the required fonts and the ones this computer lacks. (4) **Scripts**: bundled Noto Sans Arabic, Hebrew, Devanagari, Bengali, Tamil, Thai (OFL, google/fonts `5bb28733`, 2.62 MB, SOURCES.md) as automatic per-script fallbacks (lazy); CJK per-language system preferences (Hiragino/Yu Gothic for ja, PingFang/Hiragino Sans GB/YaHei for zh-Hans, PingFang TC/Heiti TC/JhengHei for zh-Hant, Apple SD Gothic Neo/Malgun for ko) as language-only fallbacks; parley `complex-scripts` on (Thai dictionary line breaking; before: emergency breaks + ICU4X stderr noise); `TextInput.lang` (shaping locale); **fixed** RTL alignment (parley `Start` right-aligned RTL lines and our alignment was added on top: centred Arabic left the box). Script fixture `tests/fixtures/scripts` (en, ar, he, hi, bn, ta, th, ja, zh-Hans, ko) + `crates/render/tests/scripts.rs` (no goldens). CJK font-pack download proposal `docs/research/2026-11-12-cjk-font-packs.md`. Website `styles-fonts` (en+de) rewritten for fonts. Korean breaks at spaces (`keep-all`). Size (release, macOS arm64): `vitrine` 57.31 MB, `vitrine-gui` 76.16 MB; of that +2.62 MB script fonts (exactly the file bytes) and +3.44 MB ICU segmentation dictionaries from `complex-scripts` (CLI 53.87 MB without; includes a Chinese/Japanese word dictionary we do not need). Checked with the release CLI on this Mac: ja → Hiragino Sans, zh-Hans → Hiragino Sans GB, ko → Apple SD Gothic Neo; `fonts embed --dry-run` on the script fixture would store 93 MB (Apple SD Gothic Neo alone 55 MB) – all "no licence stated". Goldens unchanged. GUI parts not looked at in the real app (only the dev bridge is CSP-free – the picker uses no inline styles).
@@ -194,7 +120,7 @@ and nginx `client_max_body_size 110m` before the bulk upload.
 - Subagents sometimes leave a background process; stop finished agents with TaskStop and check `ps aux | grep vitrine`.
 
 ## How we work
-- CI note (2026-11-10): Linux/Windows clippy was red from the Phase 3 merges until 30eadeb (macOS-only DMG enum variant). Always check per-OS results (`curl -s https://api.github.com/repos/vitrinestudio-app/vitrine/commits/<sha>/check-runs`). Cross-clippy from the Mac: plain `cargo clippy --target …` for Windows (mingw-w64) and Linux (messense cross toolchain, GUI excluded), see CLAUDE.md.
+- CI note (2026-11-10): Linux/Windows clippy was red from the Phase 3 merges until 30eadeb (macOS-only DMG enum variant). Always check per-OS results (`curl -s https://api.github.com/repos/vitrinestudio-app/vitrine/commits/<sha>/check-runs`). Cross-clippy from the Mac: plain `cargo clippy --target …` for Windows (mingw-w64) and Linux (messense cross toolchain, GUI excluded), see AGENTS.md.
 - Coordinator session plans and reviews (incl. looking at rendered images); subagents implement (worktrees for parallel work, merged with `--no-ff`).
 - Every commit: fmt, clippy `-D warnings`, `cargo test --all`, `cargo build -p vitrine-gui`.
 - CI on GitHub (Linux/macOS/Windows) must stay green; LF line endings enforced by `.gitattributes`.
@@ -216,7 +142,7 @@ and nginx `client_max_body_size 110m` before the bulk upload.
 - 2026-11-11 Frame pack format (`frame.yaml`, `frame: pack:<id>`, ADR 0024) confirmed by the user. Fernwood's feature graphic keeps its phones for now. The 9 proposed OFL fonts are to be bundled (Montserrat, Playfair Display, Lora, Nunito, Oswald, Bebas Neue, Caveat, Dancing Script, JetBrains Mono). The GUI edits found in the Fernwood fixture were accidental and were dropped.
 - 2026-11-11 bundled fonts: the owner chose the proposed set – Montserrat, Playfair Display, Lora, Nunito, Oswald, Bebas Neue, Caveat, Dancing Script, JetBrains Mono (no DM Sans), all SIL OFL 1.1, embedded with lazy loading. Agent's choices within that: variable files (one per style, weight-range matching implemented), italics as recommended (Montserrat, Playfair Display, Lora, Nunito, JetBrains Mono; total 4.23 MB raw), source github.com/google/fonts at a pinned commit, unmodified files (no subsetting). No CJK embedding (project fonts for CJK).
 - 2026-11-11 Terminology: **Canvas** replaces Strip everywhere, incl. the YAML key (`strips:` → `canvases:`), example project and docs; device labels stay "Phone"/"Tablet".
-- 2026-11-11 Next work package planned in `docs/plan/next-2026-11-11.md` (fine-tuning list + Phase 6.2/6.3/6.4), start after the token limit reset (11:01). Open with the user: Canvas vs Strip wording, device naming (Phone/Tablet vs iPhone/iPad), which extra fonts to bundle.
+- 2026-11-11 Next work package planned in `docs/plan/phase-6.2.md` (fine-tuning list + Phase 6.2/6.3/6.4), start after the token limit reset (11:01). Open with the user: Canvas vs Strip wording, device naming (Phone/Tablet vs iPhone/iPad), which extra fonts to bundle.
 - 2026-11-11 Repository moved to https://github.com/vitrinestudio-app/vitrine with the full history (user: "ja, mit Historie"); old repo `Looking4Cache/arrangia` is archived by the user.
 - 2026-11-11 Licence: **GPL-3.0-or-later** for the code, with a licence-style **individual CLA** (contributors keep the copyright, grant the owner Looking4Cache UG (haftungsbeschränkt) a perpetual, irrevocable licence incl. relicensing under any licence + patent licence; Apache ICLA v2.2 structure + Harmony "any licence" outbound option; signed via CLA bot on pull requests). Name/logo/icons excluded from the GPL (© owner, unmodified copies may carry them, forks rebrand). No SPDX headers per file. Swedish hyphenation (LPPL 1.2) stays out (GPL-incompatible per FSF, compiled into the binary). ADR 0022; `LICENSE`, `CLA.md` (version 1.0), `CONTRIBUTING.md`.
 - 2026-11-11 CLA.md reviewed by the owner: version `1.0`, draft wording removed; drafting/review notes moved to ADR 0022 (background).

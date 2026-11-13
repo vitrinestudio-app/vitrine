@@ -51,7 +51,7 @@ changing the model, renderer or architecture. Glossary: KONZEPT §2
 | `crates/cli` (`vitrine-cli`) | binary `vitrine` (clap), one module per command |
 | `crates/gui` (`vitrine-gui`) | Tauri 2 app (`src/main.rs`), dev HTTP bridge (`src/bridge.rs`, `src/bin/vitrine-devbridge.rs`), updater, native menu; frontend in `crates/gui/ui/` (vanilla ES modules, no npm) |
 | `crates/api-server` (`vitrine-api-server`) | backend of api.vitrinestudio.app (axum, SQLite, Docker; binary `vitrine-api`): template gallery + GitHub login. Not part of the app. |
-| `assets/` | bundled OFL fonts (`assets/fonts/`, `SOURCES.md`), hyphenation patterns (`assets/hyphenation/`, `LICENSES.md`), brand files (`assets/brand/`, not GPL) |
+| `assets/` | bundled OFL fonts (`assets/fonts/<family>/` with its `OFL.txt`, Inter + Inter Display in `inter/`; `assets/fonts/SOURCES.md`), hyphenation patterns (`assets/hyphenation/`, `LICENSES.md`), brand files (`assets/brand/`, not GPL) |
 | `tests/fixtures/example/` | example project (all target kinds; en, de, fr, fr-CA with deliberate fallbacks) + golden images (`golden/`) |
 | `tests/fixtures/scripts/` | non-Latin script fixture (render tests) |
 | `website/` | www.vitrinestudio.app (Hugo, no theme): landing page, user guide `content/{en,de}/docs/`, template gallery page; see `website/README.md` |
@@ -63,13 +63,13 @@ changing the model, renderer or architecture. Glossary: KONZEPT §2
 | `.signpath/` | Windows signing configuration drafts (dormant) |
 | `deny.toml`, `about.toml` | licence allow-list (`cargo deny`), third-party notices (cargo-about) |
 | `docs/KONZEPT.md` | binding concept (German) |
-| `docs/adr/` | architecture decision records `NNNN-title.md` (format: ADR 0000) |
-| `docs/plan/` | `STATUS.md` (state + decision log), `phase-N.md` task lists |
+| `docs/adr/` | architecture decision records `NNNN-title.md` (format: ADR 0000); images they link in `docs/adr/images/` |
+| `docs/plan/` | `STATUS.md` (state + decision log), `phase-N.md` task lists, `phase-N.2.md` = a finished side work package of phase N |
 | `docs/guide/` | `NOTES.md` (user-guide notes), `frame-packs.md` |
 | `docs/research/` | dated research notes and MCP test reports |
 | `docs/api/` | `API.md` (gallery API), `DEPLOY.md` (server deployment) |
 | `docs/dev/` | `releasing.md`, `adding-devices.md`, inactive CLA workflow draft |
-| `docs/example/`, `docs/gui/`, `docs/spike/` | images for the README; Phase 0 spike output |
+| `docs/example/`, `docs/gui/` | images for the README |
 
 Version: `[workspace.package] version` in `Cargo.toml` is the single source.
 

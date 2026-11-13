@@ -356,7 +356,7 @@ fn ofl_fonts_are_shipped_with_a_license_and_others_refused() {
         .unwrap()
         .project;
     // A text style using a project font (a copy of bundled Inter, OFL).
-    let inter = include_bytes!("../../../../assets/fonts/Inter-Regular.ttf");
+    let inter = include_bytes!("../../../../assets/fonts/inter/Inter-Regular.ttf");
     std::fs::write(dir.join("fonts/Inter-Regular.ttf"), inter).unwrap();
     let mut styles = project.styles.clone();
     styles.text.insert(

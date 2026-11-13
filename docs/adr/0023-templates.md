@@ -83,7 +83,7 @@ project fonts whose family the styles name (OFL check; licence kept from
 `<stem>-OFL.txt`, `<stem>.txt`, `OFL.txt` or `LICENSE.txt` next to it if
 that is the OFL text, else generated: name ID 0 copyright, plus `with
 Reserved Font Name "…"` when ID 0/13 state one, plus the OFL 1.1 body
-taken from `assets/fonts/OFL.txt`), and generated placeholder screenshots
+taken from `assets/fonts/inter/OFL.txt`), and generated placeholder screenshots
 for every screenshot key (device screen aspect from the catalog) instead
 of the project's screenshots. `store:` and `import:` are dropped. Previews
 are rendered by `vitrine_render::template::add_previews` (store gallery of

@@ -15,7 +15,7 @@ für CI allgemein bietet: [Automatisierung](../../automation/).
 
 ```yaml
 vitrine-validate:
-  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0
+  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0
   script:
     - vitrine --project store-screens validate --format gitlab -o gl-code-quality-report.json
   artifacts:
@@ -24,7 +24,7 @@ vitrine-validate:
       codequality: gl-code-quality-report.json
 
 vitrine-export:
-  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0
+  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0
   script:
     - vitrine --project store-screens export --out vitrine-export --no-gallery
   artifacts:
@@ -69,7 +69,7 @@ ihren Pfad. Ein manueller Job bedeutet, dass ein Mensch jeden Upload startet:
 
 ```yaml
 vitrine-upload:
-  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0
+  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0
   rules:
     - if: $CI_COMMIT_TAG
       when: manual

@@ -43,7 +43,7 @@ Every release has a standalone CLI archive per platform, plus
 | Windows x64 | `vitrine-cli_windows_x64.zip` |
 
 ```sh
-v=0.2.0
+v=0.1.0
 base=https://github.com/vitrinestudio-app/vitrine/releases/download/v$v
 curl -sSfLO "$base/vitrine-cli_linux_x86_64.tar.gz"
 curl -sSfL "$base/SHA256SUMS.txt" | grep ' vitrine-cli_linux_x86_64.tar.gz$' | sha256sum -c -
@@ -64,8 +64,8 @@ every release also publishes the image
 
 | tag | |
 |---|---|
-| `0.2.0` | exactly this release (recommended for reproducible builds) |
-| `0.2` | the newest `0.2.x` |
+| `0.1.0` | exactly this release (recommended for reproducible builds) |
+| `0.1` | the newest `0.1.x` |
 | `latest` | the newest release |
 
 It is Alpine with the static `vitrine` binary, `git`, `jq`, CA certificates
@@ -75,7 +75,7 @@ shell in it. The licences are in `/usr/share/doc/vitrine/licenses/`.
 
 ```sh
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" \
-  ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0 vitrine --project store-screens validate
+  ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0 vitrine --project store-screens validate
 ```
 
 ## What the CLI offers CI

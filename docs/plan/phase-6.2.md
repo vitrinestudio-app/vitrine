@@ -1,4 +1,7 @@
-# Next work package (planned 2026-11-11, start after 11:01)
+# Phase 6 work package: fine-tuning + 6.2–6.4 (2026-11-11)
+
+Done (every item ticked). Planned 2026-11-11 as
+`docs/plan/next-2026-11-11.md`; renamed to sit next to `phase-6.md`.
 
 User request: fine-tuning list (below) + Phase 6 items 6.2, 6.3, 6.4
 (`docs/plan/phase-6.md`). Run as parallel worktree subagents (Opus), merge

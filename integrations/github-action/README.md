@@ -33,7 +33,7 @@ A composite action (bash only, no Node runtime) for Linux x64 and arm64
 
 | input | default | |
 |---|---|---|
-| `version` | `latest` | release version (`0.2.0` or `v0.2.0`); pin it for reproducible builds |
+| `version` | `latest` | release version (`0.1.0` or `v0.1.0`); pin it for reproducible builds |
 | `repository` | `vitrinestudio-app/vitrine` | where the releases are |
 | `cache` | `true` | cache the downloaded CLI |
 | `libc` | `auto` | Linux: `auto`, `gnu` or `musl` (static build) |
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: vitrinestudio-app/vitrine-github-action@v1
         with:
-          version: 0.2.0
+          version: 0.1.0
           project: store-screens
           validate: true
           strict: true

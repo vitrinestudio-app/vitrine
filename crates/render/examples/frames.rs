@@ -1,13 +1,14 @@
 //! Contact sheet of all built-in parametric frames.
 //!
 //! ```sh
-//! cargo run -p vitrine-render --release --example frames
+//! cargo run -p vitrine-render --release --example frames [-- <out-dir>]
+//! cargo run -p vitrine-render --release --example frames -- --closeup <dir>
 //! ```
 //!
-//! Writes `docs/spike/frames_catalog_stylized.png` and
-//! `docs/spike/frames_catalog_detailed.png`: every catalog model in portrait
-//! and landscape (where supported), a few colour variants, browser chrome in
-//! light and dark. The screenshots are generated fake UIs of the right
+//! Writes `frames_catalog_stylized.png` and `frames_catalog_detailed.png`
+//! into `<out-dir>` (default `target/frames/`, ignored by Git): every
+//! catalog model in portrait and landscape (where supported), a few colour
+//! variants, browser chrome in light and dark. The screenshots are generated fake UIs of the right
 //! aspect (no real app content).
 
 #![allow(
@@ -17,7 +18,7 @@
     reason = "example drawing code"
 )]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use tiny_skia::{FillRule, Pixmap, Transform};
 use vitrine_core::geometry::Rect;
@@ -207,7 +208,10 @@ fn main() -> anyhow::Result<()> {
         let dir = args.get(i + 1).map_or(".", String::as_str);
         return closeups(Path::new(dir));
     }
-    let out = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/spike");
+    let out = args.get(1).map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/frames"),
+        PathBuf::from,
+    );
     std::fs::create_dir_all(&out)?;
     for (style, name) in [
         (FrameStyle::Stylized, "stylized"),

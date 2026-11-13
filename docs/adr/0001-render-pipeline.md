@@ -22,10 +22,12 @@ is built on top of it. The spike renders a hard-coded scene (no YAML):
 
 Code: `crates/render/src/{geometry,paint,blur,frames,raster,text,spike}`,
 driver `cargo run -p vitrine-render --release --example spike`
-(`--engine cosmic|parley`, `--runs N`, `--regen-assets`). Images go to
+(`--engine cosmic|parley`, `--runs N`, `--regen-assets`). Images went to
 `docs/spike/`, generated screenshots to `assets/spike/`. (Phase 1 removed
 the spike scene, composer and driver; the pipeline that replaced them is
-described in ADR 0006. `docs/spike/` and `assets/spike/` are kept.)
+described in ADR 0006. On 2026-11-13 both folders were removed; the
+images this ADR shows moved to `docs/adr/images/`, the rest stays in the
+Git history, commit `903a271`.)
 
 ## Decision
 
@@ -43,7 +45,7 @@ described in ADR 0006. `docs/spike/` and `assets/spike/` are kept.)
 ### cosmic-text 0.19 vs parley 0.12
 
 Both engines feed the same `RawLayout` → outline renderer, so rasterised
-quality is the same by construction. Image: `docs/spike/text-engines_comparison.png`.
+quality is the same by construction. Image: [`images/text-engines_comparison.png`](images/text-engines_comparison.png).
 
 | | cosmic-text 0.19.0 | parley 0.12.0 |
 |---|---|---|
@@ -163,27 +165,20 @@ gradient could be cached per target.
   fontdb; no oxipng (C dependency); bilinear instead of bicubic for the
   pre-resampled screenshot pattern.
 
-## Images in `docs/spike/`
+## Images
 
-Full-resolution page exports are kept for a representative subset; the
-rest is shown in the gallery previews (downscaled, ≈ 420 px per page).
-Total ≈ 16 MB. All PNGs are 8-bit RGB without alpha, with sRGB chunk.
+Spike output kept in `docs/adr/images/` (8-bit RGB PNGs with sRGB chunk).
+The full-resolution page exports, the remaining gallery previews (en/de,
+1:2 target, grouped landscape set) and the banners of the spike are in the
+Git history only (`docs/spike/`, commit `903a271`).
 
-- `pages/1320x2868_gap40/{en,de}_01–04.png` – page exports, placeholder gap 40 lu (content in the gap omitted; phone part on page 2 shifted by the gap).
-- `pages/1320x2868_nogap/en_01–04.png` – same without gaps, for comparison.
-- `pages/1080x2160_gap40/de_01–04.png` – 1:2 target, page height 2000 lu: headlines `top`, devices `bottom`, background `stretch`.
-- `pages/2752x2064_group2-gap60/{en,de}_01–02.png` – `group: 2`, columns 1000 × 1500 lu, devices × 0.75.
-- `gallery_1320x2868_gap40_{en,de}.png` – store gallery preview with gaps and rounded corners; phone, band and accent line run through the gaps.
-- `gallery_1320x2868_nogap_en.png` – gallery of the gapless export (shows the misalignment the gaps avoid).
-- `gallery_1080x2160_gap40_{en,de}.png` – gallery of the 1:2 target.
-- `gallery_2752x2064_group2-gap60_{en,de}.png` – gallery of the grouped landscape set.
-- `gallery_1320x2868_gap40-stylized_en.png` – whole set with `stylized` frames.
-- `banner_{en,de}_2400x1000.png` – banner over the whole canvas, `gaps: none`, `fit: cover`.
-- `canvas-debug_en_gap40.png`, `canvas-debug_en_group2-gap60.png` – canvas view with page boundaries, hatched gaps, page origins.
-- `frames_styles.png` – phone (stylized porcelain/midnight, detailed silver/graphite) and tablet frames.
-- `frames_closeup.png` – island, corner radius and screen mask close-up, stylized vs detailed.
-- `frames_catalog_stylized.png`, `frames_catalog_detailed.png` – Phase 1 contact sheets of all catalog frames (`cargo run -p vitrine-render --release --example frames`).
-- `text-engines_comparison.png` – the same headlines through cosmic-text and parley (auto-fit, overflow, emergency break).
+- [`gallery_1320x2868_nogap_en.png`](images/gallery_1320x2868_nogap_en.png) – gallery of the gapless export (shows the misalignment the gaps avoid).
+- [`gallery_1320x2868_gap40-stylized_en.png`](images/gallery_1320x2868_gap40-stylized_en.png) – whole set with gaps and `stylized` frames.
+- [`canvas-debug_en_gap40.png`](images/canvas-debug_en_gap40.png), [`canvas-debug_en_group2-gap60.png`](images/canvas-debug_en_group2-gap60.png) – canvas view with page boundaries, hatched gaps, page origins.
+- [`frames_styles.png`](images/frames_styles.png) – phone (stylized porcelain/midnight, detailed silver/graphite) and tablet frames.
+- [`frames_closeup.png`](images/frames_closeup.png) – island, corner radius and screen mask close-up, stylized vs detailed.
+- [`frames_catalog_stylized.png`](images/frames_catalog_stylized.png), [`frames_catalog_detailed.png`](images/frames_catalog_detailed.png) – Phase 1 contact sheets of all catalog frames (a snapshot; regenerate current ones with `cargo run -p vitrine-render --release --example frames`, see `docs/dev/adding-devices.md`).
+- [`text-engines_comparison.png`](images/text-engines_comparison.png) – the same headlines through cosmic-text and parley (auto-fit, overflow, emergency break).
 
 ## Consequences
 

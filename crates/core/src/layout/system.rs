@@ -222,7 +222,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(
             dir.path().join("Inter-Regular.ttf"),
-            include_bytes!("../../../../assets/fonts/Inter-Regular.ttf"),
+            include_bytes!("../../../../assets/fonts/inter/Inter-Regular.ttf"),
         )
         .unwrap();
         let sub = dir.path().join("lora");

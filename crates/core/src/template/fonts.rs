@@ -9,8 +9,9 @@ use skrifa::{FontRef, MetadataProvider, string::StringId};
 
 use super::TemplateError;
 
-/// The bundled OFL text (`assets/fonts/OFL.txt`, Inter's licence).
-const BUNDLED_OFL: &str = include_str!("../../../../assets/fonts/OFL.txt");
+/// The bundled OFL text (`assets/fonts/inter/OFL.txt`; only its standard
+/// OFL body is used).
+const BUNDLED_OFL: &str = include_str!("../../../../assets/fonts/inter/OFL.txt");
 
 /// What a font's name table says about it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -168,7 +169,7 @@ pub fn license_path(font_path: &str) -> String {
 mod tests {
     use super::*;
 
-    const INTER: &[u8] = include_bytes!("../../../../assets/fonts/Inter-Regular.ttf");
+    const INTER: &[u8] = include_bytes!("../../../../assets/fonts/inter/Inter-Regular.ttf");
 
     #[test]
     fn bundled_inter_declares_ofl() {
