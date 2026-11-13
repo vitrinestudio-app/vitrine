@@ -179,7 +179,7 @@ Optionen:
   hat, zeigt *Unverändert*.
 - **Auch unveränderte Sets hochladen** erzwingt einen vollständigen Upload.
 
-{{< shot src="images/upload-plan.jpg" alt="Der Upload-Plan für den App Store: sechs Sätze (zwei Ziele × drei Sprachen) mit der Aktion Hochladen, und der Knopf Bestätigen & hochladen." caption="Der Plan: sechs Sätze zum Hochladen, noch nichts gesendet." >}}
+{{< shot src="images/upload-plan.jpg" alt="Der Upload-Plan für den App Store: ein Hinweis, dass der vorgeschriebene iPhone-6,3″-Satz fehlt, sechs Sätze (zwei Ziele × drei Sprachen) mit der Aktion Hochladen, und der Knopf Bestätigen & hochladen." caption="Der Plan: sechs Sätze zum Hochladen, noch nichts gesendet. Der Hinweis über der Tabelle hält den Upload nicht auf." >}}
 
 ### Bestätigen und hochladen {#confirm-and-upload}
 
