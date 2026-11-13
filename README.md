@@ -10,56 +10,77 @@ Instead of composing individual images, you design one continuous canvas. A
 device that spans two screenshots exists exactly once, backgrounds run across
 all pages, and gaps between pages match the store gallery so transitions line
 up. The same layout adapts to other aspect ratios and to landscape sets built
-from grouped portrait pages.
+from grouped portrait pages. Projects are plain folders of YAML files and
+images: no account, no cloud, Git-friendly. The desktop app, the `vitrine`
+command line tool and the MCP server work on the same core.
 
-Website: <https://www.vitrinestudio.app>
+**Website:** [www.vitrinestudio.app](https://www.vitrinestudio.app) ·
+**Documentation:** [user guide](https://www.vitrinestudio.app/docs/) ·
+**Templates:** [template gallery](https://www.vitrinestudio.app/gallery/) ·
+**Download:** [releases](https://github.com/vitrinestudio-app/vitrine/releases)
 
 ## Status
 
-**Pre-alpha.** Phases 0–4 are complete: the core and the `vitrine` command
-line tool, the desktop editor, languages & import (per-language text
-overrides, font fallbacks, opt-in automatic hyphenation, screenshot import,
-CSV/XLIFF translation exchange, imported Apple Product Bezels) and the MCP
-interface for AI assistants.
+**Pre-alpha – the first public release (0.1.0) is being prepared.** The
+features planned for 1.0 are built: core, command line tool, desktop editor,
+languages & import, MCP, store upload, templates with an online gallery, own
+frame packages, colour management, installers and the in-app updater. Store
+upload works and is being tested with live store accounts. What remains
+before the first release – signing, publishing, the website going live,
+real-app checks – is tracked in [`docs/plan/phase-7.md`](docs/plan/phase-7.md).
 
-- **Phase 5 – store upload** is built: App Store Connect (screenshot sets,
-  plus the App Asset Library for iPhone Duo and the App Store header and
-  search results creatives) and Google Play, always as plan → confirm →
-  execute. Real-run testing with live store accounts is in progress.
-- **Phase 6 – polish towards 1.0** is in progress. Done: colour management
-  (Display P3 and other profiles converted to sRGB), the fastlane
-  import/export layout and an `index.html` overview of every export, the
-  licence (GPL-3.0-or-later with a CLA). Next: installers and signing,
-  templates with a gallery on `api.vitrinestudio.app`, own frame packages,
-  the website [www.vitrinestudio.app](https://www.vitrinestudio.app) and the
-  documentation.
+The concept (in German) is in [`docs/KONZEPT.md`](docs/KONZEPT.md), the task
+lists per phase in [`docs/plan/`](docs/plan/), the current state in
+[`docs/plan/STATUS.md`](docs/plan/STATUS.md) and the architecture decisions
+in [`docs/adr/`](docs/adr/).
 
-The full concept (in German) is in [`docs/KONZEPT.md`](docs/KONZEPT.md),
-the task lists in [`docs/plan/`](docs/plan/) (`phase-1.md` …
-`phase-6.md`, with known gaps under "Follow-ups"), the current state in
-[`docs/plan/STATUS.md`](docs/plan/STATUS.md).
-
-### Features
+## Features
 
 - **Devices**: iPhone (including the foldable iPhone Duo, open or folded),
   iPad, Mac, Android phones and tablets, Apple Watch and Wear OS
   (screenshot-only exports), browser windows and notebooks – parametric
-  frames, or Apple Product Bezels you import yourself.
+  frames in two styles, Apple Product Bezels you import yourself, or your
+  own frame packages (PNG/SVG + `frame.yaml`). Imported bezels can be
+  stored in a private project so CI renders them too.
 - **Store formats** from presets: App Store and Google Play screenshot
   sets, App Store header and search results creatives, the Play feature
   graphic, web slides and banners cut from the same canvas.
+- **Design**: texts with inline markup, auto-fit and highlighted spans
+  (box with padding and corner radius), images clipped to a rectangle or
+  ellipse (`clip_to`), groups that scale as one (also per variant),
+  variants per format instead of maintaining content twice.
+- **Fonts**: Inter and nine more bundled OFL families, your project's own
+  fonts and the fonts installed on your computer; used system fonts can be
+  stored in the project so every machine renders the same. Bundled script
+  fallbacks for Arabic, Hebrew, Devanagari, Bengali, Tamil and Thai.
 - **Languages**: fallback chains for texts and screenshots, per-language
-  overrides, automatic hyphenation, CSV/XLIFF for translators.
-- **Import & export**: screenshots from fastlane snapshot/screengrab or
-  plain folders; export in Vitrine Studio's own layout or the fastlane
-  `deliver`/`supply` layout (a migration path from frameit), with an
-  `index.html` overview; incremental and colour-managed (sRGB).
-- **Store upload** to App Store Connect and Google Play from the app, the
-  CLI or an AI assistant – nothing is sent without a plan and an explicit
-  confirmation.
-- **AI assistants**: an MCP server hosted by the desktop app, with an *Add to
-  Claude Desktop* button; the assistant's edits appear live and can be
-  undone.
+  overrides, opt-in automatic hyphenation, CSV/XLIFF for translators.
+- **Design checks**: `validate` reports missing screenshots and overflowing
+  texts, and also looks at the rendered images: low contrast, text too
+  close to a device, covered or cut screens, devices cut at the edge,
+  seams and corners in the store gallery.
+- **Templates**: start a project from a template, save your own canvases as
+  a template, insert canvases from one. The online
+  [template gallery](https://www.vitrinestudio.app/gallery/) is built into
+  the *New project* dialog; browsing and downloading need no account,
+  publishing uses a GitHub login.
+- **Import & export**: screenshots from fastlane snapshot/screengrab (in
+  their own captures folder) or plain folders; export in Vitrine Studio's
+  own layout or the fastlane `deliver`/`supply` layout, with an
+  `index.html` overview; incremental and colour-managed (Display P3 and
+  other profiles converted to sRGB).
+- **Store upload** to App Store Connect (screenshot sets and the App Asset
+  Library) and Google Play from the app, the CLI or an AI assistant –
+  always plan → confirm → execute; keys stay in the system keychain.
+- **AI assistants**: an MCP server hosted by the desktop app, with an *Add
+  to Claude Desktop* button; the assistant creates and edits projects,
+  translates, looks at rendered previews, validates, exports and plans
+  uploads. Its edits appear live and can be undone.
+- **Automation**: `validate --format github|gitlab|junit` for CI reports,
+  store keys from environment variables, standalone CLI archives and a CLI
+  container image with every release; drafts of a GitHub Action, GitLab CI
+  components and a fastlane plugin in [`integrations/`](integrations/)
+  (published after the first release).
 
 ### Desktop editor
 
@@ -119,6 +140,18 @@ The app screenshots inside the frames are generated
 (`crates/render/examples/screens.rs`); device frames are drawn
 parametrically, no vendor artwork is included.
 
+## Install
+
+No release has been published yet. Releases will appear on
+[GitHub Releases](https://github.com/vitrinestudio-app/vitrine/releases):
+a signed and notarized universal `.dmg` for macOS 11+, a Windows setup
+(not code-signed for now – SmartScreen asks once: *More info* → *Run
+anyway*), Linux packages, standalone command line tool archives and the
+container image `ghcr.io/vitrinestudio-app/vitrine-cli`. Details:
+[Install & update](https://www.vitrinestudio.app/docs/install/).
+
+Until then, build from source.
+
 ## Building
 
 Requirements:
@@ -131,150 +164,67 @@ Requirements:
   No Node.js or npm is needed.
 
 ```sh
-cargo build                          # build everything
-cargo test --all                     # run tests
-cargo run -p vitrine-cli -- --help  # command line interface (binary: vitrine)
-cargo run -p vitrine-gui            # desktop app (start screen)
+git clone https://github.com/vitrinestudio-app/vitrine.git && cd vitrine
+cargo run -p vitrine-gui --release   # desktop app (start screen)
 cargo run -p vitrine-gui -- tests/fixtures/example   # … opening a project
+cargo install --path crates/cli      # the `vitrine` command line tool
+cargo test --all                     # run tests
 ```
+
+Contributor notes (commands, conventions, architecture):
+[`CLAUDE.md`](CLAUDE.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Command line
 
-Quick start:
-
 ```sh
-cargo install --path crates/cli                # or: cargo run -p vitrine-cli --release -- …
-vitrine new my-app --lang en --lang de        # a phone project from a template
+vitrine new my-app --lang en --lang de        # new project (--template <name|id|file>)
 # put screenshots into my-app/screenshots/en/ios-phone/<key>.png (see project.yaml)
 vitrine validate --project my-app             # what is missing or does not fit
+vitrine render --project my-app --gallery     # preview PNG of a store gallery
 vitrine export --project my-app               # PNG/JPEG files in my-app/export/<target>/<lang>/
 ```
 
 Try it on the example: `vitrine export --project tests/fixtures/example`.
-
-The `vitrine` binary works on a project folder (`--project <DIR>`, default:
-the current folder):
-
-```sh
-vitrine new my-app --lang en --lang de      # project from a template (--template phone|minimal)
-vitrine validate --project my-app           # findings by target/language; --format json, --preview, --strict
-vitrine validate --format github            # CI: GitHub annotations; gitlab (Code Quality), junit; -o FILE
-vitrine render --project my-app --canvas    # preview PNG: --page N | --image N | --canvas | --gallery
-vitrine render --project my-app --target play-phone --page 2 --width 400 -o page.png
-vitrine export --project my-app             # all targets × languages into my-app/export/
-vitrine export --target ios-iphone-69 --lang de --force   # --force ignores the incremental cache
-vitrine export --layout fastlane --out fastlane          # deliver/supply folders instead of frameit; --no-html, --no-gallery
-
-# translations for translators (CSV or XLIFF 1.2/2.0; markup becomes protected inline tags)
-vitrine strings export --format xliff20 --lang fr -o translations/   # --format csv --context --missing-only
-vitrine strings import translations/fr.xlf --dry-run                 # report: changed/new/unknown keys, overflows
-
-# screenshots from fastlane snapshot, a Vitrine Studio folder tree or a flat folder
-vitrine import screenshots fastlane/screenshots --dry-run            # --device-map "iPhone 17 Pro Max=ios-phone" --save-mapping
-
-# Apple Product Bezels (downloaded by you; stored app-wide)
-vitrine frames import /Volumes/Bezel-iPhone-18 --dry-run             # folder, zip or DMG
-vitrine frames list
-vitrine frames remove --model iphone-island                          # --color, --orientation; --all removes everything
-vitrine frames embed                                                 # copy the used bezels into the project for CI (private repos only!)
-vitrine frames unembed                                               # remove them from the project again
-
-# store upload: plan (dry run, prints a confirm token) → confirm → execute
-vitrine upload plan --store apple --remote                           # --target, --lang, --force, --format json
-vitrine upload execute --confirm <token>                             # --yes for scripts; Google: --changes-not-sent-for-review
-vitrine upload log --last                                            # --events: HTTP events of the run
-vitrine upload refdata                                               # App Store asset types (read-only)
-```
-
-Exit codes: `0` success (warnings fail only with `validate --strict`), `1`
-the project has problems (validation errors, export failures), `2` the
-command could not run (usage error, project not loadable, IO error).
-`render` prints the path of the written PNG (default
-`<project>/.cache/render/`). Colours are used on a terminal unless
-`NO_COLOR` is set.
-
-In CI, `vitrine upload` takes the store keys from `VITRINE_ASC_*` /
-`VITRINE_PLAY_*` environment variables instead of the keychain; see
-[CI/CD](https://www.vitrinestudio.app/docs/ci/) and the integration drafts in
-`integrations/`.
-
-Store accounts (App Store Connect API key, Google Play service account)
-are set up once in the desktop app (App settings → *Stores*; secrets go
-into the system keychain), the app ↔ store mapping per project (Project
-settings → *Stores*); `upload` reads them (`--app-dir` selects the app
-data folder). The desktop app has the same flow under *Upload to
-stores…*; an AI assistant can plan uploads, but executing one needs
-your confirmation in the app.
+Further commands: `strings` (CSV/XLIFF), `import screenshots`, `frames`,
+`fonts`, `template`, `gallery`, `upload`, `mcp` and `install-cli` – see
+`vitrine --help` and the
+[CLI reference](https://www.vitrinestudio.app/docs/cli/). Exit codes: `0`
+success, `1` the project has problems, `2` the command could not run.
+For CI see [Automation](https://www.vitrinestudio.app/docs/automation/).
 
 ## AI assistants (MCP)
 
-Vitrine Studio speaks [MCP](https://modelcontextprotocol.io), so any MCP-capable
-assistant can create a project, add devices and texts, translate, look at
-rendered previews (`render_preview` returns a PNG), check the layout,
-validate, export and plan store uploads. The desktop app hosts the server: the assistant works
-on the project you have open, every change appears live (briefly outlined,
-with a small note naming the client, e.g. "Claude Desktop: …"), is one undo
-step labelled with the client's name, and you discuss it in your assistant.
-Nothing goes over the network (ADR 0014, ADR 0015). The settings live under
-App settings → *AI assistants (MCP)*.
+The desktop app hosts an [MCP](https://modelcontextprotocol.io) server: the
+assistant works on the project you have open, every change appears live and
+is one undo step labelled with the client's name. Nothing goes over the
+network (ADR 0014, ADR 0015).
 
-**Any MCP client**: add a stdio server named `vitrine-studio` that runs the
-`vitrine` command with the argument `mcp` (the exact path is shown under
-*Other MCP clients*), e.g.
+- **Claude Desktop**: App settings → *AI assistants (MCP)* → **Add to
+  Claude Desktop…**, then restart Claude Desktop.
+- **Claude Code**: `claude mcp add vitrine-studio -- /path/to/vitrine mcp`
+  (the exact command is shown in the same settings section).
+- **Any MCP client**: a stdio server running `vitrine mcp`; it connects to
+  the running app or starts it. Without the app (CI, scripts):
+  `vitrine mcp --headless --project /path/to/my-app`.
 
-```json
-{
-  "mcpServers": {
-    "vitrine-studio": { "command": "/path/to/vitrine", "args": ["mcp"] }
-  }
-}
-```
-
-Clients that speak Streamable HTTP can also use
-`http://127.0.0.1:<port>/mcp` with the header `Authorization: Bearer <token>`
-(both shown in the settings; they change per start of the app unless you set
-a fixed port, the token always changes).
-
-**Claude Desktop** (no terminal needed):
-
-1. Start Vitrine Studio.
-2. App settings → *AI assistants (MCP)* → **Add to Claude Desktop…** (shows
-   the entry and the file, asks before writing, keeps a backup).
-3. Restart Claude Desktop and ask it to work on your screenshots.
-
-Claude Desktop then starts `vitrine mcp`, which connects to the running
-app (and starts it when it is closed; setting *Start on demand*).
-
-**Claude Code**: copy the command from the same settings section, e.g.
-
-```sh
-claude mcp add vitrine-studio -- /path/to/vitrine mcp      # recommended: always reaches the app
-# or, for this run of the app only (port and token change per start):
-claude mcp add --transport http vitrine-studio http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <token>"
-```
-
-Without the app (CI, scripts): `vitrine mcp --headless --project
-/path/to/my-app` works on the folder directly.
-
-Example prompts: "Create a Vitrine Studio project in ~/Screens/Fernwood for a
-garden planner app in English and German with three iPhone pages, then
-show me the preview", "Translate all missing texts into French and check
-that nothing overflows", "Make the title on page 2 smaller and move the
-phone down by 100 lu". Tools, resources and the op reference:
-[`docs/guide/NOTES.md`](docs/guide/NOTES.md) (MCP section).
+Setup, example prompts and tools:
+[AI assistants](https://www.vitrinestudio.app/docs/ai-mcp/).
 
 ## Workspace layout
 
 | Path | Crate | Purpose |
 |---|---|---|
-| `crates/core` | `vitrine-core` | Project model, YAML IO, operations API, resolution, layout, validation, catalogs |
-| `crates/render` | `vitrine-render` | Rasterization, parametric device frames, text rendering, export |
-| `crates/publish` | `vitrine-publish` | App Store Connect and Google Play upload, keychain |
+| `crates/core` | `vitrine-core` | Project model, YAML IO, operations API, resolution, layout, validation, catalogs, templates |
+| `crates/render` | `vitrine-render` | Rasterization, parametric device frames, text rendering, export, design checks |
+| `crates/publish` | `vitrine-publish` | App Store Connect, Google Play and gallery clients, keychain |
 | `crates/app` | `vitrine-app` | Shared application layer: session, commands, preview cache, settings (GUI and MCP) |
 | `crates/mcp` | `vitrine-mcp` | MCP server (rmcp): tools and resources over the application layer |
 | `crates/cli` | `vitrine-cli` | Command line interface, binary `vitrine` |
 | `crates/gui` | `vitrine-gui` | Tauri 2 desktop app, frontend in plain HTML/CSS/JS |
-| `docs/` | | Concept and architecture decision records (`docs/adr/`) |
+| `crates/api-server` | `vitrine-api-server` | Backend of api.vitrinestudio.app (template gallery, GitHub login) |
+| `integrations/` | | CI integration drafts (GitHub Action, GitLab CI, fastlane plugin; MIT) |
+| `website/` | | www.vitrinestudio.app (Hugo) with the user guide |
+| `docs/` | | Concept, plans, architecture decision records (`docs/adr/`) |
 
 ## License
 
@@ -292,6 +242,8 @@ PARTICULAR PURPOSE.
   ([`CLA.md`](CLA.md)): you keep your copyright and grant the project owner
   a licence that also allows distributing the code under other licences.
   See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- **CI integrations** in [`integrations/`](integrations/) are MIT-licensed
+  (a `LICENSE` in each folder): they only run the `vitrine` program.
 - **Name and logo** (`assets/brand/`, the app icons in `crates/gui/icons/`,
   `crates/gui/ui/img/logo.svg`) are not covered by the GPL: © Looking4Cache
   UG (haftungsbeschränkt), all rights reserved. Unmodified copies of Vitrine
@@ -299,14 +251,17 @@ PARTICULAR PURPOSE.
   ([`assets/brand/README.md`](assets/brand/README.md)).
 - **Bundled third-party data** keeps its own licence: the bundled fonts
   (Inter, Montserrat, Playfair Display, Lora, Nunito, Oswald, Bebas Neue,
-  Caveat, Dancing Script, JetBrains Mono) under the SIL Open Font License
-  1.1 (one `OFL.txt` per family in [`assets/fonts/`](assets/fonts/), sources
-  and checksums in [`assets/fonts/SOURCES.md`](assets/fonts/SOURCES.md)),
-  the hyphenation patterns under MIT/BSD/permissive notices
+  Caveat, Dancing Script, JetBrains Mono, and Noto script fallbacks) under
+  the SIL Open Font License 1.1 (one `OFL.txt` per family in
+  [`assets/fonts/`](assets/fonts/), sources and checksums in
+  [`assets/fonts/SOURCES.md`](assets/fonts/SOURCES.md)), the hyphenation
+  patterns under MIT/BSD/permissive notices
   ([`assets/hyphenation/LICENSES.md`](assets/hyphenation/LICENSES.md)).
   Rust dependencies are under permissive licences (MIT, Apache-2.0, BSD,
   ISC, Zlib, MPL-2.0, Unicode-3.0, …), all compatible with the GPL v3.
   Decision record: [ADR 0022](docs/adr/0022-licence-gpl-and-cla.md).
+- **Gallery templates** are published under CC0 by their uploaders
+  ([terms of use](https://www.vitrinestudio.app/terms/)).
 
 ## Open questions
 
