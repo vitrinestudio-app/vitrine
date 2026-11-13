@@ -48,14 +48,19 @@ ignored by Git.
 - Header: one "Home" / "Start" link instead of in-page links (they were
   mistaken for the way back to the top). The home page has a **section
   index** at the right edge (`_partials/section-index.html`, labels
-  `sec*` in `i18n/`, styles at the end of `home.css`): ticks on a rail that
-  fills with the reading progress, the current section (IntersectionObserver,
-  `aria-current="location"`) gets a coral tick and, from 1420 px, its label;
-  hover or keyboard focus shows all labels on a card. It appears once the
-  hero has left, only from 1100 px (the margin is too narrow below), and
-  stays `hidden` without JS. A new home section needs an `id` and an entry
-  there. The old anchors (`#features`, `#ai`, `#automation`, `#fastlane`)
-  stay; the footer uses them.
+  `sec*` in `i18n/`, styles at the end of `home.css`, script in its own
+  scope in `site.js`): ticks on a rail filled up to the current section.
+  The current section is the last one whose content top (section top +
+  padding) is above a line 30 % down the viewport below the header; at
+  the bottom of the page the last visible section wins. Its label is
+  prominent, the others recede with distance (`data-d` 0–3: paler,
+  smaller, slightly blurred). From 1420 px the labels sit in the margin
+  all the time (after the hero); below, the index shows while scrolling
+  over a frosted strip and fades out 1.4 s after scrolling stops. Hover
+  or keyboard focus shows all labels on a card, on touch the first tap
+  opens the card. Hidden without JS. A new home section needs an `id` and
+  an entry there. The old anchors (`#features`, `#ai`, `#automation`,
+  `#fastlane`) stay; the footer uses them.
 - Privacy: no third-party requests at all (fonts and images are local), no
   analytics, no cookies.
 

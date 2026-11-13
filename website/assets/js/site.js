@@ -81,51 +81,98 @@
   }
 
   // ---------- Section index (home page, right edge) ----------
-  // Shown once the hero is out of view; the section crossing a line at
-  // ~40 % of the viewport is the current one (aria-current="location");
-  // the rail fills with the reading progress.
-  var secnav = document.querySelector('[data-secnav]');
-  if (secnav && 'IntersectionObserver' in window) {
+  // The current section is the last one whose content (the top of the
+  // section plus its padding, where the heading starts) has reached the
+  // upper part of the viewport below the sticky header; at the very bottom
+  // the last section that is on screen wins. The rail fills up to the
+  // current tick and on towards the next as the reader moves between them.
+  // Shown all the time on wide screens once the hero has left, everywhere
+  // while scrolling (fades out shortly after scrolling stops).
+  // Own scope: the hero tilt below has its own `update`.
+  (function (secnav) {
+    if (!secnav) return;
     var links = Array.prototype.slice.call(secnav.querySelectorAll('a[href^="#"]'));
     var targets = links.map(function (a) { return document.getElementById(a.hash.slice(1)); });
+    var siteHeader = document.querySelector('[data-header]');
+    var wideMQ = window.matchMedia('(min-width: 1100px)');
+    var hero = targets[0];
+    var current = -1, scrolling = false, open = false, scrollTimer = 0, heroGone = false;
+    var lastPointer = 'mouse';
     secnav.hidden = false;
+
+    var contentTop = function (el) {
+      if (!el) return Infinity;
+      return el.getBoundingClientRect().top + (parseFloat(getComputedStyle(el).paddingTop) || 0);
+    };
     var setCurrent = function (index) {
+      if (index === current) return;
+      current = index;
       links.forEach(function (a, i) {
         if (i === index) a.setAttribute('aria-current', 'location');
         else a.removeAttribute('aria-current');
         a.classList.toggle('is-past', i < index);
+        a.dataset.d = String(Math.min(Math.abs(i - index), 3));
       });
     };
-    var sectionIO = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) setCurrent(targets.indexOf(entry.target));
-      });
-    }, { rootMargin: '-40% 0px -59% 0px' });
-    targets.forEach(function (t) { if (t) sectionIO.observe(t); });
-    setCurrent(0);
-
-    var hero = targets[0];
-    var progressTicking = false;
-    var updateProgress = function () {
-      progressTicking = false;
+    var setShown = function () {
+      secnav.classList.toggle('is-shown', open || scrolling || (wideMQ.matches && heroGone));
+      secnav.classList.toggle('is-scrolling', scrolling && !open);
+      secnav.classList.toggle('is-open', open);
+    };
+    // Called directly from the scroll event (browsers fire it once per frame);
+    // a few rects per call, no layout writes before the reads.
+    var update = function () {
+      var headerH = siteHeader ? siteHeader.getBoundingClientRect().height : 0;
+      var line = headerH + (window.innerHeight - headerH) * 0.3;
+      var tops = targets.map(contentTop);
+      heroGone = !hero || hero.getBoundingClientRect().bottom < window.innerHeight * 0.5;
+      var idx = 0;
+      tops.forEach(function (t, i) { if (t <= line) idx = i; });
+      var frac = idx < tops.length - 1 ? (line - tops[idx]) / (tops[idx + 1] - tops[idx]) : 0;
+      frac = Math.min(Math.max(frac, 0), 1);
       var max = document.documentElement.scrollHeight - window.innerHeight;
-      var p = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
-      secnav.style.setProperty('--progress', p.toFixed(4));
-      // Shown once the hero's lower half has left the viewport.
-      if (hero) secnav.classList.toggle('is-shown', hero.getBoundingClientRect().bottom < window.innerHeight * 0.5);
+      if (window.scrollY >= max - 2) {
+        // Bottom of the page: the last headings may never reach the line.
+        tops.forEach(function (t, i) { if (t < window.innerHeight - 40 && i > idx) { idx = i; frac = 0; } });
+      }
+      setCurrent(idx);
+      secnav.style.setProperty('--progress', ((idx + frac) / Math.max(tops.length - 1, 1)).toFixed(4));
+      setShown();
     };
     window.addEventListener('scroll', function () {
-      if (!progressTicking) { progressTicking = true; requestAnimationFrame(updateProgress); }
+      scrolling = true;
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(function () { scrolling = false; setShown(); }, 1400);
+      update();
     }, { passive: true });
-    window.addEventListener('resize', updateProgress, { passive: true });
-    updateProgress();
+    window.addEventListener('resize', update, { passive: true });
+    // Images, fonts and the gallery cards move the sections without a scroll.
+    window.addEventListener('load', update);
+    if ('ResizeObserver' in window) new ResizeObserver(function () { update(); }).observe(document.body);
+    update();
 
-    // After a click, leave the card: drop the focus once the pointer is used.
+    // Touch: the first tap on the rail opens the card with all labels, a tap
+    // on a label then jumps; a tap elsewhere or Escape closes it.
+    var setOpen = function (value) { open = value; setShown(); };
+    secnav.addEventListener('pointerdown', function (e) { lastPointer = e.pointerType; });
     secnav.addEventListener('click', function (e) {
       var a = e.target.closest('a');
-      if (a && e.detail > 0) a.blur();
+      if (!a) return;
+      if (e.detail > 0 && lastPointer !== 'mouse' && !open) {
+        e.preventDefault();
+        setOpen(true);
+        return;
+      }
+      if (open) setOpen(false);
+      if (e.detail > 0) a.blur();
     });
-  }
+    document.addEventListener('click', function (e) {
+      if (open && !secnav.contains(e.target)) setOpen(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && open) setOpen(false);
+    });
+  })(document.querySelector('[data-secnav]'));
 
   // ---------- Tabs (showcase) ----------
   document.querySelectorAll('[data-tabs]').forEach(function (box) {
