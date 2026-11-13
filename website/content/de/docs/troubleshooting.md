@@ -39,6 +39,7 @@ häufigsten:
 | `missing_glyphs` | Warnung | Zeichen, die keine Schrift darstellen kann – füge eine [Fallback-Schrift](../styles-fonts/#other-scripts-fallback-fonts) hinzu. |
 | `variant_suggested` | Hinweis | das Seitenverhältnis des Ziels weicht stark von der Leinwand ab – überleg dir eine Variante. |
 | `store_size`, `store_count`, `store_format` | Fehler | Größe, Bildanzahl oder Format passt nicht zum Store-Slot (zu wenige Bilder sind eine Warnung). |
+| `required_store_set_missing` | Warnung | das Projekt geht in den App Store, aber ein Satz, den App Store Connect verlangt, fehlt: iPhone 6.3″ (`ios-iphone-63`), iPad 13″ (`ios-ipad-13`, erst wenn das Projekt iPad-Ziele hat) oder Mac. Füge das Ziel aus diesem [Preset](../targets/#presets) hinzu. Export und Upload funktionieren trotzdem; ohne den Satz reicht App Store Connect die Version nicht ein. |
 | `imported_frame_missing` | Hinweis | Apple-Bezels oder ein Frame-Paket sind hier nicht installiert – der eingebaute Rahmen wird gezeichnet. |
 | `imported_frame_not_stored` | Hinweis | ein Ziel zeichnet Apple-Bezels, die nur dieser Rechner hat – CI würde den eingebauten Rahmen zeichnen; [im Projekt speichern](../devices-frames/#apple-bezels-in-ci). |
 | `stored_frames_stale` | Hinweis | im Projekt gespeicherte Bezels werden nicht mehr verwendet, oder dieser Rechner hat einen neueren Import – gespeicherte Frames aktualisieren. |
@@ -64,9 +65,10 @@ checks:
   off: [page_blends_with_store]
 ```
 
-`page_blends_with_store` und `variant_suggested` gehören zu keinem Element,
-deshalb kann `allow` sie nicht stummschalten; schalte sie für das ganze
-Projekt mit `checks.off` ab.
+`page_blends_with_store`, `variant_suggested` und `required_store_set_missing`
+gehören zu keinem Element, deshalb kann `allow` sie nicht stummschalten;
+schalte sie für das ganze Projekt mit `checks.off` ab (z. B. wenn der
+verlangte Satz aus einem anderen Projekt kommt).
 
 **Welche Sprache geprüft wird.** Alles zu Texten (`low_contrast`,
 `text_near_device`, die Befunde des Textlayouts) und Überlappungen über

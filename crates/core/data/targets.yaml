@@ -42,7 +42,10 @@
 #     gallery      default gallery profile (galleries.yaml)
 #     device       default device model (devices.yaml); screenshots = default
 #                  screenshot variant key
-#     requirement  required | conditional | optional (for publishing)
+#     requirement  required | conditional | optional (for publishing). required =
+#                  needed for every app on the preset's platform; validation
+#                  (`required_store_set_missing`, Apple only) asks for it once
+#                  the project targets that platform (iPad/Mac: has such a target)
 #     status       verified (primary source) | secondary (only third-party
 #                  sources for part of the entry, see note) | unverified |
 #                  convention (no store rule, common practice)

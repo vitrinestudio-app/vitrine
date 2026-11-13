@@ -774,7 +774,7 @@ One report with stable codes for CLI, GUI, MCP and the upload plan; front
 ends only format it.
 
 - `Finding {level, code, target, lang?, page?, element?, message}`; levels
-  `error` (blocks export with exit 1 and uploads), `warn`, `info`. 81 codes
+  `error` (blocks export with exit 1 and uploads), `warn`, `info`. 82 codes
   in `FindingCode` (snake case, never renamed). The full table with
   thresholds and fixes is `crates/mcp/src/docs/checks.md` (a test requires
   every code there); this section gives the rules.
@@ -798,8 +798,19 @@ Store rules (`targets.yaml` `rules`, found via presets with the target's
 slot): accepted formats, exact sizes or ranges with aspect limits, counts.
 Exports are always opaque, so "no alpha" holds by construction. Store
 mapping (§10) adds `store_locale_*`, `store_no_slot`,
-`store_slot_duplicate`. A check that an App Store project contains the
-*required* sets (iPhone 6.3″, iPad 13″) does not exist yet.
+`store_slot_duplicate`.
+
+Required sets (`required_store_set_missing`, warn, decision 0034): Apple
+presets with `requirement: required` (iPhone 6.3″, iPad 13″, Mac) are
+needed for their `platform` once the project targets it – the platforms of
+the presets matching its Apple targets' slots; mapped to the App Store
+without iPhone/iPad targets, `store.apple.platform` decides. iPad and Mac
+count only when the project already has such a target (whether the app
+runs on iPad is not known otherwise). Any target with the preset's slot
+fills it. Warn, not error: export and the other sets' upload still work,
+App Store Connect only refuses the submission; project-level, so only
+`checks.off` silences it. Upload readiness repeats it as a non-blocking
+step (§10). Google's required presets are not checked yet.
 
 ### Design checks
 
@@ -835,7 +846,8 @@ Two kinds of measurement:
   covers the children) silences findings that name that element. Only codes
   in `validate::ALLOWABLE` (design findings plus `text_clipped`,
   `text_in_gap`, `text_outside_safe_area`, `element_outside`, `hyphenated`,
-  `variant_suggested`, `screenshot_upscale`, `clip_to_other_page`); errors
+  `variant_suggested`, `screenshot_upscale`, `clip_to_other_page`;
+  project-level `required_store_set_missing` only via `checks.off`); errors
   and missing content never. Bad entries → `unknown_allow`.
 - Project `checks:` (op `set_checks`): `device_distance`, `min_contrast`,
   `min_contrast_large`, `screen_cover`, `off: [codes]`. Other thresholds are
@@ -981,7 +993,8 @@ readiness → plan (dry run + confirm token) → confirm → execute → log
 - `upload_readiness` (no rendering, keychain or network): ordered steps
   with a `fix` place – app settings (`no_account`,
   `account_missing_for_project`), project settings (`project_not_mapped`,
-  locale problems), targets (`no_store_slots`, `store_slot_conflict`).
+  locale problems), targets (`no_store_slots`, `store_slot_conflict`,
+  `required_store_set_missing` – Apple, not blocking).
 - `upload_plan {store?, targets?, langs?, remote?, force?}`: every slotted
   target × language; the incremental export renders into
   `<project>/.cache/upload/images`; SHA-256 (+ MD5 for Apple) per image;
@@ -1413,7 +1426,7 @@ noted), **superseded** (replaced; see the later row).
 | 0002 | Project file format | serde-saphyr, YAML 1.2 core schema, canonical form, flat `element_fields!`, ids, lenient references, revision + atomic save | current | 3 |
 | 0003 | Text markup and layout | markup grammar, soft hyphens, emergency break last, auto-fit binary search (0.25 lu), core alignment, text effects cascade and draw order, layout report. Changed: "system fonts never loaded" (0028), italics now partly real (bundled families) | partly | 6 |
 | 0004 | Resolve and canvas geometry | `core::geometry` + `core::resolve` → `ResolvedScene`; anchors, boxes, auto-height pivots, `content_scale` devices-only around `at`, device swap and free-aspect devices, language chain, screenshot lookup, group offsets/pivots, z order. Open question "per-language overrides" solved by 0009 | current | 5 |
-| 0005 | Validation | one report, stable codes, levels, store rules from data, aspect 2 %, upscale 1.15, variant suggestion 15 %. Extended by 0016, 0029, 0031 | current | 8 |
+| 0005 | Validation | one report, stable codes, levels, store rules from data, aspect 2 %, upscale 1.15, variant suggestion 15 %. Extended by 0016, 0029, 0031, 0034 (required App Store sets) | current | 8 |
 | 0006 | Rasterizing resolved scenes and export | `RenderContext`/`prepare`/`rasterize`, layers and masks, alpha shadows, resample once, export names, PNG Balanced, gallery preview, incremental manifest. Changed: decoded cache LRU 1.5 GiB (scaled cache still 768 MB), manifest also lists target/lang/kind for stale cleanup, fastlane layout | partly | 7, 9 |
 | 0007 | Edit intents in core | `core::edit`: gestures → ops solved against resolve (Newton), override vs structural rules, new rename/move/language ops, overlay, default-language impact. Since then: `lang` scope (0009), `locked` field exists, clipboard intents | current | 4 |
 | 0008 | GUI session, commands, preview transport | command functions + dispatch, session with atomic saves and conflict reload, watcher, preview cache, binary transport (`ARPX` header, PNG Fast), dev bridge, settings + `app.sqlite`. Moved to `vitrine-app` (0013); built-ins now `core::template::builtin` (0023) | partly | 12 |
@@ -1509,3 +1522,4 @@ Code comments also cite `KONZEPT §n`. The German concept is archived at
 | No. | Date | Decision | § |
 |---|---|---|---|
 | 0033 | 2026-11-13 | ARCHITECTURE.md replaces `docs/KONZEPT.md` and the ADR files as the binding description; both archived under `docs/archive/`; future decisions are recorded here | 14, 15 |
+| 0034 | 2026-11-13 | Required App Store sets are checked from `targets.yaml` (`requirement: required` per preset platform; iPad/Mac only once the project has such targets): warn `required_store_set_missing` (allowable via `checks.off` only) + non-blocking upload readiness step | 8, 10 |
