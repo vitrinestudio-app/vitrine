@@ -9,6 +9,14 @@ tools (element_update, strings_set …); use ops for multi-part changes that
 must be one step. A failing op names its index: `op 2 of the transaction
 failed: …`.
 
+Big batches (a whole canvas, 10–50 KB of JSON): write them to a file inside
+the project folder and call `apply_ops {file: ".cache/ops/phone.json",
+label?}` instead of passing `ops` (exactly one of the two). The path is
+relative to the project folder (absolute paths, `..` and symlinks leading out
+are refused); `.json` or `.yaml`/`.yml`; the content is the ops array or
+`{"ops": [...], "label": "..."}` (a `label` argument wins). The file is not
+deleted – keep it (e.g. under `.cache/`) to diff the next version.
+
 ## Value shapes
 - Ids: letters, digits, `-`, `_`, `.`; element ids are unique in the project.
 - Point `{x, y}` in lu. Aspect `"w:h"`. Pixel size `[w, h]`.
@@ -21,7 +29,11 @@ failed: …`.
   In `update_element` a `null` resets the base field to its default. In
   override patches (`set_variant_override`, `set_lang_override`) a `null`
   field is ignored: an override only sets values, and the patch REPLACES
-  the whole override (fields left out are no longer overridden).
+  the whole override (fields left out are no longer overridden). The
+  result lists such lost fields in `dropped_override_fields` (`[{canvas,
+  variant, element, fields}]`) with a warning line. To change single fields
+  of an override use element_update {id, scope: "variant", variant?,
+  patch}, which merges.
 
 ## Elements
 - `{"op": "add_element", "canvas": "phone", "element": {"id": "badge", "kind": "shape", "page": 0, "at": {"x": 820, "y": 300}, "width": 200, "height": 80, "shape": "rect", "radius": 40, "fill": "@accent"}, "parent"?: "group-id", "index"?: 0}`
@@ -57,6 +69,7 @@ languages). Per format or language use these ops (or element_update with
 - `{"op": "rename_variant", "canvas": "phone", "from": "a", "to": "b"}`
 - `{"op": "set_variant_content_scale", "canvas": "phone", "variant": "tablet-landscape", "content_scale": 0.8 | null}`
 - `{"op": "set_variant_override", "canvas": "phone", "variant": "tablet-landscape", "element": "phone-plan", "patch": {"width": 520} | null}`
+  (replaces the element's whole override; prefer element_update {scope: "variant"} to change single fields)
 - `{"op": "reset_override_field", "canvas": "phone", "variant": "tablet-landscape", "element": "phone-plan", "field": "width"}`
 - `{"op": "set_lang_override", "element": "title", "lang": "de", "patch": {"box": {"top": 170, "left": 40, "right": 40}} | null}`
   (only at, width, height, anchor_y, style, box, align, valign, fit, color, font_size, stroke, glow, shadow, hyphenate)

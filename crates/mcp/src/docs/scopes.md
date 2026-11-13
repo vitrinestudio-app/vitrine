@@ -41,7 +41,9 @@ lang?, variant?, patch}, …]}`; ids may come from several canvases.
 ## With apply_ops
 `update_element` always writes the base element. Overrides:
 `set_variant_override {canvas, variant, element, patch | null}` (replaces the
-whole override), `reset_override_field {canvas, variant, element, field}`,
+whole override: fields left out are lost, listed in the result as
+`dropped_override_fields`; to change single fields use element_update
+{scope: "variant"}, which merges), `reset_override_field {canvas, variant, element, field}`,
 `set_lang_override {element, lang, patch | null}` (replaces the whole
 override), `reset_lang_override_field {element, lang, field}`.
 
