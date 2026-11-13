@@ -2,7 +2,7 @@
 //! folder and – only where the caller asks for it – installed system
 //! fonts (ADR 0028). Layout and rendering only see the library, so tests
 //! and golden images (bundled fonts only) are identical on every machine
-//! (`docs/adr/0003-text-markup-and-layout.md`).
+//! (`ARCHITECTURE.md` §6).
 //!
 //! Bundled faces come from an embedded manifest ([`super::bundled`]) and
 //! are loaded lazily: the library knows their family, weights and style

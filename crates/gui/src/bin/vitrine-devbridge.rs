@@ -1,6 +1,6 @@
 //! `vitrine-devbridge`: serves `crates/gui/ui/` and the GUI commands over
 //! HTTP on 127.0.0.1 so the UI runs in a normal browser (dev only, never
-//! bundled; docs/adr/0008).
+//! bundled; ARCHITECTURE.md §12.2).
 //!
 //! ```sh
 //! cargo run -p vitrine-gui --features devbridge --bin vitrine-devbridge -- \

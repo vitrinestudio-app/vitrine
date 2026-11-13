@@ -1,4 +1,4 @@
-//! Text layout (`docs/KONZEPT.md` §6.1, `docs/adr/0003-text-markup-and-layout.md`):
+//! Text layout (`ARCHITECTURE.md` §6):
 //! inline markup → shaping, line breaking, soft hyphens, auto-fit →
 //! positioned glyph runs in **lu**.
 //!

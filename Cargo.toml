@@ -22,7 +22,7 @@ vitrine-mcp = { path = "crates/mcp" }
 vitrine-app = { path = "crates/app" }
 vitrine-api-server = { path = "crates/api-server" }
 
-# Serialization (project files are YAML, see docs/KONZEPT.md 3.1)
+# Serialization (project files are YAML, see ARCHITECTURE.md §3)
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 # serde_yaml is deprecated and serde_yml is unmaintained; serde-saphyr is actively
@@ -74,7 +74,7 @@ imagesize = "0.14.0"
 zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2"] }
 flate2 = { version = "1.1.11", default-features = false, features = ["rust_backend"] }
 skrifa = "0.44.0"
-# Text layout (docs/adr/0001-render-pipeline.md, 0003-text-markup-and-layout.md).
+# Text layout (ARCHITECTURE.md §6; former ADRs 0001, 0003).
 # No system font discovery: only bundled/project fonts are used.
 parley = { version = "0.12.0", default-features = false, features = ["std", "complex-scripts"] }
 rayon = "1.12.0"

@@ -1495,9 +1495,10 @@ Code comments also cite `KONZEPT §n`. The German concept is archived at
 - A new or changed decision **updates the relevant section** of this
   document in the same commit as the code, and adds a dated row to the
   decision log below. No new ADR files.
-- Numbering continues from the old ADRs so references stay unique: the next
-  decision is **0033**. Code comments may cite "decision 0033" like the old
-  "ADR 0029".
+- Numbering continues from the old ADRs so references stay unique: 0033 is
+  the first row of the log (this document itself), the next decision takes
+  the number after the last row. Code comments may cite "decision 0034"
+  like the old "ADR 0029".
 - A superseded decision keeps its row; the newer row says what it replaces,
   and the §14 status column is updated if an old ADR is affected.
 - Decisions taken with the owner and still to confirm are tracked in

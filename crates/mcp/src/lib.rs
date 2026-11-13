@@ -1,6 +1,6 @@
 //! # vitrine-mcp
 //!
-//! The MCP server of Vitrine Studio (`docs/KONZEPT.md` §8, ADR 0014), built on
+//! The MCP server of Vitrine Studio (`ARCHITECTURE.md` §12.4), built on
 //! the official Rust SDK `rmcp`.
 //!
 //! [`VitrineMcp`] is a thin adapter over the shared application layer

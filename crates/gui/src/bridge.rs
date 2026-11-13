@@ -1,6 +1,6 @@
 //! Dev HTTP bridge (feature `devbridge`, binary `vitrine-devbridge`): the
 //! unchanged UI in a normal browser, for automated and visual checks
-//! (docs/adr/0008). Never part of the release bundle.
+//! (ARCHITECTURE.md §12.2). Never part of the release bundle.
 //!
 //! | route | |
 //! |---|---|
