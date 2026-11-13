@@ -41,6 +41,20 @@ set colour, weight, italic, font, highlight and effects. `**bold**` and
 `_italic_` work without a span style. See the
 [markup reference](../languages/#text-markup).
 
+A highlight can become a pill or a marker: **padding** (one value or
+`{x, y}`, in lu) grows the box around the words, **radius** rounds its
+corners – a radius of at least half the box height gives a pill. The padding
+never moves the text or changes line breaks, so leave a space next to the
+pill. Words that wrap get one box per line. In the app: Project settings →
+Styles → span style → *Highlight box*.
+
+```yaml
+styles:
+  spans:
+    tag: {color: "#FFFFFF", weight: 800, background: "@accent",
+          padding: {x: 14, y: 2}, radius: 40}
+```
+
 ## Shadows
 
 **Shadow presets** are built in (`soft`, `hard`, `none`) or your own: one or

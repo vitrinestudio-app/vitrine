@@ -34,6 +34,8 @@ impl From<&resolve::ResolvedSpanStyle> for ResolvedSpanStyle {
             italic: s.italic,
             color: s.color,
             background: s.background,
+            padding: (s.padding.x as f32, s.padding.y as f32),
+            radius: s.radius as f32,
             stroke: s.stroke,
             glow: s.glow,
             shadow: s.shadow.clone(),

@@ -143,6 +143,12 @@ finding_codes! {
     UnknownStoreSlot = "unknown_store_slot",
     /// The store slot is known only from unconfirmed sources.
     UnverifiedStoreSlot = "unverified_store_slot",
+    /// An image's `clip_to` does not name a `rect`/`ellipse` shape of its
+    /// canvas; the image is drawn unclipped (ADR 0031).
+    InvalidClipTo = "invalid_clip_to",
+    /// An image's `clip_to` shape is homed on another page than the image
+    /// (works; moving pages apart separates them; info, ADR 0031).
+    ClipToOtherPage = "clip_to_other_page",
     // ---- texts
     /// The text key exists in no language of the chain (nothing rendered).
     TextMissing = "text_missing",
@@ -283,6 +289,7 @@ pub const ALLOWABLE: &[FindingCode] = &[
     FindingCode::DeviceSmall,
     FindingCode::PageNotCovered,
     FindingCode::PageBlendsWithStore,
+    FindingCode::ClipToOtherPage,
 ];
 
 impl FindingCode {

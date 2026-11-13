@@ -459,6 +459,57 @@ fn spans_bold_italic_and_highlight() {
     assert!(out.runs.iter().all(|r| !r.embolden));
 }
 
+/// A padded span that wraps gets one box per line fragment; runs inside a
+/// fragment still merge, and the line layout does not change.
+#[test]
+fn padded_highlight_per_line_fragment() {
+    let mut l = layouter();
+    let style = headline(60.0);
+    let with = |padding: (f32, f32)| {
+        let mut spans = BTreeMap::new();
+        spans.insert(
+            "tag".to_owned(),
+            ResolvedSpanStyle {
+                background: Some(Rgba::rgb(20, 20, 20)),
+                padding,
+                radius: 12.0,
+                ..ResolvedSpanStyle::default()
+            },
+        );
+        spans
+    };
+    let text = "Plan [tag]your **whole** garden in minutes[/] now";
+    let plain = with((0.0, 0.0));
+    let padded = with((16.0, 6.0));
+    let a = l.layout(&TextInput {
+        spans: Some(&plain),
+        ..TextInput::new(text, &style, 420.0)
+    });
+    let b = l.layout(&TextInput {
+        spans: Some(&padded),
+        ..TextInput::new(text, &style, 420.0)
+    });
+    assert!(a.lines.len() >= 2);
+    assert_eq!(a.lines, b.lines, "padding keeps the line breaks");
+    assert_eq!(a.highlights.len(), b.highlights.len());
+    let lines_with_span = b
+        .lines
+        .iter()
+        .filter(|ln| {
+            b.highlights
+                .iter()
+                .any(|h| h.rect.y < ln.top + ln.height && h.rect.bottom() > ln.top)
+        })
+        .count();
+    assert_eq!(b.highlights.len(), lines_with_span, "one box per fragment");
+    for (ha, hb) in a.highlights.iter().zip(&b.highlights) {
+        assert!((hb.rect.x - (ha.rect.x - 16.0)).abs() < 0.01);
+        assert!((hb.rect.w - (ha.rect.w + 32.0)).abs() < 0.01);
+        assert!((hb.rect.h - (ha.rect.h + 12.0)).abs() < 0.01);
+        assert!((hb.radius - 12.0).abs() < f32::EPSILON);
+    }
+}
+
 #[test]
 fn markup_and_font_problems_are_diagnosed() {
     let mut l = layouter();

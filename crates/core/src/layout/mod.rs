@@ -134,6 +134,11 @@ pub struct ResolvedSpanStyle {
     pub color: Option<Rgba>,
     /// Highlight colour drawn behind the span.
     pub background: Option<Rgba>,
+    /// Padding of the highlight box `(x, y)`, lu; it grows the box
+    /// without moving the text (ADR 0031).
+    pub padding: (f32, f32),
+    /// Corner radius of the highlight box, lu.
+    pub radius: f32,
     /// Replace the text's outline / glow / shadow within the span.
     pub stroke: Option<ResolvedTextStroke>,
     pub glow: Option<ResolvedGlow>,
@@ -158,6 +163,11 @@ impl ResolvedSpanStyle {
             italic: style.italic,
             color: resolve_color(style.color.as_ref(), colors),
             background: resolve_color(style.background.as_ref(), colors),
+            padding: style.padding.map_or((0.0, 0.0), |p| {
+                let (x, y) = p.xy();
+                (x.max(0.0) as f32, y.max(0.0) as f32)
+            }),
+            radius: style.radius.unwrap_or(0.0).max(0.0) as f32,
             stroke: base.effects.stroke,
             glow: base.effects.glow,
             shadow: None,
@@ -169,11 +179,15 @@ impl ResolvedSpanStyle {
         self.stroke.is_some() || self.glow.is_some() || self.shadow.is_some()
     }
 
-    /// The span with its lengths (outline, glow, shadow) multiplied by `k`:
-    /// spans inside a scaled group (ADR 0030).
+    /// The span with its lengths (outline, glow, shadow, highlight padding
+    /// and radius) multiplied by `k`: spans inside a scaled group (ADR 0030,
+    /// 0031).
     #[must_use]
     pub fn scaled(&self, k: f64) -> Self {
+        let kf = k as f32;
         Self {
+            padding: (self.padding.0 * kf, self.padding.1 * kf),
+            radius: self.radius * kf,
             stroke: self.stroke.map(|s| s.scaled(k)),
             glow: self.glow.map(|g| g.scaled(k)),
             shadow: self
@@ -298,7 +312,12 @@ pub struct GlyphRun {
 /// Background highlight of a span style, drawn behind the glyphs.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Highlight {
+    /// The box (padding included), relative to the layout box.
     pub rect: Rect,
+    /// Corner radius, lu (clamp to half the smaller side when drawing).
+    pub radius: f32,
+    /// The padding `(x, y)` included in `rect`, lu.
+    pub padding: (f32, f32),
     pub color: Rgba,
     /// Index into [`TextLayout::effects`] (only its shadow applies).
     pub effects: u16,

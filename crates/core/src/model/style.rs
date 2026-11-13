@@ -162,6 +162,18 @@ impl Styles {
                 g.check().map_err(|e| format!("style `{name}`: {e}"))?;
             }
         }
+        let nonneg = |v: f64| v >= 0.0 && v.is_finite();
+        for (name, s) in &self.spans {
+            if let Some(p) = s.padding {
+                let (x, y) = p.xy();
+                if !nonneg(x) || !nonneg(y) {
+                    return Err(format!("span style `{name}`: padding must be ≥ 0"));
+                }
+            }
+            if s.radius.is_some_and(|r| !nonneg(r)) {
+                return Err(format!("span style `{name}`: radius must be ≥ 0"));
+            }
+        }
         Ok(())
     }
 }
@@ -253,6 +265,19 @@ pub struct SpanStyle {
     /// Highlight colour behind the span.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background: Option<ColorRef>,
+    /// Space between the text and the edge of the `background` box, lu:
+    /// one value or `{ x, y }`. The box grows; the text does not move
+    /// (ADR 0031).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub padding: Option<SpanPadding>,
+    /// Corner radius of the `background` box, lu (clamped to half its
+    /// height: a large value gives a pill).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "num"
+    )]
+    pub radius: Option<f64>,
     /// Glyph outline of the span (replaces the text's outline).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stroke: Option<Stroke>,
@@ -264,6 +289,65 @@ pub struct SpanStyle {
     pub shadow: Option<String>,
 }
 flow_style!(SpanStyle);
+
+/// Padding of a span background (`padding: 8` or `padding: { x: 16, y: 4 }`), lu.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SpanPadding {
+    /// The same on all sides.
+    All(f64),
+    /// Left/right `x`, top/bottom `y`.
+    Xy(super::common::Point),
+}
+
+impl SpanPadding {
+    /// Horizontal and vertical padding.
+    pub fn xy(self) -> (f64, f64) {
+        match self {
+            Self::All(v) => (v, v),
+            Self::Xy(p) => (p.x, p.y),
+        }
+    }
+}
+
+impl Serialize for SpanPadding {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::All(v) => num(v, s),
+            Self::Xy(p) => p.serialize(s),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SpanPadding {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        struct V;
+        impl<'de> serde::de::Visitor<'de> for V {
+            type Value = SpanPadding;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a number (lu) or `{ x, y }`")
+            }
+            fn visit_f64<E: serde::de::Error>(self, v: f64) -> Result<SpanPadding, E> {
+                Ok(SpanPadding::All(v))
+            }
+            #[allow(clippy::cast_precision_loss)]
+            fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<SpanPadding, E> {
+                Ok(SpanPadding::All(v as f64))
+            }
+            #[allow(clippy::cast_precision_loss)]
+            fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<SpanPadding, E> {
+                Ok(SpanPadding::All(v as f64))
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                map: A,
+            ) -> Result<SpanPadding, A::Error> {
+                super::common::Point::deserialize(serde::de::value::MapAccessDeserializer::new(map))
+                    .map(SpanPadding::Xy)
+            }
+        }
+        d.deserialize_any(V)
+    }
+}
 
 /// Soft glow around text glyphs: the glyph shapes, dilated by `spread`,
 /// blurred with `radius` (Gaussian sigma) and tinted with `color` ×
