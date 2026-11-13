@@ -110,3 +110,10 @@ and `keys` apply to every format.
   sizes fall back to the aspect and then to the user's mapping.
 - The GUI's single-file import and drag & drop (Phase 2) still use the
   older per-file dialog; `plan_files` is ready to replace it.
+
+## Amendment 2026-11-13: own exports are never imported
+
+Files an export manifest `.vitrine-export.json` lists (in the source or up
+to three folders above it) and, in fastlane folders, files named like the
+fastlane export layout are skipped with a reason. Recommended fastlane
+layout with captures in `fastlane/captures/`: ADR 0030.
