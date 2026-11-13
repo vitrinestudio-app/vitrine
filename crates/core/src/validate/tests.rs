@@ -1260,10 +1260,10 @@ fn add_apple_target(p: &mut Project, id: &str, display_type: &str) {
 fn required_store_sets() {
     // No Apple target, not mapped: nothing to require.
     let p = project("[]", "");
-    assert!(missing_sets(&p).is_empty());
+    assert_eq!(missing_sets(&p), Vec::<String>::new());
     // Google only: the check is App Store only.
     let p = project("[]", "  store: {google: {image_type: phoneScreenshots}}\n");
-    assert!(missing_sets(&p).is_empty());
+    assert_eq!(missing_sets(&p), Vec::<String>::new());
 
     // iPhone 6.9″ only → the required 6.3″ set (APP_IPHONE_61) is missing.
     let mut p = project("[]", "  store: {apple: {display_type: APP_IPHONE_67}}\n");
@@ -1274,7 +1274,7 @@ fn required_store_sets() {
     assert!(m[0].contains("iPhone apps"), "{}", m[0]);
     // Filled by any target with that slot.
     add_apple_target(&mut p, "six-three", "APP_IPHONE_61");
-    assert!(missing_sets(&p).is_empty());
+    assert_eq!(missing_sets(&p), Vec::<String>::new());
 
     // An iPad target makes the app an iPad app: 13″ is then required.
     add_apple_target(&mut p, "ipad-11", "APP_IPAD_PRO_3GEN_11");
@@ -1283,7 +1283,7 @@ fn required_store_sets() {
     assert!(m[0].contains("`APP_IPAD_PRO_3GEN_129`"), "{}", m[0]);
     assert!(m[0].contains("the project has iPad targets"), "{}", m[0]);
     add_apple_target(&mut p, "ipad-13", "APP_IPAD_PRO_3GEN_129");
-    assert!(missing_sets(&p).is_empty());
+    assert_eq!(missing_sets(&p), Vec::<String>::new());
 
     // iPad-only project: no iPhone set asked for, even when mapped (iOS).
     let mut p = project(
@@ -1291,7 +1291,7 @@ fn required_store_sets() {
         "  store: {apple: {display_type: APP_IPAD_PRO_3GEN_129}}\n",
     );
     p.store.apple = Some(crate::model::AppleStore::default());
-    assert!(missing_sets(&p).is_empty());
+    assert_eq!(missing_sets(&p), Vec::<String>::new());
 
     // Mapped to the App Store without Apple targets: the platform decides.
     let mut p = project("[]", "");
@@ -1310,8 +1310,11 @@ fn required_store_sets() {
     );
 
     // Watch sets are `conditional` (any watch size): never reported.
-    let p = project("[]", "  store: {apple: {display_type: APP_WATCH_SERIES_7}}\n");
-    assert!(missing_sets(&p).is_empty());
+    let p = project(
+        "[]",
+        "  store: {apple: {display_type: APP_WATCH_SERIES_7}}\n",
+    );
+    assert_eq!(missing_sets(&p), Vec::<String>::new());
 
     // Project-level: only `checks.off` switches it off.
     let mut p = project("[]", "  store: {apple: {display_type: APP_IPHONE_67}}\n");
@@ -1336,5 +1339,8 @@ fn required_sets_follow_the_catalog_data() {
         .map(|m| m.preset.id.as_str())
         .collect();
     assert_eq!(missing, ["ios-iphone-69"]);
-    assert!(missing_required_sets(&p, crate::catalog::catalog()).is_empty());
+    assert_eq!(
+        missing_required_sets(&p, crate::catalog::catalog()).len(),
+        0
+    );
 }

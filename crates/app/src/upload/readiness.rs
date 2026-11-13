@@ -459,10 +459,10 @@ targets:
         // Filled, switched off, or another store's tab: no step.
         let both = format!("{IPHONE_69}{IPHONE_63}");
         let r = readiness(&project(&both, ""), &[], &[StoreKind::Apple], None);
-        assert!(r.steps.is_empty(), "{r:#?}");
+        assert_eq!(r.steps, []);
         let off = "checks: {off: [required_store_set_missing]}\n";
         let r = readiness(&project(IPHONE_69, off), &[], &[StoreKind::Apple], None);
-        assert!(r.steps.is_empty(), "{r:#?}");
+        assert_eq!(r.steps, []);
         let r = readiness(
             &project(IPHONE_69, ""),
             &[],
