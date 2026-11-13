@@ -54,6 +54,13 @@ pub struct StylesUpdateParams {
     /// `text`).
     #[serde(default)]
     pub shadows: BTreeMap<String, Option<Map<String, Value>>>,
+    /// Font family → settings {fallback: [families]}: families tried in
+    /// order for characters missing in that family (e.g. CJK), before the
+    /// default font. Replaces the family's settings; null or an empty
+    /// `fallback` removes them. E.g. `{"Bangers": {"fallback": ["Noto Sans
+    /// JP"]}}`. Families: `catalog_fonts`.
+    #[serde(default)]
+    pub fonts: BTreeMap<String, Option<FontSettingsParam>>,
     /// Device frame style of the project: `stylized`, `detailed` or
     /// `imported:apple` (empty string = default).
     #[serde(default)]
@@ -61,6 +68,15 @@ pub struct StylesUpdateParams {
     /// Rename a token; every reference follows (same undo step).
     #[serde(default)]
     pub rename: Option<StyleRename>,
+}
+
+/// Font settings of one family (`styles_update {fonts}`).
+#[derive(Debug, Clone, Default, Deserialize, serde::Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct FontSettingsParam {
+    /// Fallback families in order.
+    #[serde(default)]
+    pub fallback: Vec<String>,
 }
 
 /// `patch` entries merged over the current entries of `current` (objects
@@ -110,7 +126,7 @@ impl VitrineMcp {
     }
 
     #[tool(
-        description = "Change style tokens in one undo step: colours, text styles (merged field by field), span styles, shadows, frame style, or rename a token. Example: {\"colors\": {\"accent\": \"#FF7A45\"}, \"text\": {\"headline\": {\"size\": 84}}}."
+        description = "Change style tokens in one undo step: colours, text styles (merged field by field), span styles, shadows, font fallbacks per family (fonts, e.g. CJK), frame style, or rename a token. Example: {\"colors\": {\"accent\": \"#FF7A45\"}, \"text\": {\"headline\": {\"size\": 84}}, \"fonts\": {\"Bangers\": {\"fallback\": [\"Noto Sans JP\"]}}}."
     )]
     async fn styles_update(
         &self,
@@ -124,6 +140,7 @@ impl VitrineMcp {
                 "text": merge_entries(&current["text"], p.text),
                 "spans": merge_entries(&current["spans"], p.spans),
                 "shadows": merge_entries(&current["shadows"], p.shadows),
+                "fonts": p.fonts,
             });
             if let Some(f) = p.frame {
                 args["frame"] = if f.is_empty() { Value::Null } else { json!(f) };

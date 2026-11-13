@@ -1,0 +1,9 @@
+{{- /* "On this page": the h2/h3 headings of the current docs page, below its
+       entry in the docs navigation. Context: the page. */ -}}
+{{- if gt (len .Fragments.Headings) 0 }}
+<ul class="docs-nav__toc" aria-label="{{ T "onThisPage" }}">
+  {{- range .Fragments.Headings }}{{ range .Headings }}
+  <li><a href="#{{ .ID }}">{{ .Title | plainify }}</a></li>
+  {{- end }}{{ end }}
+</ul>
+{{- end }}

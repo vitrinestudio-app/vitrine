@@ -6,16 +6,26 @@
     <ul>
       <li><a href="{{ $section.RelPermalink }}"{{ if eq $current.RelPermalink $section.RelPermalink }} aria-current="page"{{ end }}>{{ $section.LinkTitle }}</a></li>
       {{- range $section.Pages.ByWeight }}
-      <li>
-        <a href="{{ .RelPermalink }}"{{ if eq $current.RelPermalink .RelPermalink }} aria-current="page"{{ end }}>
+      {{- $here := eq $current.RelPermalink .RelPermalink }}
+      {{- /* A nested section (docs/automation/) lists its pages below its own
+             entry while the visitor is in it. */}}
+      {{- $inside := and .IsSection (not $here) ($current.IsDescendant .) }}
+      <li{{ if .IsSection }} class="docs-nav__group{{ if or $here $inside }} is-open{{ end }}"{{ end }}>
+        <a href="{{ .RelPermalink }}"{{ if $here }} aria-current="page"{{ else if $inside }} class="is-ancestor"{{ end }}>
           {{ partial "icon.html" (.Params.icon | default "book") }}<span>{{ .LinkTitle }}</span>
         </a>
-        {{- if and (eq $current.RelPermalink .RelPermalink) (gt (len .Fragments.Headings) 0) }}
-        {{- $h := .Fragments.Headings }}
-        <ul class="docs-nav__toc" aria-label="{{ T "onThisPage" }}">
-          {{- range $h }}{{ range .Headings }}
-          <li><a href="#{{ .ID }}">{{ .Title | plainify }}</a></li>
-          {{- end }}{{ end }}
+        {{- if $here }}{{ partial "docs-nav-toc.html" . }}{{ end }}
+        {{- if and .IsSection (or $here $inside) }}
+        <ul class="docs-nav__sub">
+          {{- range .Pages.ByWeight }}
+          {{- $subHere := eq $current.RelPermalink .RelPermalink }}
+          <li>
+            <a href="{{ .RelPermalink }}"{{ if $subHere }} aria-current="page"{{ end }}>
+              {{ partial "icon.html" (.Params.icon | default "book") }}<span>{{ .LinkTitle }}</span>
+            </a>
+            {{- if $subHere }}{{ partial "docs-nav-toc.html" . }}{{ end }}
+          </li>
+          {{- end }}
         </ul>
         {{- end }}
       </li>

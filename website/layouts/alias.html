@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+{{- /* Redirect page for front matter `aliases` (old URLs). Unlike Hugo's
+       built-in one it keeps the #fragment, and `aliasFragments` in the
+       target's front matter sends old fragments whose section moved to a
+       sub-page there (docs/automation/_index.md: /docs/ci/#gitlab-ci →
+       /docs/automation/gitlab-ci/). Without JavaScript the meta refresh
+       still lands on the target page. */}}
+<html lang="{{ site.Language.LanguageCode }}">
+<head>
+  <title>{{ .Page.Title }}</title>
+  <link rel="canonical" href="{{ .Permalink }}">
+  <meta name="robots" content="noindex">
+  <meta charset="utf-8">
+  <script>
+    (function () {
+      var map = {{ .Page.Params.aliasFragments | default dict }};
+      var hash = location.hash.slice(1);
+      var to = {{ .Page.RelPermalink }};
+      location.replace(map[hash] ? to + map[hash] : to + location.hash);
+    })();
+  </script>
+  <meta http-equiv="refresh" content="0; url={{ .Permalink }}">
+</head>
+<body><p><a href="{{ .Permalink }}">{{ .Page.Title }}</a></p></body>
+</html>

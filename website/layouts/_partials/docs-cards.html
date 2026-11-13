@@ -1,0 +1,13 @@
+{{- /* Cards for the pages of a docs section (by weight): the docs home and
+       nested sections such as docs/automation/. Context: the section page. */ -}}
+<div class="docs-cards">
+  {{- range .Pages.ByWeight }}
+  <a class="docs-card card card--hover" href="{{ .RelPermalink }}">
+    <span class="feature__icon">{{ partial "icon.html" (.Params.icon | default "book") }}</span>
+    <span class="docs-card__text">
+      <strong>{{ .LinkTitle }}</strong>
+      <span>{{ .Description }}</span>
+    </span>
+  </a>
+  {{- end }}
+</div>

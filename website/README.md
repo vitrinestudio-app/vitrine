@@ -21,6 +21,7 @@ ignored by Git.
 | `content/en/`, `content/de/` | pages per language (`contentDir`); same file name = translation |
 | `content/*/_index.md` | the home page: **all landing-page texts live in its front matter** (hero, features, FAQ, …) |
 | `content/*/docs/` | documentation (`weight` = order, `icon` = sidebar icon, `untranslated: true` shows the "translation follows" note) |
+| `content/*/docs/automation/` | a nested docs section (`_index.md` = overview with `{{< section-cards >}}`; the nav lists its pages while you are in it, the pager follows reading order). Moved pages keep their old URL with `aliases`; `aliasFragments` + `layouts/alias.html` send old `#fragments` to the sub-page that has them now |
 | `content/*/impressum.md`, `datenschutz.md` | legal pages (`/de/impressum/`, `/de/datenschutz/`; English `/legal-notice/`, `/privacy/`): German binding, English translations say so at the top; **open items marked `[OFFEN: …]` / `[OPEN: …]`, see TODO** |
 | `i18n/en.yaml`, `de.yaml` | UI strings |
 | `layouts/` | `baseof.html`, `home.html`, `page.html`, `docs/{section,page}.html`, `404.html`, `_partials/`, `_shortcodes/` (Hugo ≥ 0.146 template layout) |

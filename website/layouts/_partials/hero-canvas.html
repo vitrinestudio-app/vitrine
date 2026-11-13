@@ -179,20 +179,27 @@
   </g>
 
   {{- /* Callouts: dot at the target, leader line, text (desktop) or a
-         numbered badge (small screens, texts in the list below). */}}
+         numbered badge (small screens, texts in the list below). The line
+         runs from the dot straight up or down into the free strip above
+         or below the canvas, then sideways to the text's centre (tx), so
+         the texts don't collide while every dot sits on its subject:
+         0 the sky of page 2, 1 where the two phones of page 1 overlap,
+         2 the laptop's screen, 3 the portrait tablet, 4 the gap 4|5. */}}
   {{- $notes := slice
-      (dict "x" 412 "y" 422 "ty" 524 "down" true)
-      (dict "x" 224 "y" 196 "ty" 34)
-      (dict "x" 600 "y" 236 "ty" 34)
-      (dict "x" 976 "y" 214 "ty" 34)
-      (dict "x" 788 "y" 330 "ty" 524 "down" true) }}
+      (dict "x" 360 "y" 180 "tx" 230 "ty" 34)
+      (dict "x" 166 "y" 330 "tx" 200 "ty" 524 "down" true)
+      (dict "x" 530 "y" 310 "tx" 560 "ty" 34)
+      (dict "x" 880 "y" 250 "tx" 900 "ty" 34)
+      (dict "x" 788 "y" 330 "tx" 788 "ty" 524 "down" true) }}
   {{- range $i, $n := $notes }}
   {{- $text := index $p.notes $i }}
+  {{- $end := add $n.ty 10 }}{{ $bend := add $n.ty 22 }}
+  {{- if $n.down }}{{ $end = sub $n.ty 18 }}{{ $bend = sub $n.ty 30 }}{{ end }}
   <g class="hc-note" style="--n:{{ $i }}">
-    <path class="hc-note__line" d="M{{ $n.x }} {{ $n.y }} V {{ if $n.down }}{{ sub $n.ty 18 }}{{ else }}{{ add $n.ty 10 }}{{ end }}"/>
+    <path class="hc-note__line" d="M{{ $n.x }} {{ $n.y }} V {{ $bend }} H {{ $n.tx }} V {{ $end }}"/>
     <circle class="hc-note__ring" cx="{{ $n.x }}" cy="{{ $n.y }}" r="11"/>
     <circle class="hc-note__dot" cx="{{ $n.x }}" cy="{{ $n.y }}" r="5"/>
-    <text class="hc-note__text" x="{{ $n.x }}" y="{{ $n.ty }}">{{ $text }}</text>
+    <text class="hc-note__text" x="{{ $n.tx }}" y="{{ $n.ty }}">{{ $text }}</text>
     <g class="hc-note__badge"><circle cx="{{ $n.x }}" cy="{{ $n.y }}" r="24"/><text x="{{ $n.x }}" y="{{ add $n.y 10 }}">{{ add $i 1 }}</text></g>
   </g>
   {{- end }}

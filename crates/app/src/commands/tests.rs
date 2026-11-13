@@ -273,6 +273,42 @@ fn render_commands_cache_and_invalidate() {
 }
 
 #[test]
+fn render_gallery_part() {
+    let f = fixture();
+    open(&f);
+    let gallery = image(
+        &f.app,
+        "render_gallery",
+        json!({"target": "ios-iphone-69", "height": 200}),
+    );
+    // Part of the gallery: pages by number or id, the run from the first
+    // to the last one (same height, narrower).
+    let part = image(
+        &f.app,
+        "render_gallery",
+        json!({"target": "ios-iphone-69", "height": 200, "pages": [1, "neighbours"]}),
+    );
+    assert_eq!(part.height, gallery.height);
+    assert!(part.width < gallery.width * 3 / 4, "{}", part.width);
+    let two = image(
+        &f.app,
+        "render_gallery",
+        json!({"target": "ios-iphone-69", "height": 200, "pages": ["beds", 2]}),
+    );
+    assert!(two.width < part.width, "{} {}", two.width, part.width);
+    for bad in [json!([99]), json!(["nope"])] {
+        let e = dispatch(
+            &f.app,
+            "render_gallery",
+            json!({"target": "ios-iphone-69", "pages": bad}),
+        )
+        .unwrap_err();
+        assert_eq!(e.code, ErrorCode::InvalidArgs, "{e:?}");
+        assert!(e.message.contains("does not exist"), "{e:?}");
+    }
+}
+
+#[test]
 fn validate_strings_catalog() {
     let f = fixture();
     open(&f);

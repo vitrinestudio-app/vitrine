@@ -51,10 +51,18 @@ disableKinds = ['taxonomy', 'term', 'rss']
   # https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_macos_universal.dmg
   # …/VitrineStudio_windows_x64-setup.exe, …/VitrineStudio_linux_x86_64.AppImage
   downloads_available = false
+  # Sponsoring (home page, open-source section, #funding). PLACEHOLDER URLs:
+  # neither the GitHub Sponsors profile of the org nor the Liberapay account
+  # exists yet. Until `sponsors_available = true` the page shows only an
+  # "opens soon" note, never these links. Then also add .github/FUNDING.yml.
+  sponsors_available = false
   [params.downloads]
     macos = ''
     windows = ''
     linux = ''
+  [params.sponsors]
+    github = 'https://github.com/sponsors/vitrinestudio-app'   # PLACEHOLDER
+    liberapay = 'https://liberapay.com/vitrinestudio'          # PLACEHOLDER
 
 # Remote resources (the template gallery snapshot, layouts/_partials/gallery/data.html)
 # are fetched fresh on every build: no file cache.

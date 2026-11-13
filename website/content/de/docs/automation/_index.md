@@ -1,23 +1,36 @@
 ---
-title: CI/CD
-linkTitle: CI/CD
-description: "Store-Screenshots in GitHub Actions, GitLab CI, Jenkins, Bitrise, Codemagic, Xcode Cloud und anderen prüfen, exportieren und hochladen – mit dem vitrine-Kommandozeilenwerkzeug."
+title: Automatisierung
+linkTitle: Automatisierung
+description: "Vitrine Studio ohne die App: Store-Screenshots aus einer CI-Pipeline, einer fastlane-Lane oder eigenen Skripten prüfen, exportieren und hochladen – mit dem vitrine-Kommandozeilenwerkzeug."
 weight: 107
-icon: check
+icon: repeat
+aliases: ["/de/docs/ci/"]
+# Alte /de/docs/ci/#…-Links, deren Abschnitt auf eine Unterseite gezogen ist (layouts/alias.html).
+aliasFragments:
+  github-actions: "github-actions/"
+  gitlab-ci: "gitlab-ci/"
+  fastlane-bitrise-codemagic-circleci-local: "fastlane/#fastlane-in-ci"
+  other-systems: "other-systems/"
 ---
 
-Das Kommandozeilenwerkzeug `vitrine` läuft in jeder CI ohne Oberfläche. Du
-kannst damit ein Projekt bei jedem Pull Request prüfen, die Bilder als
-Build-Artefakte exportieren oder sie aus einem Release-Job in die Stores
-hochladen.
+Das Kommandozeilenwerkzeug `vitrine` läuft ohne Oberfläche überall dort, wo
+deine Builds laufen: in jeder CI, in einer fastlane-Lane oder in eigenen
+Skripten. Du kannst damit ein Projekt bei jedem Pull Request prüfen, die
+Bilder als Build-Artefakte exportieren oder sie aus einem Release-Job in die
+Stores hochladen.
 
 {{< callout status >}}
 Die CLI-Archive und das Container-Image kommen mit dem ersten Release. Die
 fertigen Integrationen (GitHub Action, GitLab-Komponenten, fastlane-Plugin)
-sind **Entwürfe** und noch nicht veröffentlicht; alles hier, was nur das
-Kommandozeilenwerkzeug oder das Image nutzt, funktioniert ab dem ersten
-Release.
+sind **Entwürfe** und noch nicht veröffentlicht; alles in diesem Abschnitt,
+was nur das Kommandozeilenwerkzeug oder das Image nutzt, funktioniert ab dem
+ersten Release.
 {{< /callout >}}
+
+Diese Seite beschreibt, was alle Setups gemeinsam haben. Schritt für Schritt
+für dein System:
+
+{{< section-cards >}}
 
 ## Das Kommandozeilenwerkzeug in der CI installieren {#installing-the-cli-in-ci}
 
@@ -83,127 +96,6 @@ docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" \
 GitHub zeigt pro Schritt höchstens 10 Fehler- und 10 Warnungs-Annotationen.
 Fehler kommen zuerst; der vollständige Bericht steht immer im Log.
 
-## GitHub Actions {#github-actions}
-
-```yaml
-name: Store screenshots
-on:
-  pull_request:
-    paths: ["store-screens/**"]
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install vitrine
-        run: |
-          v=0.2.0
-          base=https://github.com/vitrinestudio-app/vitrine/releases/download/v$v
-          curl -sSfLO "$base/vitrine-cli_linux_x86_64.tar.gz"
-          curl -sSfL "$base/SHA256SUMS.txt" | grep ' vitrine-cli_linux_x86_64.tar.gz$' | sha256sum -c -
-          tar xzf vitrine-cli_linux_x86_64.tar.gz
-          echo "$PWD/vitrine-cli_$v" >> "$GITHUB_PATH"
-      - run: vitrine --project store-screens validate --format github --strict
-      - run: vitrine --project store-screens export --out export
-      - uses: actions/upload-artifact@v4
-        with:
-          name: store-screenshots
-          path: export
-```
-
-Die geplante Action
-[`vitrinestudio-app/vitrine-github-action`](https://github.com/vitrinestudio-app/vitrine-github-action)
-übernimmt die Installation (Prüfsumme, Cache; sie wählt bei Bedarf den
-arm64- oder den statischen Build) und die Prüf- und Exportschritte in einem
-`uses:`:
-
-```yaml
-      - uses: vitrinestudio-app/vitrine-github-action@v1
-        with:
-          version: 0.2.0
-          project: store-screens
-          validate: true
-          export: true
-```
-
-## GitLab CI {#gitlab-ci}
-
-```yaml
-vitrine-validate:
-  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0
-  script:
-    - vitrine --project store-screens validate --format gitlab -o gl-code-quality-report.json
-  artifacts:
-    when: always
-    reports:
-      codequality: gl-code-quality-report.json
-
-vitrine-export:
-  image: ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0
-  script:
-    - vitrine --project store-screens export --out vitrine-export --no-gallery
-  artifacts:
-    paths: [vitrine-export/]
-```
-
-Code-Quality-Befunde erscheinen im Merge Request. Für den Reiter *Tests* der
-Pipeline nimmst du `--format junit -o vitrine-junit.xml` mit `reports:
-junit:`. Ohne das Image installierst du das Archiv in `before_script` wie
-oben.
-
-Die geplanten CI/CD-Catalog-Komponenten im gitlab.com-Projekt
-[`vitrinestudio/vitrine-gitlab-ci`](https://gitlab.com/vitrinestudio/vitrine-gitlab-ci)
-fassen diese beiden Jobs zusammen (`validate` mit Code Quality + JUnit,
-`export`) und nutzen dasselbe Image:
-
-```yaml
-include:
-  - component: $CI_SERVER_FQDN/vitrinestudio/vitrine-gitlab-ci/validate@1
-    inputs:
-      project: store-screens
-```
-
-## fastlane (Bitrise, Codemagic, CircleCI, lokal) {#fastlane-bitrise-codemagic-circleci-local}
-
-Die meisten Mobile-Pipelines laufen über fastlane. Exportiere direkt in die
-fastlane-Ordner – deliver und supply laden sie unverändert hoch (siehe
-[Nutzung mit fastlane](../fastlane/)):
-
-```ruby
-lane :screenshots do
-  sh("vitrine", "--project", "../store-screens", "validate", "--strict")
-  sh("vitrine", "--project", "../store-screens", "export", "--layout", "fastlane", "--out", ".")
-  upload_to_app_store(skip_binary_upload: true, skip_metadata: true, overwrite_screenshots: true)
-end
-```
-
-(`sh` läuft in `fastlane/`, daher schreibt `--out .` nach
-`fastlane/screenshots/` und `fastlane/metadata/android/`.)
-
-## Andere Systeme {#other-systems}
-
-- **Jenkins:** die Schritte im Container-Image ausführen
-  (`agent { docker { image 'ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0' } }`)
-  oder das Archiv auf dem Agent installieren. `vitrine validate --format
-  junit -o vitrine-junit.xml` mit dem `junit`-Schritt veröffentlichen.
-- **Bitrise:** ein *Script*-Schritt, der das Archiv installiert (macOS- oder
-  Linux-Stack), danach `vitrine` aufrufen. Für den Testbericht die
-  JUnit-Datei mit einer `test-info.json` nach
-  `$BITRISE_TEST_RESULT_DIR/vitrine/` schreiben und *Deploy to Bitrise.io*
-  hinzufügen. Oder fastlane wie oben.
-- **Codemagic:** ein `scripts:`-Eintrag, der das Archiv installiert. Die
-  App-Store-Connect-Variablen von Codemagic auf unsere abbilden:
-  `VITRINE_ASC_KEY: $APP_STORE_CONNECT_PRIVATE_KEY`,
-  `VITRINE_ASC_KEY_ID: $APP_STORE_CONNECT_KEY_IDENTIFIER`,
-  `VITRINE_ASC_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID`.
-- **Xcode Cloud:** das macOS-Archiv in `ci_scripts/ci_post_clone.sh`
-  installieren (kein `sudo`; in einen Ordner im Workspace), dann in
-  `ci_post_xcodebuild.sh` prüfen oder exportieren.
-- **CircleCI, Azure Pipelines, Buildkite:** das Container-Image oder das
-  Archiv nutzen. Den JUnit-Bericht über `store_test_results`,
-  `PublishTestResults@2` (Format JUnit) oder Buildkite-Annotationen
-  veröffentlichen.
-
 ## Hochladen aus der CI {#uploading-from-ci}
 
 Auf einem CI-Runner gibt es keinen Schlüsselbund und keine
@@ -235,8 +127,10 @@ vitrine upload execute --confirm "$(jq -r .confirm_token plan.json)" --yes
 
 Bewahre `plan.json` als Artefakt auf – es hält fest, was hochgeladen wurde.
 Wenn ein Mensch jeden Upload freigeben soll, baust du das in deiner CI vor
-den Job: GitHub-*Environments* mit Pflicht-Reviewern oder manuelle
-GitLab-Jobs auf geschützten Branches.
+den Job: GitHub-*Environments* mit Pflicht-Reviewern
+([Beispiel](github-actions/#uploading-from-a-release-workflow)) oder
+manuelle GitLab-Jobs auf geschützten Branches
+([Beispiel](gitlab-ci/#uploading-from-a-manual-job)).
 
 ## Geräterahmen in der CI {#device-frames-in-ci}
 

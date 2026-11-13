@@ -65,6 +65,12 @@ pub struct RenderPreviewParams {
     /// (8192 px with `inline: false`) is rendered lower instead.
     #[serde(default = "default_max_edge")]
     pub max_edge: u32,
+    /// view gallery: show only part of the set – the output images from
+    /// the first to the last one holding these pages (0-based numbers as
+    /// in `page`, or page ids like `"hero"`), with the store gaps. Lets a
+    /// wide (landscape) gallery be looked at larger, e.g. `[0, 2]`.
+    #[serde(default)]
+    pub pages: Option<Vec<PageRef>>,
     /// view gallery: page colour around the images – `light` (default:
     /// the store's light page), `dark` (the store's dark mode) or
     /// `#RRGGBB`. Use it to check that the pages stand out from the store.
@@ -87,6 +93,14 @@ pub struct RenderPreviewParams {
 
 fn yes() -> bool {
     true
+}
+
+/// A page by 0-based number or by id.
+#[derive(Debug, Clone, Deserialize, serde::Serialize, JsonSchema)]
+#[serde(untagged)]
+pub enum PageRef {
+    Number(u32),
+    Id(String),
 }
 
 /// Image encoding of `render_preview`.
@@ -351,7 +365,7 @@ fn issues(app: &AppState, target: &str, lang: &str) -> Result<Value, CommandErro
 #[tool_router(router = output_tools, vis = "pub(crate)")]
 impl VitrineMcp {
     #[tool(
-        description = "Render a PNG preview with the export renderer and return it as an image – look at it after every visual change. view: image (one output image as exported; pick `image` index or `page`), canvas (whole canvas with page borders and hatched gaps), gallery (all images with store gaps and corner radius; background: dark shows the store's dark mode). format: jpeg for smaller transfers; out_file also writes the image into the project (inline: false = only the file). Also returns size, the number of output images and errors/warnings of this target × language. Example: {\"target\": \"ios-iphone-69\", \"lang\": \"de\", \"page\": 2}.",
+        description = "Render a PNG preview with the export renderer and return it as an image – look at it after every visual change. view: image (one output image as exported; pick `image` index or `page`), canvas (whole canvas with page borders and hatched gaps), gallery (all images with store gaps and corner radius; background: dark shows the store's dark mode; pages: [first, last] shows only that run of images, larger). format: jpeg for smaller transfers; out_file also writes the image into the project (inline: false = only the file). Also returns size, the number of output images and errors/warnings of this target × language. Example: {\"target\": \"ios-iphone-69\", \"lang\": \"de\", \"page\": 2}.",
         annotations(read_only_hint = true)
     )]
     async fn render_preview(
@@ -371,6 +385,11 @@ impl VitrineMcp {
             if p.background.is_some() && p.view != PreviewView::Gallery {
                 return Err(CommandError::invalid(
                     "background is only used with view: gallery",
+                ));
+            }
+            if p.pages.is_some() && p.view != PreviewView::Gallery {
+                return Err(CommandError::invalid(
+                    "pages is only used with view: gallery (view: image takes `page`)",
                 ));
             }
             let format = p.format.unwrap_or_default();
@@ -439,6 +458,10 @@ impl VitrineMcp {
                     if let Some(bg) = &p.background {
                         args["background"] = json!(bg);
                         info["background"] = json!(bg);
+                    }
+                    if let Some(pages) = p.pages.as_ref().filter(|x| !x.is_empty()) {
+                        args["pages"] = json!(pages);
+                        info["pages"] = json!(pages);
                     }
                     let img = image_cmd(app, "render_gallery", args)?;
                     if img.height + 1 < height {
