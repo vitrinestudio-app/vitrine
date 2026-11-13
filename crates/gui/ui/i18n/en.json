@@ -1118,6 +1118,7 @@
   "upload.ready.no_store_locale": "{store}: some languages have no store language and are skipped.",
   "upload.ready.no_store_slots": "{store}: no target has a store slot – choose the display type / image type in the targets.",
   "upload.ready.store_slot_conflict": "{store}: two targets fill the same store slot for the same language.",
+  "upload.ready.required_store_set_missing": "{store}: no {label} set – App Store Connect requires it. Add the target {preset} (Canvases & targets → Add target); the other sets still upload.",
   "upload.fix.app_settings_stores": "Open app settings",
   "upload.fix.project_settings_stores": "Open project settings",
   "upload.fix.targets": "Open targets",

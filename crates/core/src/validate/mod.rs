@@ -20,6 +20,8 @@
 
 mod checks;
 mod store;
+
+pub use store::{MissingStoreSet, missing_required_sets};
 #[cfg(test)]
 mod tests;
 
@@ -233,6 +235,12 @@ finding_codes! {
     StoreNoSlot = "store_no_slot",
     /// Two targets fill the same store slot for the same language.
     StoreSlotDuplicate = "store_slot_duplicate",
+    /// The project goes to the App Store but no target fills a set App
+    /// Store Connect requires for one of the project's platforms
+    /// (`requirement: required` in `targets.yaml`, e.g. iPhone 6.3″; iPad
+    /// 13″ only once the project has iPad targets). Warn: export and
+    /// upload still work, App Store Connect refuses the submission.
+    RequiredStoreSetMissing = "required_store_set_missing",
     // ---- layout
     /// Target page height deviates strongly from the canvas: suggest a variant.
     VariantSuggested = "variant_suggested",
@@ -307,6 +315,9 @@ pub const ALLOWABLE: &[FindingCode] = &[
     FindingCode::PageNotCovered,
     FindingCode::PageBlendsWithStore,
     FindingCode::ClipToOtherPage,
+    // Project-level (no element): only `checks.off`, e.g. when the
+    // required set is uploaded from another project or by hand.
+    FindingCode::RequiredStoreSetMissing,
 ];
 
 impl FindingCode {
@@ -681,6 +692,7 @@ pub fn validate(project: &Project, options: &ValidateOptions<'_>) -> ValidationR
     project_text_checks(project, options, &root, &mut out);
     allow_checks(project, &root, &mut out);
     store::store_checks(project, &mut out);
+    store::required_set_checks(project, options.catalog, &mut out);
     let mut used = std::collections::BTreeSet::new();
     let mut allowed = AllowMap::new();
     for target in &project.targets {

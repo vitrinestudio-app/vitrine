@@ -5,7 +5,8 @@
 //! 1. App settings → Stores      no_account, account_missing_for_project
 //! 2. Project settings → Stores  project_not_mapped, store_locale_unknown,
 //!                               store_locale_conflict, no_store_locale (warn)
-//! 3. Targets editor             no_store_slots, store_slot_conflict
+//! 3. Targets editor             no_store_slots, store_slot_conflict,
+//!                               required_store_set_missing (warn, Apple)
 //! ```
 //!
 //! Cheap (no rendering, no keychain, no network): the upload dialog shows
@@ -18,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use vitrine_core::Project;
 use vitrine_core::catalog;
 use vitrine_core::model::{Lang, StoreKind, Target};
+use vitrine_core::validate::{FindingCode, missing_required_sets};
 
 use crate::stores::StoreAccount;
 
@@ -373,6 +375,104 @@ pub fn readiness(
         }
     }
 
+    // Required App Store sets (same rule as the validation finding; not
+    // blocking: the other sets upload, App Store Connect refuses the
+    // submission for review).
+    let off = project
+        .checks
+        .off
+        .iter()
+        .any(|c| c == FindingCode::RequiredStoreSetMissing.as_str());
+    if mapped.contains(&StoreKind::Apple) && !off {
+        for m in missing_required_sets(project, catalog::catalog()) {
+            steps.push(ReadinessStep {
+                code: "required_store_set_missing".to_owned(),
+                store: Some(StoreKind::Apple),
+                message: format!("App Store: {}.", m.message()),
+                fix: Fix::Targets,
+                blocking: false,
+                vars: Some(serde_json::json!({
+                    "label": m.preset.label,
+                    "preset": m.preset.id,
+                    "display_type": m.display_type(),
+                })),
+                link: None,
+            });
+        }
+    }
+
     let ready = !steps.iter().any(|s| s.blocking);
     Readiness { ready, steps }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn project(targets: &str, checks: &str) -> Project {
+        let yaml = format!(
+            "format: vitrine/1
+revision: 1
+name: t
+languages:
+  default: en
+  available: [en]
+store:
+  apple: {{app_id: '123'}}
+{checks}canvases:
+- id: s
+  page: {{aspect: 1000:2000, count: 2}}
+  elements: []
+targets:
+{targets}"
+        );
+        vitrine_core::io::project_from_yaml(&yaml).unwrap_or_else(|e| panic!("{e}\n{yaml}"))
+    }
+
+    const IPHONE_69: &str = "- id: a
+  canvas: s
+  size: [1320, 2868]
+  store: {apple: {display_type: APP_IPHONE_67}}
+";
+    const IPHONE_63: &str = "- id: b
+  canvas: s
+  size: [1206, 2622]
+  store: {apple: {display_type: APP_IPHONE_61}}
+";
+
+    #[test]
+    fn missing_required_set_is_a_non_blocking_targets_step() {
+        let r = readiness(&project(IPHONE_69, ""), &[], &[StoreKind::Apple], None);
+        assert!(r.ready, "{r:#?}");
+        let [step] = r.steps.as_slice() else {
+            panic!("{r:#?}")
+        };
+        assert_eq!(step.code, "required_store_set_missing");
+        assert_eq!(step.fix, Fix::Targets);
+        assert!(!step.blocking);
+        assert_eq!(step.store, Some(StoreKind::Apple));
+        let vars = step.vars.as_ref().unwrap();
+        assert_eq!(vars["preset"], "ios-iphone-63");
+        assert_eq!(vars["display_type"], "APP_IPHONE_61");
+        assert!(step.message.contains("ios-iphone-63"), "{}", step.message);
+
+        // Filled, switched off, or another store's tab: no step.
+        let both = format!("{IPHONE_69}{IPHONE_63}");
+        let r = readiness(&project(&both, ""), &[], &[StoreKind::Apple], None);
+        assert_eq!(r.steps, []);
+        let off = "checks: {off: [required_store_set_missing]}\n";
+        let r = readiness(&project(IPHONE_69, off), &[], &[StoreKind::Apple], None);
+        assert_eq!(r.steps, []);
+        let r = readiness(
+            &project(IPHONE_69, ""),
+            &[],
+            &[StoreKind::Google],
+            Some(StoreKind::Google),
+        );
+        assert!(
+            r.steps
+                .iter()
+                .all(|s| s.code != "required_store_set_missing")
+        );
+    }
 }

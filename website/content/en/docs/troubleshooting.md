@@ -39,6 +39,7 @@ common ones:
 | `missing_glyphs` | warning | characters no font can draw – add a [fallback font](../styles-fonts/#other-scripts-fallback-fonts). |
 | `variant_suggested` | info | the target's page aspect differs a lot from the canvas – consider a variant. |
 | `store_size`, `store_count`, `store_format` | error | the size, number of images or format is not accepted by the store slot (too few images is a warning). |
+| `required_store_set_missing` | warning | the project goes to the App Store but has no set App Store Connect requires: the iPhone 6.3″ set (`ios-iphone-63`), the iPad 13″ set (`ios-ipad-13`, only once the project has iPad targets) or the Mac set. Add the target from that [preset](../targets/#presets). Export and upload still work; App Store Connect won't submit the version without it. |
 | `imported_frame_missing` | info | Apple bezels or a frame pack aren't installed here – the built-in frame is drawn. |
 | `imported_frame_not_stored` | info | a target draws Apple bezels only this computer has – CI would draw the built-in frame; [store them in the project](../devices-frames/#apple-bezels-in-ci). |
 | `stored_frames_stale` | info | bezels stored in the project are no longer used, or this computer has a newer import – update the stored frames. |
@@ -63,9 +64,10 @@ checks:
   off: [page_blends_with_store]
 ```
 
-`page_blends_with_store` and `variant_suggested` belong to no element, so
-`allow` can't silence them; switch them off for the whole project with
-`checks.off`.
+`page_blends_with_store`, `variant_suggested` and `required_store_set_missing`
+belong to no element, so `allow` can't silence them; switch them off for the
+whole project with `checks.off` (e.g. when the required set comes from
+another project).
 
 **Which language is checked.** Everything about texts (`low_contrast`,
 `text_near_device`, the text layout findings) and overlaps across page
