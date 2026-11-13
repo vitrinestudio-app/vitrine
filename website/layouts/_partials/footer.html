@@ -40,6 +40,7 @@
         <li><a href="{{ site.Params.github }}/blob/main/LICENSE">GPL-3.0-or-later</a></li>
         {{- with site.GetPage "/impressum" }}<li><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></li>{{ end }}
         {{- with site.GetPage "/datenschutz" }}<li><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></li>{{ end }}
+        {{- with site.GetPage "/nutzungsbedingungen" }}<li><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></li>{{ end }}
       </ul>
     </nav>
   </div>
