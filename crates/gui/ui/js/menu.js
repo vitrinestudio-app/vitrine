@@ -8,8 +8,9 @@
 // the application menu (About, App settings…, Services, Hide, Quit), File
 // (the in-app menu's entries), Edit (Undo/Redo = project history, or the
 // focused text field's own undo; Cut/Copy/Paste/Select All native), Window
-// and Help (quick guide, keyboard & mouse sheet, allow-listed store setup
-// docs). The in-app menu ends with the same help entries. Clicks arrive as `menu-action`
+// and Help (website user guide in the UI language, quick guide, keyboard &
+// mouse sheet, allow-listed bezel/store setup links). The in-app menu ends
+// with a "Help" submenu holding the same entries. Clicks arrive as `menu-action`
 // events and run the same `handlers` as the in-app menu. Shortcut owner:
 // the shortcuts of native items (⌘N ⌘O ⌘E ⌘, ⌘Z ⇧⌘Z) belong to the native
 // menu there and the JS key handlers skip them (`menuOwns` in
@@ -40,9 +41,9 @@ const ITEMS = [
 ];
 
 /**
- * Help entries: end of the in-app menu and top of the native Help menu
- * (help/guide.js, help/sheet.js). `hint`: key shown in the in-app menu only
- * (`?` is no native accelerator; the JS handler in help/sheet.js owns it).
+ * Help actions (help/guide.js, help/sheet.js). `hint`: key shown in the
+ * in-app menu only (`?` is no native accelerator; the JS handler in
+ * help/sheet.js owns it).
  */
 const HELP_ITEMS = [
   { id: 'guide', label: 'guide.menu' },
@@ -50,18 +51,11 @@ const HELP_ITEMS = [
 ];
 
 /**
- * Link at the top of the Help menu (in-app help section and native Help
- * menu; allow-listed in `open_url` as `APPLE_BEZELS_URL`).
+ * External help links (must be allow-listed in `open_url`: `HELP_URLS`
+ * in crates/app/src/commands/os.rs).
  */
-const BEZELS_LINK = {
-  id: 'help:apple-bezels',
-  label: 'native.help.apple_bezels',
-  url: 'https://developer.apple.com/design/resources/#product-bezels',
-};
-
-/** Store docs links of the native Help menu (must be allow-listed in `open_url`). */
 const HELP_LINKS = [
-  BEZELS_LINK,
+  { id: 'help:apple-bezels', label: 'native.help.apple_bezels', url: 'https://developer.apple.com/design/resources/#product-bezels' },
   {
     id: 'help:apple-keys',
     label: 'native.help.apple_keys',
@@ -70,39 +64,117 @@ const HELP_LINKS = [
   { id: 'help:google-api', label: 'native.help.google_api', url: 'https://developers.google.com/android-publisher/getting_started' },
 ];
 
+/** The user guide on the website in the UI language (`DOCS_URL_EN|DE` in `open_url`). */
+function docsLink() {
+  const de = document.documentElement.lang === 'de';
+  return { id: 'help:docs', label: 'help.docs.menu', url: `https://www.vitrinestudio.app/${de ? 'de/' : ''}docs/` };
+}
+
+/**
+ * The Help menu, one list for the in-app "Help" submenu and the native
+ * Help menu: website docs, quick guide + keyboard sheet, external links.
+ */
+function helpEntries() {
+  return [
+    { ...docsLink(), link: true },
+    { sep: true },
+    ...HELP_ITEMS,
+    { sep: true },
+    ...HELP_LINKS.map((l) => ({ ...l, link: true })),
+  ];
+}
+
 /**
  * `handlers`: { newProject, openProject, projectSettings, targets, exportDialog, uploadDialog, importScreenshots, saveTemplate,
  * appSettings, checkUpdates, closeProject, guide, gestures, hasProject() }.
  */
 export function createMenu(handlers) {
   // "Check for updates…" only in the app (the dev bridge cannot update).
-  const items = [...ITEMS.filter((it) => !it.app || isTauri), { sep: true }, { ...BEZELS_LINK, link: true }, ...HELP_ITEMS];
+  const items = [...ITEMS.filter((it) => !it.app || isTauri), { sep: true }, { id: 'help', label: 'native.help', submenu: true }];
   const button = h('button', { class: 'icon-btn menu-btn', type: 'button', title: t('project.menu.title'), 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('menu'));
   let popup = null;
+  /** The open Help submenu and the entry it belongs to. */
+  let sub = null;
+  let subOwner = null;
 
   function close() {
+    closeSub();
     popup?.remove();
     popup = null;
     button.setAttribute('aria-expanded', 'false');
     document.removeEventListener('mousedown', onDown, true);
     document.removeEventListener('keydown', onKey, true);
   }
+  function closeSub() {
+    sub?.remove();
+    sub = null;
+    subOwner?.setAttribute('aria-expanded', 'false');
+    subOwner = null;
+  }
   function onDown(e) {
-    if (!popup?.contains(e.target) && !button.contains(e.target)) close();
+    if (!popup?.contains(e.target) && !sub?.contains(e.target) && !button.contains(e.target)) close();
   }
   function onKey(e) {
-    if (e.key === 'Escape') {
+    const inSub = sub?.contains(document.activeElement);
+    if (e.key === 'Escape' || (e.key === 'ArrowLeft' && inSub)) {
       e.stopPropagation();
-      close();
-      button.focus({ preventScroll: true });
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      // Step through the enabled entries (wrapping).
       e.preventDefault();
-      const all = [...popup.querySelectorAll('.menu-item:not(:disabled)')];
+      if (inSub) {
+        const owner = subOwner;
+        closeSub();
+        owner?.focus({ preventScroll: true });
+      } else {
+        close();
+        button.focus({ preventScroll: true });
+      }
+    } else if (e.key === 'ArrowRight' && document.activeElement?.dataset.submenu) {
+      e.preventDefault();
+      openSub(document.activeElement, true);
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      // Step through the enabled entries of the focused menu (wrapping).
+      e.preventDefault();
+      const all = [...(inSub ? sub : popup).querySelectorAll('.menu-item:not(:disabled)')];
       const i = all.indexOf(document.activeElement);
       const next = e.key === 'ArrowDown' ? (i + 1) % all.length : (i <= 0 ? all.length : i) - 1;
       all[next]?.focus();
     }
+  }
+  /**
+   * A menu entry button; `run` is called after the menu closed. Hovering a
+   * main-menu entry closes the Help submenu (`inSub`: entry of the submenu).
+   */
+  function entry(it, disabled, run, inSub = false) {
+    return h(
+      'button',
+      { type: 'button', role: 'menuitem', class: 'menu-item', disabled, onclick: () => (close(), run()), onmouseenter: inSub ? null : () => closeSub() },
+      h('span', { class: 'grow' }, t(it.label)),
+      it.key || it.hint ? h('span', { class: 'muted small' }, it.key ? keyLabel(it.key) : it.hint) : null,
+    );
+  }
+  function runEntry(it) {
+    if (it.link) api.openUrl(it.url).catch((e) => console.warn('open_url', e));
+    else handlers[it.id]?.();
+  }
+  function openSub(owner, focus) {
+    if (subOwner === owner) {
+      if (focus) sub.querySelector('.menu-item')?.focus({ preventScroll: true });
+      return;
+    }
+    closeSub();
+    sub = h(
+      'div',
+      { class: 'popover menu menu-sub', role: 'menu' },
+      helpEntries().map((it) => (it.sep ? h('div', { class: 'menu-sep' }) : entry(it, false, () => runEntry(it), true))),
+    );
+    document.body.append(sub);
+    subOwner = owner;
+    owner.setAttribute('aria-expanded', 'true');
+    const r = owner.getBoundingClientRect();
+    const w = sub.offsetWidth;
+    const left = r.right + 4 + w > window.innerWidth ? Math.max(4, r.left - w - 4) : r.right + 4;
+    sub.style.left = `${left}px`;
+    sub.style.top = `${Math.max(4, Math.min(r.top - 4, window.innerHeight - sub.offsetHeight - 4))}px`;
+    if (focus) sub.querySelector('.menu-item')?.focus({ preventScroll: true });
   }
   button.addEventListener('click', () => {
     if (popup) return close();
@@ -110,26 +182,19 @@ export function createMenu(handlers) {
     popup = h(
       'div',
       { class: 'popover menu', role: 'menu' },
-      items.map((it) =>
-        it.sep
-          ? h('div', { class: 'menu-sep' })
-          : h(
-              'button',
-              {
-                type: 'button',
-                role: 'menuitem',
-                class: 'menu-item',
-                disabled: it.project && !hasProject,
-                onclick: () => {
-                  close();
-                  if (it.link) api.openUrl(it.url).catch((e) => console.warn('open_url', e));
-                  else handlers[it.id]?.();
-                },
-              },
-              h('span', { class: 'grow' }, t(it.label)),
-              it.key || it.hint ? h('span', { class: 'muted small' }, it.key ? keyLabel(it.key) : it.hint) : null,
-            ),
-      ),
+      items.map((it) => {
+        if (it.sep) return h('div', { class: 'menu-sep' });
+        if (!it.submenu) return entry(it, it.project && !hasProject, () => runEntry(it));
+        const el = h(
+          'button',
+          { type: 'button', role: 'menuitem', class: 'menu-item', 'aria-haspopup': 'menu', 'aria-expanded': 'false', dataset: { submenu: 'true' } },
+          h('span', { class: 'grow' }, t(it.label)),
+          icon('chevron-right'),
+        );
+        el.addEventListener('click', () => openSub(el, true));
+        el.addEventListener('mouseenter', () => openSub(el, false));
+        return el;
+      }),
     );
     document.body.append(popup);
     button.setAttribute('aria-expanded', 'true');
@@ -214,13 +279,7 @@ function nativeSpec(hasProject) {
       {
         label: t('native.help'),
         role: 'help',
-        items: [
-          item(BEZELS_LINK.id, t(BEZELS_LINK.label)),
-          sep,
-          ...HELP_ITEMS.map((it) => item(it.id, t(it.label))),
-          sep,
-          ...HELP_LINKS.filter((l) => l !== BEZELS_LINK).map((l) => item(l.id, t(l.label))),
-        ],
+        items: helpEntries().map((it) => (it.sep ? sep : item(it.id, t(it.label)))),
       },
     ],
   };
@@ -269,7 +328,7 @@ function runNative(handlers, id) {
     else handlers[id]?.();
     return;
   }
-  const link = HELP_LINKS.find((l) => l.id === id);
+  const link = helpEntries().find((l) => l.link && l.id === id);
   if (link) {
     api.openUrl(link.url).catch((e) => console.warn('open_url', e));
     return;

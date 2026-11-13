@@ -1176,6 +1176,7 @@
   "native.zoom": "Zoomen",
   "native.close_window": "Fenster schließen",
   "native.help": "Hilfe",
+  "help.docs.menu": "Vitrine-Studio-Dokumentation (Website)",
   "native.help.apple_bezels": "Apple Product Bezels herunterladen",
   "native.help.apple_keys": "App Store Connect API-Schlüssel erstellen (Apple)",
   "native.help.google_api": "Google Play Developer API: Einstieg (Google)",
