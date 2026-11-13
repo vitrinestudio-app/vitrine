@@ -802,17 +802,24 @@ Exports are always opaque, so "no alpha" holds by construction. Store
 mapping (§10) adds `store_locale_*`, `store_no_slot`,
 `store_slot_duplicate`.
 
-Required sets (`required_store_set_missing`, warn, decision 0034): Apple
-presets with `requirement: required` (iPhone 6.3″, iPad 13″, Mac) are
-needed for their `platform` once the project targets it – the platforms of
-the presets matching its Apple targets' slots; mapped to the App Store
-without iPhone/iPad targets, `store.apple.platform` decides. iPad and Mac
-count only when the project already has such a target (whether the app
-runs on iPad is not known otherwise). Any target with the preset's slot
-fills it. Warn, not error: export and the other sets' upload still work,
-App Store Connect only refuses the submission; project-level, so only
-`checks.off` silences it. Upload readiness repeats it as a non-blocking
-step (§10). Google's required presets are not checked yet.
+Required sets (`required_store_set_missing`, warn, decisions 0034, 0036):
+presets with `requirement: required` (App Store: iPhone 6.3″, iPad 13″,
+Mac; Google Play: phone screenshots `phoneScreenshots`, feature graphic
+`featureGraphic`) are needed for their `platform` once the project
+targets it in that store – the platforms of the presets matching its
+targets' slots of that store (Play tablets are `android`); mapped to the
+App Store without iPhone/iPad targets, `store.apple.platform` decides,
+mapped to Google Play (`store.google`) without Play targets, `android`.
+iPad and Mac count only when the project already has such a target
+(whether the app runs on iPad is not known otherwise). Any target with the
+preset's slot value fills it; presets sharing a slot (Play 9:16 and 1:2)
+are reported once. `conditional`/`optional` presets (watches, Wear OS,
+Play tablets) are never asked for. Warn, not error: export and the other
+sets' upload still work, the store only refuses the submission;
+project-level, so only `checks.off` silences it. Upload readiness repeats
+it as a non-blocking step per store (§10). Google's "at least 2 phone
+screenshots" is the per-set `store_count` warning from the rule's
+`count.min`.
 
 ### Design checks
 
@@ -996,7 +1003,7 @@ readiness → plan (dry run + confirm token) → confirm → execute → log
   with a `fix` place – app settings (`no_account`,
   `account_missing_for_project`), project settings (`project_not_mapped`,
   locale problems), targets (`no_store_slots`, `store_slot_conflict`,
-  `required_store_set_missing` – Apple, not blocking).
+  `required_store_set_missing` – App Store and Google Play, not blocking).
 - `upload_plan {store?, targets?, langs?, remote?, force?}`: every slotted
   target × language; the incremental export renders into
   `<project>/.cache/upload/images`; SHA-256 per image; compared with the
@@ -1525,3 +1532,4 @@ Code comments also cite `KONZEPT §n`. The German concept is archived at
 | 0033 | 2026-11-13 | ARCHITECTURE.md replaces `docs/KONZEPT.md` and the ADR files as the binding description; both archived under `docs/archive/`; future decisions are recorded here | 14, 15 |
 | 0034 | 2026-11-13 | Required App Store sets are checked from `targets.yaml` (`requirement: required` per preset platform; iPad/Mac only once the project has such targets): warn `required_store_set_missing` (allowable via `checks.off` only) + non-blocking upload readiness step | 8, 10 |
 | 0035 | 2026-11-13 | The App Asset Library is the only Apple upload flow (owner verified real uploads with it). The screenshot-set flow (`appScreenshotSets`/`appScreenshots`, MD5 checksums) and the `store.apple.upload_flow` setting are removed; old projects with `upload_flow: auto\|asset_library\|screenshot_sets` still load (key ignored, dropped on save); logged plans with `flow: screenshot_sets` still display. Replaces the `upload_flow` part of 0019 | 3, 10 |
+| 0036 | 2026-11-13 | `required_store_set_missing` covers Google Play too, from the same `requirement: required` data: phone screenshots (`phoneScreenshots`) and the feature graphic (`featureGraphic`) once the project has Play targets or `store.google`; presets sharing a slot reported once; non-blocking readiness step on the Google tab. Extends 0034 | 8, 10 |

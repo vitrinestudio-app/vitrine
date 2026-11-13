@@ -342,8 +342,10 @@ Doc: `docs/plan/phase-5.md`, ADR 0016–0019, website `docs/store-upload`.
 - [ ] **Owner** – `vitrine upload refdata` once with the real key; agent
       checks `crates/core/data/asset-library.yaml` against the output.
 - [x] **Owner** – re-run the real Apple upload; real uploads through the
-      App Asset Library verified (2026-11-13). Still open: iPhone Duo and
-      header/search creatives in a real run.
+      App Asset Library verified (2026-11-13): screenshots and both
+      creatives (product page header, search results asset) uploaded fine.
+- [ ] **Owner** – real Apple runs for the platforms not yet verified live:
+      Mac, Apple Watch, Apple TV, Vision Pro, iMessage, iPhone Duo.
 - [ ] **Owner** – first real Google Play run (incl. feature graphic).
 - [x] **Owner** – decide (a): decided 2026-11-13 – the App Asset Library
       is the only Apple flow, the screenshot-set flow and

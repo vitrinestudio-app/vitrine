@@ -133,7 +133,10 @@ store the project is linked to.
 If something is missing, the dialog lists the steps in order, each with a
 button: add an account (*Open app settings*), link the project or fix store
 languages (*Open project settings*), give targets a store slot (*Open
-targets*). The list refreshes when you close the opened dialog.
+targets*). The list refreshes when you close the opened dialog. A set the
+store requires but the project lacks (the iPhone 6.3″ set, the Play phone
+screenshots or feature graphic) shows up as a note: the other images still
+upload, but the store won't submit or publish without it.
 
 ### The plan
 
@@ -234,6 +237,10 @@ Vitrine Studio maps its targets.
   the upload is the order in the store.
 - The **feature graphic** (`play-feature-graphic`) is uploaded in the same
   edit, one per language.
+- To publish, Play needs at least 2 phone screenshots and the feature
+  graphic: validation warns when a set has fewer images (`store_count`) or
+  the project has no phone or feature graphic target
+  (`required_store_set_missing`).
 - If Play refuses the commit and asks for *changes not sent for review*,
   upload again with that option (`--changes-not-sent-for-review` on the
   command line).

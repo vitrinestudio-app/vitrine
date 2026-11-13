@@ -148,7 +148,11 @@ Fehlt noch etwas, listet der Dialog die Schritte in der richtigen Reihenfolge,
 jeweils mit einem Knopf: Konto hinzufügen (*App-Einstellungen öffnen*),
 Projekt verbinden oder Store-Sprachen korrigieren (*Projekteinstellungen
 öffnen*), Zielen einen Store-Slot geben (*Ziele öffnen*). Die Liste
-aktualisiert sich, wenn du den geöffneten Dialog schließt.
+aktualisiert sich, wenn du den geöffneten Dialog schließt. Fehlt ein Satz,
+den der Store verlangt (der iPhone-6,3″-Satz, die Play-Smartphone-Screenshots
+oder die Feature-Grafik), erscheint das als Hinweis: Die anderen Bilder
+werden trotzdem hochgeladen, aber ohne ihn reicht der Store nicht ein bzw.
+veröffentlicht nicht.
 
 ### Der Plan {#the-plan}
 
@@ -256,6 +260,10 @@ und wie Vitrine Studio seine Ziele darauf abbildet.
   Reihenfolge beim Upload ist die Reihenfolge im Store.
 - Die **Feature-Grafik** (`play-feature-graphic`) wird in derselben
   Bearbeitung hochgeladen, eine pro Sprache.
+- Zum Veröffentlichen braucht Play mindestens 2 Smartphone-Screenshots und
+  die Feature-Grafik: Die Prüfung warnt, wenn ein Satz zu wenige Bilder hat
+  (`store_count`) oder dem Projekt ein Smartphone- oder Feature-Grafik-Ziel
+  fehlt (`required_store_set_missing`).
 - Lehnt Play die Übernahme ab und verlangt *Änderungen nicht zur Prüfung
   senden*, lade mit dieser Option erneut hoch (`--changes-not-sent-for-review`
   auf der Kommandozeile).

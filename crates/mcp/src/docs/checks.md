@@ -252,28 +252,40 @@ language; most design findings are **info** – call `validate` to see them.
 | `store_locale_unknown` | error | `store.locales` code not a store locale |
 | `store_locale_missing`, `store_locale_duplicate`, `store_no_slot`, `store_slot_duplicate` | warn | upload mapping problems |
 | `store_locale_unused` | info | locale entry for a language the project lacks |
-| `required_store_set_missing` | warn (off) | no target fills a set App Store Connect requires (below) |
+| `required_store_set_missing` | warn (off) | no target fills a set App Store Connect or Google Play requires (below) |
 
 None of these is allowable, except `required_store_set_missing` via
 `checks.off` (it names no element).
 
 ### required_store_set_missing (warn; only `checks.off`)
-- Data: Apple presets in `targets.yaml` with `requirement: required` –
-  today iPhone 6.3″ (`ios-iphone-63`, `APP_IPHONE_61`), iPad 13″
+- Data: presets in `targets.yaml` with `requirement: required`, per store.
+  App Store: iPhone 6.3″ (`ios-iphone-63`, `APP_IPHONE_61`), iPad 13″
   (`ios-ipad-13`, `APP_IPAD_PRO_3GEN_129`), Mac (`mac`, `APP_DESKTOP`).
-  Watch presets are `conditional` (any one watch size) and never reported.
-- A required set counts for its platform once the project targets it: the
-  platforms of the presets matching the slots of the project's Apple
-  targets. iPad / Mac are asked for only when the project already has an
-  iPad / Mac target (whether the app runs on iPad cannot be known
-  otherwise). Mapped to the App Store (`store.apple`) without iPhone/iPad
-  targets: `store.apple.platform` decides (`ios` → iPhone, `macos` → Mac).
+  Google Play (platform `android`): phone screenshots (`play-phone` /
+  `play-phone-2x1`, both `phoneScreenshots`, reported once as
+  `play-phone`) and the feature graphic (`play-feature-graphic`,
+  `featureGraphic`, 1024×500 banner). Apple Watch and Wear OS presets are
+  `conditional`, Play tablets/Chromebook `optional`: never reported.
+- A required set counts for its platform once the project targets it in
+  that store: the platforms of the presets matching the slots of the
+  project's targets (a Play tablet target counts as `android`). iPad /
+  Mac are asked for only when the project already has an iPad / Mac
+  target (whether the app runs on iPad cannot be known otherwise). Mapped
+  to the App Store (`store.apple`) without iPhone/iPad targets:
+  `store.apple.platform` decides (`ios` → iPhone, `macos` → Mac). Mapped
+  to Google Play (`store.google`) without Play phone/tablet/Wear targets:
+  `android`.
 - Filled by any target with the same store slot (any size the slot takes).
-- Warn, not error: export and upload of the other sets still work; App
-  Store Connect refuses to submit the version without it. Also a
-  non-blocking upload readiness step (`fix: targets`).
-- Fix: add the target from the named preset (`target_add {preset, canvas}`), or
-  `checks.off` when the set comes from elsewhere.
+- Warn, not error: export and upload of the other sets still work; the
+  store refuses to submit / publish without it. Also a non-blocking
+  upload readiness step on that store's tab (`fix: targets`).
+- Fix: add the target from the named preset (`target_add {preset, canvas}`;
+  the feature graphic is a banner: `banner_add {preset:
+  play-feature-graphic, canvas}`), or `checks.off` when the set comes from
+  elsewhere (e.g. uploaded by hand in the Play Console).
+- Count: Google Play needs at least 2 phone screenshots to publish; that
+  is the per-set `store_count` warning (`rules.google-screenshots.count.min`),
+  not this check.
 
 ## Switching findings off
 
