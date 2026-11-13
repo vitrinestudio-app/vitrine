@@ -201,8 +201,12 @@ visibly). No placeholders are left in the docs.
 
 Still open: a dedicated 1200×630 Open Graph image.
 
-`docs/gui/editor*.jpg`, `text-editing*.jpg` (repo README) are separate
-copies, not used by the site.
+The repo README uses separate, smaller copies (not used by the site):
+`docs/gui/` (`editor`, `gallery-view`, `text-editing`, `new-project`, each
+with `-dark`) and `docs/example/` (`iphone-gallery-pop-art` and
+`play-gallery-synthwave` from `iphone-gallery-en`/`play-gallery-en`,
+`warm-stay-matrix` composed from the `matrix/` images); 1600 px wide
+(dialogs 1200 px), JPEG quality ~80. Refresh them when the originals change.
 
 ## Docs
 
