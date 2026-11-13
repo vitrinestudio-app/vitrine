@@ -126,9 +126,13 @@ Warnungen.
 
 - Weicht das Seitenverhältnis eines Screenshots mehr als ein wenig vom Display
   des Geräts ab, gibt es eine Warnung (`screenshot_aspect`, „falsches
-  Gerät?“) – z. B. eine iPhone-Aufnahme in einem Android-Rahmen.
+  Gerät?“) – z. B. eine iPad-Aufnahme in einem Telefon-Rahmen.
   *Einpassung* (*Füllen*, *Einpassen*, *Strecken*) legt fest, wie er das
-  Display füllt.
+  Display füllt. Mit *Füllen* (Standard) schneidet eine Abweichung bis 5 %
+  nur einen schmalen Rand ab und ist ein Hinweis: typisch für
+  iPhone-Screenshots im Android-Rahmen eines Google-Play-Ziels. Das kann so
+  bleiben, oder du legst Android-Screenshots in
+  `screenshots/<lang>/android-phone/` ab.
 - Ein Screenshot, der um mehr als 15 % vergrößert wird, bekommt eine Warnung
   (`screenshot_upscale`) – er kann unscharf wirken. Nimm Aufnahmen vom größten
   Gerät einer Klasse.

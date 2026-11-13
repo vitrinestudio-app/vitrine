@@ -229,7 +229,7 @@ language; most design findings are **info** – call `validate` to see them.
 | `unsupported_orientation` | warn | – | model has no such orientation |
 | `screenshot_missing` | error (warn with `preview: true`) | – | `screenshots/<lang>/[<variant>/]<key>.png` not found; placeholder drawn |
 | `screenshot_fallback` | info | – | screenshot of another language |
-| `screenshot_aspect` | warn | – | screenshot aspect differs > 2 % from the display: wrong device / folder? |
+| `screenshot_aspect` | warn (info up to 5 % with `fit: cover`) | – | screenshot aspect differs > 2 % from the display: wrong device / folder? Up to 5 % under `cover` only a thin edge is cropped (e.g. iPhone captures on the Android frame of a Play target): info naming the device's own folder (`screenshots/<lang>/android-phone/`) |
 | `screenshot_upscale` | warn | ✓ | enlarged > 1.15 × to fill the display in px: may look blurry |
 | `screenshot_only_empty` | warn | – | `screenshot_only` page without a device |
 | `sample_screenshot` | info | – | template sample, replace it (uploads refuse samples) |

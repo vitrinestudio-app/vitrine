@@ -119,8 +119,11 @@ validation list (or `vitrine validate --preview`) treats them as warnings.
 
 - A screenshot whose aspect differs from the device's display by more than a
   little gets a warning (`screenshot_aspect`, "wrong device?") – e.g. an
-  iPhone capture in an Android frame. *Fit* (*Cover*, *Contain*, *Stretch*)
-  decides how it fills the display.
+  iPad capture in a phone frame. *Fit* (*Cover*, *Contain*, *Stretch*)
+  decides how it fills the display. With *Cover* (the default) a difference
+  up to 5 % only crops a thin edge and is a note: typical for iPhone
+  screenshots reused on the Android frame of a Google Play target. Keep it,
+  or add Android screenshots in `screenshots/<lang>/android-phone/`.
 - A screenshot enlarged by more than 15 % gets a warning
   (`screenshot_upscale`) – it may look soft. Use captures from the largest
   device of a class.

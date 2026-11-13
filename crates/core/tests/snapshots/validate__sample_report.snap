@@ -59,7 +59,7 @@ findings:
     target: android-phone
     page: 0
     element: hero-phone
-    message: "screenshot `screenshots/en/android-phone/home.png` (1080x1920, 0.562) differs from the `android-punchhole` display (0.450) by +25.0 %; wrong device?"
+    message: "screenshot `screenshots/en/android-phone/home.png` (1080x1920, aspect 0.562) differs from the `android-punchhole` display (0.450, +25.0 %) and is cropped – wrong device? Use screenshots of this device in screenshots/<lang>/android-phone/ or change the device model"
   - level: info
     code: screenshot_fallback
     target: android-phone

@@ -40,6 +40,13 @@ use crate::resolve::{AssetLookup, ResolveError, ResolveOptions, ResolvedScene, r
 /// that, text in the screenshot gets soft.
 pub const DEFAULT_MAX_UPSCALE: f64 = 1.15;
 
+/// Default for [`Thresholds::screenshot_aspect_crop`]: a screenshot that
+/// differs from the display aspect by up to 5 % loses at most ~2.5 % per
+/// side under `fit: cover` – e.g. an iPhone capture (0.462) on the Android
+/// phone frame (0.450) of a Play target. Wrong devices differ far more
+/// (old iPhone 0.56 or tablet 0.75 on a modern phone: > 20 %).
+pub const DEFAULT_SCREENSHOT_ASPECT_CROP: f64 = 0.05;
+
 /// Default for [`Thresholds::variant_aspect`]: page height deviation
 /// between target and canvas (relative) above which a variant is suggested
 /// (KONZEPT §3.4). 15 % covers iPhone 6.9″ ↔ Google Play 1:2 (8 %) with
@@ -428,6 +435,10 @@ pub const DEVICE_CUT_MIN: f64 = 8.0;
 pub struct Thresholds {
     /// Max relative deviation of screenshot vs display aspect (KONZEPT §4.3).
     pub screenshot_aspect: f64,
+    /// Up to this deviation a `fit: cover` screenshot is only cropped a
+    /// little: an info instead of a warning
+    /// ([`DEFAULT_SCREENSHOT_ASPECT_CROP`]).
+    pub screenshot_aspect_crop: f64,
     /// Max screenshot enlargement factor ([`DEFAULT_MAX_UPSCALE`]).
     pub max_upscale: f64,
     /// Max relative page height deviation target vs canvas without a variant
@@ -455,6 +466,7 @@ impl Default for Thresholds {
     fn default() -> Self {
         Self {
             screenshot_aspect: ASPECT_TOLERANCE,
+            screenshot_aspect_crop: DEFAULT_SCREENSHOT_ASPECT_CROP,
             max_upscale: DEFAULT_MAX_UPSCALE,
             variant_aspect: DEFAULT_VARIANT_ASPECT,
             device_distance: DEFAULT_DEVICE_DISTANCE,
