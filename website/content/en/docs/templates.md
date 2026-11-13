@@ -22,6 +22,9 @@ texts in every language, images and fonts. It is a single
 
 Start screen → **New project** → pick a template card (or **Import file…**
 for a `.vitrine-template` file) → name, location, languages → **Create**.
+The tab **Template gallery** lists the online gallery (search, filters,
+a link to the large view on the website); **Download and create**
+downloads the chosen template once and keeps it under **Local templates**.
 
 - All canvases of the template come along.
 - **Texts:** each of your languages gets the template's text in the same
@@ -138,9 +141,8 @@ may share this way.
 
 {{< callout status >}}
 The gallery is being filled. Browse it on the website ([template
-gallery](/gallery/)) or with `vitrine gallery list`; browsing it inside the
-app is not built yet – download a template and use **Import file…** in the
-*New project* dialog.
+gallery](/gallery/)), in the app (*New project* → **Template gallery**) or
+with `vitrine gallery list`.
 {{< /callout >}}
 
 - **Browsing and downloading** need no account.

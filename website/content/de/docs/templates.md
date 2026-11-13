@@ -24,6 +24,10 @@ Sie ist eine einzige **`.vitrine-template`**-Datei.
 Startbildschirm → **Neues Projekt** → eine Vorlagenkarte wählen (oder **Datei
 importieren…** für eine `.vitrine-template`-Datei) → Name, Speicherort,
 Sprachen → **Erstellen**.
+Der Reiter **Vorlagen-Galerie** zeigt die Online-Galerie (Suche, Filter,
+Link zur großen Ansicht auf der Website); **Herunterladen und erstellen**
+lädt die gewählte Vorlage einmal herunter und behält sie unter **Lokale
+Vorlagen**.
 
 - Alle Leinwände der Vorlage kommen mit.
 - **Texte:** Jede deiner Sprachen bekommt den Text der Vorlage in derselben
@@ -146,9 +150,8 @@ nur aus Material, das du so weitergeben darfst.
 
 {{< callout status >}}
 Die Galerie wird gerade gefüllt. Durchsuchen kannst du sie auf der Website
-([Vorlagen-Galerie](/de/galerie/)) oder mit `vitrine gallery list`; in der App
-selbst gibt es das Durchsuchen noch nicht – Vorlage herunterladen und im
-Dialog *Neues Projekt* **Datei importieren…** wählen.
+([Vorlagen-Galerie](/de/galerie/)), in der App (*Neues Projekt* →
+**Vorlagen-Galerie**) oder mit `vitrine gallery list`.
 {{< /callout >}}
 
 - **Durchsuchen und Herunterladen** brauchen kein Konto.
