@@ -94,5 +94,5 @@ Several languages in one step:
 - `{"op": "set_styles", "styles": {…complete styles object…}}` (prefer styles_update)
 - `{"op": "rename_style", "kind": "color" | "text" | "span" | "shadow", "from": "accent", "to": "highlight"}`
 - `{"op": "set_import", "import": {…screenshot import mappings…}}`
-- `{"op": "set_checks", "checks": {"device_distance"?: 16, "min_contrast"?: 4.5, "min_contrast_large"?: 3, "off"?: ["page_blends_with_store"]}}`
+- `{"op": "set_checks", "checks": {"device_distance"?: 16, "min_contrast"?: 4.5, "min_contrast_large"?: 3, "screen_cover"?: 0.15, "off"?: ["page_blends_with_store"]}}`
   (design-check thresholds and codes switched off for the whole project; replaces `checks:`)
