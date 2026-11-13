@@ -2,10 +2,10 @@
 title: Download
 eyebrow: "Download"
 description: "Vitrine Studio für macOS, Windows und Linux – Installer folgen bald; bis dahin aus dem Quellcode bauen."
-lead: "Vitrine Studio ist im **Pre-Alpha**-Stadium. Signierte Installer für macOS, Windows und Linux sind in Vorbereitung – bis dahin lässt sich die App aus dem Quellcode bauen."
+lead: "Vitrine Studio ist im **Pre-Alpha**-Stadium. Installer für macOS, Windows und Linux sind in Vorbereitung – bis dahin lässt sich die App aus dem Quellcode bauen."
 ---
 
-{{< os-cards soon="Bald verfügbar" get="Herunterladen" macos="Geplant: signiertes und notarisiertes .dmg." windows="Geplant: signierter Installer." linux="Geplant: AppImage und .deb." >}}
+{{< os-cards soon="Bald verfügbar" get="Herunterladen" macos="Geplant: signiertes und notarisiertes .dmg." windows="Geplant: Setup (.exe), vorerst nicht code-signiert – Windows zeigt beim ersten Start einen SmartScreen-Hinweis." linux="Geplant: AppImage und .deb." >}}
 
 ## Aus dem Quellcode bauen
 

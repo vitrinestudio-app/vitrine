@@ -2,10 +2,10 @@
 title: Download
 eyebrow: "Download"
 description: "Vitrine Studio for macOS, Windows and Linux – installers are coming soon; build from source in the meantime."
-lead: "Vitrine Studio is in **pre-alpha**. Signed installers for macOS, Windows and Linux are being prepared – until then you can build it from source."
+lead: "Vitrine Studio is in **pre-alpha**. Installers for macOS, Windows and Linux are being prepared – until then you can build it from source."
 ---
 
-{{< os-cards soon="Coming soon" macos="Planned: signed and notarised .dmg." windows="Planned: signed installer." linux="Planned: AppImage and .deb." >}}
+{{< os-cards soon="Coming soon" macos="Planned: signed and notarised .dmg." windows="Planned: setup (.exe), not code-signed for now – Windows shows a SmartScreen notice on first start." linux="Planned: AppImage and .deb." >}}
 
 ## Build from source
 
