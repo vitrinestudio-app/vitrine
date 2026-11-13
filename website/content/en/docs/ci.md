@@ -161,7 +161,7 @@ include:
 
 Most mobile pipelines run fastlane. Export straight into fastlane's
 folders, and deliver/supply upload them unchanged (see
-[fastlane migration](../fastlane/)):
+[Using with fastlane](../fastlane/)):
 
 ```ruby
 lane :screenshots do
@@ -210,8 +210,8 @@ CI's secret store:
 - When a store's variables are set, they are used **instead of** the
   account chosen in the project settings. The command prints which key it
   uses (key id or service account e-mail, never the key).
-- Set all of them or none: a half-filled set stops the command (exit 2),
-  so a misconfigured job never falls back to another account.
+- Set all of them or none: if only some of a store's variables are set, the
+  command stops (exit 2), so a misconfigured job never falls back to another account.
 - Vitrine Studio never writes the keys to disk and never logs them. Only
   `vitrine upload` reads these variables; the app and the AI assistant
   connection (MCP) ignore them.

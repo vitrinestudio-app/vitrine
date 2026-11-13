@@ -3,8 +3,8 @@
        the server's own `limit`) and the tag taxonomy (`GET /v1/tags`).
        API base: `params.galleryAPI` (env HUGO_PARAMS_GALLERYAPI for a
        local server). Never fails the build: an unreachable API gives an
-       empty snapshot ("gallery opens soon"); the page refreshes live in
-       the browser anyway. Call it with partialCached (one fetch per build).
+       empty snapshot: the page shows placeholder cards and loads the
+       templates live in the browser (it refreshes live anyway). Call it with partialCached (one fetch per build).
 
        Returns: dict "api" "templates" (slice) "tags" (the /v1/tags facets)
        "ok" (bool: the list could be read). */ -}}
@@ -18,7 +18,7 @@
     {{- $url := printf "%s/v1/templates?limit=200&offset=%d" $api $offset -}}
     {{- $r := try (resources.GetRemote $url) -}}
     {{- if $r.Err -}}
-      {{- warnidf "gallery-api" "template gallery: cannot read %s (%s); the page shows its empty state and loads live in the browser" $url $r.Err -}}
+      {{- warnidf "gallery-api" "template gallery: cannot read %s (%s); the page shows placeholder cards and loads live in the browser" $url $r.Err -}}
       {{- $done = true -}}
     {{- else if not $r.Value -}}
       {{- $done = true -}}

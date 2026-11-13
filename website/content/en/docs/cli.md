@@ -146,7 +146,7 @@ project's `fonts/` folder.
 
 ```sh
 vitrine template list
-vitrine template save --name "Bold gradient" --tag dark -o bold.vitrine-template
+vitrine template save --name "Bold gradient" --style bold --color dark -o bold.vitrine-template
 vitrine template insert bold-gradient --dry-run
 vitrine template import bold.vitrine-template --replace
 vitrine template export bold-gradient -o bold.vitrine-template

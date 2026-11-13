@@ -41,6 +41,17 @@
       {{- range $i, $t := $g.templates }}
       {{ partial "gallery/card.html" (dict "t" $t "labels" $labels "href" (printf "#%s" $t.id) "i" $i "anchor" true) }}
       {{- end }}
+      {{- /* No build-time snapshot: neutral placeholder cards until the
+             live data arrives (JS only; the script removes them). */}}
+      {{- if not $n }}
+      {{- range seq 0 5 }}
+      <div class="gskel" aria-hidden="true" data-gal-skel>
+        <span class="gskel__stage"><span class="gp" style="--i:0"></span><span class="gp" style="--i:1"></span><span class="gp" style="--i:2"></span></span>
+        <span class="gskel__line"></span>
+        <span class="gskel__line gskel__line--short"></span>
+      </div>
+      {{- end }}
+      {{- end }}
     </div>
 
     <div class="gal-nomatch" data-gal-nomatch hidden>
@@ -48,17 +59,19 @@
       <button class="btn btn--ghost" type="button" data-gal-clear>{{ T "galClear" }}</button>
     </div>
 
-    <div class="gal-empty" data-gal-empty{{ if $n }} hidden{{ end }}>
-      <div class="gal-empty__art" aria-hidden="true">
-        {{- range seq 0 4 }}<span style="--i:{{ . }}"></span>{{ end }}
-      </div>
-      <h2>{{ T "galSoonTitle" }}</h2>
-      <p>{{ T "galSoonText" }}</p>
+    {{- /* Shown by the script only once loading returned no templates
+           (empty) or failed without a snapshot (error). */}}
+    <div class="gal-empty" data-gal-empty hidden>
+      <h2 data-gal-empty-title>{{ T "galEmptyTitle" }}</h2>
+      <p data-gal-empty-text>{{ T "galEmptyText" }}</p>
       <p class="gal-empty__actions">
-        {{- with site.GetPage "/docs/templates" }}<a class="btn btn--ghost" href="{{ .RelPermalink }}">{{ partial "icon.html" "template" }}<span>{{ T "galSoonDocs" }}</span></a>{{ end }}
-        {{ partial "download-button.html" . }}
+        <button class="btn btn--ghost" type="button" data-gal-retry hidden>{{ T "galRetry" }}</button>
+        {{- with site.GetPage "/docs/templates" }}<a class="btn btn--ghost" href="{{ .RelPermalink }}">{{ partial "icon.html" "template" }}<span>{{ T "galDocs" }}</span></a>{{ end }}
       </p>
     </div>
+    {{- if not $n }}
+    <noscript><div class="gal-empty"><p>{{ T "galNoJsEmpty" }}</p></div></noscript>
+    {{- end }}
   </div>
 </section>
 
@@ -108,7 +121,7 @@
 {{- /* Snapshot + UI strings for the script. */}}
 <script type="application/json" id="gallery-data">{{ dict "templates" $g.templates "tags" $g.tags | jsonify | safeJS }}</script>
 {{- $strings := dict -}}
-{{- range slice "galAllDevices" "galCount" "galCountOne" "galShowing" "galMore" "galLess" "galOfficial" "galPages" "galPagesOne" "galBy" "galOpen" "galDownloadShort" "galLandscape" "galSamples" "galNoSamples" "galFonts" "galNoFonts" "galVersion" "galDownloads" "galUpdated" "galLicence" "galDevices" "galAuthor" "galCopyLink" "galLinkCopied" -}}
+{{- range slice "galAllDevices" "galCount" "galCountOne" "galShowing" "galMore" "galLess" "galOfficial" "galPages" "galPagesOne" "galBy" "galOpen" "galDownloadShort" "galLandscape" "galSamples" "galNoSamples" "galFonts" "galNoFonts" "galVersion" "galDownloads" "galUpdated" "galLicence" "galDevices" "galAuthor" "galCopyLink" "galLinkCopied" "galEmptyTitle" "galEmptyText" "galErrorTitle" "galErrorText" -}}
   {{- $strings = merge $strings (dict . (T .)) -}}
 {{- end }}
 <script type="application/json" id="gallery-i18n">{{ $strings | jsonify | safeJS }}</script>

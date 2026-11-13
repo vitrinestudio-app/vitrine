@@ -1,18 +1,21 @@
 ---
-title: Migrating from fastlane frameit
-linkTitle: fastlane migration
-description: "Keep snapshot, screengrab, deliver and supply – replace frameit with Vitrine Studio, step by step."
+title: Using Vitrine Studio with fastlane
+linkTitle: Using with fastlane
+description: "Vitrine Studio in a fastlane lane: snapshot and screengrab capture, Vitrine Studio designs the screenshots, deliver and supply upload – step by step."
 weight: 105
 icon: arrow
 ---
 
-Vitrine Studio replaces **frameit** in a fastlane setup. Capturing (snapshot,
-screengrab) and uploading (deliver, supply) can stay exactly as they are – or
-you let Vitrine Studio upload too.
+I used fastlane and frameit for my apps' store screenshots for years myself,
+and I am very grateful to Felix Krause and everyone who keeps fastlane going
+for their work. That's why Vitrine Studio is built to **fit into fastlane**:
+snapshot and screengrab keep capturing, deliver and supply keep uploading –
+Vitrine Studio takes over designing the screenshots in your lane, the job
+frameit does there. If you like, it can upload the screenshots too.
 
 ## What maps to what
 
-| frameit | Vitrine Studio |
+| With frameit | With Vitrine Studio |
 |---|---|
 | one framed image per screenshot | one canvas for the whole set; pages can share backgrounds and devices |
 | `Framefile.json` (background, font, padding) | canvas backgrounds, text styles, device positions – designed visually |
@@ -53,9 +56,10 @@ you let Vitrine Studio upload too.
    Google Play targets to `metadata/android/<play-locale>/images/<type>/`, the
    feature graphic to `images/featureGraphic.png`.
 
-5. **Drop `frameit` from your Fastfile** and delete old `*_framed.png` files –
-   deliver uploads only those when it finds any. `upload_to_app_store` and
-   `upload_to_play_store` then upload the folders unchanged.
+5. **Take `frameit` out of the lane** – the finished images now come from
+   Vitrine Studio – and delete old `*_framed.png` files: deliver uploads only
+   those when it finds any. `upload_to_app_store` and `upload_to_play_store`
+   then upload the folders as usual.
 
 A lane could look like this:
 
@@ -77,12 +81,22 @@ end
 - iPad 12.9″ (2nd generation) images get deliver's `_app_ipad_pro_129` marker
   in their name.
 - Left out with a note: targets without a store slot (web, blog), App Store
-  header and search results creatives (deliver can't upload them), sizes
+  header and search results creatives (they are not part of the screenshot
+  sets in the fastlane folder layout), sizes
   deliver rejects, languages without a store locale.
 
-## Or skip deliver for screenshots
+## Upload the screenshots with Vitrine Studio
 
-Vitrine Studio can [upload directly](../store-upload/) to App Store Connect and
-Google Play – with a plan you confirm before anything is sent, incremental
-(unchanged sets are skipped) and including iPhone Duo and the App Store
-creatives that deliver can't handle.
+deliver and supply keep uploading your app binary and metadata. The
+screenshots can be handled by Vitrine Studio if you like: it
+[uploads directly](../store-upload/) to App Store Connect and Google Play,
+with a plan you confirm before anything is sent, and incrementally (unchanged
+sets are skipped). In the lane, you then leave the screenshots out of deliver
+and supply:
+
+```ruby
+upload_to_app_store(skip_screenshots: true)          # binary and metadata as before
+upload_to_play_store(skip_upload_screenshots: true)
+```
+
+How to run the upload from CI: [Uploading from CI](../ci/#uploading-from-ci).

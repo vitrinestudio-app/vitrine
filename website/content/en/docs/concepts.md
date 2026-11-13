@@ -6,14 +6,13 @@ weight: 10
 icon: formats
 ---
 
-If you have made store screenshots in Figma or with fastlane frameit, you
-know the routine: one artboard per screenshot, per device, per language – and
-every change means touching all of them. Vitrine Studio turns that around:
-you design **once**, and the app renders every image you need.
+Store screenshots multiply quickly: several pages, several device classes,
+several languages, two stores. Vitrine Studio builds on one idea: you design
+**once**, and the app renders every image you need.
 
 ```text
 Project ─┬─ Canvas "phone"  ── pages 1 … 6, backgrounds, devices, texts
-         └─ Canvas "mac"    ── …
+         └─ Canvas "mac"    ── pages 1 … 4, backgrounds, devices, texts
 
 Target × Language × Variant  →  finished images
 (iPhone 6.9″, Google Play phone, iPad 13″ …) × (en, de, fr …)
@@ -86,9 +85,10 @@ A target can adapt the canvas without duplicating it:
   rendered for Google Play (1:2). Elements keep their distance to the top,
   the bottom or the centre of the page, depending on their **anchor**.
 - **Grouping.** `Pages per image: 2` puts two portrait pages side by side into
-  one landscape image – an iPad landscape set from the phone canvas.
+  one landscape image – an iPad landscape set from the phone canvas. Tablets
+  can of course have a canvas of their own; grouping is just a handy shortcut.
 - **Device swap.** The Play target swaps the iPhone frames for Android frames.
-- **Banner.** One image from a region of the canvas, e.g. the feature graphic.
+- **Banner.** One image from a region of the canvas, e.g. the feature graphic or a blog post header.
 
 ## Variants
 

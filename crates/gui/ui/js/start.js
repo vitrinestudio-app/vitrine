@@ -7,6 +7,7 @@
 import { api, listen } from './api.js';
 import { h, icon } from './dom.js';
 import { errorLine, input, openModal, row } from './dialogs/modal.js';
+import { galleryPicker } from './dialogs/template-gallery.js';
 import { templatePicker } from './dialogs/templates.js';
 import { t } from './i18n.js';
 import { isTauri } from './transport.js';
@@ -47,8 +48,47 @@ export async function openNewProject() {
   let location = '';
   let template = 'phone';
   let langs = settings.default_project_language;
+  /** Template source tab: `local` (built in + app store) or `gallery` (online). */
+  let source = 'local';
+  let busy = false;
   const target = h('div', { class: 'mono small muted path-preview' });
   const createBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => create() }, t('start.create'));
+  const footStatus = h('span', { class: 'small muted np-status' });
+  const local = templatePicker({
+    value: template,
+    onchange: (tpl) => {
+      if (tpl) template = tpl.id;
+    },
+    onerror: (e) => err.show(e),
+  });
+  const gallery = galleryPicker({ onchange: () => update() });
+  const hint = h('div', { class: 'form-hint' });
+  const tabs = h('div', { class: 'dlg-tabs np-tabs', role: 'tablist' });
+  const panes = { local: local.el, gallery: gallery.el };
+  function drawTabs() {
+    tabs.replaceChildren(
+      ...['local', 'gallery'].map((id) =>
+        h(
+          'button',
+          {
+            type: 'button',
+            role: 'tab',
+            'aria-selected': String(id === source),
+            onclick: () => {
+              if (busy || id === source) return;
+              source = id;
+              drawTabs();
+              update();
+              if (id === 'gallery') gallery.activate();
+            },
+          },
+          t(`start.template.${id}`),
+        ),
+      ),
+    );
+    for (const [id, el] of Object.entries(panes)) el.hidden = id !== source;
+    hint.textContent = t(source === 'gallery' ? 'start.template.gallery_hint' : 'start.template.hint');
+  }
   const locInput = input({
     placeholder: t('start.location.placeholder'),
     cls: 'grow',
@@ -63,18 +103,34 @@ export async function openNewProject() {
   function update() {
     target.textContent = dir() || t('start.location.missing');
     target.classList.toggle('mono', Boolean(dir()));
-    createBtn.disabled = !dir();
+    const fromGallery = source === 'gallery';
+    const chosen = fromGallery ? gallery.selected : null;
+    createBtn.disabled = busy || !dir() || (fromGallery && !chosen);
+    createBtn.textContent = chosen && chosen.installed_version !== chosen.version ? t('start.create.download') : t('start.create');
+    if (!busy) footStatus.textContent = chosen ? chosen.name : '';
   }
   async function create() {
-    createBtn.disabled = true;
+    busy = true;
+    update();
     try {
+      let tpl = template;
+      if (source === 'gallery') {
+        const chosen = gallery.selected;
+        if (chosen?.installed_version !== chosen?.version) footStatus.textContent = t('start.downloading');
+        // Kept in the app-wide store: it shows up under "Local templates".
+        tpl = await gallery.install();
+        local.reload();
+      }
+      footStatus.textContent = t('start.creating');
       const list = langs.split(/[\s,]+/).filter(Boolean);
-      const summary = await api.projectNew({ dir: dir(), name: name.trim(), template, langs: list });
+      const summary = await api.projectNew({ dir: dir(), name: name.trim(), template: tpl, langs: list });
       m.close();
       await opened(summary);
     } catch (e) {
-      err.show(e);
-      createBtn.disabled = false;
+      err.show(e?.code === 'unreachable' ? new Error(t('tgallery.unreachable')) : e);
+    } finally {
+      busy = false;
+      update();
     }
   }
   const m = openModal({
@@ -124,22 +180,13 @@ export async function openNewProject() {
           ),
           target,
         ),
-        row(
-          t('start.template'),
-          templatePicker({
-            value: template,
-            onchange: (tpl) => {
-              if (tpl) template = tpl.id;
-            },
-            onerror: (e) => err.show(e),
-          }).el,
-          t('start.template.hint'),
-        ),
         row(t('start.langs'), input({ value: langs, cls: 'mono', onchange: (v) => (langs = v) }), t('start.langs.hint')),
+        h('div', { class: 'np-templates' }, h('div', { class: 'np-templates-head' }, h('span', { class: 'form-label' }, t('start.template')), tabs), local.el, gallery.el, hint),
       ),
     ],
-    footer: [h('span', { class: 'spacer' }), h('button', { class: 'btn', type: 'button', onclick: () => m.close() }, t('project.dialog.cancel')), createBtn],
+    footer: [footStatus, h('span', { class: 'spacer' }), h('button', { class: 'btn', type: 'button', onclick: () => m.close() }, t('project.dialog.cancel')), createBtn],
   });
+  drawTabs();
   update();
   m.el.querySelector('input')?.focus();
   return m;

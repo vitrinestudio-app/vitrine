@@ -290,4 +290,12 @@ export const api = {
   templateInsert: (args) => invoke('template_insert', args),
   /** Preview PNG of a template canvas (default: the first). */
   templatePreview: (id, canvas) => invoke('template_preview', canvas ? { id, canvas } : { id }),
+
+  // ----- template gallery (online, ADR 0025; errors `unreachable`, `remote`) -----
+  /** `{ query?, style?, color?, use?, devices?, offset?, limit? }` → `{ templates, offset, limit, has_more }`. */
+  galleryList: (args = {}) => invoke('gallery_list', args),
+  /** Downloads and installs a gallery template into the app-wide store → template summary. */
+  galleryDownload: (id, replace = false) => invoke('gallery_download', { id, replace }),
+  /** Preview PNG of a gallery template canvas (rendered by the server). */
+  galleryPreview: (id, canvas) => invoke('gallery_preview', canvas ? { id, canvas } : { id }),
 };

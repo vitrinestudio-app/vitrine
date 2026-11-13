@@ -81,6 +81,10 @@ js/dialogs/*.js       targets.js = canvases & targets editor (canvas pane: new /
                       image-preview.js = image preview of screenshots/images
                       (`asset_thumbnail` + `asset_info`, ←/→, used-by chips)
 styles/templates.css  template cards, previews, reports
+js/dialogs/template-gallery.js  New project → "Template gallery" tab (online
+                      gallery: lazy list, search + facet filters, previews via
+                      `gallery_preview`, download + create; ADR 0025) and its
+                      styles/template-gallery.css
 styles/{dialogs,targets,start,settings}.css   styles of the above
 styles/{textedit,translations,assets}.css      text editor, translations, assets
 styles/assistant.css  indicator, activity popover, toasts, glow, settings section

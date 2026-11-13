@@ -24,6 +24,10 @@ Sie ist eine einzige **`.vitrine-template`**-Datei.
 Startbildschirm → **Neues Projekt** → eine Vorlagenkarte wählen (oder **Datei
 importieren…** für eine `.vitrine-template`-Datei) → Name, Speicherort,
 Sprachen → **Erstellen**.
+Der Reiter **Vorlagen-Galerie** zeigt die Online-Galerie (Suche, Filter,
+Link zur großen Ansicht auf der Website); **Herunterladen und erstellen**
+lädt die gewählte Vorlage einmal herunter und behält sie unter **Lokale
+Vorlagen**.
 
 - Alle Leinwände der Vorlage kommen mit.
 - **Texte:** Jede deiner Sprachen bekommt den Text der Vorlage in derselben
@@ -36,7 +40,7 @@ Sprachen → **Erstellen**.
   ihres Autors mit, damit du das Design sofort ausprobieren kannst. Sie werden
   nach `screenshots/` kopiert und in `screenshots/samples.yaml` vermerkt. Die
   Prüfung zeigt den Hinweis `sample_screenshot` („durch eigenen ersetzen“), der
-  Export funktioniert, aber ein **Store-Upload lehnt** jeden Satz ab, der noch
+  Export funktioniert, aber ein **Store-Upload lehnt** jedes Screenshot-Set ab, das noch
   ein Beispiel enthält. Ersetze eine Datei durch deinen eigenen Screenshot
   (gleicher Name) – dann ist sie kein Beispiel mehr, sonst ist nichts zu tun.
 
@@ -90,11 +94,24 @@ eine Vorlage; andere werden abgelehnt („darf nicht weitergegeben werden“ ode
 „Lizenz unklar“). Die Lizenzdatei wird übernommen oder erzeugt
 (`fonts/<name>-OFL.txt`). Mitgelieferte Schriften brauchen nichts.
 
+Auf der Kommandozeile speichert `vitrine template save` **alle Leinwände**
+des Projekts. Willst du nur einige, nenne sie mit `--canvas` – einmal pro
+Leinwand (`--canvas phone --canvas tablet`). Die Schlagwörter setzt du mit
+`--style`, `--color` und `--use`; jede Option darf mehrfach vorkommen oder
+mehrere Werte mit Komma nehmen (`--color gradient --color dark` ist dasselbe
+wie `--color gradient,dark`). Freie Schlagwörter (`--tag`) gibt es nicht
+mehr – nur die Werte aus der Tabelle oben.
+
 ```sh
-vitrine template save --name "Bold gradient" --canvas phone \
-  --style bold --color gradient,dark --use travel -o bold.vitrine-template
+# alle Leinwände des Projekts
+vitrine template save --name "Bold gradient" \
+  --style bold --color gradient --color dark --use travel -o bold.vitrine-template
+# nur die Leinwände phone und tablet
+vitrine template save --name "Calm set" --canvas phone --canvas tablet \
+  --style minimal --color light,pastel --use productivity,health-fitness
+# mit eigenen Screenshots als Beispiele
 vitrine template save --name "Demo set" --style minimal --color light --use productivity \
-  --sample-screenshots                     # mit eigenen Screenshots als Beispiele
+  --sample-screenshots
 vitrine template tags                      # alle Schlagwörter
 ```
 
@@ -146,9 +163,8 @@ nur aus Material, das du so weitergeben darfst.
 
 {{< callout status >}}
 Die Galerie wird gerade gefüllt. Durchsuchen kannst du sie auf der Website
-([Vorlagen-Galerie](/de/galerie/)) oder mit `vitrine gallery list`; in der App
-selbst gibt es das Durchsuchen noch nicht – Vorlage herunterladen und im
-Dialog *Neues Projekt* **Datei importieren…** wählen.
+([Vorlagen-Galerie](/de/galerie/)), in der App (*Neues Projekt* →
+**Vorlagen-Galerie**) oder mit `vitrine gallery list`.
 {{< /callout >}}
 
 - **Durchsuchen und Herunterladen** brauchen kein Konto.
