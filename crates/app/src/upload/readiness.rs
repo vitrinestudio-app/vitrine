@@ -6,7 +6,7 @@
 //! 2. Project settings → Stores  project_not_mapped, store_locale_unknown,
 //!                               store_locale_conflict, no_store_locale (warn)
 //! 3. Targets editor             no_store_slots, store_slot_conflict,
-//!                               required_store_set_missing (warn, Apple)
+//!                               required_store_set_missing (warn)
 //! ```
 //!
 //! Cheap (no rendering, no keychain, no network): the upload dialog shows
@@ -375,26 +375,29 @@ pub fn readiness(
         }
     }
 
-    // Required App Store sets (same rule as the validation finding; not
-    // blocking: the other sets upload, App Store Connect refuses the
-    // submission for review).
+    // Required store sets (same rule as the validation finding; not
+    // blocking: the other sets upload, the store refuses the submission /
+    // publishing).
     let off = project
         .checks
         .off
         .iter()
         .any(|c| c == FindingCode::RequiredStoreSetMissing.as_str());
-    if mapped.contains(&StoreKind::Apple) && !off {
+    if !off {
         for m in missing_required_sets(project, catalog::catalog()) {
+            if !mapped.contains(&m.store) {
+                continue;
+            }
             steps.push(ReadinessStep {
                 code: "required_store_set_missing".to_owned(),
-                store: Some(StoreKind::Apple),
-                message: format!("App Store: {}.", m.message()),
+                store: Some(m.store),
+                message: format!("{}: {}.", store_name(m.store), m.message()),
                 fix: Fix::Targets,
                 blocking: false,
                 vars: Some(serde_json::json!({
                     "label": m.preset.label,
                     "preset": m.preset.id,
-                    "display_type": m.display_type(),
+                    "slot": m.slot(),
                 })),
                 link: None,
             });
@@ -453,7 +456,7 @@ targets:
         assert_eq!(step.store, Some(StoreKind::Apple));
         let vars = step.vars.as_ref().unwrap();
         assert_eq!(vars["preset"], "ios-iphone-63");
-        assert_eq!(vars["display_type"], "APP_IPHONE_61");
+        assert_eq!(vars["slot"], "APP_IPHONE_61");
         assert!(step.message.contains("ios-iphone-63"), "{}", step.message);
 
         // Filled, switched off, or another store's tab: no step.
@@ -473,6 +476,46 @@ targets:
             r.steps
                 .iter()
                 .all(|s| s.code != "required_store_set_missing")
+        );
+    }
+
+    #[test]
+    fn missing_google_play_set_is_a_non_blocking_step_on_the_google_tab() {
+        let play_phone = "- id: p
+  canvas: s
+  size: [1080, 1920]
+  store: {google: {image_type: phoneScreenshots}}
+";
+        // Mapped to Google Play as well.
+        let mut p = project(play_phone, "");
+        p.store.google = Some(vitrine_core::model::GoogleStore {
+            package_name: Some("com.example".into()),
+            ..Default::default()
+        });
+        let r = readiness(&p, &[], &[StoreKind::Google], Some(StoreKind::Google));
+        assert!(r.ready, "{r:#?}");
+        let [step] = r.steps.as_slice() else {
+            panic!("{r:#?}")
+        };
+        assert_eq!(step.code, "required_store_set_missing");
+        assert_eq!(step.store, Some(StoreKind::Google));
+        assert_eq!(step.fix, Fix::Targets);
+        assert!(!step.blocking);
+        let vars = step.vars.as_ref().unwrap();
+        assert_eq!(vars["preset"], "play-feature-graphic");
+        assert_eq!(vars["slot"], "featureGraphic");
+        assert!(
+            step.message
+                .starts_with("Google Play: no Google Play feature graphic"),
+            "{}",
+            step.message
+        );
+
+        // Not mapped to Google Play (only Apple): no Google step.
+        let r = readiness(&project(play_phone, ""), &[], &[StoreKind::Apple], None);
+        assert!(
+            r.steps.iter().all(|s| s.store != Some(StoreKind::Google)),
+            "{r:#?}"
         );
     }
 }

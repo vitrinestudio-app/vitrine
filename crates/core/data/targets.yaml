@@ -44,8 +44,10 @@
 #                  screenshot variant key
 #     requirement  required | conditional | optional (for publishing). required =
 #                  needed for every app on the preset's platform; validation
-#                  (`required_store_set_missing`, Apple only) asks for it once
-#                  the project targets that platform (iPad/Mac: has such a target)
+#                  (`required_store_set_missing`, App Store and Google Play)
+#                  asks for it once the project targets that platform in that
+#                  store (iPad/Mac: has such a target); presets sharing a slot
+#                  are filled by any target with that slot
 #     status       verified (primary source) | secondary (only third-party
 #                  sources for part of the entry, see note) | unverified |
 #                  convention (no store rule, common practice)

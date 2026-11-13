@@ -107,6 +107,15 @@ targets:
   gallery: play-phone
   device_map: {iphone-island: android-punchhole}
   store: {google: {image_type: phoneScreenshots}}
+- id: play-feature-graphic
+  kind: banner
+  canvas: phone
+  size: [1024, 500]
+  screenshots: android-phone
+  device_map: {iphone-island: android-punchhole}
+  fit: cover
+  gaps: none
+  store: {google: {image_type: featureGraphic}}
 - id: blog-header
   kind: banner
   canvas: phone

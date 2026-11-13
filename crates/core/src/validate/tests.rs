@@ -1261,9 +1261,11 @@ fn required_store_sets() {
     // No Apple target, not mapped: nothing to require.
     let p = project("[]", "");
     assert_eq!(missing_sets(&p), Vec::<String>::new());
-    // Google only: the check is App Store only.
+    // Google Play targets ask for Google sets only, never Apple ones.
     let p = project("[]", "  store: {google: {image_type: phoneScreenshots}}\n");
-    assert_eq!(missing_sets(&p), Vec::<String>::new());
+    let m = missing_sets(&p);
+    assert_eq!(m.len(), 1, "{m:?}");
+    assert!(m[0].contains("`featureGraphic`"), "{}", m[0]);
 
     // iPhone 6.9″ only → the required 6.3″ set (APP_IPHONE_61) is missing.
     let mut p = project("[]", "  store: {apple: {display_type: APP_IPHONE_67}}\n");
@@ -1322,6 +1324,83 @@ fn required_store_sets() {
     let r = run(&p);
     assert!(!has(&r, FindingCode::RequiredStoreSetMissing));
     assert!(!has(&r, FindingCode::UnknownAllow));
+}
+
+/// Adds a target `id` with a Google Play slot.
+fn add_google_target(p: &mut Project, id: &str, image_type: &str) {
+    let mut t = p.targets[0].clone();
+    t.id = TargetId::new(id);
+    t.store = Some(crate::model::StoreSlot {
+        apple: None,
+        google: Some(crate::model::GoogleSlot {
+            image_type: image_type.to_owned(),
+        }),
+    });
+    p.targets.push(t);
+}
+
+#[test]
+fn required_google_play_sets() {
+    // Phone screenshots only → the feature graphic is missing (a banner).
+    let mut p = project("[]", "  store: {google: {image_type: phoneScreenshots}}\n");
+    let m = missing_sets(&p);
+    assert_eq!(m.len(), 1, "{m:?}");
+    assert!(
+        m[0].contains("no Google Play feature graphic (`featureGraphic`, 1024×500)"),
+        "{}",
+        m[0]
+    );
+    assert!(m[0].contains("required by Google Play"), "{}", m[0]);
+    assert!(
+        m[0].contains("add the banner target `play-feature-graphic`"),
+        "{}",
+        m[0]
+    );
+    add_google_target(&mut p, "fg", "featureGraphic");
+    assert_eq!(missing_sets(&p), Vec::<String>::new());
+
+    // Feature graphic only → phone screenshots, reported once although
+    // two required presets (9:16, 1:2) share the slot.
+    let p = project(
+        "[]",
+        "  kind: banner\n  store: {google: {image_type: featureGraphic}}\n",
+    );
+    let m = missing_sets(&p);
+    assert_eq!(m.len(), 1, "{m:?}");
+    assert!(
+        m[0].contains("`phoneScreenshots`") && m[0].contains("add the target `play-phone`"),
+        "{}",
+        m[0]
+    );
+
+    // A tablet target is an Android app too: phone + feature graphic.
+    // Tablet sets themselves are optional in the data: never asked for.
+    let p = project(
+        "[]",
+        "  store: {google: {image_type: tenInchScreenshots}}\n",
+    );
+    let m = missing_sets(&p);
+    assert_eq!(m.len(), 2, "{m:?}");
+    assert!(m.iter().all(|m| !m.contains("tablet")), "{m:?}");
+
+    // Wear OS only: its set is `conditional`, the phone set is not asked for.
+    let mut p = project("[]", "  store: {google: {image_type: wearScreenshots}}\n");
+    assert_eq!(missing_sets(&p), Vec::<String>::new());
+    // … even when mapped to Google Play (a Wear OS app counts).
+    p.store.google = Some(crate::model::GoogleStore::default());
+    assert_eq!(missing_sets(&p), Vec::<String>::new());
+
+    // Mapped to Google Play without Play targets: both, from the mapping.
+    let mut p = project("[]", "");
+    p.store.google = Some(crate::model::GoogleStore::default());
+    let m = missing_sets(&p);
+    assert_eq!(m.len(), 2, "{m:?}");
+    assert!(m.iter().all(|m| m.contains("store.google")), "{m:?}");
+
+    // `checks.off` silences Google as well.
+    let mut p = project("[]", "  store: {google: {image_type: phoneScreenshots}}\n");
+    p.checks.off = vec!["required_store_set_missing".into()];
+    assert!(!has(&run(&p), FindingCode::RequiredStoreSetMissing));
 }
 
 #[test]

@@ -357,12 +357,23 @@ fn readiness_walks_from_app_settings_to_targets() {
         );
     }
     let r = call(app, "upload_readiness", json!({"store": "google"}));
+    // Mapped to Google Play without Play targets: the required phone set
+    // and feature graphic are named too (notes, not blocking).
     assert_eq!(
         codes(&r),
-        ["no_account", "project_not_mapped", "no_store_slots"],
+        [
+            "no_account",
+            "project_not_mapped",
+            "no_store_slots",
+            "required_store_set_missing",
+            "required_store_set_missing"
+        ],
         "{r:#}"
     );
     assert_eq!(r["steps"][2]["fix"], "targets");
+    assert_eq!(r["steps"][3]["vars"]["preset"], "play-phone");
+    assert_eq!(r["steps"][4]["vars"]["preset"], "play-feature-graphic");
+    assert_eq!(r["steps"][4]["blocking"], false);
 
     // The plan carries the same checklist.
     let plan = call(app, "upload_plan", json!({"store": "google"}));
