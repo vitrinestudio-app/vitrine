@@ -165,7 +165,7 @@ Every element has an `id`, a `kind` and a home `page` (0-based). Units are lu
 |---|---|
 | `device` | `model` (required), `orientation`, `frame`, `bezel`, `color`, `fold` (`open`/`folded`), `chrome` (`none`/`browser`), `url`, `appearance` (`light`/`dark`), `screenshot` (the key), `fit` (`cover`/`contain`/`stretch`), `shadow`; the height follows the model |
 | `text` | `text` (the key, required), `style`, `box` (`{top, left, right, bottom}` margins to the page edges – without `bottom` the box grows down), `align`, `valign`, `fit` (`{shrink_to, max_lines}`), `color`, `font_size`, `stroke`, `glow`, `shadow`, `hyphenate`, `langs` |
-| `image` | `asset` (e.g. `assets/badge.png`), `fit`, `shadow` |
+| `image` | `asset` (e.g. `assets/badge.png`), `fit`, `shadow`, `clip_to` (id of a `rect`/`ellipse` shape on the canvas: the image is cut to its outline; a shape with `visible: false` is only the mask) |
 | `shape` | `shape` (`rect`/`ellipse`/`line`), `radius`, `fill`, `stroke`, `shadow` |
 | `background` | `fill` – fills the home page |
 | `group` | `children` – elements moved and rotated together |
