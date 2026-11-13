@@ -12,7 +12,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::io::IoError;
-use crate::model::{Lang, Languages, Project, StringKey};
+use crate::model::{ElementId, ElementKind, Lang, Languages, Project, StringKey};
+use crate::ops::Op;
 use crate::samples::SampleMarks;
 
 use super::{Package, TemplateError, archive, walk};
@@ -84,11 +85,33 @@ fn applies(key: &Lang, langs: &[Lang]) -> bool {
     })
 }
 
+/// The project languages a template language list `keys` (`visible_in.langs`)
+/// means once the template's languages `old` become `langs`: those a key
+/// applies to (`de` → `de-AT`), and those whose texts come from such a
+/// template language ([`source_lang`]: `fr` served by `en` shows what `en`
+/// shows). Empty when no project language is meant.
+fn remap_langs(keys: &[Lang], old: &Languages, langs: &[Lang]) -> Vec<Lang> {
+    langs
+        .iter()
+        .filter(|lang| {
+            let src = source_lang(old, lang);
+            keys.iter().any(|k| {
+                applies(k, std::slice::from_ref(lang)) || applies(k, std::slice::from_ref(&src))
+            })
+        })
+        .cloned()
+        .collect()
+}
+
 /// Moves the template's texts and language-specific settings to `langs`
 /// (the first is the default): texts per [`source_lang`]; language
-/// overrides, `visible_in.langs` and target `langs` keep only entries that
-/// apply to one of `langs`. Returns the languages whose texts were copied
-/// from another language (to be translated).
+/// overrides and `visible_in.langs` follow the texts ([`remap_langs`]: a
+/// project language gets what its source language had), target `langs`
+/// keep only entries that apply to one of `langs`. Elements shown only in
+/// template languages the project does not get (`card-de` in an English
+/// project) are removed with their variant overrides: an empty
+/// `visible_in` would show them everywhere. Returns the languages whose
+/// texts were copied from another language (to be translated).
 pub(crate) fn adapt_languages(tpl: &mut Project, langs: &[Lang]) -> Vec<(Lang, Lang)> {
     let old = tpl.languages.clone();
     let mut strings = BTreeMap::new();
@@ -104,21 +127,65 @@ pub(crate) fn adapt_languages(tpl: &mut Project, langs: &[Lang]) -> Vec<(Lang, L
         }
     }
     tpl.strings = strings;
+    // Elements left without a project language (removed below).
+    let mut orphans: Vec<ElementId> = Vec::new();
+    for canvas in &mut tpl.canvases {
+        walk::elements_mut(&mut canvas.elements, &mut |e| {
+            if let Some(v) = &mut e.visible_in
+                && !v.langs.is_empty()
+            {
+                v.langs = remap_langs(&v.langs, &old, langs);
+                if v.langs.is_empty() {
+                    orphans.push(e.id.clone());
+                }
+            }
+            if let ElementKind::Text(t) = &mut e.kind {
+                let mut kept: BTreeMap<Lang, _> = t
+                    .langs
+                    .iter()
+                    .filter(|(l, _)| applies(l, langs))
+                    .map(|(l, p)| (l.clone(), p.clone()))
+                    .collect();
+                for lang in langs {
+                    let one = std::slice::from_ref(lang);
+                    if kept.keys().any(|k| applies(k, one)) {
+                        continue;
+                    }
+                    let src = source_lang(&old, lang);
+                    let src = std::slice::from_ref(&src);
+                    if let Some(p) = t
+                        .langs
+                        .iter()
+                        .find(|(k, _)| applies(k, src))
+                        .map(|(_, p)| p)
+                    {
+                        kept.insert(lang.clone(), p.clone());
+                    }
+                }
+                t.langs = kept;
+            }
+        });
+        for variant in canvas.variants.values_mut() {
+            for patch in variant.overrides.values_mut() {
+                if let Some(Some(v)) = &mut patch.visible_in
+                    && !v.langs.is_empty()
+                {
+                    v.langs = remap_langs(&v.langs, &old, langs);
+                    if v.langs.is_empty() {
+                        // Shown in this variant only in languages the
+                        // project does not get: hidden in it.
+                        patch.visible_in = None;
+                        patch.visible = Some(Some(false));
+                    }
+                }
+            }
+        }
+    }
     tpl.languages = Languages {
         default: langs[0].clone(),
         available: langs.to_vec(),
         fallback: BTreeMap::new(),
     };
-    for canvas in &mut tpl.canvases {
-        walk::elements_mut(&mut canvas.elements, &mut |e| {
-            if let Some(v) = &mut e.visible_in {
-                v.langs.retain(|l| applies(l, langs));
-            }
-            if let crate::model::ElementKind::Text(t) = &mut e.kind {
-                t.langs.retain(|l, _| applies(l, langs));
-            }
-        });
-    }
     for t in &mut tpl.targets {
         if let Some(list) = &mut t.langs {
             list.retain(|l| langs.contains(l));
@@ -127,7 +194,33 @@ pub(crate) fn adapt_languages(tpl: &mut Project, langs: &[Lang]) -> Vec<(Lang, L
             }
         }
     }
+    remove_orphans(tpl, orphans);
     copied
+}
+
+/// Removes the elements `ids` (with their variant overrides). One still
+/// used as a `clip_to` mask by a kept image stays, hidden (a mask works
+/// hidden too).
+fn remove_orphans(tpl: &mut Project, mut ids: Vec<ElementId>) {
+    // A mask can be removed once the images clipped to it are gone.
+    loop {
+        let before = ids.len();
+        ids.retain(|id| {
+            tpl.element(id.as_str()).is_some()
+                && tpl.apply(Op::RemoveElement { id: id.clone() }).is_err()
+        });
+        if ids.is_empty() || ids.len() == before {
+            break;
+        }
+    }
+    for canvas in &mut tpl.canvases {
+        walk::elements_mut(&mut canvas.elements, &mut |e| {
+            if ids.contains(&e.id) {
+                e.visible = false;
+                e.visible_in = None;
+            }
+        });
+    }
 }
 
 /// Where the template's sample screenshots go in a project with `langs`
