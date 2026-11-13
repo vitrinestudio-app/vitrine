@@ -2,8 +2,10 @@
 {{ define "main" }}
 {{- $p := .Params -}}
 
+{{ partial "section-index.html" . }}
+
 {{/* ================= Hero ================= */}}
-<section class="hero">
+<section class="hero" id="top">
   <div class="hero__glow" aria-hidden="true"></div>
   <div class="wrap hero__inner">
     <div class="hero__copy">
@@ -103,7 +105,7 @@
 </section>
 
 {{/* ================= One layout → every language × device ================= */}}
-<section class="section section--matrix">
+<section class="section section--matrix" id="matrix">
   <div class="wrap matrix">
     <div class="matrix__copy">
       {{ partial "section-head.html" (merge $p.matrix (dict "align" "left")) }}
