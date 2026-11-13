@@ -59,7 +59,8 @@ processing in its section. We rely on:
 
 - **Art. 6(1)(b) GDPR** – the processing is necessary for the performance of
   the user relationship you enter into with us when you sign in and publish
-  templates in the gallery;
+  templates in the gallery (see the
+  [terms of use of the template gallery](/terms/));
 - **Art. 6(1)(c) GDPR** – the processing is necessary for compliance with a
   legal obligation (e.g. handling notices of illegal content under the
   Digital Services Act);

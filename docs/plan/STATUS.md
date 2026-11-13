@@ -82,6 +82,12 @@ and nginx `client_max_body_size 110m` before the bulk upload.
 - SignPath application (needs public release + code signing policy page;
   CLA relicensing clause vs "no commercial dual-licensing").
 - Website: Impressum/Datenschutz texts, deploy (www + redirect), images.
+- Gallery terms of use (2026-11-13, draft, needs legal review):
+  `website/content/{de,en}/nutzungsbedingungen.md` (/de/nutzungsbedingungen/,
+  /terms/); owner fills `[OFFEN: …]` (e-mail, periods, age limit, Art. 19 DSA
+  check, how to notify uploaders – the gallery knows no e-mail addresses;
+  no technical uploader ban yet). CLI upload prints the link, `/health`
+  has `terms_url`/`terms_version`; the GUI has no upload/login yet.
 
 **Lessons for coordinating:**
 - Worktree agents sometimes start from `origin/main`: push main before

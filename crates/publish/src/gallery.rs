@@ -18,6 +18,10 @@ use serde::{Deserialize, Serialize};
 
 /// The production API.
 pub const DEFAULT_API_URL: &str = "https://api.vitrinestudio.app";
+/// The gallery's terms of use (English translation; the German version
+/// `https://www.vitrinestudio.app/de/nutzungsbedingungen/` is binding).
+/// Uploading accepts them.
+pub const TERMS_URL: &str = "https://www.vitrinestudio.app/terms/";
 /// Base URL override (loopback URLs only).
 pub const API_URL_ENV: &str = "VITRINE_API_URL";
 /// Largest download accepted: the client package limit

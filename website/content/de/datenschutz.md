@@ -53,7 +53,8 @@ jeweiligen Abschnitt mit. Wir stützen uns auf:
 
 - **Art. 6 Abs. 1 lit. b DSGVO** – die Verarbeitung ist für die Erfüllung
   des Nutzungsverhältnisses erforderlich, das du mit uns eingehst, wenn du
-  dich anmeldest und Vorlagen in der Galerie veröffentlichst;
+  dich anmeldest und Vorlagen in der Galerie veröffentlichst (siehe
+  [Nutzungsbedingungen der Vorlagen-Galerie](/de/nutzungsbedingungen/));
 - **Art. 6 Abs. 1 lit. c DSGVO** – die Verarbeitung ist zur Erfüllung einer
   rechtlichen Verpflichtung erforderlich (z. B. Bearbeitung von Hinweisen auf
   rechtswidrige Inhalte nach dem Digital Services Act);
