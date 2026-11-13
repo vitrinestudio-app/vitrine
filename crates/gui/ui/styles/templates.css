@@ -92,3 +92,59 @@
   flex-direction: column;
   gap: 4px;
 }
+
+/* "Save as template" dialog: wider than `dlg-medium`, long checkbox labels
+ * wrap (`.check` is nowrap elsewhere), so the body never scrolls sideways. */
+.tpl-save-dlg.dlg-medium {
+  width: min(760px, 94vw);
+}
+
+.tpl-save-dlg .dlg-body {
+  overflow-x: hidden;
+}
+
+.tpl-save-dlg .check {
+  white-space: normal;
+  align-items: flex-start;
+  overflow-wrap: anywhere;
+}
+
+.tpl-save-dlg .check input {
+  margin-top: 2px;
+  flex: none;
+}
+
+.tpl-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.tpl-canvas-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding-top: 4px;
+}
+
+/* Indeterminate bar + label in the footer while the template is saved. */
+.tpl-busy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tpl-busy[hidden] {
+  display: none;
+}
+
+.tpl-busy .ex-bar {
+  width: 140px;
+  flex: none;
+}
+
+.tpl-save-dlg .tpl-result:empty {
+  display: none;
+}

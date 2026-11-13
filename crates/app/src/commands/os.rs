@@ -63,7 +63,16 @@ pub const HELP_URLS: &[&str] = &[
     APPLE_BEZELS_URL,
     // Updates (ADR 0026): release notes / manual download (deb/rpm installs).
     RELEASES_URL,
+    // User guide on the website (top of the Help menu, by UI language).
+    DOCS_URL_EN,
+    DOCS_URL_DE,
 ];
+
+/// The user guide on the website (English; Help menu).
+pub const DOCS_URL_EN: &str = "https://www.vitrinestudio.app/docs/";
+
+/// The user guide on the website (German; Help menu).
+pub const DOCS_URL_DE: &str = "https://www.vitrinestudio.app/de/docs/";
 
 /// Apple Design Resources, Product Bezels section (Help menu).
 pub const APPLE_BEZELS_URL: &str = "https://developer.apple.com/design/resources/#product-bezels";

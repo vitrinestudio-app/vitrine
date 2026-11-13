@@ -7,7 +7,7 @@
 import { api } from '../api.js';
 import { h, icon } from '../dom.js';
 import { t } from '../i18n.js';
-import { checkbox, errorLine, input, openModal, row, segmented } from './modal.js';
+import { checkbox, choiceDialog, errorLine, input, openModal, row, segmented } from './modal.js';
 
 /** `t` with `{name}` parameters. */
 const tt = (key, params = {}) => Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), t(key));
@@ -188,13 +188,31 @@ function tagPickers(chosen) {
   return el;
 }
 
-/** "Save as template…": selected canvases (default: all) of the open project. */
-export function openSaveTemplate({ canvases, current }) {
+/**
+ * "Save as template…" (app menu): the chosen canvases (default: all) of
+ * the open project go into the local template store (`<app data>/templates/`,
+ * always), optionally also into a `.vitrine-template` file. While the
+ * backend works the form is locked, an indeterminate bar runs and the
+ * dialog cannot be dismissed; on success it closes with a toast (notes
+ * that need attention – fonts or samples left out – follow in a small
+ * dialog). Resolves to the save result, or null when cancelled.
+ */
+export function openSaveTemplate({ canvases, toast }) {
   const err = errorLine();
   const st = { name: '', id: '', description: '', author: '', tags: {}, samples: false, skipFonts: false, selected: new Set(canvases.map((c) => c.id)), file: false };
-  if (current && canvases.length > 1) st.selected = new Set([current]);
   const saveBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => save() }, tt('templates.save.button'));
+  const cancelBtn = h('button', { class: 'btn', type: 'button', onclick: () => m.close(null) }, t('project.dialog.cancel'));
+  const busy = h('div', { class: 'tpl-busy', hidden: true }, h('progress', { class: 'ex-bar' }), h('span', { class: 'muted small' }, tt('templates.save.busy')));
   const result = h('div', { class: 'tpl-result small' });
+  const fields = h('fieldset', { class: 'tpl-fieldset' });
+
+  function setBusy(on) {
+    m.setBusy(on);
+    fields.disabled = on;
+    saveBtn.disabled = on;
+    cancelBtn.disabled = on;
+    busy.hidden = !on;
+  }
 
   async function save() {
     if (!st.name.trim()) return err.show(new Error(tt('templates.save.name_missing')));
@@ -216,28 +234,19 @@ export function openSaveTemplate({ canvases, current }) {
       if (!path) return;
       args.file = path;
     }
-    saveBtn.disabled = true;
+    err.show(null);
+    result.replaceChildren();
+    setBusy(true);
+    let r;
     try {
-      let r;
       try {
         r = await api.templateSave(args);
       } catch (e) {
         if (!e.message?.includes('already installed')) throw e;
         r = await api.templateSave({ ...args, replace: true });
       }
-      dropPreviews(r.template.id);
-      err.show(null);
-      const notes = [tt('templates.save.done', { id: r.template.id })];
-      if (r.report.placeholders) notes.push(tt('templates.save.placeholders', { n: r.report.placeholders }));
-      if (r.report.samples?.length) notes.push(tt('templates.save.samples_done', { n: r.report.samples.length }));
-      for (const [path, why] of r.report.samples_skipped ?? []) notes.push(tt('templates.save.sample_skipped', { file: path, why }));
-      for (const f of r.report.licenses_generated ?? []) notes.push(tt('templates.save.licence', { file: f }));
-      for (const f of r.report.fonts_missing ?? []) notes.push(tt('templates.save.font_missing', { font: f }));
-      for (const [file, why] of r.report.fonts_skipped ?? []) notes.push(tt('templates.save.font_skipped', { file, why }));
-      if (r.file) notes.push(r.file);
-      result.replaceChildren(...notes.map((n) => h('div', {}, n)));
-      saveBtn.textContent = tt('templates.save.again');
     } catch (e) {
+      setBusy(false);
       err.show(e);
       // A font whose licence does not allow sharing: offer to leave it out.
       if (!st.skipFonts && /Open Font License/.test(e?.message ?? '')) {
@@ -249,50 +258,65 @@ export function openSaveTemplate({ canvases, current }) {
         });
         result.replaceChildren(retry);
       }
-    } finally {
-      saveBtn.disabled = false;
+      return;
+    }
+    dropPreviews(r.template.id);
+    m.close(r);
+    toast?.(r.file ? tt('templates.save.done_file', { id: r.template.id, file: r.file }) : tt('templates.save.done', { id: r.template.id }));
+    const notes = [];
+    for (const [path, why] of r.report.samples_skipped ?? []) notes.push(tt('templates.save.sample_skipped', { file: path, why }));
+    for (const f of r.report.fonts_missing ?? []) notes.push(tt('templates.save.font_missing', { font: f }));
+    for (const [file, why] of r.report.fonts_skipped ?? []) notes.push(tt('templates.save.font_skipped', { file, why }));
+    if (notes.length) {
+      choiceDialog({
+        title: tt('templates.save.notes_title'),
+        size: 'medium',
+        body: h('div', {}, h('p', { class: 'dlg-text' }, tt('templates.save.done', { id: r.template.id })), h('ul', { class: 'dlg-list' }, ...notes.map((n) => h('li', {}, n)))),
+        buttons: [{ label: t('project.dialog.ok'), primary: true, value: true }],
+      });
     }
   }
   const skipBox = checkbox({ label: tt('templates.save.skip_fonts'), checked: false, onchange: (v) => (st.skipFonts = v) });
 
+  fields.append(
+    h(
+      'div',
+      { class: 'form' },
+      row(tt('templates.name'), input({ placeholder: tt('templates.name.placeholder'), oninput: (v) => (st.name = v) })),
+      row(tt('templates.id'), input({ placeholder: tt('templates.id.placeholder'), cls: 'mono', oninput: (v) => (st.id = v) }), tt('templates.id.hint')),
+      row(tt('templates.description'), input({ oninput: (v) => (st.description = v) })),
+      row(tt('templates.author'), input({ oninput: (v) => (st.author = v) })),
+      row(tt('templates.tags'), tagPickers(st.tags)),
+      row(
+        tt('templates.save.canvases'),
+        h(
+          'div',
+          { class: 'tpl-canvas-list' },
+          canvases.map((c) =>
+            checkbox({
+              label: c.id,
+              checked: st.selected.has(c.id),
+              onchange: (on) => (on ? st.selected.add(c.id) : st.selected.delete(c.id)),
+            }),
+          ),
+        ),
+      ),
+      row('', checkbox({ label: tt('templates.save.samples'), checked: false, onchange: (v) => (st.samples = v) }), tt('templates.save.samples_hint')),
+      row('', skipBox, tt('templates.save.skip_fonts_hint')),
+      row(tt('templates.save.where'), checkbox({ label: tt('templates.save.file'), checked: false, onchange: (v) => (st.file = v) }), tt('templates.save.where_hint')),
+      h('p', { class: 'form-hint' }, tt('templates.save.hint')),
+    ),
+  );
+
   const m = openModal({
     title: tt('templates.save.title'),
     size: 'medium',
-    body: [
-      err.el,
-      h(
-        'div',
-        { class: 'form' },
-        row(tt('templates.name'), input({ placeholder: tt('templates.name.placeholder'), oninput: (v) => (st.name = v) })),
-        row(tt('templates.id'), input({ placeholder: tt('templates.id.placeholder'), cls: 'mono', oninput: (v) => (st.id = v) }), tt('templates.id.hint')),
-        row(tt('templates.description'), input({ oninput: (v) => (st.description = v) })),
-        row(tt('templates.author'), input({ oninput: (v) => (st.author = v) })),
-        row(tt('templates.tags'), tagPickers(st.tags)),
-        row(
-          tt('templates.save.canvases'),
-          h(
-            'div',
-            { class: 'stack' },
-            canvases.map((c) =>
-              checkbox({
-                label: c.id,
-                checked: st.selected.has(c.id),
-                onchange: (on) => (on ? st.selected.add(c.id) : st.selected.delete(c.id)),
-              }),
-            ),
-          ),
-        ),
-        row('', checkbox({ label: tt('templates.save.samples'), checked: false, onchange: (v) => (st.samples = v) }), tt('templates.save.samples_hint')),
-        row('', skipBox, tt('templates.save.skip_fonts_hint')),
-        row('', checkbox({ label: tt('templates.save.file'), checked: false, onchange: (v) => (st.file = v) })),
-        h('p', { class: 'form-hint' }, tt('templates.save.hint')),
-        result,
-      ),
-    ],
-    footer: [h('span', { class: 'spacer' }), h('button', { class: 'btn', type: 'button', onclick: () => m.close() }, t('project.dialog.close')), saveBtn],
+    cls: 'tpl-save-dlg',
+    body: [err.el, fields, result],
+    footer: [busy, h('span', { class: 'spacer' }), cancelBtn, saveBtn],
   });
   m.el.querySelector('input')?.focus();
-  return m;
+  return m.closed.then((r) => r ?? null);
 }
 
 /** Text lines of an insert report (`template_insert_plan`). */
