@@ -25,5 +25,5 @@ supersedes the old one.
 
 - Decisions such as the Phase 0 outcome (cosmic-text vs. parley, tiny-skia)
   get an ADR before the corresponding code is merged.
-- `CLAUDE.md` points to this directory so agents check existing decisions
+- `AGENTS.md` (the agent guide) points to this directory so agents check existing decisions
   before proposing changes.

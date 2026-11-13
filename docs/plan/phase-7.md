@@ -212,8 +212,8 @@ All need a published release with CLI archives (7.3). Doc:
       lines); check `npx skills add <local path> --list` finds it; re-check the tool names
       against the released app; verify the per-client install notes in the README (marked
       "verify") and the licences of the sources in CREDITS.md.
-- [ ] **Agent** – push `integrations/skill/` to the repo (folder = repo root; later syncs the
-      same way as the GitHub Action).
+- [x] **Agent** – push `integrations/skill/` to the repo (folder = repo root; later syncs the
+      same way as the GitHub Action) – pushed 2026-11-13 (reported by the coordinator).
 - [ ] **Owner** – repo settings: public, description ("Agent skill: App Store & Google Play
       screenshots with Vitrine Studio over MCP"), topics (`agent-skills`, `mcp`,
       `app-store-screenshots`, `aso`, `vitrine-studio`), MIT licence detected.
@@ -434,6 +434,19 @@ Compact list; details in `docs/plan/STATUS.md` ("Open owner decisions",
 - [x] Website: Automation docs section, home page update, new light/dark
       app screenshots (website + README), Warm Stay matrix, floating
       narrow screenshots, Home link + section index (ce43fba … aa1cfdb).
+- [x] MCP docs (WP-D): `docs_get` topic `checks` (every finding code),
+      "Panoramas and seams" recipe, `at.y` in variant overrides (6fda5d0).
+- [x] Agent skill for store screenshots, vendor-neutral, MIT
+      (`integrations/skill/`, 775eeb6; repo `vitrinestudio-app/vitrine-agent-skill`,
+      publishing steps in 7.4).
+- [x] GUI owner feedback: larger dialog section headings, drag a screenshot
+      onto a device, screenshot picker in the inspector (4b6d045).
+- [x] `AGENTS.md` as the vendor-neutral agent guide, `CLAUDE.md` imports it
+      (1afab39).
+- [x] Repo housekeeping: Inter in `assets/fonts/inter/`, Phase 0 spike
+      images removed (ADR images in `docs/adr/images/`),
+      `next-2026-11-11.md` → `phase-6.2.md`, CLI image tags in the docs
+      pinned to the first release `0.1.0`.
 
 ## 7.11 Before tagging 1.0
 - [ ] All of 7.1–7.8 done or consciously moved after 1.0; 7.9 answered.

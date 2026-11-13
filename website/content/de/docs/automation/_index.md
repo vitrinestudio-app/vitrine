@@ -46,7 +46,7 @@ dazu `SHA256SUMS.txt`:
 | Windows x64 | `vitrine-cli_windows_x64.zip` |
 
 ```sh
-v=0.2.0
+v=0.1.0
 base=https://github.com/vitrinestudio-app/vitrine/releases/download/v$v
 curl -sSfLO "$base/vitrine-cli_linux_x86_64.tar.gz"
 curl -sSfL "$base/SHA256SUMS.txt" | grep ' vitrine-cli_linux_x86_64.tar.gz$' | sha256sum -c -
@@ -68,8 +68,8 @@ veröffentlicht jedes Release außerdem das Image
 
 | Tag | |
 |---|---|
-| `0.2.0` | genau dieses Release (empfohlen für reproduzierbare Builds) |
-| `0.2` | das neueste `0.2.x` |
+| `0.1.0` | genau dieses Release (empfohlen für reproduzierbare Builds) |
+| `0.1` | das neueste `0.1.x` |
 | `latest` | das neueste Release |
 
 Es ist ein Alpine mit dem statischen `vitrine`, `git`, `jq`,
@@ -80,7 +80,7 @@ liegen in `/usr/share/doc/vitrine/licenses/`.
 
 ```sh
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" \
-  ghcr.io/vitrinestudio-app/vitrine-cli:0.2.0 vitrine --project store-screens validate
+  ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0 vitrine --project store-screens validate
 ```
 
 ## Was das Werkzeug für CI bietet {#what-the-cli-offers-ci}

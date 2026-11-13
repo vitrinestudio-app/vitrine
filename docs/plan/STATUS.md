@@ -3,91 +3,16 @@
 Living hand-off document so work can continue after a context reset. Keep it
 current: update after each phase/merge and whenever the user decides something.
 
-## Coordinator hand-off (2026-11-12, before a context compaction)
+## Coordinator hand-off (2026-11-12, historical)
 
-Read this first when resuming. Repo: github.com/vitrinestudio-app/vitrine
-(remote `origin`; old repo = remote `old-arrangia`, to be archived/deleted
-by the owner). Local folder still `/Users/thorsten/Dev/arrangia`.
-
-**Subagents running at hand-off time** (worktrees under `.claude/worktrees/`,
-each reports back; merge with `--no-ff`, resolve STATUS/NOTES/i18n
-conflicts by keeping both sides, run the gate, push, check CI per OS):
-- MCP findings A – bugs (render_preview height 0, multiple canvas
-  backgrounds, 80 s timeouts), docs gaps, export/preview P2.4–P2.6, P2.1–P2.3,
-  P3 triage → answers in `docs/research/2026-11-12-mcp-test-results.md`.
-- MCP findings B – quality checks P1.1–P1.8 (text near device, screen box,
-  contrast, seams, pixel overlap, gap per target, gallery corners).
-- GUI polish – menu order ("Projekt schließen"), Apple bezels help link,
-  ☰ on app icon/project name, "Leinwände & Ziele", resizable wider
-  inspector, image preview lightbox, **background elements editable**.
-- Website gallery page (started 2026-11-12, owner: "really cool"): all templates loaded once, local filters (style/color/use/devices, AND across facets) with FLIP enter/leave/reorder animation; phone canvas shown unless a device filter selects another canvas; floating rounded pages from the sprites, mouse tilt; detail view + download; build-time snapshot + live refresh, CORS on the API if needed; dev data from copies of the owner's templates via a local API server.
-- Fonts – system fonts first-class (+ "store used system fonts in the
-  project", licence warning), template save without non-OFL fonts
-  (`--skip-unlicensed-fonts`), bundled Noto for Arabic/Hebrew/Devanagari/
-  Bengali/Tamil/Thai, CJK via system fonts + font-pack proposal.
-
-**Release 0.1.0** (tag `v0.1.0` on 3152f19, draft release not yet created):
-macOS universal signed + notarized ✅, Windows NSIS (unsigned) ✅, Linux ❌ –
-AppImage bundling fails in `linuxdeploy` even with
-`APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true` + libfuse2. Waiting for the owner
-to paste the verbose log tail (Actions → Release v0.1.0 → Build linux →
-"Build and bundle"), or the OK to ship 0.1.0 without AppImage (deb/rpm only).
-Then: delete + re-push the tag (no release exists yet), owner reviews and
-publishes the draft, makes the ghcr package `vitrine-cli` public, enables
-website downloads. Public API (no auth) for run/job status:
-`api.github.com/repos/vitrinestudio-app/vitrine/actions/runs/<id>/jobs`
-(steps + conclusions; logs need auth – ask the owner). Helper scripts used:
-`scratchpad/ci2.sh <sha>` (CI per OS), `scratchpad/run.sh <run id>`.
-
-**Server** api.vitrinestudio.app (owner's Docker/Portainer, nginx): running
-`vitrine-api` (renamed from gallery-server), GitHub login verified
-(`vitrine gallery login` as Looking4Cache). Pending owner step: upgrade per
-`docs/api/DEPLOY.md` "Upgrade 2026-11-12" (tags/samples/sprites migration),
-then save + dry-run + upload the ~50 templates
-(`/Users/thorsten/cloud.grove.eco/App Development/App Vitrine-Studio/Vorlagen/`,
-read-only for agents) with the `vitrinestudio-app` token, approve via
-`vitrine gallery admin`. Next coordinator task after that: **website
-gallery page** on the sprite API (floating rounded pages reacting to the
-mouse, like the hero; filters by style/color/use/devices).
-
-**Website gallery page done (2026-11-12, worktree agent):** `/gallery/`,
-`/de/galerie/`, nav "Templates/Vorlagen", home teaser with live cards;
-API server: CORS allow list `VITRINE_API_CORS_ORIGINS`, list `limit` up to
-200, `canvases[].devices` (schema 2, backfilled on start). Owner steps:
-upgrade the server and set `VITRINE_API_CORS_ORIGINS=https://www.vitrinestudio.app,https://vitrinestudio.app`;
-rebuild the site after approving templates. Template size (decided
-2026-11-12, worktree agent tplsize): sample screenshots are packed as JPEG
-quality 60, client limit 250 MB, server limit stays `VITRINE_API_MAX_UPLOAD_MB`
-(default 50) with a clear 413 `too_large`; polaroid-wall (50.3 MB) is the one
-measured template just over 50 MB → owner: set `VITRINE_API_MAX_UPLOAD_MB=100`
-and nginx `client_max_body_size 110m` before the bulk upload.
-
-**Open owner decisions (collected):**
-- CJK font pack (download on demand?) – after the fonts agent's proposal.
-- Gallery defaults to confirm (sample limits 10 MB/6000 px, WebP q80, local
-  templates may leave tag facets empty); gallery rule for templates with
-  "required, not included" fonts.
-- German wording: "Frame" vs "Rahmen" (UI mixes both); translate device/
-  colour names?
-- Release defaults to confirm: universal macOS build, no MSI, macOS ≥ 11,
-  daily update check on.
-- Switch Apple upload default to the App Asset Library after one real run
-  with "asset library only"; remove the screenshot-set API later (owner
-  asked 2026-11-12; answer: keep as fallback until verified/Apple date).
-- (g4) more CI integrations on demand; (g5) fastlane variable names.
-- Publish: GitLab project `vitrinestudio/vitrine-gitlab-ci` (owner creates,
-  coordinator pushes `integrations/gitlab/`), Marketplace release of
-  `vitrinestudio-app/vitrine-github-action` (pushed 7d1645d) after the
-  first Vitrine release; fastlane plugin gem.
-- ~~SignPath application~~ deferred: Windows ships unsigned for now
-  (owner 2026-11-13, see decisions).
-- Website: Impressum/Datenschutz texts, deploy (www + redirect), images.
-- Gallery terms of use (2026-11-13, draft, needs legal review):
-  `website/content/{de,en}/nutzungsbedingungen.md` (/de/nutzungsbedingungen/,
-  /terms/); owner fills `[OFFEN: …]` (e-mail, periods, age limit, Art. 19 DSA
-  check, how to notify uploaders – the gallery knows no e-mail addresses;
-  no technical uploader ban yet). CLI upload prints the link, `/health`
-  has `terms_url`/`terms_version`; the GUI has no upload/login yet.
+Repo: github.com/vitrinestudio-app/vitrine (remote `origin`; old repo =
+remote `old-arrangia`, archive/delete: `phase-7.md` 7.2). Local folder still
+`/Users/thorsten/Dev/arrangia`. The hand-off of 2026-11-12 listed the agents
+running then (MCP findings A/B, GUI polish, website gallery page, fonts);
+all were merged (f6226a1, 9454d1a, 622de25, 25e8b38, 986c48e). Its open
+items – release 0.1.0 (AppImage, re-tag), server upgrade + template bulk
+upload, owner decisions, integrations publishing, terms of use – now live
+in `docs/plan/phase-7.md` (7.1–7.9). Full text: Git history of this file.
 
 **Lessons for coordinating:**
 - Worktree agents sometimes start from `origin/main`: push main before
@@ -103,6 +28,7 @@ and nginx `client_max_body_size 110m` before the bulk upload.
   (e.g. CLA.md, logo files, tauri.conf.json pubkey) in the same tree.
 
 ## Current state (2026-11-12)
+- 2026-11-13 Repo housekeeping: Inter + Inter Display moved into `assets/fonts/inter/` (with Inter's `OFL.txt`) like every other family; embedded bytes and goldens unchanged. `assets/spike/` removed (the CLI test and the render `sample` example use the example project's screenshots); `docs/spike/` removed – the ten images ADR 0001/0003 link moved to `docs/adr/images/`, the rest is in the Git history (903a271); the `frames` example writes to `target/frames/` or `-- <out-dir>`. `docs/plan/next-2026-11-11.md` renamed `phase-6.2.md` (convention: `phase-N.2.md` = a finished side work package of phase N). CLI image/version examples in the automation docs and integrations now pin `0.1.0` (was `0.2.0`).
 - 2026-11-13 Agent guidance moved to `AGENTS.md` (vendor-neutral: product, concepts, repo map, "where do I change X", rules, commands, tests, doc index); `CLAUDE.md` only imports it (`@AGENTS.md`) plus Claude-Code notes. Keep commands/rules there, state here.
 - 2026-11-13 GUI owner feedback: dialog section headings larger and flush with their content (shared CSS); drag a screenshot from Assets onto a device sets its `screenshot` key (pointer drag, drop highlight, images refused with a hint, key-based like everywhere); device inspector has a screenshot key picker with thumbnails (free text kept). Real Tauri window not checked by hand (bridge in Chrome only).
 - 2026-11-13 Fix: templates used with fewer languages than they have (GUI "New project" default = one language) emptied language-only `visible_in` to `{}` (= everywhere: German cards shown in English projects). Now remapped via the text source language, elements of missing languages removed; `{}` never written. The 62 gallery packages are clean (checked: no `visible_in: {}`; EN + DE intact) – no re-upload or server fix needed; only projects made from them before the fix need the `*-de` elements removed. Also: canvas/target ids in the "Canvases & targets" list no longer wrap (nowrap + ellipsis + tooltip, list 290 px).
@@ -193,7 +119,7 @@ and nginx `client_max_body_size 110m` before the bulk upload.
 - Subagents sometimes leave a background process; stop finished agents with TaskStop and check `ps aux | grep vitrine`.
 
 ## How we work
-- CI note (2026-11-10): Linux/Windows clippy was red from the Phase 3 merges until 30eadeb (macOS-only DMG enum variant). Always check per-OS results (`curl -s https://api.github.com/repos/vitrinestudio-app/vitrine/commits/<sha>/check-runs`). Cross-clippy from the Mac: plain `cargo clippy --target …` for Windows (mingw-w64) and Linux (messense cross toolchain, GUI excluded), see CLAUDE.md.
+- CI note (2026-11-10): Linux/Windows clippy was red from the Phase 3 merges until 30eadeb (macOS-only DMG enum variant). Always check per-OS results (`curl -s https://api.github.com/repos/vitrinestudio-app/vitrine/commits/<sha>/check-runs`). Cross-clippy from the Mac: plain `cargo clippy --target …` for Windows (mingw-w64) and Linux (messense cross toolchain, GUI excluded), see AGENTS.md.
 - Coordinator session plans and reviews (incl. looking at rendered images); subagents implement (worktrees for parallel work, merged with `--no-ff`).
 - Every commit: fmt, clippy `-D warnings`, `cargo test --all`, `cargo build -p vitrine-gui`.
 - CI on GitHub (Linux/macOS/Windows) must stay green; LF line endings enforced by `.gitattributes`.

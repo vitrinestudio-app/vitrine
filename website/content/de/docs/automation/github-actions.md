@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install vitrine
         run: |
-          v=0.2.0
+          v=0.1.0
           base=https://github.com/vitrinestudio-app/vitrine/releases/download/v$v
           curl -sSfLO "$base/vitrine-cli_linux_x86_64.tar.gz"
           curl -sSfL "$base/SHA256SUMS.txt" | grep ' vitrine-cli_linux_x86_64.tar.gz$' | sha256sum -c -
@@ -65,7 +65,7 @@ arm64- oder den statischen Build) und die Prüf- und Exportschritte in einem
 ```yaml
       - uses: vitrinestudio-app/vitrine-github-action@v1
         with:
-          version: 0.2.0
+          version: 0.1.0
           project: store-screens
           validate: true
           export: true
@@ -90,7 +90,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install vitrine
         run: |
-          v=0.2.0
+          v=0.1.0
           base=https://github.com/vitrinestudio-app/vitrine/releases/download/v$v
           curl -sSfLO "$base/vitrine-cli_linux_x86_64.tar.gz"
           curl -sSfL "$base/SHA256SUMS.txt" | grep ' vitrine-cli_linux_x86_64.tar.gz$' | sha256sum -c -
