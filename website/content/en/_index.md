@@ -14,7 +14,8 @@ hero:
     note: "No subscription, no account, no watermark, no paid tier. Free and open source."
   lead: "Vitrine Studio is a desktop app for App Store and Google Play screenshots. Design one continuous canvas – backgrounds and devices run across the pages like in the store gallery – and render it for every language, device size and store. Then upload it, or let your AI assistant do the busywork."
   ctaGithub: "View on GitHub"
-  note: "Pre-alpha: installers are not published yet. The source is on GitHub."
+  note: "Version 1.0 for macOS, Windows and Linux. The source is on GitHub."
+  notePending: "Version 1.0.0 is being released – the downloads go live with the release. The source is on GitHub."
   pages:
     - ["Design", "once"]
     - ["Every", "language"]
@@ -227,7 +228,7 @@ upload:
     - {target: "ios-ipad-13-landscape", lang: "fr-CA", locale: "fr-CA", action: "Blocked", kind: "blocked", images: "3"}
   planFoot: "1 blocked: missing screenshot"
   confirm: "Confirm & upload"
-  note: "App Store Connect (screenshots for every device, iPhone Duo and the header and search-results creatives, through the App Asset Library) and Google Play (screenshots and feature graphic). **Status:** built and tested against fake stores; real-run testing with live accounts is in progress."
+  note: "App Store Connect (screenshots for every device, iPhone Duo and the header and search-results creatives, through the App Asset Library) and Google Play (screenshots and feature graphic). **Status:** App Store uploads are verified with a live account for screenshots and the header and search-results creatives; Google Play and the other Apple device classes are tested against simulated stores so far."
 
 templates:
   eyebrow: "Templates"
@@ -292,7 +293,8 @@ faq:
       open: true
       a: "Yes – 100 % free, really. Vitrine Studio is free, open-source software under the GPL-3.0-or-later. There is no subscription, no paid tier, no account and no watermark on your screenshots, and no limit on languages, devices or exports. Using it for commercial apps is fine. How we plan to fund development: [here](#funding)."
     - q: "When can I download it?"
-      a: "Vitrine Studio is in pre-alpha. Installers for macOS, Windows and Linux are being prepared; until then you can [build it from source](https://github.com/vitrinestudio-app/vitrine) with Rust."
+      a: "Now: version 1.0 for macOS (signed and notarised), Windows and Linux is on the [download page](/download/). You can also [build it from source](https://github.com/vitrinestudio-app/vitrine) with Rust."
+      aPending: "Version 1.0.0 is being released; the installers for macOS, Windows and Linux go live on the [download page](/download/) with the release. Until then you can [build it from source](https://github.com/vitrinestudio-app/vitrine) with Rust."
     - q: "Do I need an account or an internet connection?"
       a: "No. Projects are local folders. The network is only used when you upload to a store or use the template gallery – publishing a template there needs a GitHub login, browsing and downloading do not."
     - q: "Does it come with Apple device frames?"

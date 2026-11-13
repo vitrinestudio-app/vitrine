@@ -6,10 +6,13 @@ icon: store
 ---
 
 {{< callout status >}}
-Der Store-Upload ist fertig gebaut und gegen simulierte Stores getestet. Tests
-mit echten Store-Konten laufen gerade – kontrolliere nach deinen ersten
-Uploads das Ergebnis in App Store Connect und der Play Console, und melde
-bitte alles, was dir merkwürdig vorkommt.
+Der Upload in den App Store ist mit einem echten Konto für iPhone- und
+iPad-Screenshots sowie die Motive für Produktseiten-Header und Suchergebnisse
+geprüft. Google Play und die übrigen Apple-Geräteklassen (Mac, Apple Watch,
+Apple TV, Vision Pro, iMessage, iPhone Duo) sind bisher gegen simulierte
+Stores getestet. Kontrolliere nach deinem ersten Upload das Ergebnis in App
+Store Connect oder der Play Console, und melde bitte alles, was dir
+merkwürdig vorkommt.
 {{< /callout >}}
 
 Vitrine Studio lädt deine Screenshots, die Feature-Grafik für Google Play und

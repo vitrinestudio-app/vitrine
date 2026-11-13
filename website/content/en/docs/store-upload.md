@@ -6,9 +6,12 @@ icon: store
 ---
 
 {{< callout status >}}
-Store upload is built and tested against simulated stores. Testing with live
-store accounts is in progress – check the result in App Store Connect and Play
-Console after your first uploads, and please report anything unexpected.
+Uploading to the App Store is verified with a live account for iPhone and
+iPad screenshots and the product page header and search results creatives.
+Google Play and the other Apple device classes (Mac, Apple Watch, Apple TV,
+Vision Pro, iMessage, iPhone Duo) are tested against simulated stores so
+far. Check the result in App Store Connect or the Play Console after your
+first upload, and please report anything unexpected.
 {{< /callout >}}
 
 Vitrine Studio uploads your screenshots, the Google Play feature graphic and

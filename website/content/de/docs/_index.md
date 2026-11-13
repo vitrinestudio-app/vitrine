@@ -9,10 +9,10 @@ Store-Einträge brauchen: jede Gerätegröße, jede Sprache, App Store und Googl
 Play. Dieses Handbuch zeigt dir Schritt für Schritt, wie das geht.
 
 {{< callout status >}}
-Vitrine Studio ist noch **vor dem ersten Release**. Die ersten
-Installer sind in Vorbereitung, und der Upload in die Stores funktioniert,
-wird aber noch mit echten Store-Konten getestet. Jede Seite sagt dir, wo etwas noch
-nicht fertig ist.
+Dieses Handbuch beschreibt **Vitrine Studio 1.0**. Der Upload in den App
+Store ist mit einem echten Konto für Screenshots und Motive geprüft; Google
+Play und die übrigen Apple-Geräteklassen sind bisher gegen nachgebildete
+Stores getestet. Die Seiten sagen, wo etwas noch nicht geprüft ist.
 {{< /callout >}}
 
 **Neu hier?** Lies [So funktioniert Vitrine Studio](concepts/) (fünf Minuten)

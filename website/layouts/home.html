@@ -22,7 +22,7 @@
         {{ partial "download-button.html" . }}
         <a class="btn btn--ghost" href="{{ site.Params.github }}">{{ partial "icon.html" "github" }}<span>{{ $p.hero.ctaGithub }}</span></a>
       </div>
-      <p class="hero__note anim-in" style="--d:7">{{ $p.hero.note }}</p>
+      <p class="hero__note anim-in" style="--d:7">{{ if site.Params.downloads_available }}{{ $p.hero.note }}{{ else }}{{ $p.hero.notePending | default $p.hero.note }}{{ end }}</p>
     </div>
   </div>
   <div class="wrap hero__stage anim-in" style="--d:3">
@@ -311,7 +311,7 @@
       {{- range $p.faq.items }}
       <details class="faq__item reveal"{{ if .open }} open{{ end }}>
         <summary>{{ .q }}</summary>
-        <div class="faq__a">{{ .a | markdownify }}</div>
+        <div class="faq__a">{{ if and (not site.Params.downloads_available) .aPending }}{{ .aPending | markdownify }}{{ else }}{{ .a | markdownify }}{{ end }}</div>
       </details>
       {{- end }}
     </div>

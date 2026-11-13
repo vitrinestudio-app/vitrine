@@ -5,11 +5,10 @@ weight: 20
 icon: download
 ---
 
-{{< callout status >}}
-Das erste Release wird gerade vorbereitet. Bis es veröffentlicht ist, zeigen
-die Download-Buttons „bald verfügbar“ – bis dahin kannst du
-[aus dem Quellcode bauen](#build-from-source). Die Schritte unten beschreiben
-die Release-Versionen.
+{{< callout status pending >}}
+Version 1.0.0 erscheint gerade. Die Download-Buttons gehen mit dem Release
+online – bis dahin kannst du [aus dem Quellcode bauen](#build-from-source).
+Die Schritte unten beschreiben die Release-Versionen.
 {{< /callout >}}
 
 ## Download {#download}
