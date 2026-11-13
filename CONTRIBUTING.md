@@ -41,7 +41,7 @@ VITRINE_KEYRING=mock cargo test --all
   `GUI: …`, `Core: …`, `Docs: …`).
 - Model changes only through the Operations API in `vitrine-core`; no
   `unsafe`; platform-gated code must be lint-clean on every OS. See
-  [`CLAUDE.md`](CLAUDE.md) for the full rules (it is written for coding
+  [`AGENTS.md`](AGENTS.md) for the full rules (it is written for coding
   agents but applies to everyone).
 - Visible renderer or fixture changes update the golden images in the same
   commit (`VITRINE_UPDATE_GOLDEN=1 cargo test -p vitrine-render --test golden`,

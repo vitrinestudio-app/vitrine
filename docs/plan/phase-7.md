@@ -439,7 +439,7 @@ Compact list; details in `docs/plan/STATUS.md` ("Open owner decisions",
 - [ ] All of 7.1–7.8 done or consciously moved after 1.0; 7.9 answered.
 - [ ] `cargo deny check licenses` green, third-party notices regenerated,
       golden tests green on all three OS.
-- [ ] Docs: README status "1.0", CLAUDE.md status, KONZEPT §12, STATUS.md,
+- [ ] Docs: README status "1.0", AGENTS.md "Current state", KONZEPT §12, STATUS.md,
       website "pre-release" callouts removed, release notes.
 - [ ] Version `1.0.0` in `[workspace.package]`, tag `v1.0.0`, publish,
       announce.

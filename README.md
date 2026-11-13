@@ -172,7 +172,7 @@ cargo test --all                     # run tests
 ```
 
 Contributor notes (commands, conventions, architecture):
-[`CLAUDE.md`](CLAUDE.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
+[`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Command line
 
@@ -222,7 +222,7 @@ Setup, example prompts and tools:
 | `crates/cli` | `vitrine-cli` | Command line interface, binary `vitrine` |
 | `crates/gui` | `vitrine-gui` | Tauri 2 desktop app, frontend in plain HTML/CSS/JS |
 | `crates/api-server` | `vitrine-api-server` | Backend of api.vitrinestudio.app (template gallery, GitHub login) |
-| `integrations/` | | CI integration drafts (GitHub Action, GitLab CI, fastlane plugin; MIT) |
+| `integrations/` | | CI integration and agent skill drafts (GitHub Action, GitLab CI, fastlane plugin, agent skill; MIT) |
 | `website/` | | www.vitrinestudio.app (Hugo) with the user guide |
 | `docs/` | | Concept, plans, architecture decision records (`docs/adr/`) |
 

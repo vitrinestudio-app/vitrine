@@ -21,7 +21,7 @@ run the `vitrine` program or talk to its MCP server, which stays GPL-3.0-or-late
 
 For other CI systems (Jenkins, Buildkite, CircleCI, Azure Pipelines, …) the
 generic integration is the container image or the release archives; the
-website page `docs/ci` has snippets.
+website page `docs/automation/other-systems/` has snippets.
 
 The CI integrations only call the `vitrine` CLI; the CLI enablers they rely on live
 in this repository: `validate --format github|gitlab|junit [-o FILE]`,

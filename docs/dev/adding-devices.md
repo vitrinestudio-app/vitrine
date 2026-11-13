@@ -80,7 +80,7 @@ Screenshot sizes it should accept: <e.g. 1080×2400; or store target ids from cr
 Colour variants: <existing palette names from devices.yaml, or new ones with body/edge/rim/glass colours>
 Orientations: <portrait, landscape>
 
-Read first: CLAUDE.md, docs/plan/STATUS.md, docs/dev/adding-devices.md,
+Read first: AGENTS.md, docs/plan/STATUS.md, docs/dev/adding-devices.md,
 crates/core/data/devices.yaml (header documents all fields),
 crates/core/src/catalog/devices.rs, crates/render/src/frames/ and ADR 0001/0004/0012.
 
