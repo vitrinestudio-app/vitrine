@@ -145,6 +145,25 @@ Version: `[workspace.package] version` in `Cargo.toml` is the single source.
   next number after the last row; parallel agents may take the same one –
   renumber on merge). Visible features also update the user guide in
   `website/content/{en,de}/docs/`.
+- **Keep every description in sync – part of "done", not optional.** Before
+  you finish a change, check and update everything that describes the
+  changed behaviour, so nothing goes stale:
+  - `ARCHITECTURE.md` (the affected section; decision log if a decision
+    changed) and this file (repo map, "where do I change X", commands);
+  - the user guide `website/content/en/` **and** `de/` (feature pages,
+    `troubleshooting.md`, `file-format.md`, `cli.md`), the landing page
+    texts if they mention it, and `website/data/cli_help.json` for CLI
+    changes;
+  - screenshots in `website/assets/images/` (and `docs/gui/`) that show
+    changed UI – retake them as light/dark pairs (`website/README.md`,
+    "Screenshots") or note them as stale in `docs/plan/STATUS.md`;
+  - MCP docs (`crates/mcp/src/instructions.md`, `ops.md`, `docs/*.md`) and
+    the agent skill (`integrations/skill/`) when tools, fields or
+    behaviour change;
+  - `README.md`, `docs/guide/NOTES.md`, `docs/plan/STATUS.md`, the phase
+    plan (tick what is done).
+
+  Grep for the old name/behaviour (`git grep`) to find stale mentions.
 - **Parallel agents / worktrees** (`.claude/worktrees/`):
   - use your own `CARGO_TARGET_DIR` (e.g. `target/<agent-name>`) so you
     never hold the cargo lock on `target/`, and delete it when done (disk
