@@ -1,5 +1,6 @@
-//! The App Asset Library flow (ASC API 4.5.1, ADR 0019): the second
-//! implementation of [`AppleUploadFlow`].
+//! The App Asset Library flow (ASC API 4.5.1, ADR 0019): the only way
+//! Vitrine Studio uploads to App Store Connect (the screenshot-set API was
+//! removed by decision 0035).
 //!
 //! Per set (store locale × slot):
 //!
@@ -12,7 +13,7 @@
 //!    with the same content marker) or the library already holds (same
 //!    marker, not failed) is reused; everything else is reserved, uploaded
 //!    and committed (`{uploaded: true}`), then all are polled together
-//!    (processing budget, like the set flow). `FAILED` fails the set before
+//!    (processing budget). `FAILED` fails the set before
 //!    any placement changes.
 //! 3. **Placements**: stale placements of the group are deleted, missing
 //!    ones created (also for assets still processing – Apple allows it,
@@ -39,10 +40,7 @@ use vitrine_publish::apple::{
 use vitrine_publish::{ApiErrorDetail, Error, ProgressFn, Result};
 
 use super::PlanImage;
-use super::remote::{
-    AppleTarget, AppleUploadFlow, RemoteSet, ReplaceOptions, ReplaceOutcome, ScreenshotSetFlow,
-    SetHooks, UploadFile,
-};
+use super::remote::{AppleTarget, RemoteSet, ReplaceOptions, ReplaceOutcome, SetHooks, UploadFile};
 
 /// `code` of the error when the ref data has no group for a slot.
 pub const NO_PLACEMENT_GROUP: &str = "NO_PLACEMENT_GROUP";
@@ -119,11 +117,6 @@ impl PlacementRoute {
 pub(crate) fn slot_from_key(key: &str) -> AppleSlot {
     CreativePlacement::from_key(key)
         .map_or_else(|| AppleSlot::screenshots(key), AppleSlot::creative)
-}
-
-/// Only the asset library can upload this slot (Duo, creative assets).
-pub(crate) fn asset_library_only(key: &str) -> bool {
-    asset_library().asset_library_only(&slot_from_key(key))
 }
 
 /// Local description of a slot's placement (`APP_SCREENSHOT ·
@@ -222,7 +215,7 @@ fn has_marker(li: &LibraryImage) -> bool {
     })
 }
 
-/// Errors that mean "this app/key has no asset library" (`auto` falls back).
+/// Errors that mean "this app/key has no asset library".
 pub(crate) fn unavailable(e: &Error) -> bool {
     matches!(
         e,
@@ -249,6 +242,30 @@ fn size_of(images: &[PlanImage]) -> Option<(u32, u32)> {
     images.first().map(|i| (i.width, i.height))
 }
 
+/// Why [`AssetLibraryFlow::open`] failed.
+#[derive(Debug)]
+pub(crate) struct OpenError {
+    /// The app and version were found, but the key cannot use the app's
+    /// asset library (403/404/400).
+    pub library: bool,
+    pub error: Error,
+}
+
+impl OpenError {
+    /// The user-facing message (store message, plus what it means for the
+    /// asset library).
+    pub(crate) fn message(&self) -> String {
+        let m = super::remote::store_message(vitrine_core::model::StoreKind::Apple, &self.error);
+        if self.library {
+            format!(
+                "the App Asset Library is not available for this app or key ({m}); Vitrine Studio uploads to App Store Connect only through it"
+            )
+        } else {
+            m
+        }
+    }
+}
+
 /// The asset-library flow.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct AssetLibraryFlow;
@@ -265,35 +282,88 @@ impl AssetLibraryFlow {
         })
     }
 
-    fn context(target: &AppleTarget) -> Result<&LibraryContext> {
-        target.library.as_ref().ok_or_else(|| Error::Config {
-            message: "the App Asset Library was not opened".into(),
-        })
-    }
-
     fn routes(
         target: &AppleTarget,
         key: &str,
         images: &[PlanImage],
     ) -> Result<Vec<PlacementRoute>> {
-        let ctx = Self::context(target)?;
-        resolve(&ctx.ref_data, key, size_of(images)).map_err(no_group_error)
+        resolve(&target.library.ref_data, key, size_of(images)).map_err(no_group_error)
     }
-}
 
-impl AppleUploadFlow for AssetLibraryFlow {
-    async fn open(
+    /// Finds the app, its editable version and its asset library
+    /// (precondition of every remote plan and run).
+    pub(crate) async fn open(
         &self,
         client: &apple::Client,
         app: &AppRef,
         platform: Platform,
-    ) -> Result<AppleTarget> {
-        let mut target = ScreenshotSetFlow.open(client, app, platform).await?;
-        target.library = Some(Self::attach(client, &target.app.id).await?);
-        Ok(target)
+    ) -> std::result::Result<AppleTarget, OpenError> {
+        let app_error = |error| OpenError {
+            library: false,
+            error,
+        };
+        let found = client.find_app(app).await.map_err(app_error)?;
+        let version = client
+            .editable_version(&found.id, platform)
+            .await
+            .map_err(app_error)?;
+        let library = Self::attach(client, &found.id)
+            .await
+            .map_err(|error| OpenError {
+                library: !matches!(error, Error::Cancelled) && unavailable(&error),
+                error,
+            })?;
+        Ok(AppleTarget {
+            app: found,
+            version,
+            localizations: Mutex::new(None),
+            library,
+        })
     }
 
-    async fn inspect(
+    /// The version localization of `locale` (created with `create`).
+    pub(crate) async fn localization_id(
+        client: &apple::Client,
+        target: &AppleTarget,
+        locale: &str,
+        create: bool,
+    ) -> Result<Option<String>> {
+        let known = target
+            .localizations
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        let list = if let Some(l) = known {
+            l
+        } else {
+            let l = client.localizations(&target.version.id).await?;
+            *target
+                .localizations
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(l.clone());
+            l
+        };
+        if let Some(l) = list.iter().find(|l| l.locale.eq_ignore_ascii_case(locale)) {
+            return Ok(Some(l.id.clone()));
+        }
+        if !create {
+            return Ok(None);
+        }
+        let created = client
+            .create_localization(&target.version.id, locale)
+            .await?;
+        let id = created.id.clone();
+        target
+            .localizations
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get_or_insert_with(Vec::new)
+            .push(created);
+        Ok(Some(id))
+    }
+
+    /// Reads the store state of one set (plan, `remote`).
+    pub(crate) async fn inspect(
         &self,
         client: &apple::Client,
         target: &AppleTarget,
@@ -301,7 +371,7 @@ impl AppleUploadFlow for AssetLibraryFlow {
         slot: &str,
         images: &[PlanImage],
     ) -> Result<RemoteSet> {
-        let ctx = Self::context(target)?;
+        let ctx = &target.library;
         let routes = Self::routes(target, slot, images)?;
         let library = ctx.images(client).await?;
         let in_library = |img: &PlanImage| {
@@ -311,8 +381,7 @@ impl AppleUploadFlow for AssetLibraryFlow {
         };
         let creative = slot_from_key(slot).is_creative();
         let mut steps: Vec<&str> = Vec::new();
-        let Some(loc) = ScreenshotSetFlow::localization_id(client, target, locale, false).await?
-        else {
+        let Some(loc) = Self::localization_id(client, target, locale, false).await? else {
             let reusable = images.iter().filter(|i| in_library(i)).count();
             steps.push("create_localization");
             if reusable < images.len() {
@@ -377,8 +446,11 @@ impl AppleUploadFlow for AssetLibraryFlow {
         })
     }
 
+    /// Makes the localization show `files` in this order (reusing what the
+    /// store already has with `reuse`), waits up to `opts.budget` for
+    /// Apple's processing and verifies the order.
     #[allow(clippy::too_many_lines, clippy::too_many_arguments)] // one linear flow
-    async fn replace(
+    pub(crate) async fn replace(
         &self,
         client: &apple::Client,
         target: &AppleTarget,
@@ -388,7 +460,7 @@ impl AppleUploadFlow for AssetLibraryFlow {
         opts: ReplaceOptions,
         hooks: &dyn SetHooks,
     ) -> Result<ReplaceOutcome> {
-        let ctx = Self::context(target)?;
+        let ctx = &target.library;
         let images: Vec<PlanImage> = files.iter().map(|f| f.image.clone()).collect();
         let routes = Self::routes(target, slot, &images)?;
         let category = asset_library().slot(&slot_from_key(slot)).map_or_else(
@@ -396,7 +468,7 @@ impl AppleUploadFlow for AssetLibraryFlow {
             |s| s.category,
         );
         let creative = slot_from_key(slot).is_creative();
-        let loc = ScreenshotSetFlow::localization_id(client, target, locale, true)
+        let loc = Self::localization_id(client, target, locale, true)
             .await?
             .unwrap_or_default();
 
@@ -745,7 +817,6 @@ mod tests {
             height: 1,
             bytes: 42,
             sha256: "0123456789abcdef".repeat(4),
-            md5: String::new(),
         };
         let name = reference_name(&img);
         assert_eq!(name, "iphone-en-01_one [0123456789ab]");
@@ -759,9 +830,6 @@ mod tests {
         assert!(!same_content(&li, &img));
         li.reference_name = Some("Hand-made".into());
         assert!(!has_marker(&li));
-        assert!(asset_library_only("APP_IPHONE_DUO"));
-        assert!(asset_library_only("PRODUCT_PAGE_HEADER_ASSET"));
-        assert!(!asset_library_only("APP_IPHONE_67"));
         assert_eq!(
             local_label("APP_IPHONE_DUO").as_deref(),
             Some("APP_SCREENSHOT · IPHONE_DUO")

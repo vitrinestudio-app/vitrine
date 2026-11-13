@@ -57,7 +57,7 @@ impl RetryPolicy {
 }
 
 /// How long and how often to poll for asynchronous store processing
-/// (App Store Connect `assetDeliveryState`).
+/// (App Store Connect asset library image state).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PollPolicy {
     /// First wait after the commit.

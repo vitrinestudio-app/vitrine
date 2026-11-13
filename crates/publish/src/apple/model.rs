@@ -98,15 +98,6 @@ pub struct Localization {
     pub locale: String,
 }
 
-/// `appScreenshotSets` resource.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScreenshotSet {
-    /// Resource id.
-    pub id: String,
-    /// `screenshotDisplayType` (`APP_IPHONE_67`, …).
-    pub display_type: String,
-}
-
 /// One part of an asset upload (`uploadOperations[]`).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -131,63 +122,6 @@ pub struct HttpHeader {
     pub name: String,
     /// Header value.
     pub value: String,
-}
-
-/// `AppMediaAssetState.state`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DeliveryState {
-    /// Reserved, parts still uploading.
-    AwaitingUpload,
-    /// Committed, processing.
-    UploadComplete,
-    /// Processed successfully (final).
-    Complete,
-    /// Processing failed (final).
-    Failed,
-    /// A value this client does not know.
-    Other(String),
-}
-
-impl DeliveryState {
-    fn parse(s: &str) -> Self {
-        match s {
-            "AWAITING_UPLOAD" => Self::AwaitingUpload,
-            "UPLOAD_COMPLETE" => Self::UploadComplete,
-            "COMPLETE" => Self::Complete,
-            "FAILED" => Self::Failed,
-            other => Self::Other(other.to_owned()),
-        }
-    }
-
-    /// API value.
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::AwaitingUpload => "AWAITING_UPLOAD",
-            Self::UploadComplete => "UPLOAD_COMPLETE",
-            Self::Complete => "COMPLETE",
-            Self::Failed => "FAILED",
-            Self::Other(s) => s,
-        }
-    }
-}
-
-/// `appScreenshots` resource.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AppScreenshot {
-    /// Resource id.
-    pub id: String,
-    /// File name given at reservation.
-    pub file_name: Option<String>,
-    /// File size given at reservation.
-    pub file_size: Option<u64>,
-    /// MD5 checksum given at commit.
-    pub source_file_checksum: Option<String>,
-    /// Processing state.
-    pub delivery_state: Option<DeliveryState>,
-    /// Errors reported in `assetDeliveryState.errors`.
-    pub delivery_errors: Vec<ApiErrorDetail>,
-    /// Upload operations (only right after the reservation).
-    pub upload_operations: Vec<UploadOperation>,
 }
 
 // ---- raw JSON:API shapes -------------------------------------------------
@@ -251,36 +185,6 @@ pub(crate) struct LocalizationAttrs {
 }
 
 #[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub(crate) struct SetAttrs {
-    pub screenshot_display_type: String,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub(crate) struct ScreenshotAttrs {
-    pub file_name: Option<String>,
-    pub file_size: Option<u64>,
-    pub source_file_checksum: Option<String>,
-    pub asset_delivery_state: Option<AssetState>,
-    pub upload_operations: Option<Vec<UploadOperation>>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
-pub(crate) struct AssetState {
-    pub state: Option<String>,
-    pub errors: Vec<MediaError>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
-pub(crate) struct MediaError {
-    pub code: String,
-    pub description: String,
-}
-
-#[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub(crate) struct ErrorResponse {
     pub errors: Vec<ErrorEntry>,
@@ -335,44 +239,6 @@ impl From<Resource<LocalizationAttrs>> for Localization {
         Self {
             id: r.id,
             locale: r.attributes.unwrap_or_default().locale,
-        }
-    }
-}
-
-impl From<Resource<SetAttrs>> for ScreenshotSet {
-    fn from(r: Resource<SetAttrs>) -> Self {
-        Self {
-            id: r.id,
-            display_type: r.attributes.unwrap_or_default().screenshot_display_type,
-        }
-    }
-}
-
-impl From<Resource<ScreenshotAttrs>> for AppScreenshot {
-    fn from(r: Resource<ScreenshotAttrs>) -> Self {
-        let a = r.attributes.unwrap_or_default();
-        let (delivery_state, delivery_errors) = match a.asset_delivery_state {
-            Some(s) => (
-                s.state.as_deref().map(DeliveryState::parse),
-                s.errors
-                    .into_iter()
-                    .map(|e| ApiErrorDetail {
-                        code: e.code,
-                        title: String::new(),
-                        detail: e.description,
-                    })
-                    .collect(),
-            ),
-            None => (None, Vec::new()),
-        };
-        Self {
-            id: r.id,
-            file_name: a.file_name,
-            file_size: a.file_size,
-            source_file_checksum: a.source_file_checksum,
-            delivery_state,
-            delivery_errors,
-            upload_operations: a.upload_operations.unwrap_or_default(),
         }
     }
 }

@@ -36,8 +36,7 @@ pub use fill::{Fill, GradientStop, ImageFillMode};
 pub use ids::{CanvasId, ElementId, Lang, StringKey, TargetId, VariantId, is_valid_id};
 pub use import::{ImportMapping, ImportSettings};
 pub use store::{
-    ApplePlatform, AppleStore, AppleUploadFlowSetting, GoogleStore, StoreKind, StoreLocaleMaps,
-    StoreSettings,
+    ApplePlatform, AppleStore, GoogleStore, StoreKind, StoreLocaleMaps, StoreSettings,
 };
 pub use style::{
     BUILTIN_SHADOWS, FontSettings, FrameStyle, Glow, ShadowLayer, ShadowPreset, SpanPadding,

@@ -85,6 +85,11 @@ pub struct StoreSettings {
 }
 
 /// App Store Connect app.
+///
+/// Uploads always go through the App Asset Library (decision 0035).
+/// The retired key `upload_flow` (`auto`, `asset_library`,
+/// `screenshot_sets`) is still accepted when reading and ignored, so older
+/// projects load; the canonical writer drops it on the next save.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(remote = "Self", deny_unknown_fields)]
 pub struct AppleStore {
@@ -102,42 +107,29 @@ pub struct AppleStore {
     pub bundle_id: Option<String>,
     #[serde(default, skip_serializing_if = "ApplePlatform::is_ios")]
     pub platform: ApplePlatform,
-    /// How screenshots get into App Store Connect (ADR 0019): `auto`
-    /// (default: App Asset Library, set-based API as fallback),
-    /// `asset_library` or `screenshot_sets`.
-    #[serde(default, skip_serializing_if = "AppleUploadFlowSetting::is_auto")]
-    pub upload_flow: AppleUploadFlowSetting,
+    /// Retired `upload_flow` key: read, never stored or written.
+    #[serde(
+        default,
+        rename = "upload_flow",
+        skip_serializing,
+        deserialize_with = "retired_upload_flow"
+    )]
+    #[doc(hidden)]
+    pub retired_upload_flow: (),
 }
 flow_style!(AppleStore);
 
-/// `store.apple.upload_flow` (ADR 0019).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AppleUploadFlowSetting {
-    /// App Asset Library; the set-based API when the library is not
-    /// available for the app or lacks a needed placement group.
-    #[default]
-    Auto,
-    /// Only the App Asset Library (ASC API 4.5.1).
-    AssetLibrary,
-    /// Only the deprecated `appScreenshotSets` API (no Duo, no creative
-    /// assets).
-    ScreenshotSets,
-}
-
-impl AppleUploadFlowSetting {
-    #[allow(clippy::trivially_copy_pass_by_ref)] // serde passes references
-    pub fn is_auto(&self) -> bool {
-        *self == Self::Auto
+/// Accepts the values the retired `store.apple.upload_flow` key had and
+/// drops them (anything else is still an error, like before).
+fn retired_upload_flow<'de, D: serde::Deserializer<'de>>(d: D) -> Result<(), D::Error> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "snake_case")]
+    enum Retired {
+        Auto,
+        AssetLibrary,
+        ScreenshotSets,
     }
-
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Auto => "auto",
-            Self::AssetLibrary => "asset_library",
-            Self::ScreenshotSets => "screenshot_sets",
-        }
-    }
+    Retired::deserialize(d).map(|_| ())
 }
 
 /// Google Play app.

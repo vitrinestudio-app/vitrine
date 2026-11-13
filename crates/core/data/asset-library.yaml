@@ -22,8 +22,6 @@
 #     placement_type   AppAssetLibraryPlacementType
 #     display_class    AppAssetLibraryDisplayClass
 #     platforms        AppAssetLibraryPlacementPlatform values to accept
-#     asset_library_only  true: the set-based API has no such display type
-#                      (only the asset library can upload it)
 #     note             why / what is uncertain
 #   creative      `store: {apple: {placement}}` value (header,
 #                 search_results, universal) → placements
@@ -80,7 +78,6 @@ screenshots:
     placement_type: APP_SCREENSHOT
     display_class: IPHONE_DUO
     platforms: [IPHONE_APP_STORE]
-    asset_library_only: true
     note: >-
       IPHONE_DUO is new in 4.5.1; ScreenshotDisplayType has no Duo value.
       Whether outer and inner display are two groups is only in the refdata

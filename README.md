@@ -70,8 +70,8 @@ the former decision records are archived in [`docs/archive/`](docs/archive/).
   own layout or the fastlane `deliver`/`supply` layout, with an
   `index.html` overview; incremental and colour-managed (Display P3 and
   other profiles converted to sRGB).
-- **Store upload** to App Store Connect (screenshot sets and the App Asset
-  Library) and Google Play from the app, the CLI or an AI assistant –
+- **Store upload** to App Store Connect (through the App Asset Library) and
+  Google Play from the app, the CLI or an AI assistant –
   always plan → confirm → execute; keys stay in the system keychain.
 - **AI assistants**: an MCP server hosted by the desktop app, with an *Add
   to Claude Desktop* button; the assistant creates and edits projects,

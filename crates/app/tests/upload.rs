@@ -36,6 +36,8 @@ use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
 
 const ISSUER: &str = "57246542-96fe-1a63-e053-0824d011072a";
 const PACKAGE: &str = "com.example.fernwood";
+/// The fake library's placement group of `APP_IPHONE_67`.
+const GROUP: &str = "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE";
 
 // ----- keys ---------------------------------------------------------------------------
 
@@ -70,40 +72,24 @@ fn sha256_hex(b: &[u8]) -> String {
 
 // ----- fake App Store Connect ---------------------------------------------------------
 
-#[derive(Debug, Clone)]
-struct Shot {
-    set: String,
-    file_name: String,
-    size: u64,
-    checksum: Option<String>,
-    state: String,
-    received: u64,
-}
-
 #[derive(Debug, Default)]
 struct Asc {
     base: String,
     editable: bool,
     /// (id, locale)
     locs: Vec<(String, String)>,
-    /// (id, loc id, display type)
-    sets: Vec<(String, String, String)>,
-    shots: BTreeMap<String, Shot>,
-    order: BTreeMap<String, Vec<String>>,
     next: u32,
-    /// Reservations into sets of this locale fail with 409.
+    /// Placements into this locale fail with 409.
     fail_locale: Option<String>,
     /// Upload parts wait this long.
     part_delay: Option<Duration>,
     /// Requests seen: `METHOD path`.
     seen: Vec<String>,
-    /// Reservations per locale.
-    reserves: BTreeMap<String, u32>,
     /// Files (by name) Apple never finishes processing (`UPLOAD_COMPLETE`).
     stuck: Vec<String>,
     /// Files (by name) Apple fails to process (`FAILED` with errors).
     failing: Vec<String>,
-    /// Serve the App Asset Library (else 404: `auto` falls back to sets).
+    /// Serve the App Asset Library (else 404).
     library: bool,
     /// The key may not read the app's library (403); ref data still works.
     deny_library: bool,
@@ -136,8 +122,7 @@ struct Pl {
 }
 
 /// Ref data of the fake library: iPhone 6.9", two Duo groups told apart by
-/// size, header and search results groups (no 6.5" group: `auto` falls
-/// back to the set API for it).
+/// size, header and search results groups (no 6.5" group).
 fn fake_ref_data() -> Value {
     let spec = |id: &str, w: (u32, u32), h: (u32, u32), types: Value, universal: bool| {
         json!({"specId": id, "shortName": id,
@@ -331,7 +316,11 @@ impl Asc {
             ("PUT", ["upload", id]) if self.images.contains_key(*id) => {
                 let n = req.body.len() as u64;
                 self.images.get_mut(*id).unwrap().received += n;
-                ResponseTemplate::new(200)
+                let r = ResponseTemplate::new(200);
+                match self.part_delay {
+                    Some(d) => r.set_delay(d),
+                    None => r,
+                }
             }
             ("PATCH", ["v1", "appAssetLibraryImages", id]) => {
                 assert_eq!(
@@ -411,6 +400,17 @@ impl Asc {
                     .to_owned();
                 let ptype = a["placementType"].as_str().unwrap().to_owned();
                 let group = a["placementGroup"].as_str().unwrap().to_owned();
+                let locale = self
+                    .locs
+                    .iter()
+                    .find(|(id, _)| *id == loc)
+                    .map(|(_, l)| l.clone());
+                if locale.is_some() && locale == self.fail_locale {
+                    return Some(ResponseTemplate::new(409).set_body_json(json!({"errors": [{
+                        "status": "409", "code": "ENTITY_ERROR.ATTRIBUTE.INVALID",
+                        "title": "An attribute value is invalid.",
+                        "detail": "The screenshot dimensions are invalid."}]})));
+                }
                 let creative = ptype != "APP_SCREENSHOT";
                 if creative != (self.images[&image].category == "CREATIVE_ASSETS") {
                     return Some(ResponseTemplate::new(409).set_body_json(json!({"errors": [{
@@ -466,131 +466,14 @@ impl Asc {
         })
     }
 
-    fn shot_doc(&self, id: &str) -> Value {
-        let s = &self.shots[id];
-        let ops = if s.state == "AWAITING_UPLOAD" {
-            json!([{"method": "PUT", "url": format!("{}/upload/{id}", self.base),
-                    "length": s.size, "offset": 0, "requestHeaders": [
-                        {"name": "Content-Type", "value": "image/png"}]}])
-        } else {
-            Value::Null
-        };
-        let errors = if s.state == "FAILED" {
-            json!([{"code": "IMAGE_INCORRECT_DIMENSIONS",
-                    "description": "The dimensions of one or more screenshots are wrong."}])
-        } else {
-            json!([])
-        };
-        json!({"type": "appScreenshots", "id": id, "attributes": {
-            "fileName": s.file_name, "fileSize": s.size,
-            "sourceFileChecksum": s.checksum,
-            "assetDeliveryState": {"state": s.state, "errors": errors},
-            "uploadOperations": ops}})
-    }
-
-    fn locale_of_set(&self, set: &str) -> Option<String> {
-        let loc = &self.sets.iter().find(|(id, ..)| id == set)?.1;
-        self.locs
-            .iter()
-            .find(|(id, _)| id == loc)
-            .map(|(_, l)| l.clone())
-    }
-
-    /// Screenshot checksums of `locale`'s set of `display_type`, in order.
-    fn checksums(&self, locale: &str, display_type: &str) -> Vec<String> {
-        let Some((loc, _)) = self.locs.iter().find(|(_, l)| l == locale) else {
-            return Vec::new();
-        };
-        let Some((set, ..)) = self
-            .sets
-            .iter()
-            .find(|(_, l, d)| l == loc && d == display_type)
-        else {
-            return Vec::new();
-        };
-        self.order[set]
-            .iter()
-            .map(|id| self.shots[id].checksum.clone().unwrap_or_default())
-            .collect()
-    }
-
-    /// Seeds `locale` with a set holding one old screenshot.
-    fn seed(&mut self, locale: &str, display_type: &str) {
-        let loc = self.id("loc-");
-        self.locs.push((loc.clone(), locale.to_owned()));
-        let set = self.id("set-");
-        self.sets.push((set.clone(), loc, display_type.to_owned()));
-        let shot = self.id("old-");
-        self.shots.insert(
-            shot.clone(),
-            Shot {
-                set: set.clone(),
-                file_name: "old.png".into(),
-                size: 10,
-                checksum: Some("0".repeat(32)),
-                state: "COMPLETE".into(),
-                received: 10,
-            },
-        );
-        self.order.insert(set, vec![shot]);
-    }
-
-    /// Ids of `locale`'s set of `display_type`, in order.
-    fn ids(&self, locale: &str, display_type: &str) -> Vec<String> {
-        let Some((loc, _)) = self.locs.iter().find(|(_, l)| l == locale) else {
-            return Vec::new();
-        };
-        self.sets
-            .iter()
-            .find(|(_, l, d)| l == loc && d == display_type)
-            .map(|(set, ..)| self.order[set].clone())
-            .unwrap_or_default()
-    }
-
     /// Lets Apple finish processing everything.
     fn finish_processing(&mut self) {
         self.stuck.clear();
-        for s in self.shots.values_mut() {
-            if s.state == "UPLOAD_COMPLETE" {
-                s.state = "COMPLETE".into();
+        for i in self.images.values_mut() {
+            if i.state == "UPLOAD_COMPLETE" {
+                i.state = "PREPARE_FOR_SUBMISSION".into();
             }
         }
-    }
-
-    /// Puts a processed screenshot with `checksum` into `locale`'s set.
-    fn seed_shot(&mut self, locale: &str, display_type: &str, checksum: &str) -> String {
-        if self.ids(locale, display_type).is_empty() && !self.locs.iter().any(|(_, l)| l == locale)
-        {
-            self.seed(locale, display_type);
-        }
-        let loc = self
-            .locs
-            .iter()
-            .find(|(_, l)| l == locale)
-            .unwrap()
-            .0
-            .clone();
-        let set = self
-            .sets
-            .iter()
-            .find(|(_, l, d)| *l == loc && d == display_type)
-            .unwrap()
-            .0
-            .clone();
-        let id = self.id("shot-");
-        self.shots.insert(
-            id.clone(),
-            Shot {
-                set: set.clone(),
-                file_name: "kept.png".into(),
-                size: 10,
-                checksum: Some(checksum.to_owned()),
-                state: "COMPLETE".into(),
-                received: 10,
-            },
-        );
-        self.order.get_mut(&set).unwrap().push(id.clone());
-        id
     }
 }
 
@@ -644,118 +527,6 @@ impl Respond for FakeAsc {
                 ResponseTemplate::new(201).set_body_json(json!({"data": {
                     "type": "appStoreVersionLocalizations", "id": id,
                     "attributes": {"locale": locale}}}))
-            }
-            ("GET", ["v1", "appStoreVersionLocalizations", loc, "appScreenshotSets"]) => {
-                let data: Vec<Value> = a
-                    .sets
-                    .iter()
-                    .filter(|(_, l, _)| l == loc)
-                    .map(|(id, _, d)| json!({"type": "appScreenshotSets", "id": id,
-                                             "attributes": {"screenshotDisplayType": d}}))
-                    .collect();
-                ok(json!({ "data": data }))
-            }
-            ("POST", ["v1", "appScreenshotSets"]) => {
-                let d = body["data"]["attributes"]["screenshotDisplayType"]
-                    .as_str()
-                    .unwrap()
-                    .to_owned();
-                let loc = body["data"]["relationships"]["appStoreVersionLocalization"]["data"]
-                    ["id"]
-                    .as_str()
-                    .unwrap()
-                    .to_owned();
-                let id = a.id("set-");
-                a.sets.push((id.clone(), loc, d.clone()));
-                a.order.insert(id.clone(), Vec::new());
-                ResponseTemplate::new(201).set_body_json(json!({"data": {
-                    "type": "appScreenshotSets", "id": id,
-                    "attributes": {"screenshotDisplayType": d}}}))
-            }
-            ("GET", ["v1", "appScreenshotSets", set, "appScreenshots"]) => {
-                let ids = a.order.get(*set).cloned().unwrap_or_default();
-                let data: Vec<Value> = ids.iter().map(|id| a.shot_doc(id)).collect();
-                ok(json!({ "data": data }))
-            }
-            ("PATCH", ["v1", "appScreenshotSets", set, "relationships", "appScreenshots"]) => {
-                let ids: Vec<String> = body["data"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(|d| d["id"].as_str().unwrap().to_owned())
-                    .collect();
-                a.order.insert((*set).to_owned(), ids);
-                ResponseTemplate::new(204)
-            }
-            ("POST", ["v1", "appScreenshots"]) => {
-                let set = body["data"]["relationships"]["appScreenshotSet"]["data"]["id"]
-                    .as_str()
-                    .unwrap()
-                    .to_owned();
-                let locale = a.locale_of_set(&set).unwrap_or_default();
-                *a.reserves.entry(locale.clone()).or_default() += 1;
-                if a.fail_locale.as_deref() == Some(locale.as_str()) {
-                    return ResponseTemplate::new(409).set_body_json(json!({"errors": [{
-                        "status": "409", "code": "ENTITY_ERROR.ATTRIBUTE.INVALID",
-                        "title": "An attribute value is invalid.",
-                        "detail": "The screenshot dimensions are invalid."}]}));
-                }
-                let id = a.id("shot-");
-                let attrs = &body["data"]["attributes"];
-                let shot = Shot {
-                    set: set.clone(),
-                    file_name: attrs["fileName"].as_str().unwrap().to_owned(),
-                    size: attrs["fileSize"].as_u64().unwrap(),
-                    checksum: None,
-                    state: "AWAITING_UPLOAD".into(),
-                    received: 0,
-                };
-                a.shots.insert(id.clone(), shot);
-                a.order.entry(set).or_default().push(id.clone());
-                ResponseTemplate::new(201).set_body_json(json!({ "data": a.shot_doc(&id) }))
-            }
-            ("PUT", ["upload", id]) => {
-                let n = req.body.len() as u64;
-                if let Some(s) = a.shots.get_mut(*id) {
-                    s.received += n;
-                }
-                let r = ResponseTemplate::new(200);
-                match a.part_delay {
-                    Some(d) => r.set_delay(d),
-                    None => r,
-                }
-            }
-            ("PATCH", ["v1", "appScreenshots", id]) => {
-                let checksum = body["data"]["attributes"]["sourceFileChecksum"]
-                    .as_str()
-                    .map(str::to_owned);
-                let Some(name) = a.shots.get(*id).map(|s| s.file_name.clone()) else {
-                    return ResponseTemplate::new(404);
-                };
-                let state = if a.stuck.contains(&name) {
-                    "UPLOAD_COMPLETE"
-                } else if a.failing.contains(&name) {
-                    "FAILED"
-                } else {
-                    "COMPLETE"
-                };
-                let s = a.shots.get_mut(*id).unwrap();
-                assert_eq!(s.received, s.size, "all bytes before the commit");
-                s.checksum = checksum;
-                s.state = state.into();
-                ok(json!({ "data": a.shot_doc(id) }))
-            }
-            ("GET", ["v1", "appScreenshots", id]) => match a.shots.contains_key(*id) {
-                true => ok(json!({ "data": a.shot_doc(id) })),
-                false => ResponseTemplate::new(404),
-            },
-            ("DELETE", ["v1", "appScreenshots", id]) => {
-                if let Some(s) = a.shots.remove(*id) {
-                    if let Some(o) = a.order.get_mut(&s.set) {
-                        o.retain(|x| x != id);
-                    }
-                }
-                ResponseTemplate::new(204)
             }
             _ => ResponseTemplate::new(404).set_body_json(json!({"errors": [{
                 "status": "404", "code": "NOT_FOUND", "title": format!("no route {method} {path}")}]})),
@@ -975,6 +746,7 @@ async fn env_setup(project: &str, from_env: bool) -> Env {
     let asc = Arc::new(Mutex::new(Asc {
         base: asc_server.uri(),
         editable: true,
+        library: true,
         ..Asc::default()
     }));
     let play = Arc::new(Mutex::new(Play::default()));
@@ -1089,7 +861,10 @@ fn plan_images(plan: &Value, target: &str, lang: &str, key: &str) -> Vec<String>
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn plan_local_then_remote() {
     let e = env().await;
-    e.asc.lock().unwrap().seed("en-US", "APP_IPHONE_67");
+    e.asc
+        .lock()
+        .unwrap()
+        .seed_image("old [0123456789ab]", 10, Some(("en-US", GROUP)));
 
     let p = plan(&e.app, json!({}));
     assert_eq!(p["blocked"], false, "{p:#}");
@@ -1102,10 +877,13 @@ async fn plan_local_then_remote() {
     assert_eq!(s["action"], "new");
     assert_eq!(s["images"].as_array().unwrap().len(), 2);
     assert_eq!(s["images"][0]["index"], 1);
-    // `auto`: screenshot sets for everything the set API supports.
-    assert_eq!(p["stores"][0]["flow"], "screenshot_sets");
-    assert_eq!(p["stores"][0]["flow_setting"], "auto");
-    assert!(s.get("placement").is_none() && s.get("flow").is_none());
+    // Apple: always the App Asset Library.
+    assert_eq!(p["stores"][0]["flow"], "asset_library");
+    assert!(p["stores"][0].get("flow_setting").is_none());
+    assert_eq!(
+        s["placement"],
+        "APP_SCREENSHOT · IPHONE_DYNAMIC_ISLAND_LARGE_DISPLAY"
+    );
     assert_eq!(p["stores"][1]["flow"], "edit");
     assert!(p["stores"][0].get("remote").is_none());
     assert!(
@@ -1119,21 +897,23 @@ async fn plan_local_then_remote() {
         r["stores"][0]["remote"]["version"],
         "1.0 PREPARE_FOR_SUBMISSION"
     );
-    // No library-only set: the library is not even asked.
-    assert_eq!(r["stores"][0]["flow"], "screenshot_sets");
-    assert!(r["stores"][0].get("flow_note").is_none());
+    assert_eq!(r["stores"][0]["flow"], "asset_library");
     assert!(
-        !e.asc
+        e.asc
             .lock()
             .unwrap()
             .seen
             .iter()
-            .any(|x| x.contains("assetLibrary") || x.contains("RefData"))
+            .all(|x| x.starts_with("GET ")),
+        "the remote check is read-only"
     );
     let en = set(&r, "iphone", "en");
     assert_eq!(en["action"], "replace");
     assert_eq!(en["remote_count"], 1);
-    assert!(en.get("placement").is_none());
+    assert_eq!(
+        en["placement"],
+        "APP_SCREENSHOT → IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE"
+    );
     let de = set(&r, "iphone", "de");
     assert_eq!(de["action"], "new");
     assert_eq!(de["steps"][0], "create_localization");
@@ -1151,27 +931,22 @@ async fn plan_local_then_remote() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn executes_both_stores_and_then_nothing_is_left() {
     let e = env().await;
-    e.asc.lock().unwrap().seed("en-US", "APP_IPHONE_67");
+    let old = e
+        .asc
+        .lock()
+        .unwrap()
+        .seed_image("old [0123456789ab]", 10, Some(("en-US", GROUP)));
     let p = plan(&e.app, json!({}));
     let run = execute(&e.app, &p["confirm_token"]);
     assert_eq!(run["status"], "completed", "{run:#}");
     assert_eq!(run["images_done"], 8);
 
-    // Apple: old screenshot gone, new ones in plan order, de-DE created.
+    // Apple: old placement and asset gone, new ones in plan order, de-DE
+    // created; no screenshot-set call.
     let asc = e.asc.lock().unwrap();
-    assert_eq!(
-        asc.checksums("en-US", "APP_IPHONE_67"),
-        plan_images(&p, "iphone", "en", "md5")
-    );
-    assert_eq!(
-        asc.checksums("de-DE", "APP_IPHONE_67"),
-        plan_images(&p, "iphone", "de", "md5")
-    );
-    assert!(
-        asc.seen
-            .iter()
-            .any(|s| s.starts_with("DELETE /v1/appScreenshots/old-"))
-    );
+    assert_eq!(asc.placed("en-US", GROUP), references(&p, "iphone", "en"));
+    assert_eq!(asc.placed("de-DE", GROUP), references(&p, "iphone", "de"));
+    assert!(!asc.images.contains_key(&old));
     assert!(
         asc.seen
             .iter()
@@ -1180,8 +955,12 @@ async fn executes_both_stores_and_then_nothing_is_left() {
     assert!(
         asc.seen
             .iter()
-            .any(|s| s.starts_with("PATCH /v1/appScreenshotSets/")
-                && s.ends_with("/relationships/appScreenshots"))
+            .any(|s| s == "POST /v1/appAssetLibraryPlacementOrderingRequests")
+    );
+    assert!(
+        !asc.seen.iter().any(|s| s.contains("appScreenshot")),
+        "{:?}",
+        asc.seen
     );
     drop(asc);
     // Google: one edit, committed, images in order.
@@ -1309,7 +1088,7 @@ async fn partial_failure_then_resume_skips_completed_sets() {
             .unwrap()
             .contains("dimensions are invalid")
     );
-    let en_reserves = e.asc.lock().unwrap().reserves["en-US"];
+    let uploads = library_uploads(&e.asc.lock().unwrap());
 
     e.asc.lock().unwrap().fail_locale = None;
     let p2 = plan(&e.app, json!({ "store": "apple" }));
@@ -1319,13 +1098,11 @@ async fn partial_failure_then_resume_skips_completed_sets() {
     assert_eq!(run["status"], "completed", "{run:#}");
     let asc = e.asc.lock().unwrap();
     assert_eq!(
-        asc.reserves["en-US"], en_reserves,
-        "en was not uploaded again"
+        library_uploads(&asc),
+        uploads,
+        "nothing uploaded again: en was done, de's images are in the library"
     );
-    assert_eq!(
-        asc.checksums("de-DE", "APP_IPHONE_67"),
-        plan_images(&p2, "iphone", "de", "md5")
-    );
+    assert_eq!(asc.placed("de-DE", GROUP), references(&p2, "iphone", "de"));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -1690,10 +1467,10 @@ async fn apple_processing_does_not_block_the_run() {
             .unwrap()
             .contains("still processing 1 image")
     );
-    // All images are in the store in plan order (the stuck one too).
+    // All images are placed in plan order (the stuck one too).
     assert_eq!(
-        e.asc.lock().unwrap().checksums("en-US", "APP_IPHONE_67"),
-        plan_images(&p, "iphone", "en", "md5")
+        e.asc.lock().unwrap().placed("en-US", GROUP),
+        references(&p, "iphone", "en")
     );
     // Progress shows the processing step with the state and the time.
     let progress = e.events.named("upload-progress");
@@ -1737,7 +1514,7 @@ async fn apple_processing_does_not_block_the_run() {
         .iter()
         .filter(|v| {
             let m = v["message"].as_str().unwrap();
-            m.starts_with("GET ") && m.contains("/v1/appScreenshots/")
+            m.starts_with("GET ") && m.contains("/v1/appAssetLibraryImages/")
         })
         .count();
     assert_eq!(polls, 0, "successful polls are not logged one by one");
@@ -1793,8 +1570,18 @@ async fn apple_failed_processing_fails_the_set_with_details() {
     let err = de["error"].as_str().unwrap();
     assert!(err.contains("IMAGE_INCORRECT_DIMENSIONS"), "{err}");
     assert!(err.contains(&de_names[1]), "{err}");
-    // The failed asset is deleted; the good one stays.
-    assert_eq!(e.asc.lock().unwrap().ids("de-DE", "APP_IPHONE_67").len(), 1);
+    // The failed image is deleted, nothing is placed; the good one stays in
+    // the library.
+    {
+        let asc = e.asc.lock().unwrap();
+        assert!(asc.placed("de-DE", GROUP).is_empty());
+        assert!(
+            asc.images
+                .values()
+                .any(|i| i.file_name == de_names[0] && i.state == "PREPARE_FOR_SUBMISSION")
+        );
+        assert!(!asc.images.values().any(|i| i.file_name == de_names[1]));
+    }
     let log = call(&e.app, "upload_log", json!({"limit": 1}));
     let files = log["runs"][0]["sets"]
         .as_array()
@@ -1812,18 +1599,16 @@ async fn apple_failed_processing_fails_the_set_with_details() {
     );
     // Next run: the good image is kept, only the failed one is uploaded.
     e.asc.lock().unwrap().failing.clear();
-    let before = e.asc.lock().unwrap().reserves["de-DE"];
+    let before = library_uploads(&e.asc.lock().unwrap());
     let p2 = plan(&e.app, json!({ "store": "apple", "remote": true }));
     let de2 = set(&p2, "iphone", "de");
-    assert_eq!(de2["action"], "replace");
+    assert_eq!(de2["action"], "new");
     assert_eq!(de2["reusable"], 1);
     let run = execute(&e.app, &p2["confirm_token"]);
     assert_eq!(run["status"], "completed", "{run:#}");
-    assert_eq!(e.asc.lock().unwrap().reserves["de-DE"], before + 1);
-    assert_eq!(
-        e.asc.lock().unwrap().checksums("de-DE", "APP_IPHONE_67"),
-        plan_images(&p2, "iphone", "de", "md5")
-    );
+    let asc = e.asc.lock().unwrap();
+    assert_eq!(library_uploads(&asc), before + 1);
+    assert_eq!(asc.placed("de-DE", GROUP), references(&p2, "iphone", "de"));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -1861,26 +1646,38 @@ async fn cancel_works_while_apple_is_processing() {
     );
     let run = serde_json::to_value(run).unwrap();
     assert_eq!(run["status"], "cancelled", "{run:#}");
-    // Re-plan with the remote check: the uploaded images are kept.
+    // Re-plan with the remote check: the uploaded images are reused from
+    // the library (they were never placed).
     e.asc.lock().unwrap().finish_processing();
     let r = plan(
         &e.app,
         json!({ "store": "apple", "langs": ["en"], "remote": true }),
     );
-    assert_eq!(set(&r, "iphone", "en")["action"], "unchanged", "{r:#}");
+    let s = set(&r, "iphone", "en");
+    assert_eq!(s["action"], "new", "{r:#}");
+    assert_eq!(s["reusable"], 2);
+    let before = library_uploads(&e.asc.lock().unwrap());
+    let run = execute(&e.app, &r["confirm_token"]);
+    assert_eq!(run["status"], "completed", "{run:#}");
+    assert_eq!(library_uploads(&e.asc.lock().unwrap()), before);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn replan_keeps_images_already_in_the_store() {
     let e = env().await;
     let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
-    let md5 = plan_images(&p, "iphone", "en", "md5");
-    // The store holds image 1 (done) and an old one; image 2 is missing.
-    let kept = e
-        .asc
-        .lock()
-        .unwrap()
-        .seed_shot("en-US", "APP_IPHONE_67", &md5[0]);
+    let refs = references(&p, "iphone", "en");
+    let bytes = plan_images(&p, "iphone", "en", "file_name");
+    let size = set(&p, "iphone", "en")["images"][0]["bytes"]
+        .as_u64()
+        .unwrap();
+    assert_eq!(bytes.len(), 2);
+    // The store shows image 1 (done) and an old one; image 2 is missing.
+    {
+        let mut a = e.asc.lock().unwrap();
+        a.seed_image(&refs[0], size, Some(("en-US", GROUP)));
+        a.seed_image("old [0123456789ab]", 10, Some(("en-US", GROUP)));
+    }
     let r = plan(
         &e.app,
         json!({ "store": "apple", "langs": ["en"], "remote": true }),
@@ -1899,11 +1696,11 @@ async fn replan_keeps_images_already_in_the_store() {
     assert!(run["sets"][0]["note"].as_str().unwrap().contains("kept"));
     let asc = e.asc.lock().unwrap();
     assert_eq!(
-        asc.reserves["en-US"], 1,
+        library_uploads(&asc),
+        1,
         "only the missing image is uploaded"
     );
-    assert_eq!(asc.checksums("en-US", "APP_IPHONE_67"), md5);
-    assert_eq!(asc.ids("en-US", "APP_IPHONE_67")[0], kept);
+    assert_eq!(asc.placed("en-US", GROUP), refs);
     drop(asc);
     // --force uploads everything again.
     let f = plan(
@@ -1912,7 +1709,7 @@ async fn replan_keeps_images_already_in_the_store() {
     );
     assert!(set(&f, "iphone", "en").get("reusable").is_none());
     execute(&e.app, &f["confirm_token"]);
-    assert_eq!(e.asc.lock().unwrap().reserves["en-US"], 3);
+    assert_eq!(library_uploads(&e.asc.lock().unwrap()), 3);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -2018,7 +1815,8 @@ async fn no_editable_version_is_reported_once() {
 
 // ----- App Asset Library (ADR 0019) ---------------------------------------------------
 
-/// iPhone 6.9", iPhone Duo (outer display) and a product page header; Apple only.
+/// iPhone 6.9", iPhone Duo (outer display) and a product page header; Apple
+/// only. `EXTRA` goes into `store.apple`.
 const LIB_PROJECT: &str = r##"format: vitrine/1
 revision: 0
 name: "Library test"
@@ -2062,19 +1860,11 @@ targets:
   fit: cover
   store: {apple: {display_type: PRODUCT_PAGE_HEADER_ASSET, placement: header}}
 store:
-  apple: {account: apple-team, app_id: "1234567890"FLOW}
+  apple: {account: apple-team, app_id: "1234567890"EXTRA}
 "##;
 
-fn lib_project(flow: &str) -> String {
-    LIB_PROJECT.replace("FLOW", flow)
-}
-
-/// `PROJECT` with `upload_flow: asset_library` (everything via the library).
-fn library_project() -> String {
-    PROJECT.replace(
-        r#"app_id: "1234567890"}"#,
-        r#"app_id: "1234567890", upload_flow: asset_library}"#,
-    )
+fn lib_project(extra: &str) -> String {
+    LIB_PROJECT.replace("EXTRA", extra)
 }
 
 /// `<file stem> [<sha256[..12]>]` of a plan set's images, in order.
@@ -2100,14 +1890,12 @@ fn library_uploads(asc: &Asc) -> usize {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn asset_library_uploads_places_and_orders() {
-    let e = env_with(&lib_project(", upload_flow: asset_library")).await;
-    e.asc.lock().unwrap().library = true;
+    let e = env_with(&lib_project("")).await;
     let args = json!({ "store": "apple", "langs": ["en"], "remote": true });
     let r = plan(&e.app, args.clone());
     assert_eq!(r["blocked"], false, "{r:#}");
     let store = &r["stores"][0];
     assert_eq!(store["flow"], "asset_library");
-    assert!(store.get("flow_note").is_none());
     let iphone = set(&r, "iphone", "en");
     assert_eq!(
         iphone["placement"],
@@ -2177,8 +1965,7 @@ async fn asset_library_uploads_places_and_orders() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn asset_library_reuses_assets_and_deletes_old_ones() {
-    let e = env_with(&library_project()).await;
-    e.asc.lock().unwrap().library = true;
+    let e = env().await;
     let local = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
     let refs = references(&local, "iphone", "en");
     let bytes: Vec<u64> = set(&local, "iphone", "en")["images"]
@@ -2230,8 +2017,7 @@ async fn asset_library_reuses_assets_and_deletes_old_ones() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn asset_library_failed_processing_changes_no_placement() {
-    let e = env_with(&library_project()).await;
-    e.asc.lock().unwrap().library = true;
+    let e = env().await;
     let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
     let names = plan_images(&p, "iphone", "en", "file_name");
     e.asc.lock().unwrap().failing = vec![names[1].clone()];
@@ -2262,88 +2048,99 @@ async fn asset_library_failed_processing_changes_no_placement() {
     assert_eq!(library_uploads(&asc), 3);
 }
 
+/// Projects written before 2026-11-13 may still say
+/// `upload_flow: screenshot_sets` (or `auto`): they load, everything goes
+/// through the library and the key disappears on the next save.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn forced_screenshot_sets_block_library_only_slots() {
+async fn retired_upload_flow_values_still_load() {
     let e = env_with(&lib_project(", upload_flow: screenshot_sets")).await;
     let p = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
-    assert_eq!(p["blocked"], false, "the other sets still upload: {p:#}");
-    assert_eq!(p["stores"][0]["flow"], "screenshot_sets");
-    assert_eq!(p["stores"][0]["flow_setting"], "screenshot_sets");
-    assert_eq!(p["totals"]["upload_sets"], 1);
-    for t in ["duo", "header"] {
-        let s = set(&p, t, "en");
-        assert_eq!(s["action"], "skip", "{t}");
-        assert!(s["images"].as_array().unwrap().is_empty(), "not rendered");
-        assert!(
-            s["problems"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|x| x["code"] == "needs_asset_library"),
-            "{s:#}"
-        );
+    assert_eq!(p["blocked"], false, "{p:#}");
+    assert_eq!(p["stores"][0]["flow"], "asset_library");
+    for t in ["iphone", "duo", "header"] {
+        assert_eq!(set(&p, t, "en")["action"], "new", "{t}");
     }
-    assert_eq!(set(&p, "iphone", "en")["action"], "new");
-    assert_eq!(
-        set(&p, "iphone", "en")["steps"],
-        json!(["delete_existing", "upload", "set_order"])
-    );
+    let apple = call(&e.app, "project_store_get", json!({}))["store"]["apple"].clone();
+    assert!(apple.get("upload_flow").is_none(), "{apple:#}");
+    // A client that still sends the old key is accepted; the key is not written.
+    let mut patched = apple.clone();
+    patched["upload_flow"] = json!("auto");
+    patched["bundle_id"] = json!("com.example.fernwood");
+    call(&e.app, "project_store_patch", json!({ "apple": patched }));
+    let yaml = std::fs::read_to_string(e.dir.join("project.yaml")).unwrap();
+    assert!(yaml.contains("com.example.fernwood"), "{yaml}");
+    assert!(!yaml.contains("upload_flow"), "{yaml}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn forced_asset_library_without_access_blocks() {
-    let e = env_with(&lib_project(", upload_flow: asset_library")).await;
+async fn asset_library_without_access_blocks() {
+    let e = env_with(&lib_project("")).await;
+    e.asc.lock().unwrap().library = false;
     let p = plan(
         &e.app,
         json!({ "store": "apple", "langs": ["en"], "targets": ["iphone"], "remote": true }),
     );
     assert_eq!(p["blocked"], true, "{p:#}");
+    let problem = p["stores"][0]["problems"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|x| x["code"] == "asset_library_unavailable")
+        .unwrap_or_else(|| panic!("{:#}", p["stores"][0]))
+        .clone();
     assert!(
-        p["stores"][0]["problems"]
-            .as_array()
+        problem["message"]
+            .as_str()
             .unwrap()
+            .contains("App Asset Library is not available")
+    );
+    // The run (local plan) fails the store once.
+    let local = plan(
+        &e.app,
+        json!({ "store": "apple", "langs": ["en"], "targets": ["iphone"] }),
+    );
+    let run = execute(&e.app, &local["confirm_token"]);
+    assert_eq!(run["status"], "failed", "{run:#}");
+    assert_eq!(
+        run["store_failures"][0]["code"],
+        "asset_library_unavailable"
+    );
+    assert!(
+        !e.asc
+            .lock()
+            .unwrap()
+            .seen
             .iter()
-            .any(|x| x["code"] == "asset_library_unavailable"),
-        "{:#}",
-        p["stores"][0]
+            .any(|s| s.contains("appScreenshot"))
     );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn asset_library_uses_the_set_api_for_a_slot_without_group() {
-    let project = library_project()
+async fn slot_without_placement_group_blocks() {
+    let project = PROJECT
         .replace("size: [1320, 2868]", "size: [1242, 2688]")
         .replace("APP_IPHONE_67", "APP_IPHONE_65");
     let e = env_with(&project).await;
-    e.asc.lock().unwrap().library = true;
     let r = plan(
         &e.app,
         json!({ "store": "apple", "langs": ["en"], "remote": true }),
     );
-    assert_eq!(r["blocked"], false, "{r:#}");
-    assert_eq!(r["stores"][0]["flow"], "asset_library");
+    assert_eq!(r["blocked"], true, "{r:#}");
     let s = set(&r, "iphone", "en");
-    assert_eq!(s["flow"], "screenshot_sets");
+    assert_eq!(s["action"], "blocked");
     assert!(
         s["problems"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|x| x["code"] == "flow_fallback"),
+            .any(|x| x["code"] == "no_placement_group" && x["blocking"] == true),
         "{s:#}"
-    );
-    let run = execute(&e.app, &r["confirm_token"]);
-    assert_eq!(run["status"], "completed", "{run:#}");
-    assert_eq!(
-        e.asc.lock().unwrap().checksums("en-US", "APP_IPHONE_65"),
-        plan_images(&r, "iphone", "en", "md5")
     );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn refdata_is_read_only_and_resolves_the_mapping() {
     let e = env().await;
-    e.asc.lock().unwrap().library = true;
     let r = call(&e.app, "upload_refdata", json!({}));
     assert_eq!(r["account"], "apple-team");
     assert_eq!(r["app"]["id"], "1234567890");
@@ -2371,7 +2168,6 @@ async fn refdata_is_read_only_and_resolves_the_mapping() {
             "APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE 1398x2034"
         ])
     );
-    assert_eq!(row("APP_IPHONE_DUO")["asset_library_only"], true);
     assert_eq!(row("APP_IPHONE_65")["groups"], json!([]));
     assert_eq!(row("universal")["groups"].as_array().unwrap().len(), 2);
     let asc = e.asc.lock().unwrap();
@@ -2386,108 +2182,6 @@ async fn refdata_is_read_only_and_resolves_the_mapping() {
     let r = call(&e.app, "upload_refdata", json!({ "app": "1234567890" }));
     assert!(r["app"].get("library_id").is_none());
     assert!(r["app"]["library_error"].is_string());
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn upload_flow_is_a_project_store_setting() {
-    let e = env().await;
-    let get = |app: &AppState| call(app, "project_store_get", json!({}));
-    let apple = get(&e.app)["store"]["apple"].clone();
-    assert!(apple.get("upload_flow").is_none(), "auto is the default");
-    let mut patched = apple.clone();
-    patched["upload_flow"] = json!("screenshot_sets");
-    call(&e.app, "project_store_patch", json!({ "apple": patched }));
-    assert_eq!(
-        get(&e.app)["store"]["apple"]["upload_flow"],
-        "screenshot_sets"
-    );
-    let yaml = std::fs::read_to_string(e.dir.join("project.yaml")).unwrap();
-    assert!(yaml.contains("upload_flow: screenshot_sets"), "{yaml}");
-    // `auto` is not written.
-    patched["upload_flow"] = json!("auto");
-    call(&e.app, "project_store_patch", json!({ "apple": patched }));
-    let yaml = std::fs::read_to_string(e.dir.join("project.yaml")).unwrap();
-    assert!(!yaml.contains("upload_flow"), "{yaml}");
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn auto_fallback_skips_duo_and_creative_sets() {
-    // No asset library on this fake store: `auto` uses the set API, which
-    // cannot take the Duo or the header – they are skipped, not uploaded.
-    let e = env_with(&lib_project("")).await;
-    let r = plan(
-        &e.app,
-        json!({ "store": "apple", "langs": ["en"], "remote": true }),
-    );
-    assert_eq!(r["blocked"], false, "{r:#}");
-    assert_eq!(r["stores"][0]["flow"], "screenshot_sets");
-    for t in ["duo", "header"] {
-        let s = set(&r, t, "en");
-        assert_eq!(s["action"], "skip", "{t}: {s:#}");
-        assert!(
-            s["problems"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|x| x["code"] == "needs_asset_library")
-        );
-    }
-    let run = execute(&e.app, &r["confirm_token"]);
-    assert_eq!(run["status"], "completed", "{run:#}");
-    let asc = e.asc.lock().unwrap();
-    assert_eq!(
-        asc.checksums("en-US", "APP_IPHONE_67"),
-        plan_images(&r, "iphone", "en", "md5")
-    );
-    assert!(
-        asc.sets.iter().all(|(_, _, d)| d == "APP_IPHONE_67"),
-        "nothing else went into a screenshot set: {:?}",
-        asc.sets
-    );
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn auto_sends_only_library_only_sets_through_the_library() {
-    let e = env_with(&lib_project("")).await;
-    e.asc.lock().unwrap().library = true;
-    let local = plan(&e.app, json!({ "store": "apple", "langs": ["en"] }));
-    assert_eq!(local["stores"][0]["flow"], "screenshot_sets");
-    assert!(set(&local, "iphone", "en").get("flow").is_none());
-    for t in ["duo", "header"] {
-        assert_eq!(set(&local, t, "en")["flow"], "asset_library", "{t}");
-    }
-    let r = plan(
-        &e.app,
-        json!({ "store": "apple", "langs": ["en"], "remote": true }),
-    );
-    assert_eq!(r["blocked"], false, "{r:#}");
-    assert_eq!(r["stores"][0]["flow"], "screenshot_sets");
-    assert!(set(&r, "iphone", "en").get("placement").is_none());
-    assert_eq!(
-        set(&r, "duo", "en")["placement"],
-        "APP_SCREENSHOT → IPHONE_DUO_OUTER_PROFILE"
-    );
-    let run = execute(&e.app, &r["confirm_token"]);
-    assert_eq!(run["status"], "completed", "{run:#}");
-    let asc = e.asc.lock().unwrap();
-    // iPhone via the screenshot set, Duo and header via the library.
-    assert_eq!(
-        asc.checksums("en-US", "APP_IPHONE_67"),
-        plan_images(&r, "iphone", "en", "md5")
-    );
-    assert!(asc.sets.iter().all(|(_, _, d)| d == "APP_IPHONE_67"));
-    assert_eq!(
-        asc.placed("en-US", "IPHONE_DUO_OUTER_PROFILE"),
-        references(&r, "duo", "en")
-    );
-    assert_eq!(
-        asc.placed("en-US", "IPHONE_HEADER_PROFILE"),
-        references(&r, "header", "en")
-    );
-    assert!(
-        asc.placed("en-US", "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE")
-            .is_empty()
-    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

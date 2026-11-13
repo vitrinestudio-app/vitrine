@@ -135,7 +135,7 @@ Hochgeladen werden nur die hier eingetragenen Stores. Welche Bilder wohin
 gehen, bestimmt der **Store-Slot** jedes Ziels (App-Store-Display-Typ /
 Play-Bildtyp) – die Presets setzen ihn für dich.
 
-{{< shot src="images/project-stores.jpg" alt="Projekteinstellungen, Tab Stores: Konto, App, Apple-ID, Bundle-ID, Plattform und Upload-Verfahren für den App Store; Konto und Paketname für Google Play; Store-Sprachen." caption="Projekteinstellungen → **Stores**: das Projekt mit beiden Stores verbunden." >}}
+{{< shot src="images/project-stores.jpg" alt="Projekteinstellungen, Tab Stores: Konto, App, Apple-ID, Bundle-ID und Plattform für den App Store; Konto und Paketname für Google Play; Store-Sprachen." caption="Projekteinstellungen → **Stores**: das Projekt mit beiden Stores verbunden." >}}
 
 ## 3. Planen, bestätigen, hochladen {#3-plan-confirm-upload}
 
@@ -226,21 +226,21 @@ einreichst – App Store Connect zeigt das an.
 
 ### Upload-Verfahren für den App Store {#app-store-upload-method}
 
-Apple hat zwei Upload-Schnittstellen: die älteren **Screenshot-Sets** (von
-Apple als veraltet markiert, funktionieren aber noch) und die neuere **App
-Asset Library**. Screenshots für das iPhone Duo und die App-Store-Creatives
-**Kopfzeile** und **Suchergebnisse** gibt es nur in der Asset Library.
+Vitrine Studio lädt über Apples **App Asset Library** zu App Store Connect
+hoch – für jedes Gerät (iPhone, iPad, Mac, Apple Watch, Apple TV, Vision Pro,
+iMessage, iPhone Duo) und für die Creatives **Kopfzeile** und
+**Suchergebnisse**. Es gibt nichts auszuwählen. (Frühere Versionen konnten
+Apples ältere Screenshot-Set-Schnittstelle nutzen; Apple hat sie als veraltet
+markiert, und Vitrine Studio verwendet sie nicht mehr. Eine alte Zeile
+`upload_flow` in `project.yaml` wird ignoriert und verschwindet beim nächsten
+Speichern.)
 
-**Projekteinstellungen → Stores → App Store → Upload-Verfahren:**
+Der API-Schlüssel braucht Zugriff auf die Asset Library der App. Ohne ihn
+meldet der Plan (mit *Store-Stand prüfen*) *App Asset Library is not
+available*, und in den App Store wird nichts hochgeladen – prüfe die Rolle des
+Schlüssels in App Store Connect.
 
-- **Automatisch** (Vorgabe): Screenshot-Sets für alle Geräte – das in echten
-  Uploads geprüfte Verfahren – und die App Asset Library nur für iPhone Duo,
-  Kopfzeile und Suchergebnisse.
-- **Nur App Asset Library** – um die neuere API für alles auszuprobieren.
-- **Nur Screenshot-Sets (ältere API)** – iPhone Duo und Creatives werden dann
-  mit einer Warnung übersprungen.
-
-Der Plan zeigt, welches Verfahren jedes Set nutzt. In der Asset Library heißen
+In der Asset Library heißen
 von Vitrine Studio hochgeladene Bilder `<Datei> [<Fingerabdruck>]`; gleiche
 Bilder werden über Sprachen hinweg wiederverwendet, und alte, von Vitrine
 Studio hochgeladene Bilder werden entfernt, sobald nichts sie mehr nutzt (von

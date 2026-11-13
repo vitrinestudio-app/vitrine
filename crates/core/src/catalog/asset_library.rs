@@ -38,9 +38,6 @@ pub struct ScreenshotPlacement {
     pub display_class: String,
     /// `AppAssetLibraryPlacementPlatform` values.
     pub platforms: Vec<String>,
-    /// The set-based API cannot upload it.
-    #[serde(default)]
-    pub asset_library_only: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
 }
@@ -67,15 +64,7 @@ pub struct SlotPlacements {
     /// Creative assets get one placement per matching group; screenshots
     /// exactly one group.
     pub every_group: bool,
-    /// Only the asset library can upload it (Duo, creative assets).
-    pub asset_library_only: bool,
 }
-
-/// Placement types the set-based API knows nothing about.
-const CREATIVE_TYPES: [&str; 2] = [
-    "PRODUCT_PAGE_HEADER_ASSET",
-    "APP_STORE_SEARCH_RESULTS_ASSET",
-];
 
 impl AssetLibraryFile {
     pub fn parse(yaml: &str) -> Result<Self, String> {
@@ -132,7 +121,6 @@ impl AssetLibraryFile {
                     platforms: s.platforms.clone(),
                     category: self.category.get(&s.placement_type)?.clone(),
                     every_group: false,
-                    asset_library_only: s.asset_library_only,
                 })
             }
             Some(p) => {
@@ -144,18 +132,9 @@ impl AssetLibraryFile {
                     platforms: c.platforms.clone(),
                     category: self.category.get(first)?.clone(),
                     every_group: true,
-                    asset_library_only: c
-                        .placement_types
-                        .iter()
-                        .any(|t| CREATIVE_TYPES.contains(&t.as_str())),
                 })
             }
         }
-    }
-
-    /// Only the App Asset Library can upload this slot.
-    pub fn asset_library_only(&self, slot: &AppleSlot) -> bool {
-        slot.is_creative() || self.slot(slot).is_some_and(|s| s.asset_library_only)
     }
 }
 
@@ -184,13 +163,12 @@ mod tests {
             Some("IPHONE_DYNAMIC_ISLAND_LARGE_DISPLAY")
         );
         assert_eq!(s.category, "APP_SCREENSHOTS_AND_PREVIEWS");
-        assert!(!s.asset_library_only);
-        assert!(f.asset_library_only(&AppleSlot::screenshots("APP_IPHONE_DUO")));
+        assert!(f.slot(&AppleSlot::screenshots("APP_IPHONE_DUO")).is_some());
         let header = AppleSlot::creative(CreativePlacement::Header);
         let h = f.slot(&header).unwrap();
         assert_eq!(h.placement_types, ["PRODUCT_PAGE_HEADER_ASSET"]);
         assert_eq!(h.category, "CREATIVE_ASSETS");
-        assert!(h.every_group && h.asset_library_only);
+        assert!(h.every_group);
         let both = AppleSlot::creative(CreativePlacement::Universal);
         assert_eq!(f.slot(&both).unwrap().placement_types.len(), 2);
         assert!(f.slot(&AppleSlot::screenshots("APP_NOPE")).is_none());

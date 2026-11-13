@@ -336,8 +336,10 @@ graphic, web banners).
 ### Other sections
 
 - `store:` – store mapping (§10): `{apple: {account, app_id, bundle_id,
-  platform, upload_flow}, google: {account, package_name}, locales: {apple:
-  {…}, google: {…}}}`. Changed only through op `set_store` (not via MCP).
+  platform}, google: {account, package_name}, locales: {apple: {…}, google:
+  {…}}}`. Changed only through op `set_store` (not via MCP). The retired
+  key `apple.upload_flow` (decision 0035) is still read and ignored; the
+  canonical writer drops it.
 - `import:` – saved screenshot-import mappings
   (`import.fastlane.{devices, locales, keys}`, op `set_import`, §9.4).
 - `checks:` – design-check thresholds and `off: [codes]` (op `set_checks`, §8).
@@ -997,15 +999,18 @@ readiness → plan (dry run + confirm token) → confirm → execute → log
   `required_store_set_missing` – Apple, not blocking).
 - `upload_plan {store?, targets?, langs?, remote?, force?}`: every slotted
   target × language; the incremental export renders into
-  `<project>/.cache/upload/images`; SHA-256 (+ MD5 for Apple) per image;
-  compared with the log's last successful set → `new | replace |
-  unchanged | skip`. `remote: true` also reads the store (Apple app →
-  editable version → localizations → sets/placements; Google a throw-away
-  edit) and refines actions and steps.
+  `<project>/.cache/upload/images`; SHA-256 per image; compared with the
+  log's last successful set → `new | replace | unchanged | skip`.
+  `remote: true` also reads the store (Apple app → editable version →
+  asset library + ref data → localizations → placements; Google a
+  throw-away edit) and refines actions and steps.
 - **Blocking problems** block the whole plan: validation errors (export
   mode), store-mapping conflicts, two targets in one set, file too large,
-  missing account/app, sample screenshots, no editable App Store version
-  (remote). Narrow with `--target`/`--lang`.
+  missing account/app, sample screenshots, an Apple slot without
+  `asset-library.yaml` mapping (`no_placement_mapping`), and with the
+  remote check: no editable App Store version, no asset library access
+  (`asset_library_unavailable`), no placement group in the ref data
+  (`no_placement_group`). Narrow with `--target`/`--lang`.
 - **Confirm token** `upl_<32 hex>`: bound to a fingerprint (project folder,
   revision, `store:` section, selection, per-set image hashes), valid 30
   minutes, once; stored with the plan in the log (CLI plan and execute are
@@ -1020,28 +1025,24 @@ readiness → plan (dry run + confirm token) → confirm → execute → log
   Watchdog: heartbeat 30 s, a run without progress for 10 min fails; runs
   of a crashed app show as `interrupted`. Rate limits pause a set (≤ 15
   min, 2 pauses). Cancel works in every phase.
-- **Apple** behind the trait `AppleUploadFlow` (`open`, `inspect`,
-  `replace`):
-  - *Screenshot sets* (ASC API, deprecated by Apple in 4.5.1, still
-    working): ensure localization and set, keep screenshots with the same
-    MD5, delete the rest, reserve → upload parts (pre-signed, concurrent) →
-    commit with MD5 for all missing images, then poll all together up to 15
-    min per set; still processing = `uploaded_processing` (not a failure,
-    confirmed later by a remote plan); set and verify the order.
-  - *App Asset Library* (`apple::library`, `AssetLibraryFlow`): images in
-    the per-app library with a content marker in `referenceName`
-    (`<stem> [<sha256[..12]>]`, the library has no checksums), reused when
-    present; placements created per route (placement type + group resolved
-    **at runtime** from `appAssetLibraryRefData` via
-    `crates/core/data/asset-library.yaml`), ordered, verified; a `FAILED`
-    asset fails the set before any placement changes; old Vitrine assets
-    are deleted after their placements.
-  - **Flow selection** `store.apple.upload_flow`: `auto` (default: sets for
-    every slot they support; the library for iPhone Duo and the header /
-    search-results creatives, skipped with `needs_asset_library` if
-    unavailable), `asset_library` (everything via the library), or
-    `screenshot_sets`. Making the library the default is open (§14,
-    0019).
+- **Apple** only through the **App Asset Library** (`upload::library`,
+  `AssetLibraryFlow`: `open`, `inspect`, `replace`; decision 0035): images
+  in the per-app library with a content marker in `referenceName`
+  (`<stem> [<sha256[..12]>]`, the library has no checksums), reused when
+  present; placements on the version localization created per route
+  (placement type + group resolved **at runtime** from
+  `appAssetLibraryRefData` via `crates/core/data/asset-library.yaml`),
+  ordered with an ordering request, verified; images still processing are
+  placed anyway (Apple allows it) and polled together up to 15 min per
+  set (still processing = `uploaded_processing`, confirmed later by a
+  remote plan); a `FAILED` asset fails the set before any placement
+  changes; old Vitrine assets are deleted after their placements.
+  Every Apple slot (iPhone, iPad, Mac, Watch, TV, Vision, iMessage, Duo,
+  header / search-results creatives) has a mapping row; a slot without a
+  ref-data group is blocking (`no_placement_group`), a key without library
+  access fails the store once (`asset_library_unavailable`). The
+  deprecated screenshot-set API (`appScreenshotSets`, ASC API ≤ 4.5.0) and
+  the `store.apple.upload_flow` choice were removed (decision 0035).
   - "No editable App Store version" is one short store-level message with a
     link to App Store Connect; the store's sets are skipped.
 - **Google Play** (Android Publisher v3): one edit for all languages and
@@ -1438,9 +1439,9 @@ noted), **superseded** (replaced; see the later row).
 | 0014 | MCP server design | rmcp exact pin, one handler two hosts, `VitrineMcp::run`, compact structured results, MCP defaults to base scope, resources, instructions, `docs_get` (amendment). Changed: upload tools now exist (0018), GUI hosting real (0015) | partly | 12 |
 | 0015 | GUI-hosted MCP, stdio proxy, Claude Desktop | in-app Streamable HTTP endpoint (loopback, token, Host/Origin), discovery file, transparent stdio proxy with GUI autostart, live aids, "Add to Claude Desktop"; amendment: neutral wording, `Actor::Assistant` | current | 12 |
 | 0016 | Store credentials and store config | app-wide accounts, keychain secrets, `store:` mapping + `set_store`, locale defaults as data, store validation, read-only MCP; amendments: setup UX (help, app picker, package check), CI credentials from env | current | 10 |
-| 0017 | Store clients | direct REST clients, verified endpoints, JWT/OAuth, typed errors, retry/cancel/observer/progress, wiremock tests. Its "implement only screenshot sets" decision was amended by 0019 | partly | 10 |
+| 0017 | Store clients | direct REST clients, verified endpoints, JWT/OAuth, typed errors, retry/cancel/observer/progress, wiremock tests. Its "implement only screenshot sets" decision was amended by 0019; the screenshot-set calls were removed (0035) | partly | 10 |
 | 0018 | Upload plan and executor | plan/confirm token/execute/log, Apple per set, Google one edit, resume = new plan, MCP policy table; amendments: readiness checklist, processing model + watchdog, asset-library flow hook, CI uploads | current | 10 |
-| 0019 | App Asset Library upload flow | library client, runtime group resolution via `asset-library.yaml`, content markers, `upload_flow` auto/asset_library/screenshot_sets (default `auto`); open: switch the default to the library after a verified real run | current | 10 |
+| 0019 | App Asset Library upload flow | library client, runtime group resolution via `asset-library.yaml`, content markers, `upload_flow` auto/asset_library/screenshot_sets (default `auto`). Superseded in part by 0035: the library is the only Apple flow, `upload_flow` retired | partly | 10 |
 | 0020 | Native menu bar and context menu | macOS native menu from the UI's spec (`menu_set`), one owner per shortcut, no web-view context menu; amendments: menu order, help entries, website docs link | current | 12 |
 | 0021 | Colour management | convert to sRGB once at decode with moxcms (not qcms), precedence cICP → ICC → sRGB, info for unusable profiles, sRGB exports, no P3 output | current | 7 |
 | 0022 | Licence GPL-3.0-or-later with CLA | GPL + licence-style CLA, brand excluded, no SPDX headers, dependency/font/hyphenation review (Swedish out); amendment: integrations MIT | current | 13 |
@@ -1492,8 +1493,8 @@ Code comments also cite `KONZEPT §n`. The German concept is archived at
 - Export file names are fixed, not templated.
 - The macOS "document package" registration was not done; projects are
   plain folders.
-- Apple uploads use screenshot sets **and** the App Asset Library (§10),
-  not only the set API.
+- Apple uploads use only the App Asset Library (§10, decision 0035), not
+  the set API the concept described.
 - `vitrine mcp` is a proxy to the GUI-hosted server, headless only as
   fallback; the tool list grew far beyond the first version.
 - Frames have four sources, not three (stored project copies, §7).
@@ -1523,3 +1524,4 @@ Code comments also cite `KONZEPT §n`. The German concept is archived at
 |---|---|---|---|
 | 0033 | 2026-11-13 | ARCHITECTURE.md replaces `docs/KONZEPT.md` and the ADR files as the binding description; both archived under `docs/archive/`; future decisions are recorded here | 14, 15 |
 | 0034 | 2026-11-13 | Required App Store sets are checked from `targets.yaml` (`requirement: required` per preset platform; iPad/Mac only once the project has such targets): warn `required_store_set_missing` (allowable via `checks.off` only) + non-blocking upload readiness step | 8, 10 |
+| 0035 | 2026-11-13 | The App Asset Library is the only Apple upload flow (owner verified real uploads with it). The screenshot-set flow (`appScreenshotSets`/`appScreenshots`, MD5 checksums) and the `store.apple.upload_flow` setting are removed; old projects with `upload_flow: auto\|asset_library\|screenshot_sets` still load (key ignored, dropped on save); logged plans with `flow: screenshot_sets` still display. Replaces the `upload_flow` part of 0019 | 3, 10 |

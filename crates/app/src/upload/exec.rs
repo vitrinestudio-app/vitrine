@@ -1,8 +1,9 @@
 //! The executor (Phase 5.5): runs a confirmed plan on its own thread.
 //!
-//! - **Apple**, per set: the flow ([`super::remote::AppleUploadFlow`])
-//!   replaces the whole set (create localization/set if needed → delete
-//!   the old screenshots → upload in order → set the order → verify).
+//! - **Apple**, per set: the App Asset Library flow
+//!   ([`super::library::AssetLibraryFlow`]) replaces the whole set (create
+//!   the localization if needed → reuse or upload the images → replace the
+//!   placements → set the order → verify).
 //! - **Google**, one edit for all languages and image types: `deleteall`
 //!   per language + type → upload in order → commit; on any failure or
 //!   cancel the edit is deleted (nothing changes in Play).
@@ -25,7 +26,7 @@
 //!   processing afterwards are no failure: the set ends
 //!   `uploaded_processing` (file status `processing`), the next plan with
 //!   the remote check confirms them; `FAILED` fails the set with Apple's
-//!   errors. Images the store already holds (same checksum) are kept.
+//!   errors. Images the store already holds (same content marker) are kept.
 //! - **Store-level failures** (no editable App Store version, app not
 //!   reachable) are reported once per store ([`RunState::store_failures`]);
 //!   its sets are `skipped` (no editable version) or `failed` with a short
@@ -48,7 +49,7 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use serde_json::json;
-use vitrine_core::model::{AppleUploadFlowSetting, StoreKind};
+use vitrine_core::model::StoreKind;
 use vitrine_publish::apple::{AppRef, Platform};
 use vitrine_publish::credentials::Secret;
 use vitrine_publish::{
@@ -57,10 +58,7 @@ use vitrine_publish::{
 
 use super::library::AssetLibraryFlow;
 use super::log::UploadLog;
-use super::remote::{
-    self, AppleUploadFlow as _, NoRoute, ReplaceOptions, Route, ScreenshotSetFlow, SetHooks,
-    UploadFile,
-};
+use super::remote::{self, ReplaceOptions, SetHooks, UploadFile};
 use super::{
     PlanSet, StorePlan, UPLOAD_FINISHED, UPLOAD_PROGRESS, UploadConfig, UploadPlan, now_secs,
     sha256_hex,
@@ -332,8 +330,6 @@ pub(crate) struct AppleJob {
     pub secret: Secret,
     pub app: AppRef,
     pub platform: Platform,
-    /// `store.apple.upload_flow` (ADR 0019).
-    pub flow: AppleUploadFlowSetting,
 }
 
 pub(crate) struct GoogleJob {
@@ -590,22 +586,15 @@ impl Runner<'_> {
                 Err(e) => return self.store_failed(sp, &sets, failure("credentials", &e), None),
             };
         self.emit("prepare", None, Some(json!({ "store": "apple" })));
-        let needs_library = sets
-            .iter()
-            .any(|s| remote::wants_library(job.flow, &s.slot));
-        let session = match remote::open_apple(
-            &client,
-            &job.app,
-            job.platform,
-            job.flow,
-            needs_library,
-        )
-        .await
-        {
-            Ok(s) => s,
-            Err(Error::Cancelled) => return self.cancel_rest(sp),
-            Err(e) => {
-                if let Some(p) = super::plan::no_editable_version_problem(&e, sp.app.as_deref()) {
+        let target = match AssetLibraryFlow.open(&client, &job.app, job.platform).await {
+            Ok(t) => t,
+            Err(super::library::OpenError {
+                error: Error::Cancelled,
+                ..
+            }) => return self.cancel_rest(sp),
+            Err(open) => {
+                let e = &open.error;
+                if let Some(p) = super::plan::no_editable_version_problem(e, sp.app.as_deref()) {
                     // The full version list goes to the log only.
                     let versions: Vec<String> = e
                         .details()
@@ -623,22 +612,26 @@ impl Runner<'_> {
                     };
                     return self.store_failed(sp, &sets, f, Some("no editable App Store version"));
                 }
+                if open.library {
+                    let f = StoreFailure {
+                        store: StoreKind::Apple,
+                        code: "asset_library_unavailable".to_owned(),
+                        message: open.message(),
+                        vars: None,
+                        link: None,
+                    };
+                    return self.store_failed(sp, &sets, f, None);
+                }
                 let code = if e.kind() == vitrine_publish::ErrorKind::Auth {
                     "credentials"
                 } else {
                     "app_not_reachable"
                 };
-                return self.store_failed(sp, &sets, failure(code, &e), None);
+                return self.store_failed(sp, &sets, failure(code, e), None);
             }
         };
-        if let Some(why) = &session.fallback {
-            self.note("warn", &format!("apple: {why}"));
-        }
-        self.note(
-            "info",
-            &format!("apple: upload flow {}", session.kind.as_str()),
-        );
-        let target = &session.target;
+        self.note("info", "apple: upload flow asset_library");
+        let target = &target;
         let opts = ReplaceOptions {
             reuse: !self.job.plan.selection.force,
             budget: self.job.config.processing_budget,
@@ -656,20 +649,13 @@ impl Runner<'_> {
                     continue;
                 }
             };
-            let route = match remote::route(&session, &set.slot, &set.images) {
-                Ok(r) => r,
-                Err(NoRoute::NeedsLibrary(why)) => {
-                    // Never into a screenshot set (Duo, creative assets).
-                    self.finish_set(row, &set.key, SetRunStatus::Skipped, Some(why));
-                    continue;
-                }
-                Err(NoRoute::NoGroup(why)) => {
-                    self.finish_set(row, &set.key, SetRunStatus::Failed, Some(why));
-                    continue;
-                }
-            };
-            if let Route::Sets { note: Some(n) } = &route {
-                self.note("info", &format!("{}: {n}", set.key));
+            if let Err(why) = super::library::resolve(
+                &target.library.ref_data,
+                &set.slot,
+                set.images.first().map(|i| (i.width, i.height)),
+            ) {
+                self.finish_set(row, &set.key, SetRunStatus::Failed, Some(why));
+                continue;
             }
             let snap = self.set_status(&set.key, SetRunStatus::Running, None);
             self.emit("set_started", snap.as_ref(), None);
@@ -677,18 +663,9 @@ impl Runner<'_> {
             let mut attempt = 0;
             let result = loop {
                 let hooks = Hooks::new(self, set, row);
-                let replaced = match &route {
-                    Route::Library(_) => {
-                        AssetLibraryFlow
-                            .replace(&client, target, &locale, &set.slot, &files, opts, &hooks)
-                            .await
-                    }
-                    Route::Sets { .. } => {
-                        ScreenshotSetFlow
-                            .replace(&client, target, &locale, &set.slot, &files, opts, &hooks)
-                            .await
-                    }
-                };
+                let replaced = AssetLibraryFlow
+                    .replace(&client, target, &locale, &set.slot, &files, opts, &hooks)
+                    .await;
                 match replaced {
                     Err(Error::RateLimited { retry_after })
                         if self.pause(&set.key, attempt, retry_after).await =>

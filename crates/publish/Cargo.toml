@@ -29,7 +29,6 @@ reqwest = { workspace = true, features = ["query", "form"] }
 jsonwebtoken = { workspace = true, features = ["aws_lc_rs"] }
 bytes.workspace = true
 getrandom.workspace = true
-md-5.workspace = true
 zeroize = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]

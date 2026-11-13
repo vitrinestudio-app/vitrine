@@ -5,9 +5,9 @@
 //!          hash, compare with the upload log (and the store with `remote`),
 //!          store-rule checks, preconditions, totals, confirm token
 //! log      `<project>/.cache/uploads.sqlite`: plans (tokens), runs, sets, files, events
-//! remote   store clients from the account + keychain secret; `AppleUploadFlow`,
-//!          flow selection (`store.apple.upload_flow`) and the Google edit helpers
-//! library  the App Asset Library flow (default for Apple, ADR 0019)
+//! remote   store clients from the account + keychain secret, shared Apple
+//!          flow types and the Google edit helpers
+//! library  the App Asset Library flow (the only Apple flow, ADR 0019)
 //! exec     the executor: Apple per set, Google one edit; progress, cancel,
 //!          resume (completed sets are `unchanged` in the next plan), rate limits
 //! readiness  setup checklist (accounts → project mapping → target slots)
@@ -121,16 +121,10 @@ pub struct StorePlan {
     pub account: Option<String>,
     /// App identity: Apple app id / bundle id, Google package name.
     pub app: Option<String>,
-    /// How the store is written: Apple `asset_library` or
-    /// `screenshot_sets` (ADR 0019), Google `edit`.
+    /// How the store is written: Apple `asset_library`, Google `edit`.
+    /// (Plans logged before 2026-11-13 may say `screenshot_sets` and carry
+    /// `flow_setting`/`flow_note`; those fields are ignored when read.)
     pub flow: String,
-    /// Apple: the project's `store.apple.upload_flow` (`auto`,
-    /// `asset_library`, `screenshot_sets`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub flow_setting: Option<String>,
-    /// Why the flow differs from the setting (`auto` fell back).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub flow_note: Option<String>,
     /// What the remote check found (`None` = not checked).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote: Option<RemoteInfo>,
@@ -186,10 +180,6 @@ pub struct PlanSet {
     /// Display type / image type (Apple creative assets: the placement
     /// type, e.g. `PRODUCT_PAGE_HEADER_ASSET`).
     pub slot: String,
-    /// Apple: this set's flow when it differs from the store's (`auto`
-    /// falls back to `screenshot_sets` for a slot the ref data lacks).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub flow: Option<String>,
     /// Apple asset library: placement type → group (after the remote
     /// check; locally the display class), e.g. `APP_SCREENSHOT →
     /// IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE`.
@@ -230,8 +220,6 @@ pub struct PlanImage {
     pub height: u32,
     pub bytes: u64,
     pub sha256: String,
-    /// Apple's `sourceFileChecksum` is an MD5.
-    pub md5: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

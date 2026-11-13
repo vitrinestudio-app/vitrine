@@ -10,9 +10,9 @@ pub enum UploadStep {
     /// Bytes are being transferred (Apple: per upload operation; Google:
     /// the whole image in one request).
     Transfer,
-    /// Apple: reservation committed with checksum.
+    /// Apple: reservation committed (`uploaded: true`).
     Commit,
-    /// Apple: waiting for `assetDeliveryState` to become `COMPLETE`.
+    /// Apple: waiting for the asset library image to be processed.
     Processing,
     /// The image is uploaded (and processed, for Apple).
     Done,

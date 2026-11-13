@@ -231,7 +231,6 @@ override. Overrides only set values; they never contain `null`.
 ```yaml
 store:
   apple: {account: team-a, app_id: "1234567890", bundle_id: com.example.app, platform: ios}
-  # apple.upload_flow: auto (default) | asset_library | screenshot_sets
   google: {account: play, package_name: com.example.app}
   locales:
     apple: {en: en-GB}

@@ -341,12 +341,13 @@ Doc: `docs/plan/phase-5.md`, ADR 0016–0019, website `docs/store-upload`.
       service account with "Manage store presence").
 - [ ] **Owner** – `vitrine upload refdata` once with the real key; agent
       checks `crates/core/data/asset-library.yaml` against the output.
-- [ ] **Owner** – re-run the real Apple upload with the 5.5c fixes
-      (`auto`); then a test project with `upload_flow: asset_library`
-      (iPhone Duo, header/search creatives).
+- [x] **Owner** – re-run the real Apple upload; real uploads through the
+      App Asset Library verified (2026-11-13). Still open: iPhone Duo and
+      header/search creatives in a real run.
 - [ ] **Owner** – first real Google Play run (incl. feature graphic).
-- [ ] **Owner** – decide (a): switch the Apple default to the App Asset
-      Library after a verified run (keep screenshot sets as fallback).
+- [x] **Owner** – decide (a): decided 2026-11-13 – the App Asset Library
+      is the only Apple flow, the screenshot-set flow and
+      `store.apple.upload_flow` are removed (ARCHITECTURE.md decision 0035).
 - [ ] **Owner** – look at the store UI in the real app: app settings →
       Stores (help panels, Test connection with real keys), project
       settings → Stores, upload dialog + MCP confirmation dialog.
@@ -386,8 +387,8 @@ Compact list; details in `docs/plan/STATUS.md` ("Open owner decisions",
 - [ ] Release defaults: universal macOS build, no MSI, per-user NSIS,
       macOS ≥ 11, daily update check on, app not sandboxed (ADR 0026).
 - [ ] Ship 0.1.0 without AppImage if the fix takes long (7.1).
-- [ ] Apple upload default flow → asset library after a real run; when to
-      drop the screenshot-set API (question (a), ADR 0019).
+- [x] Apple upload flow → App Asset Library only, screenshot-set API
+      dropped (question (a), decided 2026-11-13, decision 0035).
 - [ ] MCP upload policy (question (b)): GUI click, headless off by default.
 - [ ] Templates (question (f)): placeholders not copied into new projects;
       insert default "keep both"; no stored previews for built-ins;
