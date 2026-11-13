@@ -41,8 +41,80 @@ pub struct ApplyOpsArgs {
     pub label: Option<String>,
 }
 
-pub fn apply_ops(app: &AppState, args: ApplyOpsArgs) -> CmdResult<ApplyResult> {
-    app.session()?.apply_ops(args.ops, args.label)
+/// Result of [`apply_ops`]: the step plus the variant override fields a
+/// `set_variant_override` dropped.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ApplyOpsResult {
+    #[serde(flatten)]
+    pub result: ApplyResult,
+    /// Fields that the variant overrides had before the step and no longer
+    /// have after it, for every override a `set_variant_override` with a
+    /// patch replaced (the op replaces the whole override, it does not
+    /// merge). Empty: nothing was dropped.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub dropped_override_fields: Vec<DroppedOverrideFields>,
+}
+
+/// Override fields lost by a replacing `set_variant_override`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DroppedOverrideFields {
+    pub canvas: String,
+    pub variant: String,
+    pub element: String,
+    pub fields: Vec<&'static str>,
+}
+
+pub fn apply_ops(app: &AppState, args: ApplyOpsArgs) -> CmdResult<ApplyOpsResult> {
+    let session = app.session()?;
+    // Overrides replaced (not removed) by `set_variant_override`.
+    let replaced: BTreeSet<(CanvasId, VariantId, ElementId)> = args
+        .ops
+        .iter()
+        .filter_map(|op| match op {
+            Op::SetVariantOverride {
+                canvas,
+                variant,
+                element,
+                patch: Some(p),
+            } if !p.is_empty() => Some((canvas.clone(), variant.clone(), element.clone())),
+            _ => None,
+        })
+        .collect();
+    let fields_of = |project: &Project, (c, v, e): &(CanvasId, VariantId, ElementId)| {
+        project
+            .canvas(c.as_str())
+            .and_then(|s| s.variants.get(v))
+            .and_then(|v| v.overrides.get(e))
+            .map(vitrine_core::model::ElementPatch::fields)
+            .unwrap_or_default()
+    };
+    let before: Vec<Vec<&'static str>> = if replaced.is_empty() {
+        Vec::new()
+    } else {
+        session.with_project(|p| replaced.iter().map(|k| fields_of(p, k)).collect())
+    };
+    let result = session.apply_ops(args.ops, args.label)?;
+    let mut dropped = Vec::new();
+    if result.applied && !replaced.is_empty() {
+        session.with_project(|p| {
+            for (key, old) in replaced.iter().zip(before) {
+                let now = fields_of(p, key);
+                let fields: Vec<_> = old.into_iter().filter(|f| !now.contains(f)).collect();
+                if !fields.is_empty() {
+                    dropped.push(DroppedOverrideFields {
+                        canvas: key.0.to_string(),
+                        variant: key.1.to_string(),
+                        element: key.2.to_string(),
+                        fields,
+                    });
+                }
+            }
+        });
+    }
+    Ok(ApplyOpsResult {
+        result,
+        dropped_override_fields: dropped,
+    })
 }
 
 pub fn undo(app: &AppState, _: NoArgs) -> CmdResult<ApplyResult> {
@@ -1104,4 +1176,46 @@ pub(super) fn preview_project(
         scratch.apply_ops(plan.ops)?;
         Ok(scratch)
     })
+}
+
+#[cfg(test)]
+mod apply_ops_tests {
+    use serde_json::json;
+
+    use crate::commands::targets::tests::{call, opened};
+
+    #[test]
+    fn replaced_variant_overrides_report_dropped_fields() {
+        let (_tmp, app) = opened();
+        // `android` overrides `phone-plan` with `at`; a replacing patch
+        // without `at` drops it.
+        let r = call(
+            &app,
+            "apply_ops",
+            json!({"ops": [
+                {"op": "set_variant_override", "canvas": "phone", "variant": "android",
+                 "element": "phone-plan", "patch": {"rotation": 3}},
+                {"op": "set_variant_override", "canvas": "phone", "variant": "android",
+                 "element": "phone-beds", "patch": {"at": {"x": 510, "y": 1430}}},
+                {"op": "set_variant_override", "canvas": "phone", "variant": "android",
+                 "element": "phone-harvest", "patch": null},
+            ]}),
+        );
+        assert_eq!(r["applied"], true);
+        assert_eq!(
+            r["dropped_override_fields"],
+            json!([{"canvas": "phone", "variant": "android", "element": "phone-plan",
+                    "fields": ["at"]}]),
+            "only replacing patches count, explicit removal (null) does not: {r}"
+        );
+        // Nothing dropped: the key is left out.
+        let r = call(
+            &app,
+            "apply_ops",
+            json!({"ops": [{"op": "set_variant_override", "canvas": "phone",
+                    "variant": "android", "element": "phone-plan",
+                    "patch": {"rotation": 4, "at": {"x": 1, "y": 2}}}]}),
+        );
+        assert!(r.get("dropped_override_fields").is_none(), "{r}");
+    }
 }
