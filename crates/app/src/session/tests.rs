@@ -79,6 +79,26 @@ fn rejected_ops_change_nothing() {
 }
 
 #[test]
+fn identical_ops_are_neither_saved_nor_recorded() {
+    let (_tmp, s, sink) = open();
+    let rename = || vec![op(json!({"op": "set_name", "name": "Renamed"}))];
+    let first = s.apply_ops(rename(), None).unwrap();
+    assert!(first.applied);
+    let edited = sink.named(PROJECT_EDITED).len();
+    // A client re-sending the same call (e.g. after a restart).
+    let again = s.apply_ops(rename(), None).unwrap();
+    assert!(!again.applied);
+    assert_eq!(again.revision, first.revision);
+    assert_eq!(disk_revision(s.dir()).unwrap(), Some(first.revision));
+    assert_eq!(again.history.undo, first.history.undo);
+    assert_eq!(sink.named(PROJECT_EDITED).len(), edited);
+    // Undo still goes back to the original in one step.
+    s.undo().unwrap();
+    assert_eq!(Project::load(s.dir()).unwrap().name, "Fernwood");
+    assert!(!s.history_state().can_undo);
+}
+
+#[test]
 fn undo_redo_save_every_step() {
     let (_tmp, s, _) = open();
     let rev = s.revision();

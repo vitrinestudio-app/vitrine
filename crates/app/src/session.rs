@@ -547,7 +547,10 @@ impl Session {
         let label = options
             .actor
             .label(&options.label.unwrap_or_else(|| label_for(&ops)));
-        let (r, mut inner) = self.transact(|project, history| {
+        // A step that changes nothing (e.g. a client re-sending identical
+        // calls after a restart) is neither saved nor recorded: no revision
+        // bump, no empty undo step.
+        let (r, mut inner) = self.transact(true, |project, history| {
             history.apply(project, ops)?;
             Ok(true)
         })?;
@@ -570,7 +573,7 @@ impl Session {
 
     /// Undoes the last step on behalf of `actor` and saves.
     pub fn undo_as(&self, actor: Actor) -> CmdResult<ApplyResult> {
-        let (r, mut inner) = self.transact(|project, history| Ok(history.undo(project)?))?;
+        let (r, mut inner) = self.transact(false, |project, history| Ok(history.undo(project)?))?;
         let mut label = String::new();
         if r.applied
             && let Some(l) = inner.undo_labels.pop()
@@ -592,7 +595,7 @@ impl Session {
 
     /// Redoes the last undone step on behalf of `actor` and saves.
     pub fn redo_as(&self, actor: Actor) -> CmdResult<ApplyResult> {
-        let (r, mut inner) = self.transact(|project, history| Ok(history.redo(project)?))?;
+        let (r, mut inner) = self.transact(false, |project, history| Ok(history.redo(project)?))?;
         let mut label = String::new();
         if r.applied
             && let Some(l) = inner.redo_labels.pop()
@@ -639,15 +642,19 @@ impl Session {
 
     /// Runs `f` on copies of project and history, saves the copy and
     /// commits both. Returns the result with the still-locked state for
-    /// label bookkeeping.
+    /// label bookkeeping. With `skip_noop`, a copy equal to the current
+    /// model is dropped like `f` returning `false` (nothing saved, history
+    /// unchanged). Undo/redo never skip: their step must move between the
+    /// stacks even if it happens to change nothing.
     fn transact(
         &self,
+        skip_noop: bool,
         f: impl FnOnce(&mut Project, &mut History) -> CmdResult<bool>,
     ) -> CmdResult<(ApplyResult, MutexGuard<'_, Inner>)> {
         let mut inner = lock(&self.inner);
         let mut project = inner.project.clone();
         let mut history = inner.history.clone();
-        if !f(&mut project, &mut history)? {
+        if !f(&mut project, &mut history)? || (skip_noop && project == inner.project) {
             let r = ApplyResult {
                 applied: false,
                 revision: inner.project.revision,
