@@ -97,6 +97,7 @@ and nginx `client_max_body_size 110m` before the bulk upload.
   (e.g. CLA.md, logo files, tauri.conf.json pubkey) in the same tree.
 
 ## Current state (2026-11-12)
+- 2026-11-13 MCP test round 2, WP-A done: `apply_ops {file}` (project-relative), `dropped_override_fields` warning for replacing `set_variant_override` (replace semantics kept, owner decision), `styles_update {fonts}`, `render_preview` gallery `pages`.
 - 2026-11-11 Product renamed **Arrangia → Vitrine Studio** (CLI `vitrine`, crates `vitrine-*`, env `VITRINE_*`, identifier/keychain `app.vitrinestudio`, project format `vitrine/1`, export manifest `.vitrine-export.json`, MCP server / Claude Desktop key `vitrine-studio`, domain vitrinestudio.app). Old `arrangia/1` projects are rejected with a clear hint (no migration code). Names and paths: `docs/guide/NOTES.md` → "Names, app data and keychain".
 - Phase 0 (spike), Phase 1 (core + CLI), Phase 2 (GUI editor) done and reviewed by the user.
 - Phase 3 (languages & import) done – see `docs/plan/phase-3.md` (only the owner's re-check with real bezels remains).

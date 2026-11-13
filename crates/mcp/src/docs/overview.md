@@ -101,6 +101,8 @@ automatically for every target (store size) and language.
   corners (gallery profile, catalog_galleries); `background: "dark"` (or
   `"#1C1C1E"`) shows the store's dark mode – pages close to the store
   colour blend in. Wide galleries are rendered lower to stay within 4096 px;
+  `pages: [2, 4]` (numbers or page ids) shows only the images from the
+  first to the last of those pages, larger;
   use `format: "jpeg"` for small transfers and `out_file` to save a PNG
   into the project (e.g. for a README).
 - export runs in the background when it takes longer than `wait_seconds`

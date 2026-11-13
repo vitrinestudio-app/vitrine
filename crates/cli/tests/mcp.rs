@@ -584,6 +584,131 @@ fn mcp_overrides_batches_docs_and_asset_mapping() {
     assert_eq!(l["runs"], json!([]));
 }
 
+/// Feedback of the template sessions (2026-11-13): ops from a project
+/// file, dropped variant override fields, font fallbacks in
+/// `styles_update`, part of a gallery.
+#[test]
+fn mcp_ops_files_dropped_overrides_fonts_and_gallery_pages() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app_dir = tmp.path().join("appdata");
+    let dir = tmp.path().join("example");
+    copy_dir(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/example"),
+        &dir,
+    );
+    let mut c = Client::start(
+        &[
+            "mcp",
+            "--headless",
+            "--project",
+            path_str(&dir),
+            "--app-dir",
+            path_str(&app_dir),
+        ],
+        &app_dir,
+        tmp.path(),
+    );
+
+    // Ops from files: YAML with a label, a JSON array; the files stay.
+    std::fs::create_dir_all(dir.join(".cache/ops")).unwrap();
+    std::fs::write(
+        dir.join(".cache/ops/phone.yaml"),
+        "label: Phone from file\nops:\n- {op: update_element, id: title-plan, patch: {font_size: 77}}\n",
+    )
+    .unwrap();
+    let r = c.call("apply_ops", json!({"file": ".cache/ops/phone.yaml"}));
+    assert_eq!(r["step"], "Vitrine Test: Phone from file", "{r}");
+    std::fs::write(
+        dir.join(".cache/ops/fix.json"),
+        r#"[{"op": "update_element", "id": "title-plan", "patch": {"font_size": 78}}]"#,
+    )
+    .unwrap();
+    let r = c.call(
+        "apply_ops",
+        json!({"file": ".cache/ops/fix.json", "label": "Fix"}),
+    );
+    assert_eq!(r["step"], "Vitrine Test: Fix", "{r}");
+    assert!(dir.join(".cache/ops/fix.json").is_file(), "file is kept");
+    let e = c.call("element_get", json!({"id": "title-plan"}));
+    assert_eq!(e["effective"]["font_size"], 78);
+    std::fs::write(tmp.path().join("outside.json"), "[]").unwrap();
+    for (args, want) in [
+        (
+            json!({"file": ".cache/ops/fix.json", "ops": []}),
+            "not both",
+        ),
+        (json!({}), "give `ops` or `file`"),
+        (
+            json!({"file": "../outside.json"}),
+            "relative to the project",
+        ),
+        (
+            json!({"file": path_str(&tmp.path().join("outside.json"))}),
+            "relative to the project",
+        ),
+        (json!({"file": ".cache/ops/missing.json"}), "missing.json"),
+    ] {
+        let e = c.call_err("apply_ops", args.clone());
+        assert!(e.to_string().contains(want), "{args}: {e}");
+    }
+
+    // set_variant_override replaces: the dropped `at` is reported.
+    let r = c.call_raw(
+        "apply_ops",
+        json!({"ops": [{"op": "set_variant_override", "canvas": "phone", "variant": "android",
+                        "element": "phone-plan", "patch": {"rotation": 3}}]}),
+    );
+    assert_eq!(r["isError"], false, "{r}");
+    assert_eq!(
+        r["structuredContent"]["dropped_override_fields"],
+        json!([{"canvas": "phone", "variant": "android", "element": "phone-plan",
+                "fields": ["at"]}])
+    );
+    let text = r["content"][0]["text"].as_str().unwrap();
+    assert!(
+        text.contains("warning") && text.contains("dropped at"),
+        "{text}"
+    );
+
+    // Font fallbacks through styles_update.
+    c.call(
+        "styles_update",
+        json!({"fonts": {"Inter": {"fallback": ["Noto Sans JP"]}}}),
+    );
+    let s = c.call("styles_get", json!({}));
+    assert_eq!(
+        s["fonts"]["Inter"]["fallback"],
+        json!(["Noto Sans JP"]),
+        "{s}"
+    );
+    c.call("styles_update", json!({"fonts": {"Inter": null}}));
+    let s = c.call("styles_get", json!({}));
+    assert!(s["fonts"].get("Inter").is_none(), "{s}");
+
+    // Part of a gallery: same height, narrower.
+    let all = c.call(
+        "render_preview",
+        json!({"target": "ios-iphone-69", "view": "gallery", "max_edge": 400}),
+    );
+    let part = c.call(
+        "render_preview",
+        json!({"target": "ios-iphone-69", "view": "gallery", "max_edge": 400,
+               "pages": ["beds", 2]}),
+    );
+    assert_eq!(part["height"], all["height"]);
+    assert!(
+        part["width"].as_u64().unwrap() < all["width"].as_u64().unwrap() / 2,
+        "{part} {all}"
+    );
+    let e = c.call_err(
+        "render_preview",
+        json!({"target": "ios-iphone-69", "view": "gallery", "pages": [42]}),
+    );
+    assert!(e.to_string().contains("does not exist"), "{e}");
+    let e = c.call_err("render_preview", json!({"pages": [1]}));
+    assert!(e.to_string().contains("view: gallery"), "{e}");
+}
+
 fn copy_dir(src: &Path, dst: &Path) {
     std::fs::create_dir_all(dst).unwrap();
     for entry in std::fs::read_dir(src).unwrap() {
