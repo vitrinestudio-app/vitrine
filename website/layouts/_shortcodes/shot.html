@@ -1,6 +1,21 @@
 {{- /* A screenshot or rendered image from assets/images with a caption.
-       {{< shot src="images/x.jpg" alt="…" caption="…" >}} */ -}}
-<figure class="docs-figure">
-  {{ partial "picture.html" (dict "src" (.Get "src") "alt" (.Get "alt" | default (.Get "caption" | plainify)) "sizes" "(min-width: 1100px) 760px, 100vw" "widths" (slice 760 1200 1520)) }}
+       {{< shot src="images/x.jpg" alt="…" caption="…" >}}
+       Narrow panels: float="right" floats the figure beside the text that
+       follows the shortcode, at most `width` CSS px wide (default 360, never
+       wider than the image at 2×). Headings, tables, code blocks, callouts
+       and other figures clear it; below 640 px it is centred, not floated.
+       Works with light/dark pairs (picture.html renders both). */ -}}
+{{- $float := .Get "float" -}}
+{{- $style := "" -}}
+{{- $sizes := "(min-width: 1100px) 760px, 100vw" -}}
+{{- if $float -}}
+  {{- if ne $float "right" }}{{ errorf "shot: float must be \"right\", got %q (%s)" $float .Position }}{{ end -}}
+  {{- $w := int (.Get "width" | default 360) -}}
+  {{- with resources.Get (.Get "src") }}{{ $w = int (math.Min $w (div .Width 2)) }}{{ end -}}
+  {{- $style = printf "--fig-w: %dpx" $w -}}
+  {{- $sizes = printf "(max-width: 640px) min(100vw, %dpx), %dpx" $w $w -}}
+{{- end -}}
+<figure class="docs-figure{{ with $float }} docs-figure--float docs-figure--{{ . }}{{ end }}"{{ with $style }} style="{{ . | safeCSS }}"{{ end }}>
+  {{ partial "picture.html" (dict "src" (.Get "src") "alt" (.Get "alt" | default (.Get "caption" | plainify)) "sizes" $sizes "widths" (cond (ne $float "") (slice 380 760 1140) (slice 760 1200 1520))) }}
   {{- with .Get "caption" }}<figcaption>{{ . | markdownify }}</figcaption>{{ end }}
 </figure>
