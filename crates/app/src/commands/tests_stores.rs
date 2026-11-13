@@ -406,6 +406,26 @@ fn open_url_only_opens_help_links() {
         json!({ "url": "https://appstoreconnect.apple.com/apps/6757819650/distribution" }),
     );
     assert_eq!(opened.lock().unwrap().len(), HELP_URLS.len() + 1);
+    // The website gallery, optionally with a template's detail view.
+    for url in [
+        "https://www.vitrinestudio.app/gallery/",
+        "https://www.vitrinestudio.app/de/galerie/",
+        "https://www.vitrinestudio.app/gallery/#notebook-grid",
+    ] {
+        call(&app, "open_url", json!({ "url": url }));
+    }
+    for bad in [
+        "https://www.vitrinestudio.app/gallery/x",
+        "https://www.vitrinestudio.app/gallery/#",
+        "https://www.vitrinestudio.app/gallery/#Bad_Id",
+        "https://www.vitrinestudio.app/gallery/#a/../b",
+        "https://www.vitrinestudio.app/gallery/?q=1",
+        "http://www.vitrinestudio.app/gallery/",
+    ] {
+        let e = fail(&app, "open_url", json!({ "url": bad }));
+        assert_eq!(e.code, ErrorCode::Forbidden, "{bad}");
+    }
+    assert_eq!(opened.lock().unwrap().len(), HELP_URLS.len() + 4);
     // Without a browser (NoDialogs) the GUI is told so.
     let plain = state(&tmp.path().join("app2"));
     let e = fail(&plain, "open_url", json!({ "url": HELP_URLS[0] }));
