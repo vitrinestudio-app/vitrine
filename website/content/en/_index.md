@@ -113,8 +113,8 @@ features:
       title: "Colour-managed output"
       text: "Display P3 screenshots are converted to sRGB once; exports are opaque, incremental and come with an `index.html` overview."
     - icon: fonts
-      title: "Bundled font families"
-      text: "Inter, Montserrat, Playfair Display, Lora, Bebas Neue and more – all SIL OFL, always available, no font files needed."
+      title: "Fonts"
+      text: "Bundled open-licence families like Inter, Montserrat and Playfair Display, plus your own: font files in the project or the fonts installed on your computer – stored in the project on request, so CI and your team render the same."
     - icon: terminal
       title: "CLI for CI"
       text: "`vitrine validate`, `export` and `upload` work in scripts and pipelines, with clear exit codes and JSON output."
@@ -166,6 +166,7 @@ ai:
     - "Every change is **one undo step**, labelled with the assistant's name"
     - "The assistant **sees the result**: `render_preview` returns the rendered PNG"
     - "Runs **locally** on 127.0.0.1 with a token – store uploads still need **your click**"
+    - "Not just small edits: the first [gallery templates](gallery/) – about 50 – were designed by **Claude Opus 5.5 via MCP**. An assistant can do most of the actual design work"
   more: "Set up an AI assistant"
   chat:
     label: "A chat with an AI assistant that translates missing texts into French and checks page 2."
@@ -179,27 +180,29 @@ ai:
     reply: "Done – 14 texts translated. Page 2 fits; one headline was hyphenated automatically, have a look."
     toast: "Claude Desktop: Set French texts · Undo"
 
-fastlane:
-  eyebrow: "Using fastlane?"
-  title: "Fits right into your fastlane lane"
-  lead: "Keep snapshot, screengrab, deliver and supply. Vitrine Studio reads your captures and writes exactly the folders deliver and supply upload."
-  terminalLabel: "Terminal: importing fastlane screenshots and exporting in the fastlane layout."
-  more: "Using Vitrine Studio with fastlane"
+automation:
+  eyebrow: "CLI & automation"
+  title: "Fits into your CI/CD"
+  lead: "The `vitrine` command line tool does everything the app does with your project – headless, in any pipeline. Check the screenshots on every pull request, export them as build artifacts, upload them from the release job."
+  terminalLabel: "Terminal: validating, exporting and uploading store screenshots in a CI job."
+  more: "Automation docs"
   points:
-    - "Imports whole `fastlane/` folders – snapshot **and** screengrab output, store locales, `01Home` names"
-    - "Skips frameit leftovers (`_framed.png`, `Framefile.json`) with a reason"
-    - "Exports the **deliver/supply layout** with store-locale folders, conflict checks and limits"
-    - "Optionally Vitrine Studio uploads the screenshots itself – deliver and supply keep uploading binary and metadata"
+    - "**Any CI:** `validate`, `export` and `upload` with clear exit codes, GitHub annotations, GitLab Code Quality and JUnit reports – [overview](docs/automation/)"
+    - "**Container image** `ghcr.io/vitrinestudio-app/vitrine-cli` for GitLab, Jenkins, CircleCI and others"
+    - "**GitHub Actions:** [workflow examples](docs/automation/github-actions/); a ready-made action is in the works (draft)"
+    - "**GitLab CI:** [job examples](docs/automation/gitlab-ci/); CI/CD components are in the works (draft)"
+    - "**fastlane:** imports snapshot and screengrab output, exports the deliver/supply layout – [using with fastlane](docs/automation/fastlane/); a plugin is in the works (draft)"
+    - "**Other systems:** Jenkins, Xcode Cloud, Bitrise, Codemagic and more – [setup notes](docs/automation/other-systems/)"
   terminal:
-    - {comment: "1 · bring your captures in (frameit files are ignored)"}
-    - {cmd: "vitrine import screenshots fastlane/"}
-    - {out: "✓ 48 screenshots · 4 languages · 2 devices"}
-    - {comment: "2 · design once in the app, then export for deliver/supply"}
+    - {comment: "1 · check every pull request (annotations in the diff)"}
+    - {cmd: "vitrine validate --format github --strict"}
+    - {comment: "2 · export as build artifact – or into fastlane's folders"}
+    - {cmd: "vitrine export --out export"}
     - {cmd: "vitrine export --layout fastlane --out fastlane"}
-    - {out: "✓ screenshots/de-DE/01_ios-iphone-69.png …"}
-    - {out: "✓ metadata/android/de-DE/images/phoneScreenshots/ …"}
-    - {comment: "3 · upload as before"}
-    - {cmd: "fastlane deliver"}
+    - {comment: "3 · upload from the release job: plan, then confirm"}
+    - {cmd: "vitrine upload plan --remote --format json > plan.json"}
+    - {cmd: "token=$(jq -r .confirm_token plan.json)"}
+    - {cmd: "vitrine upload execute --confirm \"$token\" --yes"}
 
 upload:
   eyebrow: "Store upload"

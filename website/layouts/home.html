@@ -56,6 +56,52 @@
   </div>
 </section>
 
+{{/* ================= AI / MCP ================= */}}
+<section class="section section--ai" id="ai">
+  <div class="wrap ai">
+    <div class="ai__copy">
+      {{ partial "section-head.html" (merge $p.ai (dict "align" "left")) }}
+      <ul class="ticks ticks--light reveal">
+        {{- range $p.ai.points }}<li>{{ partial "icon.html" "check" }}<span>{{ . | markdownify }}</span></li>{{ end }}
+      </ul>
+      <p class="ai__more reveal"><a class="link-arrow" href="{{ relLangURL "docs/ai-mcp/" }}">{{ $p.ai.more }} {{ partial "icon.html" "arrow" }}</a></p>
+    </div>
+    <div class="chat reveal reveal--rise" aria-label="{{ $p.ai.chat.label }}" role="img">
+      <div class="chat__head"><span class="chat__dot"></span>{{ $p.ai.chat.client }} <span class="chat__mcp">MCP · vitrine-studio</span></div>
+      <div class="chat__msg chat__msg--user"><p>{{ $p.ai.chat.user }}</p></div>
+      <div class="chat__tools">
+        {{- range $i, $t := $p.ai.chat.tools }}
+        <span class="chat__tool" style="--i:{{ $i }}">{{ partial "icon.html" "sparkle" }}<code>{{ $t.name }}</code><span>{{ $t.note }}</span></span>
+        {{- end }}
+      </div>
+      <div class="chat__msg chat__msg--bot"><p>{{ $p.ai.chat.reply }}</p></div>
+      <div class="chat__toast">{{ partial "icon.html" "undo" }}<span>{{ $p.ai.chat.toast }}</span></div>
+    </div>
+  </div>
+</section>
+
+{{/* ================= CLI & automation (CI/CD, fastlane) ================= */}}
+<section class="section section--fastlane" id="automation">
+  <span class="anchor-alias" id="fastlane" aria-hidden="true"></span>
+  <div class="wrap split">
+    <div class="terminal reveal reveal--tilt-left" role="img" aria-label="{{ $p.automation.terminalLabel }}">
+      <div class="terminal__bar" aria-hidden="true"><i></i><i></i><i></i><span>ci · store-screens</span></div>
+      <pre class="terminal__body"><code>{{- range $p.automation.terminal -}}
+{{- if .comment }}<span class="t-c"># {{ .comment }}</span>
+{{ else if .cmd }}<span class="t-p">$</span> {{ .cmd }}
+{{ else if .out }}<span class="t-o">{{ .out }}</span>
+{{ end }}{{- end -}}</code></pre>
+    </div>
+    <div class="split__copy">
+      {{ partial "section-head.html" (merge $p.automation (dict "align" "left")) }}
+      <ul class="ticks reveal">
+        {{- range $p.automation.points }}<li>{{ partial "icon.html" "check" }}<span>{{ . | markdownify }}</span></li>{{ end }}
+      </ul>
+      <p class="reveal"><a class="link-arrow" href="{{ relLangURL "docs/automation/" }}">{{ $p.automation.more }} {{ partial "icon.html" "arrow" }}</a></p>
+    </div>
+  </div>
+</section>
+
 {{/* ================= One layout → every language × device ================= */}}
 <section class="section section--matrix">
   <div class="wrap matrix">
@@ -153,51 +199,6 @@
   </div>
 </section>
 
-{{/* ================= AI / MCP ================= */}}
-<section class="section section--ai" id="ai">
-  <div class="wrap ai">
-    <div class="ai__copy">
-      {{ partial "section-head.html" (merge $p.ai (dict "align" "left")) }}
-      <ul class="ticks ticks--light reveal">
-        {{- range $p.ai.points }}<li>{{ partial "icon.html" "check" }}<span>{{ . | markdownify }}</span></li>{{ end }}
-      </ul>
-      <p class="ai__more reveal"><a class="link-arrow" href="{{ relLangURL "docs/ai-mcp/" }}">{{ $p.ai.more }} {{ partial "icon.html" "arrow" }}</a></p>
-    </div>
-    <div class="chat reveal reveal--rise" aria-label="{{ $p.ai.chat.label }}" role="img">
-      <div class="chat__head"><span class="chat__dot"></span>{{ $p.ai.chat.client }} <span class="chat__mcp">MCP · vitrine-studio</span></div>
-      <div class="chat__msg chat__msg--user"><p>{{ $p.ai.chat.user }}</p></div>
-      <div class="chat__tools">
-        {{- range $i, $t := $p.ai.chat.tools }}
-        <span class="chat__tool" style="--i:{{ $i }}">{{ partial "icon.html" "sparkle" }}<code>{{ $t.name }}</code><span>{{ $t.note }}</span></span>
-        {{- end }}
-      </div>
-      <div class="chat__msg chat__msg--bot"><p>{{ $p.ai.chat.reply }}</p></div>
-      <div class="chat__toast">{{ partial "icon.html" "undo" }}<span>{{ $p.ai.chat.toast }}</span></div>
-    </div>
-  </div>
-</section>
-
-{{/* ================= fastlane ================= */}}
-<section class="section section--fastlane" id="fastlane">
-  <div class="wrap split">
-    <div class="terminal reveal reveal--tilt-left" role="img" aria-label="{{ $p.fastlane.terminalLabel }}">
-      <div class="terminal__bar" aria-hidden="true"><i></i><i></i><i></i><span>~/MyApp</span></div>
-      <pre class="terminal__body"><code>{{- range $p.fastlane.terminal -}}
-{{- if .comment }}<span class="t-c"># {{ .comment }}</span>
-{{ else if .cmd }}<span class="t-p">$</span> {{ .cmd }}
-{{ else if .out }}<span class="t-o">{{ .out }}</span>
-{{ end }}{{- end -}}</code></pre>
-    </div>
-    <div class="split__copy">
-      {{ partial "section-head.html" (merge $p.fastlane (dict "align" "left")) }}
-      <ul class="ticks reveal">
-        {{- range $p.fastlane.points }}<li>{{ partial "icon.html" "check" }}<span>{{ . | markdownify }}</span></li>{{ end }}
-      </ul>
-      <p class="reveal"><a class="link-arrow" href="{{ relLangURL "docs/automation/fastlane/" }}">{{ $p.fastlane.more }} {{ partial "icon.html" "arrow" }}</a></p>
-    </div>
-  </div>
-</section>
-
 {{/* ================= Store upload ================= */}}
 <section class="section section--upload section--sunken" id="upload">
   <div class="wrap">
@@ -284,6 +285,21 @@
         </div>
         {{- end }}
       </div>
+      {{- with $p.oss.funding }}
+      <div class="funding reveal" id="funding">
+        <h3>{{ .title }}</h3>
+        <p>{{ .text }}</p>
+        <p class="funding__aside">{{ .aside }}</p>
+        {{- if site.Params.sponsors_available }}
+        <p class="funding__links">
+          <a class="btn btn--small btn--grad" href="{{ site.Params.sponsors.github }}">{{ partial "icon.html" "heart" }}<span>{{ .github }}</span></a>
+          <a class="btn btn--small btn--ghost" href="{{ site.Params.sponsors.liberapay }}"><span>{{ .liberapay }}</span></a>
+        </p>
+        {{- else }}
+        <p class="funding__soon">{{ partial "icon.html" "heart" }}<span>{{ .soon }}</span></p>
+        {{- end }}
+      </div>
+      {{- end }}
     </div>
     <figure class="codecard reveal reveal--tilt">
       <div class="codecard__bar" aria-hidden="true"><i></i><i></i><i></i><span>Fernwood/project.yaml</span></div>
