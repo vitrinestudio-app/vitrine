@@ -8,8 +8,8 @@ spec:
       default: build
       description: Stage of the job.
     image:
-      default: ghcr.io/vitrinestudio-app/vitrine-cli:0.1
-      description: Container image with the vitrine CLI (pin an exact release such as 0.1.0).
+      default: ghcr.io/vitrinestudio-app/vitrine-cli:1.0
+      description: Container image with the vitrine CLI (pin an exact release such as 1.0.0).
     project:
       default: "."
       description: Project folder (with project.yaml), relative to the repository.

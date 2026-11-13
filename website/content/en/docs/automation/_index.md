@@ -19,10 +19,12 @@ a project on every pull request, to export the images as build artifacts, or
 to upload them to the stores from a release job.
 
 {{< callout status >}}
-The CLI archives and the container image come with the first release. The
-ready-made integrations (GitHub Action, GitLab components, fastlane plugin)
-are **drafts** and not published yet; everything in this section that uses
-only the CLI or the image works with the first release.
+The CLI archives and the container image are published with every release,
+starting with 1.0.0. Of the ready-made integrations, the GitHub Action's
+repository is online but has no release tag or Marketplace listing yet; the
+GitLab components and the fastlane plugin are **drafts** and not published
+yet. Everything in this section that uses only the CLI or the image works
+with 1.0.0.
 {{< /callout >}}
 
 This page covers what every setup shares. Step by step for your system:
@@ -43,7 +45,7 @@ Every release has a standalone CLI archive per platform, plus
 | Windows x64 | `vitrine-cli_windows_x64.zip` |
 
 ```sh
-v=0.1.0
+v=1.0.0
 base=https://github.com/vitrinestudio-app/vitrine/releases/download/v$v
 curl -sSfLO "$base/vitrine-cli_linux_x86_64.tar.gz"
 curl -sSfL "$base/SHA256SUMS.txt" | grep ' vitrine-cli_linux_x86_64.tar.gz$' | sha256sum -c -
@@ -64,8 +66,8 @@ every release also publishes the image
 
 | tag | |
 |---|---|
-| `0.1.0` | exactly this release (recommended for reproducible builds) |
-| `0.1` | the newest `0.1.x` |
+| `1.0.0` | exactly this release (recommended for reproducible builds) |
+| `1.0` | the newest `1.0.x` |
 | `latest` | the newest release |
 
 It is Alpine with the static `vitrine` binary, `git`, `jq`, CA certificates
@@ -75,7 +77,7 @@ shell in it. The licences are in `/usr/share/doc/vitrine/licenses/`.
 
 ```sh
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" \
-  ghcr.io/vitrinestudio-app/vitrine-cli:0.1.0 vitrine --project store-screens validate
+  ghcr.io/vitrinestudio-app/vitrine-cli:1.0.0 vitrine --project store-screens validate
 ```
 
 ## What the CLI offers CI

@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Vitrine Studio release to test (`latest` or e.g. `0.1.0`)"
+        description: "Vitrine Studio release to test (`latest` or e.g. `1.0.0`)"
         default: latest
   schedule:
     # Weekly: catches a release whose assets no longer fit the action.

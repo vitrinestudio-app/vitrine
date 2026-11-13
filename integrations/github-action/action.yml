@@ -14,7 +14,7 @@ branding:
 
 inputs:
   version:
-    description: "CLI version: `latest` or a release such as `0.1.0` / `v0.1.0`."
+    description: "CLI version: `latest` or a release such as `1.0.0` / `v0.1.0`."
     default: latest
   repository:
     description: Repository with the releases (forks, mirrors).

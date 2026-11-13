@@ -1,6 +1,6 @@
 # Release builds of Vitrine Studio (ADR 0026, owner steps: docs/dev/releasing.md).
 #
-# - Tag `v*` (e.g. v0.1.0, must equal the workspace version): builds macOS
+# - Tag `v*` (e.g. v1.0.0, must equal the workspace version): builds macOS
 #   (universal .app/.dmg), Windows x64 (NSIS installer) and Linux x86_64
 #   (AppImage, deb, rpm) plus standalone CLI archives (also Linux aarch64
 #   and static musl builds for x86_64/aarch64), signs what the secrets

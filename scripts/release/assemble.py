@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assembles the release metadata from the collected build artifacts (ADR 0026).
 
-Usage: assemble.py --dist DIR --version 0.1.0 --tag v0.1.0 --repo owner/name
+Usage: assemble.py --dist DIR --version 1.0.0 --tag v1.0.0 --repo owner/name
 
 Reads DIR (the files of scripts/release/collect-artifacts.sh from every
 platform, plus the `signing-<platform>.txt` status lines) and writes into DIR:

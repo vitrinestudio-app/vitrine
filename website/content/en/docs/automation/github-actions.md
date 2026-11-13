@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install vitrine
         run: |
-          v=0.1.0
+          v=1.0.0
           base=https://github.com/vitrinestudio-app/vitrine/releases/download/v$v
           curl -sSfLO "$base/vitrine-cli_linux_x86_64.tar.gz"
           curl -sSfL "$base/SHA256SUMS.txt" | grep ' vitrine-cli_linux_x86_64.tar.gz$' | sha256sum -c -
@@ -53,8 +53,9 @@ jobs:
 ## The planned action
 
 {{< callout status >}}
-The action is a **draft** and not published yet. Until then, use the install
-step above.
+The action's repository is online, but it has no release tag (`v1`) and no
+Marketplace listing yet, so `@v1` does not resolve yet. Until then, use the
+install step above.
 {{< /callout >}}
 
 [`vitrinestudio-app/vitrine-github-action`](https://github.com/vitrinestudio-app/vitrine-github-action)
@@ -64,7 +65,7 @@ build where needed) and the validate/export steps in one `uses:`:
 ```yaml
       - uses: vitrinestudio-app/vitrine-github-action@v1
         with:
-          version: 0.1.0
+          version: 1.0.0
           project: store-screens
           validate: true
           export: true
@@ -88,7 +89,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install vitrine
         run: |
-          v=0.1.0
+          v=1.0.0
           base=https://github.com/vitrinestudio-app/vitrine/releases/download/v$v
           curl -sSfLO "$base/vitrine-cli_linux_x86_64.tar.gz"
           curl -sSfL "$base/SHA256SUMS.txt" | grep ' vitrine-cli_linux_x86_64.tar.gz$' | sha256sum -c -
