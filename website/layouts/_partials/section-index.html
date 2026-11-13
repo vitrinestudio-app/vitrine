@@ -1,0 +1,24 @@
+{{- /* Section index of the home page: a slim rail at the right edge that follows
+       the reader (site.js: "Section index"). Hidden without JavaScript (the
+       script removes `hidden`) and where the page margin is too narrow. */ -}}
+{{- $items := slice
+    (dict "id" "top" "key" "secTop")
+    (dict "id" "how" "key" "secHow")
+    (dict "id" "ai" "key" "secAI")
+    (dict "id" "automation" "key" "secAutomation")
+    (dict "id" "matrix" "key" "secMatrix")
+    (dict "id" "editor" "key" "secEditor")
+    (dict "id" "features" "key" "secFeatures")
+    (dict "id" "showcase" "key" "secShowcase")
+    (dict "id" "upload" "key" "secUpload")
+    (dict "id" "templates" "key" "secTemplates")
+    (dict "id" "open-source" "key" "secOpenSource")
+    (dict "id" "faq" "key" "secFAQ")
+-}}
+<nav class="secnav" aria-label="{{ T "secNav" }}" data-secnav hidden>
+  <ol class="secnav__list">
+    {{- range $i, $s := $items }}
+    <li><a class="secnav__link" href="#{{ $s.id }}"><span class="secnav__label">{{ T $s.key }}</span><span class="secnav__tick" aria-hidden="true"></span></a></li>
+    {{- end }}
+  </ol>
+</nav>

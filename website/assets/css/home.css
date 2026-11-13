@@ -850,6 +850,152 @@
 .cta .btn--grad { background: #fff; color: #3a1d8c; box-shadow: 0 14px 30px -12px rgba(0, 0, 0, .5); }
 .cta .btn--grad:hover { color: #3a1d8c; }
 
+/* ================= Section index (right edge) =================
+   A ruler of ticks in the page margin: the current section gets a long
+   coral tick and its label, the rail fills with the reading progress.
+   Hover or keyboard focus opens all labels on a small card. Shown after
+   the hero (site.js), only where the margin has room for it. */
+
+.secnav {
+  position: fixed;
+  z-index: 40;
+  right: 6px;
+  top: 50%;
+  transform: translate(10px, -50%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .35s ease, transform .45s var(--ease), visibility 0s .45s;
+}
+.secnav.is-shown {
+  transform: translate(0, -50%);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .35s ease, transform .45s var(--ease);
+}
+.secnav__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 10px 0;
+  list-style: none;
+}
+/* The rail and its progress fill, where the ticks meet. */
+.secnav__list::before,
+.secnav__list::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 0;
+  width: 2px;
+  border-radius: 2px;
+}
+.secnav__list::before { bottom: 10px; background: var(--line); }
+.secnav__list::after {
+  height: calc((100% - 20px) * var(--progress, 0));
+  background: linear-gradient(180deg, var(--violet), var(--magenta) 55%, var(--coral));
+}
+.secnav__link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  height: 22px;
+  padding-left: 12px;
+  border-radius: 6px;
+  color: var(--ink-faint);
+  font-size: .74rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  text-decoration: none;
+}
+/* The tick column is the only hit area until the index is open, so the
+   (invisible) labels never catch clicks meant for the page. */
+.secnav, .secnav__link { pointer-events: none; }
+.secnav:hover, .secnav:focus-within,
+.secnav:hover .secnav__link, .secnav:focus-within .secnav__link { pointer-events: auto; }
+.secnav__tick {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 26px;
+  height: 100%;
+  pointer-events: auto;
+}
+.secnav__tick::before {
+  content: "";
+  width: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  transition: width .35s var(--ease), background-color .25s ease, box-shadow .25s ease;
+}
+.secnav__label {
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity .25s ease, transform .3s var(--ease), color .2s ease;
+}
+.secnav__link.is-past .secnav__tick::before { background: var(--ink-faint); }
+.secnav__link:hover .secnav__tick::before { width: 16px; background: var(--ink-soft); }
+.secnav__link:hover { color: var(--ink); }
+.secnav__link[aria-current] { color: var(--ink); }
+.secnav__link[aria-current] .secnav__tick::before {
+  width: 22px;
+  height: 3px;
+  background: var(--coral);
+  box-shadow: 0 0 10px rgba(255, 122, 89, .55);
+}
+.secnav__link:focus-visible { outline-offset: 1px; }
+
+/* All labels on a card while the pointer or the focus is in the index. */
+.secnav::before {
+  content: "";
+  position: absolute;
+  inset: 0 -6px 0 -14px;
+  z-index: -1;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+.secnav:hover::before,
+.secnav:focus-within::before { opacity: 1; }
+.secnav:hover .secnav__label,
+.secnav:focus-within .secnav__label {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(var(--i, 0) * 18ms);
+}
+.secnav li:nth-child(1) { --i: 0; } .secnav li:nth-child(2) { --i: 1; }
+.secnav li:nth-child(3) { --i: 2; } .secnav li:nth-child(4) { --i: 3; }
+.secnav li:nth-child(5) { --i: 4; } .secnav li:nth-child(6) { --i: 5; }
+.secnav li:nth-child(7) { --i: 6; } .secnav li:nth-child(8) { --i: 7; }
+.secnav li:nth-child(9) { --i: 8; } .secnav li:nth-child(10) { --i: 9; }
+.secnav li:nth-child(11) { --i: 10; } .secnav li:nth-child(12) { --i: 11; }
+
+/* Wide margin: the current section's label stays visible next to its tick. */
+@media (min-width: 1420px) {
+  .secnav__link[aria-current] .secnav__label { opacity: 1; transform: none; color: var(--ink); }
+}
+/* Not enough margin (tablets, phones, the mobile header): no index. */
+@media (max-width: 1099px) {
+  .secnav { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .secnav, .secnav.is-shown, .secnav::before, .secnav__tick::before, .secnav__label { transition: none; }
+  .secnav, .secnav.is-shown { transform: translateY(-50%); }
+}
+@media print {
+  .secnav { display: none; }
+}
+
 /* ================= Phones ================= */
 
 @media (max-width: 640px) {

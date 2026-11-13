@@ -1,6 +1,6 @@
 // Vitrine Studio website – the only script. No dependencies, no tracking.
-// Navigation toggle, theme switch, header shadow, scroll reveal, tabs,
-// a gentle pointer tilt of the hero canvas.
+// Navigation toggle, theme switch, header shadow, scroll reveal, section
+// index, tabs, a gentle pointer tilt of the hero canvas.
 (function () {
   'use strict';
   var root = document.documentElement;
@@ -78,6 +78,53 @@
     reveals.forEach(function (el) { io.observe(el); });
   } else {
     reveals.forEach(function (el) { el.classList.add('is-visible'); });
+  }
+
+  // ---------- Section index (home page, right edge) ----------
+  // Shown once the hero is out of view; the section crossing a line at
+  // ~40 % of the viewport is the current one (aria-current="location");
+  // the rail fills with the reading progress.
+  var secnav = document.querySelector('[data-secnav]');
+  if (secnav && 'IntersectionObserver' in window) {
+    var links = Array.prototype.slice.call(secnav.querySelectorAll('a[href^="#"]'));
+    var targets = links.map(function (a) { return document.getElementById(a.hash.slice(1)); });
+    secnav.hidden = false;
+    var setCurrent = function (index) {
+      links.forEach(function (a, i) {
+        if (i === index) a.setAttribute('aria-current', 'location');
+        else a.removeAttribute('aria-current');
+        a.classList.toggle('is-past', i < index);
+      });
+    };
+    var sectionIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) setCurrent(targets.indexOf(entry.target));
+      });
+    }, { rootMargin: '-40% 0px -59% 0px' });
+    targets.forEach(function (t) { if (t) sectionIO.observe(t); });
+    setCurrent(0);
+
+    var hero = targets[0];
+    var progressTicking = false;
+    var updateProgress = function () {
+      progressTicking = false;
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      var p = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
+      secnav.style.setProperty('--progress', p.toFixed(4));
+      // Shown once the hero's lower half has left the viewport.
+      if (hero) secnav.classList.toggle('is-shown', hero.getBoundingClientRect().bottom < window.innerHeight * 0.5);
+    };
+    window.addEventListener('scroll', function () {
+      if (!progressTicking) { progressTicking = true; requestAnimationFrame(updateProgress); }
+    }, { passive: true });
+    window.addEventListener('resize', updateProgress, { passive: true });
+    updateProgress();
+
+    // After a click, leave the card: drop the focus once the pointer is used.
+    secnav.addEventListener('click', function (e) {
+      var a = e.target.closest('a');
+      if (a && e.detail > 0) a.blur();
+    });
   }
 
   // ---------- Tabs (showcase) ----------
