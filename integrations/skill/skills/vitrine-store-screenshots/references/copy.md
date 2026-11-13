@@ -63,11 +63,6 @@ the whole message, any line that still works with a competitor's name.
   Don't silently shrink one language far below the others.
 - German: decide du/Sie once per set (consumer apps usually du). Avoid long compounds in
   headlines; if unavoidable, allow hyphenation.
-- Give translators the page's job and a maximum length (CSV/XLIFF export with context).
+- Give translators the page's job and a maximum length (`strings_export {format, path, context: true}`, CSV or XLIFF).
 - Review every language as rendered images, not as strings.
 
-## Placeholder copy for templates
-
-Template copy must already follow these rules and fit the style's voice, for a fictional app.
-Keep English and German versions; both must fit without overrides if possible. Never use
-lorem ipsum – users copy the tone they see.

@@ -6,11 +6,14 @@ Vitrine's target presets carry the exact pixel sizes; prefer them over this list
 
 - Up to 10 screenshots per set and language; up to 3 app previews (15–30 s, autoplay muted).
   1–3 screenshots appear in search when no preview exists (orientation-dependent).
-- iPhone: a 6.9″ set (1320 × 2868; 1290 × 2796 also accepted) covers current phones; smaller
-  sizes are scaled. iPad: 13″ (2064 × 2752 or 2048 × 2732). Mac: 16:10 (2880 × 1800 …).
-  iPhone Duo outer 1398 × 2034, inner 2007 × 2853 (optional until April 2027).
+- iPhone: Vitrine's catalog follows the App Store Connect media manager, which marks the
+  6.3″ set (1206 × 2622 or 1179 × 2556) as required; the 6.9″ set (1320 × 2868 or
+  1290 × 2796) is optional. Check `catalog_targets {store: "apple"}` (`requirement`) – Apple
+  changes this. iPad: 13″ (2064 × 2752 or 2048 × 2732), required if the app runs on iPad.
+  Mac: 16:10 (2880 × 1800 …). iPhone Duo outer 1398 × 2034, inner 2007 × 2853 (optional
+  until April 2027).
 - Creative assets (iOS 27): product page header and search results visual, from the Asset
-  Library; keep art inside the template safe areas; one idea per asset.
+  Library; keep art inside the safe areas of Apple's design templates; one idea per asset.
 - **2.3.3** More than half of each device's screenshots must show the app in use. Others may
   be marketing. Overlays allowed if the core UI isn't obscured. No login/splash-only sets.
 - **2.3.10** No names, icons or imagery of other platforms or marketplaces (no Android frames,
@@ -41,10 +44,12 @@ Vitrine's target presets carry the exact pixel sizes; prefer them over this list
 
 ## Practical consequences in Vitrine
 
-- Default: one framed design for both stores. Google's "no device imagery / ≤ 20 % text"
+- Default: one framed design for both stores, with Android frames on Play (`device_map`) and
+  a Play variant for the lower 9:16 pages. Google's "no device imagery / ≤ 20 % text"
   items are recommendations for promotion eligibility, not publishing requirements, and most
   large apps ignore them. Offer a frameless, low-text Play variant when the user wants to
   maximise Play featuring – and always use Android-looking frames on Play, never Apple ones.
 - Count "app in use" pages per target before export; a 5-page set needs ≥ 3.
-- Run `validate` per target and language; treat overflow and contrast warnings as errors for
-  templates.
+- Run `validate` per target and language; treat overflow and contrast warnings as errors.
+- Only one upload target per store slot; Play also needs the feature graphic
+  (`banner_add {canvas, preset: "play-feature-graphic"}`).

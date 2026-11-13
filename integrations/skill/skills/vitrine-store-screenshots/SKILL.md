@@ -1,21 +1,17 @@
 ---
 name: vitrine-store-screenshots
-description: Design and build App Store and Google Play screenshot sets (and gallery templates) in Vitrine Studio via its MCP server — story, copy, layout, localization, store compliance and the technical side of Vitrine (canvases, variants, targets, apply_ops, validate, export). Use for app store screenshots, ASO marketing images, Play Store graphics, screenshot templates or panorama sets.
+description: Design, localize, check, export and upload App Store and Google Play screenshot sets for the user's own app with Vitrine Studio through its MCP server (vitrine-studio) – benefits and copy, layout, panoramas across pages, languages, store rules, validation, export and store upload. Use for app store screenshots, Play Store graphics, ASO marketing images, feature graphics or any work in a Vitrine Studio project.
+license: MIT
 ---
 
 # Store screenshots with Vitrine Studio
 
-You design store screenshot sets in **Vitrine Studio** through its MCP server (`vitrine-studio`).
-Vitrine works on **one continuous canvas per device class**: pages sit side by side with the real
-store gallery gaps between them, so a device or background can cross a page boundary and still
-line up in the store. Texts and screenshots are resolved per language with fallback chains;
-variants adapt a canvas to other targets (aspect ratios, landscape sets from grouped pages).
-
-Two kinds of jobs use this skill:
-
-- **A set for a real app** – the user's own screenshots, benefits and languages.
-- **A gallery template** – a reusable design with placeholder app, placeholder copy and assets
-  that users swap out. Read `references/template-authoring.md` before building one.
+You help the user build the store screenshots of **their own app** in **Vitrine Studio**, using
+its MCP server (`vitrine-studio`). Vitrine works on **one continuous canvas per device class**:
+pages sit side by side with the store's gallery gaps between them, so a device or background
+can cross a page boundary and still line up in the store. Texts and screenshots are resolved
+per language with fallback chains; variants adapt a canvas to other targets (other page
+heights, landscape images from grouped pages, Android frames for Play).
 
 ## Core principle
 
@@ -25,46 +21,69 @@ the decision: they show in search results and are often all a visitor sees.
 
 ## Workflow
 
-1. **Get oriented in Vitrine.** Read `references/vitrine-technical.md` (model, elements,
-   variants, ops, checks, export) and `docs_get` (`elements`, `ops`, `scopes`, `markup`) before
-   the first edit; `docs_get` wins on conflicts. Check that the current build runs
-   (`apply_ops` knows `file`). Open or create the project; check canvases, variants, targets
-   and languages. Never edit project YAML by hand while the app has the project open – go
-   through the tools so changes are live and undoable.
-2. **Find the benefits (real apps).** From the user, the code or the store listing: who is it for,
-   why do they install, what is different. Write 3–5 benefits, each verb-first and specific.
-   Get them confirmed before designing.
-3. **Choose a set structure** (see `references/design-rules.md` §Story): feature-led,
-   journey, problem → solution, or proof-first. Plan page jobs: 1 hero · 2 differentiator ·
-   3 proof/ecosystem · 4+ features · last = breadth (feature wall or screen mosaic).
-4. **Write copy first.** Three options per page (paint a moment / state an outcome / kill a
-   pain), pick one, check 3–5 words per line, max two lines. Rules and patterns:
-   `references/copy.md`.
-5. **Set the visual system once:** background roles, palette from the app icon (one accent),
-   max two font families from the bundled set, headline size ≈ 7–10 % of canvas width,
-   margins, device scale, frame style. Then lay out pages and **vary layouts** – never the same
-   composition twice in a row; break the phone parade every 2–3 pages.
-6. **Use the continuous canvas deliberately:** at most one cross-page moment in a 5–7 page set,
-   two in 8–10. Only backgrounds, paths, decoration or 10–30 % of a non-critical device may
-   cross a gap – never text, faces, ratings or the UI the headline depends on.
-7. **Localize.** Fill every language; design for the longest (German headlines run 60–80 %
-   longer than English; plan headroom, allow hyphenation, use per-language overrides only
-   where needed). Make sure UI language in the screenshot matches the copy language.
-8. **Store variants.** App Store: majority of pages must show the app in use. Google Play:
-   none of the banned words; Google's guideline discourages device imagery and caps taglines
-   at 20 % of the image, but most top apps use framed, captioned sets anyway – by default use
-   the same framed design for both stores and offer a frameless Play variant only when the
-   user asks. Details: `references/store-specs.md`.
-9. **Build and check.** Generate ops per canvas (base + variant overrides) with a script,
-   write them into `<project>/.cache/ops/` and apply with `apply_ops {file}`; single fields
-   in variants via `element_update {scope: "variant"}` (merges). Then `validate` every
-   target × language to 0 errors / 0 warnings, render the gallery (`render_preview`, light and
-   dark store background) and **look at it** – validate can't see props over UI, motifs inside
-   background images, seam alignment of baked art or taste. Run the QA gate in
-   `references/qa.md`, including the thumbnail test at ~200 px width. Fix before presenting.
-10. **Hand over.** Show the gallery preview, list open points (missing screenshots, claims to
-    verify). Store upload always goes plan → explicit user confirmation → execute; never
-    execute an upload on your own.
+1. **Get oriented.** Read `references/vitrine-technical.md` and, before the first edit,
+   `docs_get` for `overview`, `elements`, `ops` and `scopes`; `docs_get` wins on conflicts.
+   If `apply_ops` has no `file` parameter, the app is older than this skill: ask the user to
+   update Vitrine Studio (inline `ops` still work). Never edit project YAML by hand while the
+   app has the project open – go through the tools so changes are live and undoable.
+2. **Start the project.** Open the user's project (`project_open`) or create one with
+   `project_create {dir, name, template, langs}`: blank (`minimal`), the built-in `phone`
+   starter, or a template from `template_list` (built-ins, saved, imported and templates the
+   user downloaded from the online gallery). `template_insert` adds a template's canvases to an
+   open project (`dry_run` first). Browsing the online gallery happens in the app
+   (New project → Template gallery); there is no gallery tool over MCP. Then
+   `project_summary` for canvases, pages, element ids, targets and languages.
+3. **Bring in the user's screenshots.** `screenshots_import {dir, dry_run: true}` plans a
+   folder import (fastlane output, language folders or flat), show the plan, then run it
+   without `dry_run`. Screenshots live in `screenshots/<lang>/<variant>/<key>.png`; a device
+   element shows the screenshot with its `screenshot` key. Single files with their own key:
+   `assets_import {files: [...]}`. Screenshots that came with a template are **samples**
+   (listed in `screenshots/samples.yaml`, validate info `sample_screenshot`): export works,
+   but store upload refuses every set that still uses one – replace them with the user's own
+   (a replaced file stops being a sample automatically).
+4. **Find the benefits.** From the user, the code or the store listing: who is it for, why do
+   they install, what is different. Write 3–5 benefits, each verb-first and specific. Get them
+   confirmed before designing. Choose a set structure and page jobs
+   (`references/design-rules.md` §Story): 1 hero · 2 differentiator · 3 proof/ecosystem ·
+   4+ features · last = breadth.
+5. **Write copy first.** Three options per page (paint a moment / state an outcome / kill a
+   pain), pick one, 3–5 words per line, max two lines (`references/copy.md`).
+6. **Set the visual system once** – or adapt the template's: replace its colours with a
+   palette from the app icon (`styles_update`, one accent), keep or swap its fonts (max two
+   families), retype its texts (`strings_set`), swap its decoration assets. Headline ≈ 7–10 %
+   of the page width, consistent margins, device scale and frame style. **Vary layouts** –
+   never the same composition twice in a row. Use the continuous canvas deliberately: at most
+   one cross-page moment in a 5–7 page set, two in 8–10; never text, faces, ratings or key UI
+   across a gap.
+7. **Languages.** `language_add`, then `strings_missing {lang}` → `strings_set` (or
+   `strings_export` / `strings_import` for translators). Design for the longest language;
+   rewrite before shrinking; use hyphenation or per-language overrides only where needed.
+   The screenshot UI language should match the copy language.
+8. **Store variants.** Default: the same framed design for both stores, Android frames on
+   Play via the target's `device_map`, and a variant with adjusted positions for Play's lower
+   pages. Offer a frameless, low-text Play variant only if the user wants it
+   (`references/store-specs.md`). Google Play needs a feature graphic (`banner_add {canvas, preset:
+   "play-feature-graphic"}`).
+9. **Build and check.** Big changes as op files (`apply_ops {file}`), single override fields
+   with `element_update {scope: "variant"}`. After every visual change `render_preview` and
+   **look at it**. `validate` every target × language to 0 errors (aim for 0 warnings), render
+   the gallery on the light and dark store background and run the QA gate in
+   `references/qa.md`, including the thumbnail test and the checks validate can't do.
+10. **Export.** `export` writes `<project>/export/` (incremental; `layout: "fastlane"` for
+    fastlane deliver/supply folders; `pages: false` for gallery previews only). Long exports
+    continue in the background: poll `export_status {job}`.
+11. **Store upload – only when the user asks.** Store accounts are set up by the user in the
+    app (App settings → Stores) and the project's store mapping in Project settings → Stores;
+    neither can be changed over MCP (`store_config_get` reads them). `upload_plan` (dry run;
+    `remote: true` also reads the store) → show the user the plan, its readiness steps and
+    problems → only after the user says yes, `upload_execute {confirm_token}` → the user must
+    also click "Confirm upload" in the app → follow with `upload_status`. Never upload on your
+    own, never retry a declined upload. Details: `references/vitrine-technical.md` §8.
+
+Hand over with a gallery preview and a list of open points (sample or missing screenshots,
+claims to verify, languages not yet reviewed). Designs can be saved for reuse with
+`template_save`; sharing a template in the online gallery has its own terms
+(https://www.vitrinestudio.app/terms/).
 
 ## Hard rules
 
@@ -76,27 +95,27 @@ the decision: they show in search results and are often all a visitor sees.
 - Imported Apple bezels stay upright and unmodified; tilt and crop only parametric frames.
 - Don't present unverifiable conversion statistics as fact. Apple's own published tests show
   single-digit effects; good fundamentals beat tricks.
+- Store uploads change the public listing: plan → the user's explicit yes → execute, every time.
 
 ## Technical essentials (details in `references/vitrine-technical.md`)
 
 - Pages are 1000 lu wide on one continuous canvas; the store gap is cut out of anything that
   crosses a seam. Cross a seam with **one** element and `clip: none`, never with twin halves;
-  panoramas as canvas `backgrounds` image or one wide element – no per-page slices.
+  panoramas as a canvas `backgrounds` image or one wide element – no per-page slices.
 - `at.y` is always in canvas page height; other page heights are handled by `anchor_y`.
-- Play targets get their own variant (lower 9:16 pages) and a `device_map` to Android frames.
-  One upload target per store slot (portrait and landscape tablet share a slot).
+- One upload target per store slot (portrait and landscape tablet share a slot).
 - `set_variant_override` replaces an element's whole override (check
   `dropped_override_fields`); `element_update {scope: "variant"}` merges.
-- Groups take `scale` (one override per card instead of one per child); images take
-  `clip_to` a shape; spans take `background` + `padding` + `radius` for pills and markers.
-- Intended exceptions to checks go into `allow: [code]` on the element, thresholds into
-  `set_checks` – prefer fixing over allowing. What each code measures: `docs_get {topic: "checks"}`.
+- Design checks on devices, pages and corners run on the **first language** of each target
+  only; check other languages with `validate {langs: [...]}` and by eye.
+- Intended exceptions go into `allow: [code]` on the element, project-wide switches into
+  `checks.off` – prefer fixing. What each code measures: `docs_get {topic: "checks"}`.
 
 ## References
 
-- `references/design-rules.md` – story, layout, typography, colour, panorama, numbers
-- `references/copy.md` – headline rules, formulas, weak → better, localization of copy
+- `references/vitrine-technical.md` – how Vitrine works over MCP: model, elements, screenshots,
+  variants, targets, ops, fonts, checks, preview, export, upload, proven techniques
+- `references/design-rules.md` – story, layout, typography, colour, panorama, props
+- `references/copy.md` – headline rules, formulas, weak → better, localizing copy
 - `references/store-specs.md` – App Store and Google Play rules and sizes
-- `references/template-authoring.md` – building gallery templates (placeholders, variants, assets)
 - `references/qa.md` – the QA gate before showing anything
-- `references/vitrine-technical.md` – how Vitrine works over MCP: model, elements, variants, targets, ops, checks, preview/export, templates, proven techniques
