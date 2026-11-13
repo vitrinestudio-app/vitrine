@@ -268,8 +268,14 @@ impl Painter<'_> {
                     ImageFillMode::Contain => {
                         (geom, SpreadMode::Pad, Resample::ContainOn([0, 0, 0, 0]))
                     }
+                    // Tiles scale with enclosing groups (ADR 0030).
                     ImageFillMode::Tile => (
-                        Rect::new(geom.x, geom.y, natural.0, natural.1),
+                        Rect::new(
+                            geom.x,
+                            geom.y,
+                            natural.0 * e.map_or(1.0, |e| e.scale),
+                            natural.1 * e.map_or(1.0, |e| e.scale),
+                        ),
                         SpreadMode::Repeat,
                         Resample::Stretch,
                     ),

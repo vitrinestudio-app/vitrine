@@ -1555,6 +1555,10 @@ impl AssetLookup for PlannedAssets<'_> {
     fn exists(&self, path: &str) -> bool {
         self.planned.contains(path) || self.fs.exists(path)
     }
+
+    fn dir_exists(&self, path: &str) -> bool {
+        self.planned.dir_exists(path) || self.fs.dir_exists(path)
+    }
 }
 
 /// Used screenshots without an own file per language × target variant
