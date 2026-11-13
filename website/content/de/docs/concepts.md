@@ -55,7 +55,8 @@ App Store und Google Play zeigen Screenshots nebeneinander mit einer kleinen
 Lücke dazwischen. Die Leinwand hat **dieselben Lücken** (im Editor
 schraffiert), damit ein Gerät oder eine Linie, die über eine Seitengrenze
 geht, im Store richtig weiterläuft. Was in einer Lücke liegt, gehört einfach
-zu keinem exportierten Bild.
+zu keinem exportierten Bild. Wie du ein Motiv baust, das über mehrere Seiten
+läuft: [Panoramen über mehrere Seiten](../editor/#panoramas).
 
 Die Lückengrößen kommen aus dem **Galerie-Profil** des Ziels. Die Werte für
 die Store-Websites sind gemessen; die für die nativen Store-Apps sind noch

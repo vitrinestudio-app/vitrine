@@ -220,6 +220,25 @@ Der Inspektor ist breiter als früher und **in der Breite veränderbar**: Zieh
 seinen linken Rand (Doppelklick darauf: Standardbreite). Die Breite bleibt
 gespeichert.
 
+### Ein Bild auf eine Form zuschneiden {#clip-to}
+
+Ein Bild lässt sich auf den Umriss einer **Rechteck**-Form (ihr *Radius*
+zählt mit) oder **Ellipse** auf derselben Leinwand zuschneiden – ein Foto in
+einem Comic-Panel, ein runder Avatar, ein Bild in einer abgerundeten Karte.
+Wähle das Bild aus und such dir unter **Zuschneiden auf** im Abschnitt *Bild*
+die Form aus; die Liste zeigt die Rechtecke und Ellipsen der Leinwand. Die
+Maske folgt der Form genau so, wie sie in jedem Ziel und jeder Variante
+liegt, auch gedreht und in Gruppen.
+
+Die Form wird weiterhin normal gezeichnet (z. B. Farbe und Kontur des Panels
+hinter dem Foto). Soll sie **nur Maske** sein, schalte bei ihr *Sichtbar*
+aus: Die Liste kennzeichnet sie dann mit *ausgeblendet: nur Maske*.
+
+Benennst du die Form um, ziehen die zugeschnittenen Bilder mit; löschst du
+sie, verlieren die Bilder ihr *Zuschneiden auf* im selben Rückgängig-Schritt –
+nichts zeigt danach auf eine fehlende Form. In der Projektdatei ist das
+`clip_to` am Bild, siehe [Elemente](../file-format/#elements).
+
 ## Ebenen {#layers}
 
 Der Tab **Ebenen** listet die Elemente der Leinwand in Zeichenreihenfolge
@@ -271,6 +290,49 @@ Ziele* (auch im ☰-Menü). Dort kannst du
 
 Eine Leinwand wird nur über ihre Ziele angezeigt und exportiert – eine neue
 Leinwand braucht mindestens eins.
+
+## Panoramen über mehrere Seiten {#panoramas}
+
+Ein Motiv, das durch das ganze Set läuft – ein Himmel, eine Landschaft, ein
+Band –, wird **einmal auf der Leinwand** gezeichnet, nicht in ein Bild pro
+Seite zerschnitten. Die Leinwand hat die Lücken des Stores, und was in einer
+Lücke liegt, fehlt einfach in den Bildern – so passt ein durchgehendes Motiv
+im Store an jeder Naht zusammen. Das Einfachste zuerst:
+
+1. **Ein Bild hinter allen Seiten:** Hebe die Auswahl auf, füge unter
+   **Leinwand-Hintergründe** einen Hintergrund hinzu und stell seine
+   *Füllart* auf *Bild*, mit dem Bild aus `assets/` und einer *Einpassung*
+   (*Füllen* füllt die Fläche und schneidet den Rest ab). Es reicht über alle
+   Seiten und Lücken jedes Ziels. Gut für Himmel, Verläufe, Texturen und
+   Landschaften ohne Details, die genau an einer Stelle einer Seite sitzen
+   müssen.
+2. **Ein breites Bild-Element:** **Hinzufügen → Bild** mit dem Panorama,
+   *Beschnitt* *Keiner* (Standard bei Bildern), *Anker* *Strecken* und einer
+   *Größe*, die für alle Seiten plus Lücken reicht (3 Seiten: etwas mehr als
+   3000 lu). Es läuft hinter jeder Lücke weiter; du bestimmst seine Ebene (z)
+   und kannst es in einer Variante ändern (z. B. ein anderes Bild für ein
+   Querformat-Set).
+3. **Brückenstücke** für genaue Motive an einer Naht – ein Smartphone quer
+   über der Grenze, ein Band, eine Karte: ein Element auf der linken Seite mit
+   *Beschnitt* *Keiner*, das in die nächste Seite reicht. Seine Position
+   gehört zu seiner Heimatseite, deshalb bleibt es hinter der Lücke
+   durchgehend, egal wie groß sie ist. Kombinier es mit einem
+   *Seitenhintergrund* pro Seite für unterschiedliche Farben je Seite.
+
+Zerschneide ein Motiv nur dann in ein Bild pro Seite, wenn sich die Seiten
+wirklich unterscheiden (z. B. eine eigene Komposition für ein
+iPad-Querformat-Set). Diese Stücke passen an den Nähten nicht mehr
+zusammen – leg die Naht auf eine ruhige Stelle oder deck sie mit einem
+Brückenstück ab.
+
+App Store und Google Play haben **unterschiedliche Lücken** (auch zwei
+Größen desselben Stores können sich unterscheiden), deshalb landet ein Motiv
+in jedem Ziel etwas anders auf den Seiten. Rechne keine Lücken aus und
+schneide keine Bilder passend dazu: Wähl jedes Ziel und sieh es dir in der
+Ansicht **Store-Galerie** an. Die [Prüfung](#validation) meldet eine Form,
+die an einer Grenze aus zwei Hälften gebaut ist (`seam_split`), und ein
+Brückenstück, das auf der nächsten Seite etwas verdeckt (`seam_overlap`).
+Hintergrund: [Lücken wie im Store](../concepts/#gaps-like-in-the-store).
 
 ## Rückgängig und Verlauf {#undo-and-history}
 

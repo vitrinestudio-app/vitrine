@@ -198,6 +198,24 @@ backgrounds* and the *Variants*.
 The inspector is wider than before and **resizable**: drag its left edge
 (double-click it for the default width). The width is remembered.
 
+### Clipping an image to a shape {#clip-to}
+
+An image can be cut to the outline of a **rectangle** (its *Radius* counts)
+or **ellipse** shape on the same canvas – a photo inside a comic panel, a
+round avatar, a picture in a rounded card. Select the image and pick the
+shape under **Clip to** in its *Image* section; the list shows the
+rectangles and ellipses of the canvas. The mask follows the shape exactly
+as it is placed in each target and variant, including rotation and groups.
+
+The shape is still drawn as usual (e.g. the panel's colour and stroke behind
+the photo). To use it **only as a mask**, switch off its *Visible*: the list
+then marks it *hidden: mask only*.
+
+Renaming the shape updates the images clipped to it, and deleting it also
+removes their *Clip to* in the same undo step – nothing is left pointing at
+a missing shape. In the project file this is `clip_to` on the image, see
+[Elements](../file-format/#elements).
+
 ## Layers
 
 The **Layers** tab lists the canvas's elements in painting order (top = in
@@ -242,6 +260,44 @@ the ☰ menu). There you can:
 
 A canvas is only shown and exported through its targets – a new canvas needs
 at least one.
+
+## Panoramas across pages {#panoramas}
+
+A motif that runs through the whole set – a sky, a landscape, a ribbon –
+is drawn **once on the canvas**, not cut into one picture per page. The
+canvas has the store's gaps, and whatever lies in a gap is simply left out
+of the images, so a continuous motif lines up across every seam in the
+store. Simplest first:
+
+1. **One image behind all pages:** deselect everything, then under
+   **Canvas backgrounds** add a background and set its *Fill type* to
+   *Image*, with the image from `assets/` and a *Fit* (*Cover* fills and
+   crops). It spans all pages and gaps of each target. Good for skies,
+   gradients, textures and scenery without details that must sit at an
+   exact spot of a page.
+2. **One wide image element:** **Add → Image** with the panorama, *Clip*
+   *None* (the default for images), *Anchor* *Stretch*, and a *Size* wide
+   enough for all pages plus the gaps (3 pages: a bit more than 3000 lu). It
+   continues behind every gap; you control its layer (z) and can change it
+   in a variant (e.g. another picture for a landscape set).
+3. **Bridging pieces** for exact motifs at one seam – a phone lying across
+   the border, a ribbon, a card: one element on the left page with *Clip*
+   *None* that reaches into the next page. Its position belongs to its home
+   page, so it stays continuous behind the gap whatever the gap. Combine it
+   with a *page background* per page for different colours per page.
+
+Cut a motif into one image per page only when the pages really differ (for
+example a separate composition for an iPad landscape set). Those slices no
+longer join at the seams, so let a seam fall on a calm area or cover it with
+a bridging piece.
+
+The App Store and Google Play have **different gaps** (and so may two sizes
+of one store), so a motif lands a little differently on the pages of each
+target. Don't compute gaps and don't cut images to match them: pick each
+target and look at it in the **Store gallery** view. [Validation](#validation)
+reports a shape built as two halves at a border (`seam_split`) and a
+bridging piece that covers something on the next page (`seam_overlap`).
+Background: [Gaps like in the store](../concepts/#gaps-like-in-the-store).
 
 ## Undo and history
 

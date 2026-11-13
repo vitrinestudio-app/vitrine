@@ -51,7 +51,9 @@ A project can have several canvases – for example *phone*, *tablet* and
 The App Store and Google Play show screenshots side by side with a small gap
 between them. The canvas has the **same gaps** (hatched in the editor), so a
 device or a line that crosses a page border continues correctly in the store.
-Anything that lies inside a gap is simply not part of any exported image.
+Anything that lies inside a gap is simply not part of any exported image. How to
+build a motif that runs across pages: [Panoramas across
+pages](../editor/#panoramas).
 
 The gap sizes come from the target's **gallery profile**. Values for the store
 websites were measured; the values for the native store apps are still
