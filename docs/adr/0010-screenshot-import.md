@@ -116,4 +116,4 @@ and `keys` apply to every format.
 Files an export manifest `.vitrine-export.json` lists (in the source or up
 to three folders above it) and, in fastlane folders, files named like the
 fastlane export layout are skipped with a reason. Recommended fastlane
-layout with captures in `fastlane/captures/`: ADR 0030.
+layout with captures in `fastlane/captures/`: ADR 0031.

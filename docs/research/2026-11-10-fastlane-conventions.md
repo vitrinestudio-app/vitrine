@@ -143,7 +143,7 @@ Sources: `frameit/lib/frameit/runner.rb`, `editor.rb`, `strings_parser.rb`.
 ## Captures and uploads share folders (checked 2026-11-13)
 
 Read from fastlane `master` on 2026-11-13 (raw GitHub URLs as above).
-Decision: ADR 0030.
+Decision: ADR 0031.
 
 - **snapshot** (`snapshot/lib/snapshot/options.rb`, `runner.rb`):
   `output_directory` defaults to `fastlane/screenshots` (or `screenshots`

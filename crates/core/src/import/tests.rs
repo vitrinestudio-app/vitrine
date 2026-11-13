@@ -747,7 +747,7 @@ fn screengrab_timestamps() {
 
 /// One `fastlane/` folder that holds snapshot/screengrab captures and the
 /// images an earlier `vitrine export --layout fastlane --out fastlane`
-/// wrote next to them (ADR 0030).
+/// wrote next to them (ADR 0031).
 fn shared_fastlane_folder(d: &Dirs, manifest: bool) -> PathBuf {
     let s = d.source.join("fastlane");
     png(

@@ -30,7 +30,7 @@
 //! manifest ([`EXPORT_MANIFEST`], in the source tree or up to three
 //! folders above it) lists are skipped, and in fastlane folders so are
 //! files named like the fastlane export layout (`01_<target>.png`,
-//! `01_<play-locale>.png`; ADR 0030).
+//! `01_<play-locale>.png`; ADR 0031).
 //!
 //! [`plan_screenshot_import`] only reads; the [`ImportPlan`] lists every
 //! file with its destination, what was detected (with confidence and

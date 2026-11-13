@@ -21,7 +21,7 @@
 //! upload folders written to that no export of the folder produced (raw
 //! captures, frameit output: deliver/supply would upload them too) are
 //! reported in [`ExportReport::foreign`] with a warning, and deleted only
-//! with [`ExportOptions::remove_foreign`] (ADR 0030).
+//! with [`ExportOptions::remove_foreign`] (ADR 0031).
 //!
 //! `ext` is `png` (24-bit RGB, no alpha, sRGB chunk) or `jpg` for targets
 //! with `format: jpeg` (`quality`, default 90). Alpha is flattened onto

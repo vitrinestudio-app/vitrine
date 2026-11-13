@@ -1,4 +1,4 @@
-# 0030 – fastlane: captures and exports in separate folders
+# 0031 – fastlane: captures and exports in separate folders
 
 - Status: accepted
 - Date: 2026-11-13
