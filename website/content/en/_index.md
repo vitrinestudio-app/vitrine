@@ -16,12 +16,12 @@ hero:
   ctaGithub: "View on GitHub"
   note: "Pre-alpha: installers are not published yet. The source is on GitHub."
   pages:
-    - ["Plan your", "garden"]
-    - ["Bed by", "bed"]
-    - ["At your", "desk"]
-    - ["or out in", "the beds"]
-    - ["From", "seed"]
-    - ["to", "harvest"]
+    - ["Design", "once"]
+    - ["Every", "language"]
+    - ["Every", "device"]
+    - ["Every", "store"]
+    - ["Upload", "directly"]
+    - ["Free &", "open source"]
   notesLabel: "What the animation shows"
   notes:
     - "One background through every page"

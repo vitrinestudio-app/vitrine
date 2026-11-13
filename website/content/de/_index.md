@@ -16,12 +16,12 @@ hero:
   ctaGithub: "Auf GitHub ansehen"
   note: "Pre-Alpha: Installer sind noch nicht veröffentlicht. Der Quellcode liegt auf GitHub."
   pages:
-    - ["Plane deinen", "Garten"]
-    - ["Beet für", "Beet"]
-    - ["Am Schreib-", "tisch"]
-    - ["oder direkt", "im Beet"]
-    - ["Von der", "Saat"]
-    - ["bis zur", "Ernte"]
+    - ["Einmal", "gestalten"]
+    - ["Jede", "Sprache"]
+    - ["Jedes", "Gerät"]
+    - ["Jeder", "Store"]
+    - ["Direkt", "hochladen"]
+    - ["Frei &", "Open Source"]
   notesLabel: "Was die Animation zeigt"
   notes:
     - "Ein Hintergrund über alle Seiten"
