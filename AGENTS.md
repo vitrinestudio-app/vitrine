@@ -64,7 +64,7 @@ changing the model, renderer or architecture. Glossary: KONZEPT §2
 | `deny.toml`, `about.toml` | licence allow-list (`cargo deny`), third-party notices (cargo-about) |
 | `docs/KONZEPT.md` | binding concept (German) |
 | `docs/adr/` | architecture decision records `NNNN-title.md` (format: ADR 0000); images they link in `docs/adr/images/` |
-| `docs/plan/` | `STATUS.md` (state + decision log), `phase-N.md` task lists |
+| `docs/plan/` | `STATUS.md` (state + decision log), `phase-N.md` task lists, `phase-N.2.md` = a finished side work package of phase N |
 | `docs/guide/` | `NOTES.md` (user-guide notes), `frame-packs.md` |
 | `docs/research/` | dated research notes and MCP test reports |
 | `docs/api/` | `API.md` (gallery API), `DEPLOY.md` (server deployment) |
