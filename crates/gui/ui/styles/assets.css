@@ -512,3 +512,56 @@ body.as-dragging .as-panel {
     max-height: 40%;
   }
 }
+
+/* Dragging a screenshot onto a device (js/panels/screenshot-drag.js). */
+.as-item.drag-source {
+  cursor: grab;
+  touch-action: none;
+}
+
+body.shot-dragging,
+body.shot-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 280px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-pop);
+  color: var(--fg);
+  font-size: var(--fs-small);
+  pointer-events: none;
+}
+
+.drag-ghost img {
+  width: 28px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: var(--radius-small);
+}
+
+.drag-ghost-icon {
+  display: inline-flex;
+  padding: 4px;
+}
+
+.drag-ghost.over {
+  border-color: var(--accent);
+}
+
+.drag-ghost.refused {
+  border-color: var(--danger);
+}
+
+.drag-ghost.refused .drag-ghost-label {
+  color: var(--fg-muted);
+}

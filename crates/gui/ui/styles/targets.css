@@ -76,10 +76,6 @@
   flex: 1;
 }
 
-.tg-preset-group .section-title {
-  padding-left: 0;
-}
-
 .tg-preset {
   display: flex;
   align-items: center;

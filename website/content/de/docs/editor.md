@@ -184,7 +184,17 @@ wichtigsten:
   *In Sprachen* (z. B. ein Badge nur in den App-Store-Zielen).
 - **Gerät:** *Modell*, *Rahmen*, *Farbe*, *Ausrichtung*, *Screenshot* (der
   Schlüssel), *Einpassung*, *Schatten* … – siehe
-  [Geräte & Frames](../devices-frames/).
+  [Geräte & Frames](../devices-frames/). Neben *Screenshot* öffnet ▾
+  (<kbd>⌥</kbd> + <kbd>↓</kbd>) die Liste der Schlüssel mit Vorschaubild:
+  oben die mit einer Datei für die aktuelle Sprache und Variante, darunter
+  die übrigen. Ein neuer Schlüssel wird einfach ins Feld getippt.
+- **Screenshot auf ein Gerät ziehen:** Zieh im Tab **Assets** einen
+  Screenshot auf ein Gerät der Leinwand (es wird beim Darüberziehen
+  hervorgehoben). Das setzt den *Screenshot*-Schlüssel des Geräts, ein
+  Rückgängig-Schritt. Es zählt nur der Schlüssel: Auch eine Datei aus einem
+  anderen Sprach- oder Variantenordner setzt ihn, und jede Sprache zeigt ihre
+  eigene Datei dazu (oder den Fallback). Bilder aus `assets/` lassen sich
+  nicht in ein Gerät legen.
 - **Text:** *Schlüssel*, *Text*, *Stil*, *Textbox* (*Ränder* zu den
   Seitenkanten oder eine *Freie Box*), *Ausrichtung*, *Vertikal*, *Auto-Fit*
   (*Verkleinern bis*, *Höchstens Zeilen*), *Silbentrennung*, *Farbe*,

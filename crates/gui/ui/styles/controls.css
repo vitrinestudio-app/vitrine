@@ -281,6 +281,39 @@
   letter-spacing: 0.01em;
 }
 
+/* Section headings inside dialogs (project / app settings tabs, …): one
+ * step below the dialog title (14px), one above the content (12px), flush
+ * with the content below them (the sidebar padding would indent the
+ * heading against its rows). App-settings `.form-section` headings share
+ * the size. */
+.dlg-body .section-title,
+.form-section {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: 0;
+}
+
+.dlg-body .section-title {
+  padding: 0;
+  margin: 14px 0 0;
+}
+
+.dlg-body .section-title:first-child {
+  margin-top: 0;
+}
+
+/* …but a sub-block (e.g. "Store used system fonts" inside the Fonts tab)
+ * still keeps the gap to what comes before it. */
+.dlg-body .stack > .stack > .section-title:first-child {
+  margin-top: 14px;
+}
+
+/* Empty-state notes in dialogs line up with the content too. */
+.dlg-body .placeholder {
+  padding: 4px 0;
+}
+
 .placeholder {
   padding: 16px;
   color: var(--fg-faint);

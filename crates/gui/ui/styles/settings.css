@@ -36,10 +36,6 @@
   margin-bottom: 16px;
 }
 
-.ps-styles .section-title {
-  padding-left: 0;
-}
-
 .ps-style-row {
   display: flex;
   align-items: center;
@@ -123,10 +119,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.impact .section-title {
-  padding-left: 0;
 }
 
 .impact-list {
@@ -390,10 +382,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.ps-stores .section-title {
-  margin-top: 14px;
 }
 
 .store-setup,

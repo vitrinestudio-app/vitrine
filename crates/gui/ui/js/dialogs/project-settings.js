@@ -541,7 +541,6 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
     return h(
       'div',
       { class: 'stack' },
-      datalist,
       h('div', { class: 'section-title' }, t('fonts.families')),
       h('p', { class: 'muted small' }, t('fonts.fallback.hint')),
       ...families.map(familyRow),
@@ -557,6 +556,7 @@ export function openProjectSettings(tab = 'general', { focusAdd = false } = {}) 
       h('p', { class: 'muted small' }, t('fonts.scripts.hint')),
       h('div', { class: 'stack' }, ...bundledList((f) => f.category === 'script')),
       h('p', { class: 'muted small' }, t('project.fonts.hint')),
+      datalist,
     );
   }
 

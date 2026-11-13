@@ -14,6 +14,7 @@ import { confirmDialog } from '../dialogs/modal.js';
 import { onImported, pickAndImport } from './importer.js';
 import { openScreenshotImport } from '../dialogs/screenshot-import.js';
 import { openImagePreview } from '../dialogs/image-preview.js';
+import { makeDraggable } from './screenshot-drag.js';
 
 const THUMB = 96;
 
@@ -133,14 +134,19 @@ export function mount(el, { store, editor, api, t }) {
     );
   }
 
-  function item({ path, title, sub, users, removable = true, stamp, preview }) {
-    return h(
+  function item({ path, title, sub, users, removable = true, stamp, preview, drag }) {
+    const node = h(
       'div',
       { class: 'as-item', title: path },
       preview ? previewThumb(preview.list, { path, title, ...preview.entry }, stamp) : path ? thumb(path, stamp) : h('div', { class: 'as-thumb placeholder-thumb' }, icon('image')),
       h('div', { class: 'as-meta' }, h('div', { class: 'as-name' }, title), sub ? h('div', { class: 'as-sub muted small' }, sub) : null, users),
       removable ? h('button', { type: 'button', class: 'as-remove', title: t('assets.remove'), onclick: () => remove(path, users?.dataset?.ids?.split(',') ?? []) }, icon('close')) : null,
     );
+    if (drag) {
+      node.title = `${path}\n${t(drag.kind === 'image' ? 'assets.drag.image_tip' : 'assets.drag.tip')}`;
+      makeDraggable(node, drag, () => node.querySelector('img.as-thumb'));
+    }
+    return node;
   }
 
   function size(f) {
@@ -183,6 +189,7 @@ export function mount(el, { store, editor, api, t }) {
             removable: false,
             stamp: f ? `${f.width}x${f.height}` : '',
             preview: { list: shots, entry: { key: b.key, lang, variant: b.variant, borrowedFrom: from, users } },
+            drag: { kind: 'screenshot', key: b.key, lang: b.lang, variant: b.variant },
           });
         }),
       ),
@@ -234,7 +241,7 @@ export function mount(el, { store, editor, api, t }) {
               const users = usedBy(l.screenshot_keys[f.key]);
               users.dataset.ids = (l.screenshot_keys[f.key] ?? []).join(',');
               const ids = l.screenshot_keys[f.key] ?? [];
-              return item({ path: f.path, title: f.key, sub: size(f), users, stamp: `${f.width}x${f.height}`, preview: { list: shots, entry: { key: f.key, lang, variant: f.variant, users: ids } } });
+              return item({ path: f.path, title: f.key, sub: size(f), users, stamp: `${f.width}x${f.height}`, preview: { list: shots, entry: { key: f.key, lang, variant: f.variant, users: ids } }, drag: { kind: 'screenshot', key: f.key, lang, variant: f.variant } });
             }),
           ),
         ),
@@ -262,10 +269,10 @@ export function mount(el, { store, editor, api, t }) {
           'details',
           { class: 'as-missing' },
           h('summary', { class: 'as-variant-title as-missing-title small' }, icon('warning'), ` ${t('assets.missing')}`, h('span', { class: 'as-count' }, String(missing.length))),
-          ...missing.map((m) =>
-            h(
+          ...missing.map((m) => {
+            const node = h(
               'div',
-              { class: 'as-item missing' },
+              { class: 'as-item missing', title: t('assets.drag.tip') },
               h('div', { class: 'as-thumb placeholder-thumb' }, m.key),
               h('div', { class: 'as-meta' }, h('div', { class: 'as-name' }, m.key), h('div', { class: 'as-sub muted small' }, `${def} · ${m.variant ?? t('assets.variant_none')}`), usedBy(m.ids)),
               h(
@@ -277,8 +284,10 @@ export function mount(el, { store, editor, api, t }) {
                 },
                 t('assets.import'),
               ),
-            ),
-          ),
+            );
+            makeDraggable(node, { kind: 'screenshot', key: m.key });
+            return node;
+          }),
         )
       : null;
 
@@ -286,7 +295,7 @@ export function mount(el, { store, editor, api, t }) {
       const ids = l.asset_usage[f.path] ?? [];
       const users = usedBy(ids);
       users.dataset.ids = ids.join(',');
-      return item({ path: f.path, title: f.path.replace(/^assets\//, ''), sub: size(f), users, stamp: size(f), preview: { list: imgs, entry: { users: ids } } });
+      return item({ path: f.path, title: f.path.replace(/^assets\//, ''), sub: size(f), users, stamp: size(f), preview: { list: imgs, entry: { users: ids } }, drag: { kind: 'image', path: f.path } });
     });
 
     const fontItems = [

@@ -805,6 +805,26 @@ export function mountCanvas(root) {
     return id ? store.get().overlay.elements.find((e) => e.id === id) ?? null : null;
   }
 
+  /**
+   * Topmost device element under client point (`x`, `y`), also when a text
+   * or image lies above it (drop targets: screenshots onto a device), or
+   * null. Locked devices count: a drop changes the screenshot, not the
+   * position.
+   */
+  function deviceAt(x, y) {
+    if (!el.contains(document.elementFromPoint(x, y))) return null;
+    const o = store.get().overlay;
+    if (!o) return null;
+    const p = toLu({ clientX: x, clientY: y });
+    for (let i = o.elements.length - 1; i >= 0; i--) {
+      const e = o.elements[i];
+      if (e.kind !== 'device' || !inQuad(p, e.quad)) continue;
+      if (e.clip && !inRect(p, e.clip)) continue;
+      return e;
+    }
+    return null;
+  }
+
   // ----- nudge -----------------------------------------------------------------------
 
   function nudge(dx, dy) {
@@ -867,6 +887,7 @@ export function mountCanvas(root) {
         panY: st.panY,
         selection: st.selection,
         hover: st.hover,
+        dropTarget: st.dropTarget,
         variantActive: effectiveVariant(st) != null,
         drag,
         showHandles: true,
@@ -894,7 +915,7 @@ export function mountCanvas(root) {
       }
       redraw();
     }),
-    store.select((st) => [st.selection, st.hover], redraw),
+    store.select((st) => [st.selection, st.hover, st.dropTarget], redraw),
     editor.on('invalidate', (p) => invalidate(p)),
     editor.on('highlight', ({ ids }) => startGlow(ids)),
     // View context changed (target, variant, language, reload): every
@@ -944,6 +965,7 @@ export function mountCanvas(root) {
     cancel,
     editText,
     elementAt,
+    deviceAt,
     isBusy: () => Boolean(drag),
     openMenu: () => openMenu(),
     unmount() {

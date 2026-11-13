@@ -44,7 +44,10 @@ js/views/snap.js      snapping lines/box/angle
 js/views/{pages,gallery,languages}.js   other centre views
 js/views/textedit.js  inline text editor of the canvas (double-click)
 js/panels/*.js        sidebar/inspector panels (see below); importer.js =
-                      asset import dialog + drag & drop routing
+                      asset import dialog + drag & drop routing;
+                      screenshot-drag.js = Assets row → device (pointer
+                      drag, `dropTarget` highlight); screenshot-picker.js =
+                      device screenshot key field + key list
 js/panels/fields.js   form controls: scrub numbers, colours, selects, fill editor
 js/panels/canvas-settings.js  canvas settings (inspector with no selection)
 js/menu.js            app menu (top-bar button), its macOS menu-bar mirror

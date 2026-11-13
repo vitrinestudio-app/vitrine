@@ -235,10 +235,8 @@ export async function pickAndImport(opts = {}) {
 
 /** Import dialog options for a drop at client point (x, y). */
 async function dropOptions(getCanvas, x, y) {
-  const canvas = getCanvas?.();
-  if (!canvas?.el.contains(document.elementFromPoint(x, y))) return {};
-  const el = canvas.elementAt(x, y);
-  if (el?.kind !== 'device') return {};
+  const el = getCanvas?.()?.deviceAt(x, y);
+  if (!el) return {};
   try {
     const info = await api.elementInfo(viewArgs(), el.id);
     const shot = info.element.props.screenshot;
@@ -290,18 +288,25 @@ async function routeDrop(getCanvas, sources, x, y) {
 }
 
 function highlight(getCanvas, x, y) {
-  const canvas = getCanvas?.();
-  let device = null;
-  if (canvas && x != null && canvas.el.contains(document.elementFromPoint(x, y))) {
-    const el = canvas.elementAt(x, y);
-    if (el?.kind === 'device') device = el.id;
-  }
-  if (store.get().hover !== device) store.set({ hover: device });
+  const device = x != null ? (getCanvas?.()?.deviceAt(x, y)?.id ?? null) : null;
+  if (store.get().dropTarget !== device) store.set({ dropTarget: device });
   document.body.classList.toggle('as-dragging', x != null);
+}
+
+let canvasGetter = null;
+
+/**
+ * Device overlay element under client point (`x`, `y`) on the canvas view
+ * (null elsewhere or when another view is shown). Used by in-page drags
+ * (screenshots from the assets panel, see screenshot-drag.js).
+ */
+export function deviceAtPoint(x, y) {
+  return canvasGetter?.()?.deviceAt(x, y) ?? null;
 }
 
 /** Installs the window-wide drop handling. Returns an uninstall function. */
 export function installDropImport(getCanvas) {
+  canvasGetter = getCanvas;
   const hasFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files');
   const over = (e) => {
     if (!hasFiles(e)) return;
