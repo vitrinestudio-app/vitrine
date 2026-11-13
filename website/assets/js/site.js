@@ -29,6 +29,17 @@
     });
   }
 
+  // ---------- "Home" in the header: on the home page, glide back to the top ----------
+  var homeLink = document.querySelector('[data-home-link][aria-current="page"]');
+  if (homeLink) {
+    homeLink.addEventListener('click', function (e) {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+      if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+    });
+  }
+
   // ---------- Docs contents: collapsed on narrow screens ----------
   var docsNav = document.querySelector('[data-docs-nav]');
   if (docsNav && window.matchMedia('(max-width: 900px)').matches) docsNav.open = false;

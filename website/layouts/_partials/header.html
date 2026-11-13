@@ -11,9 +11,7 @@
 
     <nav class="site-nav" id="site-nav" aria-label="{{ T "mainNav" }}">
       <ul>
-        <li><a href="{{ $home }}#features">{{ T "navFeatures" }}</a></li>
-        <li><a href="{{ $home }}#ai">{{ T "navAI" }}</a></li>
-        <li><a href="{{ $home }}#automation">{{ T "navAutomation" }}</a></li>
+        <li><a href="{{ $home }}" data-home-link{{ if .IsHome }} aria-current="page"{{ end }}>{{ T "navHome" }}</a></li>
         {{- with $gallery }}
         <li><a href="{{ .RelPermalink }}"{{ if eq $.RelPermalink .RelPermalink }} aria-current="page"{{ end }}>{{ T "navTemplates" }}</a></li>
         {{- end }}
