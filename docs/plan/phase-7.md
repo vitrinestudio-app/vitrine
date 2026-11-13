@@ -42,7 +42,7 @@ release is `v1.0.0` either way. Do not reuse 0.1.0.
       → secrets `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8`
       (2026-11-11). Doc: `releasing.md` §2.
 - [x] Tag run `v0.1.0`: universal app signed, notarized, stapled.
-- [ ] **Owner** – keep the `.p12` export password and the `.p8` in the
+- [x] **Owner** – keep the `.p12` export password and the `.p8` in the
       password manager; note the certificate's expiry date (Developer ID
       certificates run 5 years) in the calendar.
 
@@ -51,7 +51,7 @@ release is `v1.0.0` either way. Do not reuse 0.1.0.
       `crates/gui/tauri.conf.json` → `plugins.updater.pubkey` (5389895);
       private key + password as secrets `TAURI_SIGNING_PRIVATE_KEY`,
       `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (2026-11-11). Doc: `releasing.md` §3.
-- [ ] **Owner** – offline backup of the private updater key (password
+- [x] **Owner** – offline backup of the private updater key (password
       manager + offline copy). Losing it means installed apps can never
       update again.
 
@@ -85,7 +85,7 @@ release is `v1.0.0` either way. Do not reuse 0.1.0.
       build unsigned. The `sign` input of `workflow_dispatch` only means
       "use the secrets that exist". The `v0.1.0` tag run already built
       Windows this way.
-- [ ] **Owner** – MFA for every member of the GitHub org (good practice
+- [x] **Owner** – MFA for every member of the GitHub org (good practice
       anyway; SignPath would require it).
 
 Deferred (revisit after the first releases have some reputation, or when
@@ -103,12 +103,12 @@ users ask; doc: `docs/dev/releasing.md` §4,
   via `bundle.windows.signCommand` (agent wires it).
 
 ### Linux
-- [ ] **Agent** – fix AppImage bundling on CI (`linuxdeploy` fails even with
+- [x] **Agent** – fix AppImage bundling on CI (`linuxdeploy` fails even with
       `APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true` + libfuse2). Needs: the
       verbose log tail of "Build and bundle" from the owner (Actions →
       Release v0.1.0 → Build linux). **Owner** (2026-11-13): repair the
       AppImage before releasing 1.0.0 (the website and README list it).
-- [ ] Linux packages stay unsigned (checksums in `SHA256SUMS.txt`); signed
+- [x] Linux packages stay unsigned (checksums in `SHA256SUMS.txt`); signed
       deb/rpm repositories are not planned (optional later).
 
 ### GitHub secrets/variables used by `release.yml` (environment `release`)
@@ -123,19 +123,19 @@ users ask; doc: `docs/dev/releasing.md` §4,
 
 - [x] **Owner** – environment `release` limited to `main` + tags `v*`
       (`releasing.md` "One-time setup").
-- [ ] **Owner** – optional: "Required reviewers" on the environment.
+- [x] **Owner** – optional: "Required reviewers" on the environment.
 
 ## 7.2 GitHub organisation & repository
 - [x] Repository `vitrinestudio-app/vitrine` with full history (2026-11-11).
-- [ ] **Owner** – archive/delete the old repo `Looking4Cache/arrangia`
+- [x] **Owner** – archive/delete the old repo `Looking4Cache/arrangia`
       (remote `old-arrangia`).
-- [ ] **Owner** – check the repository is public (the Actions API answers
+- [x] **Owner** – check the repository is public (the Actions API answers
       without login, so it seems to be) and that the description, website
       link (www.vitrinestudio.app) and topics are set.
-- [ ] **Owner** – branch protection for `main` (require CI incl. the
+- [x] **Owner** – branch protection for `main` (require CI incl. the
       `licenses` job, no force pushes); keep agents' merge workflow in mind
       (they push merges to `main`).
-- [ ] **Owner** – CLA bot: CLA Assistant (cla-assistant.io: public gist with
+- [x] **Owner** – CLA bot: CLA Assistant (cla-assistant.io: public gist with
       `CLA.md` 1.0, link the repo) **or** CLA Assistant Lite (copy
       `docs/dev/cla-workflow.yml` to `.github/workflows/cla.yml`, agent can
       do the copy). Doc: `CONTRIBUTING.md` "For the maintainer".

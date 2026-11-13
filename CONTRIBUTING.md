@@ -21,8 +21,9 @@ Before a pull request can be merged, you sign the
 - You confirm the contribution is your own work (or you say where it comes
   from) and that your employer, if it has rights to it, agrees.
 
-Signing happens on your first pull request: the CLA bot posts a comment and
-you reply with the sentence it asks for. Trivial fixes (typos) are welcome
+Signing happens on your first pull request: the CLA bot
+([CLA Assistant](https://cla-assistant.io)) posts a comment with a link, and
+you sign there with your GitHub account. Trivial fixes (typos) are welcome
 too, but the bot asks for every contributor.
 
 ## Development gate
@@ -64,7 +65,12 @@ VITRINE_KEYRING=mock cargo test --all
 
 ## For the maintainer: CLA automation
 
-Not switched on yet (decision 2026-11-11, ADR 0022). Two options:
+Active since 2026-11-13: the hosted CLA Assistant is linked to
+`vitrinestudio-app/vitrine` with the public gist
+<https://gist.github.com/ThorstenGrove/dc2f85e772b2e533144b719ef4d9b7b9>
+(`vitrine-studio-cla.md`, CLA 1.0, owner account `ThorstenGrove`). A change
+to `CLA.md` must also go into that gist as a new revision (signers are then
+asked again). Background (decision 2026-11-11, ADR 0022), the two options:
 
 1. **CLA Assistant (recommended)** – the hosted GitHub App from
    [cla-assistant.io](https://cla-assistant.io) (SAP, open source):

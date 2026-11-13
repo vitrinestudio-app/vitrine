@@ -149,7 +149,7 @@ one that comes closest to its intent.
 
 ## Signing
 
-When You open your first pull request, the CLA bot asks You to sign by
-posting the comment it shows. That comment records Your GitHub account, the
-date and this version of the agreement. Corporate contributors: please
+When You open your first pull request, the CLA bot comments on it with a
+link to sign this agreement with Your GitHub account. Signing records Your
+GitHub account, the date and this version of the agreement. Corporate contributors: please
 contact the Owner for a corporate agreement before contributing.
