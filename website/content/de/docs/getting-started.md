@@ -27,7 +27,7 @@ einen Projektordner auf das Fenster ziehen).
    z. B. `en, de`.
 6. **Erstellen.**
 
-{{< shot src="images/new-project.jpg" alt="Der Dialog Neues Projekt: Name, Speicherort, die Vorlagen-Karten (Phone, Minimal und die Galerie-Vorlagen Park Poster, Pop-Art Panels und Synthwave Sunset) und die Sprachen." caption="Neues Projekt aus der Vorlage *Synthwave Sunset*, auf Englisch, Deutsch und Französisch." >}}
+{{< shot src="images/new-project.jpg" alt="Der Dialog Neues Projekt: Name, Speicherort und Sprachen, darunter der Reiter Vorlagen-Galerie mit Suche, Filtern und Vorlagen-Karten wie Fruit Pop, Hero Landing, Paper Calm und dem ausgewählten Pop-Art Panels." caption="Neues Projekt aus der Online-**Vorlagen-Galerie** – hier *Pop-Art Panels*, auf Englisch, Deutsch und Französisch." >}}
 
 Beim ersten Öffnen eines Projekts erscheint die Übersicht *So ist Vitrine
 Studio aufgebaut* auf einer Seite. Ein Blick lohnt sich; im Hilfe-Menü findest

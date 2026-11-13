@@ -303,6 +303,8 @@ Das ☰-Menü öffnet sich über den ☰-Button, das App-Symbol oder den
 Projektnamen in der oberen Leiste (mit Fokus auch per <kbd>Enter</kbd>/
 <kbd>Leertaste</kbd>; die Pfeiltasten gehen durch die Einträge).
 
+{{< shot src="images/app-menu.jpg" alt="Das ☰-Menü mit Neues Projekt, Projekt öffnen, Projekt schließen, Projekteinstellungen, Leinwände & Ziele, Export, In die Stores hochladen, Screenshots importieren, Als Vorlage speichern, App-Einstellungen und dem geöffneten Untermenü Hilfe." caption="Das ☰-Menü mit dem Untermenü **Hilfe** (englische Oberfläche)." >}}
+
 - **Tastatur & Maus …** (☰ → Hilfe, der **?**-Button in der unteren Leiste
   oder <kbd>?</kbd>) – alle Tastenkürzel und Gesten. Auch auf
   [Tastatur & Maus](../shortcuts/).

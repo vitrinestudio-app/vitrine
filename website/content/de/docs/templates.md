@@ -29,6 +29,8 @@ Link zur großen Ansicht auf der Website); **Herunterladen und erstellen**
 lädt die gewählte Vorlage einmal herunter und behält sie unter **Lokale
 Vorlagen**.
 
+{{< shot src="images/new-project-local.jpg" alt="Der Reiter Lokale Vorlagen im Dialog Neues Projekt: die mitgelieferten Vorlagen Phone und Minimal, die heruntergeladenen Park Poster, Pop-Art Panels und Synthwave Sunset und Datei importieren." caption="**Lokale Vorlagen**: mitgelieferte, heruntergeladene Galerie-Vorlagen und eigene." >}}
+
 - Alle Leinwände der Vorlage kommen mit.
 - **Texte:** Jede deiner Sprachen bekommt den Text der Vorlage in derselben
   Sprache, sonst in ihrer Basissprache (`de-AT` ← `de`), sonst in der
@@ -115,7 +117,7 @@ vitrine template save --name "Demo set" --style minimal --color light --use prod
 vitrine template tags                      # alle Schlagwörter
 ```
 
-{{< shot src="images/save-template.jpg" alt="Der Dialog Als Vorlage speichern: Name, Id, Beschreibung, Autor, Stil-, Farb- und Kategorie-Tags, die Leinwände und die Optionen für Beispiel-Screenshots und Schriften." caption="**Als Vorlage speichern…** mit Tags für die Galerie und zwei von drei Leinwänden." >}}
+{{< shot src="images/save-template.jpg" alt="Der Dialog Als Vorlage speichern: Name, Id, Beschreibung, Autor, Stil-, Farb- und Kategorie-Tags, die Leinwände und die Optionen für Beispiel-Screenshots, Schriften und die .vitrine-template-Datei." caption="**Als Vorlage speichern…** (☰-Menü) mit Tags für die Galerie; alle Leinwände sind ausgewählt." >}}
 
 ## Aus Vorlage einfügen {#insert-from-template}
 

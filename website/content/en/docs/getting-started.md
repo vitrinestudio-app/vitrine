@@ -25,7 +25,7 @@ onto the window).
    e.g. `en, de`.
 6. **Create.**
 
-{{< shot src="images/new-project.jpg" alt="The New project dialog: name, location, the template cards (Phone, Minimal and the gallery templates Park Poster, Pop-Art Panels and Synthwave Sunset) and the languages." caption="New project from the *Synthwave Sunset* template, in English, German and French." >}}
+{{< shot src="images/new-project.jpg" alt="The New project dialog: name, location and languages, and the Template gallery tab with search, filters and template cards such as Fruit Pop, Hero Landing, Paper Calm and the selected Pop-Art Panels." caption="New project from the online **Template gallery** – here *Pop-Art Panels*, in English, German and French." >}}
 
 The first time you open a project, a one-screen overview *How Vitrine Studio
 is organised* appears. It's worth a look; it's always in the Help menu.

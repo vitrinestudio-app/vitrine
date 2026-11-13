@@ -272,6 +272,8 @@ The ☰ menu opens from the ☰ button, the app icon or the project name in the
 top bar (also with <kbd>Enter</kbd>/<kbd>Space</kbd> when focused; arrow keys
 move through the entries).
 
+{{< shot src="images/app-menu.jpg" alt="The ☰ menu with New project, Open project, Close project, Project settings, Canvases & targets, Export, Upload to stores, Import screenshots, Save as template, App settings, and the Help submenu open." caption="The ☰ menu with the **Help** submenu." >}}
+
 - **Keyboard & mouse…** (☰ → Help, the **?** button in the bottom bar, or
   <kbd>?</kbd>) – every shortcut and gesture. Also on
   [Keyboard & mouse](../shortcuts/).
