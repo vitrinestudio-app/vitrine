@@ -113,7 +113,7 @@ features:
       title: "Colour-managed output"
       text: "Display P3 screenshots are converted to sRGB once; exports are opaque, incremental and come with an `index.html` overview."
     - icon: fonts
-      title: "11 bundled font families"
+      title: "Bundled font families"
       text: "Inter, Montserrat, Playfair Display, Lora, Bebas Neue and more – all SIL OFL, always available, no font files needed."
     - icon: terminal
       title: "CLI for CI"

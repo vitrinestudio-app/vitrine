@@ -113,7 +113,7 @@ features:
       title: "Farbverwaltete Ausgabe"
       text: "Display-P3-Screenshots werden einmal nach sRGB umgerechnet; Exporte sind deckend, inkrementell und kommen mit einer `index.html`-Übersicht."
     - icon: fonts
-      title: "11 mitgelieferte Schriftfamilien"
+      title: "Mitgelieferte Schriftfamilien"
       text: "Inter, Montserrat, Playfair Display, Lora, Bebas Neue und mehr – alle unter SIL OFL, immer verfügbar, ohne Schriftdateien im Projekt."
     - icon: terminal
       title: "CLI für CI"
