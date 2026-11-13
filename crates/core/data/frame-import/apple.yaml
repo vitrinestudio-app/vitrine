@@ -1,5 +1,5 @@
 # File-name mapping for the Apple Design Resources "Product Bezels"
-# (KONZEPT §4.2, docs/adr/0012-imported-frames.md). Data, not code: new
+# (ARCHITECTURE.md §7, former ADR 0012). Data, not code: new
 # Apple packages are supported by adding rules here. Loaded by
 # `vitrine_core::frame_import` (embedded at build time). Per-file
 # assignments made by the user live in the app-wide frame store

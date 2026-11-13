@@ -28,8 +28,8 @@ Raw captures and finished images live in separate folders: snapshot and
 screengrab write below `fastlane/captures/` (their usual structure), Vitrine
 Studio exports into deliver's `fastlane/screenshots/` and supply's
 `fastlane/metadata/android/`. deliver and supply upload every image in those
-folders, so only Vitrine Studio's images should be there (ADR 0032 in the
-Vitrine Studio repository).
+folders, so only Vitrine Studio's images should be there (decision 0032 in the
+Vitrine Studio repository, `ARCHITECTURE.md` §9).
 
 ```ruby
 # fastlane/Snapfile

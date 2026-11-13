@@ -1,4 +1,4 @@
-# Vitrine Studio project (format: docs/KONZEPT.md §3, docs/adr/0002-project-file-format.md).
+# Vitrine Studio project (format: ARCHITECTURE.md §3).
 #
 # One phone canvas of three pages, rendered for the iPhone 6.9" and 6.3"
 # App Store sets (6.3" is the one Apple requires), the Google Play phone set

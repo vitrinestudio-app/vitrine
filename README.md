@@ -29,10 +29,11 @@ upload works and is being tested with live store accounts. What remains
 before the first release – signing, publishing, the website going live,
 real-app checks – is tracked in [`docs/plan/phase-7.md`](docs/plan/phase-7.md).
 
-The concept (in German) is in [`docs/KONZEPT.md`](docs/KONZEPT.md), the task
+The architecture – concepts, project format, pipeline, front ends and the
+decisions behind them – is in [`ARCHITECTURE.md`](ARCHITECTURE.md), the task
 lists per phase in [`docs/plan/`](docs/plan/), the current state in
-[`docs/plan/STATUS.md`](docs/plan/STATUS.md) and the architecture decisions
-in [`docs/adr/`](docs/adr/).
+[`docs/plan/STATUS.md`](docs/plan/STATUS.md). The original German concept and
+the former decision records are archived in [`docs/archive/`](docs/archive/).
 
 ## Features
 
@@ -224,7 +225,7 @@ Setup, example prompts and tools:
 | `crates/api-server` | `vitrine-api-server` | Backend of api.vitrinestudio.app (template gallery, GitHub login) |
 | `integrations/` | | CI integration and agent skill drafts (GitHub Action, GitLab CI, fastlane plugin, agent skill; MIT) |
 | `website/` | | www.vitrinestudio.app (Hugo) with the user guide |
-| `docs/` | | Concept, plans, architecture decision records (`docs/adr/`) |
+| `docs/` | | Plans, guide notes, API and release docs; historical concept and ADRs in `docs/archive/` |
 
 ## License
 
@@ -259,7 +260,8 @@ PARTICULAR PURPOSE.
   ([`assets/hyphenation/LICENSES.md`](assets/hyphenation/LICENSES.md)).
   Rust dependencies are under permissive licences (MIT, Apache-2.0, BSD,
   ISC, Zlib, MPL-2.0, Unicode-3.0, …), all compatible with the GPL v3.
-  Decision record: [ADR 0022](docs/adr/0022-licence-gpl-and-cla.md).
+  Decision: [`ARCHITECTURE.md`](ARCHITECTURE.md) §13 (licences; former
+  ADR 0022).
 - **Gallery templates** are published under CC0 by their uploaders
   ([terms of use](https://www.vitrinestudio.app/terms/)).
 

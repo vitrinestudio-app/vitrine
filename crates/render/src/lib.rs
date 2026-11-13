@@ -2,7 +2,7 @@
 //!
 //! One renderer for everything: GUI preview, export and MCP `render_preview`
 //! all come from this pipeline, so line breaks and positions in the preview
-//! match the export exactly (`docs/KONZEPT.md`, section 6).
+//! match the export exactly (`ARCHITECTURE.md` §7).
 //!
 //! Responsibilities:
 //!
@@ -16,8 +16,7 @@
 //! - **Export**: cutting pages (omitting gap content), banners, gallery
 //!   previews, removing alpha, encoding PNG/JPEG.
 //!
-//! Libraries and pipeline: `docs/adr/0001-render-pipeline.md`,
-//! `docs/adr/0006-rasterize-and-export.md`.
+//! Libraries and pipeline: `ARCHITECTURE.md` §7.
 
 pub mod blur;
 pub mod export;

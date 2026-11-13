@@ -1,6 +1,6 @@
 # Phase 1 – Core + CLI: task list
 
-Scope: KONZEPT.md §12, Phase 1. Done when the example project in
+Scope: KONZEPT (`docs/archive/KONZEPT-de.md`, superseded by `ARCHITECTURE.md`) §12, Phase 1. Done when the example project in
 `tests/fixtures/` (phone portrait, iPad landscape via grouping, Mac, web app in
 browser and laptop frame, blog banner, two languages) exports headless into all
 targets and the golden tests are green.

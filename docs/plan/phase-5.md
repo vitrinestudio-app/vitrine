@@ -1,6 +1,6 @@
 # Phase 5 – Store upload: task list
 
-Scope: KONZEPT.md §7 and §12, Phase 5. Done when uploading into a test app
+Scope: KONZEPT (`docs/archive/KONZEPT-de.md`, superseded by `ARCHITECTURE.md`) §7 and §12, Phase 5. Done when uploading into a test app
 works for both stores (App Store Connect first, then Google Play), including
 screenshot order.
 

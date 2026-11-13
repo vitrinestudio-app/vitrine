@@ -1,6 +1,6 @@
 # Phase 7 – Release: first public version → 1.0
 
-Scope: KONZEPT.md §12, Phase 7 (split out of Phase 6 on 2026-11-13; 3D moved
+Scope: KONZEPT (`docs/archive/KONZEPT-de.md`, superseded by `ARCHITECTURE.md`) §12, Phase 7 (split out of Phase 6 on 2026-11-13; 3D moved
 to Phase 8). Every remaining step from today's state to the first published
 version (`v0.1.0` public) and on to 1.0: signing, publishing, legal, servers,
 integrations, store test runs, real-app checks and open owner decisions.
@@ -448,7 +448,7 @@ Compact list; details in `docs/plan/STATUS.md` ("Open owner decisions",
 - [x] `AGENTS.md` as the vendor-neutral agent guide, `CLAUDE.md` imports it
       (1afab39).
 - [x] Repo housekeeping: Inter in `assets/fonts/inter/`, Phase 0 spike
-      images removed (ADR images in `docs/adr/images/`),
+      images removed (ADR images in `docs/adr/images/`, now `docs/archive/adr/images/`),
       `next-2026-11-11.md` → `phase-6.2.md`, CLI image tags in the docs
       pinned to the first release `0.1.0`.
 
@@ -456,7 +456,7 @@ Compact list; details in `docs/plan/STATUS.md` ("Open owner decisions",
 - [ ] All of 7.1–7.8 done or consciously moved after 1.0; 7.9 answered.
 - [ ] `cargo deny check licenses` green, third-party notices regenerated,
       golden tests green on all three OS.
-- [ ] Docs: README status "1.0", AGENTS.md "Current state", KONZEPT §12, STATUS.md,
+- [ ] Docs: README status "1.0", AGENTS.md "Current state", ARCHITECTURE.md, STATUS.md,
       website "pre-release" callouts removed, release notes.
 - [ ] Version `1.0.0` in `[workspace.package]`, tag `v1.0.0`, publish,
       announce.

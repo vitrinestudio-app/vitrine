@@ -1,4 +1,4 @@
-# Built-in template (docs/adr/0023-templates.md): placeholder screenshots are
+# Built-in template (ARCHITECTURE.md §11): placeholder screenshots are
 # generated when the template is loaded; no previews are stored.
 format: vitrine-template/1
 id: minimal

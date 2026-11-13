@@ -1,3 +1,5 @@
+> Historical, superseded by [ARCHITECTURE.md](../../ARCHITECTURE.md) on 2026-11-13 (§14 maps the sections of this document).
+
 # Vitrine Studio – Konzept
 
 > Website: vitrinestudio.app · Slug/Binary/Crate-Präfix: `vitrine`
