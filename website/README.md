@@ -26,7 +26,7 @@ ignored by Git.
 | `i18n/en.yaml`, `de.yaml` | UI strings |
 | `layouts/` | `baseof.html`, `home.html`, `page.html`, `docs/{section,page}.html`, `404.html`, `_partials/`, `_shortcodes/` (Hugo ≥ 0.146 template layout) |
 | `assets/css/` | `base.css` (tokens, fonts, light/dark), `layout.css`, `components.css`, `home.css`, `docs.css`, `gallery.css` – concatenated, minified and fingerprinted by Hugo Pipes |
-| `assets/js/site.js` | nav toggle, theme switch, scroll reveal, tabs, hero tilt |
+| `assets/js/site.js` | nav toggle, theme switch, scroll reveal, home section index, tabs, hero tilt |
 | `assets/js/gallery.js` | template gallery: live refresh, filters (FLIP), detail view, floating/tilting cards; also the live cards on the home page |
 | `content/*/gallery.md`, `layouts/gallery.html`, `layouts/_partials/gallery/` | template gallery page (`/gallery/`, `/de/galerie/`): `data.html` (build-time snapshot), `labels.html` (tag labels), `card.html` (one card, mirrored by the script) |
 | `assets/images/` | screenshots (resized to WebP/JPEG `srcset` by `_partials/picture.html`) |
@@ -45,6 +45,17 @@ ignored by Git.
   after another via CSS delays, their texts come from `hero.notes` and move
   into a list below the canvas on small screens), card hover depth. Everything is off with `prefers-reduced-motion: reduce`;
   without JS all content is visible.
+- Header: one "Home" / "Start" link instead of in-page links (they were
+  mistaken for the way back to the top). The home page has a **section
+  index** at the right edge (`_partials/section-index.html`, labels
+  `sec*` in `i18n/`, styles at the end of `home.css`): ticks on a rail that
+  fills with the reading progress, the current section (IntersectionObserver,
+  `aria-current="location"`) gets a coral tick and, from 1420 px, its label;
+  hover or keyboard focus shows all labels on a card. It appears once the
+  hero has left, only from 1100 px (the margin is too narrow below), and
+  stays `hidden` without JS. A new home section needs an `id` and an entry
+  there. The old anchors (`#features`, `#ai`, `#automation`, `#fastlane`)
+  stay; the footer uses them.
 - Privacy: no third-party requests at all (fonts and images are local), no
   analytics, no cookies.
 
