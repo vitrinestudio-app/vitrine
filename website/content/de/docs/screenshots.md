@@ -108,7 +108,7 @@ Wie Vitrine Studio in eine fastlane-Lane passt: [Nutzung mit fastlane](../fastla
 Ein Schlüssel ohne Datei in irgendeiner Sprache der Kette zeigt im Editor
 einen **Platzhalter**, damit du gestalten kannst, bevor du Aufnahmen hast. Die
 Prüfung meldet ihn als Fehler (`screenshot_missing`), und der Store-Upload
-blockiert jeden Satz, der noch einen enthält – so landet kein Platzhalter
+blockiert jedes Screenshot-Set, das noch einen enthält – so landet kein Platzhalter
 versehentlich im Store. (Ein Export schreibt das Bild trotzdem mit Platzhalter,
 was für Reviews praktisch ist.) Während du gestaltest, behandelt der
 **Vorschau-Modus** in der Prüfliste (oder `vitrine validate --preview`) sie als

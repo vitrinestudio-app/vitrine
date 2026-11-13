@@ -5,7 +5,7 @@ weight: 70
 icon: fonts
 ---
 
-Stile halten einen Satz einheitlich: Ändere den Überschrift-Stil einmal, und
+Stile halten deine Bilder einheitlich: Ändere den Überschrift-Stil einmal, und
 jede Überschrift auf jeder Leinwand, in jeder Sprache folgt. Sie stehen unter
 **Projekteinstellungen → Stile**.
 

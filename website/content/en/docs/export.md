@@ -69,8 +69,8 @@ export renders only images whose input changed – a changed text, screenshot,
 style or setting – and skips the rest. *Re-render everything* / `--force`
 renders all of them.
 
-When a set gets shorter (fewer pages, renamed page ids), the export removes the
-images **it wrote earlier** for those targets and languages but no longer
+When a target produces fewer or different images than in the last export
+(say you deleted pages or renamed page ids), the export removes the images **it wrote earlier** for those targets and languages but no longer
 produces. It never deletes other files in the folder.
 
 `export/` and `.cache/` are listed in the project's `.gitignore` – exports are

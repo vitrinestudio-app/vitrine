@@ -36,7 +36,7 @@ Sprachen → **Erstellen**.
   ihres Autors mit, damit du das Design sofort ausprobieren kannst. Sie werden
   nach `screenshots/` kopiert und in `screenshots/samples.yaml` vermerkt. Die
   Prüfung zeigt den Hinweis `sample_screenshot` („durch eigenen ersetzen“), der
-  Export funktioniert, aber ein **Store-Upload lehnt** jeden Satz ab, der noch
+  Export funktioniert, aber ein **Store-Upload lehnt** jedes Screenshot-Set ab, das noch
   ein Beispiel enthält. Ersetze eine Datei durch deinen eigenen Screenshot
   (gleicher Name) – dann ist sie kein Beispiel mehr, sonst ist nichts zu tun.
 
