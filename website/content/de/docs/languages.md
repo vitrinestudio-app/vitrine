@@ -36,8 +36,10 @@ unvollständige Übersetzung wird also trotzdem gerendert:
 Die Prüfung sagt dir, woher Texte kommen: Ein Text aus der **Standardsprache**
 ist eine Warnung („nicht übersetzt“, und `vitrine validate --strict` schlägt
 fehl), einer aus einem regionalen oder eingestellten Fallback nur ein Hinweis.
+Gibt es einen Text in keiner Sprache der Kette, ist das ein Fehler
+(`text_missing`).
 Screenshots aus irgendeinem Fallback sind ein Hinweis – ein unvollständiger
-Screenshot-Satz pro Sprache ist in Ordnung.
+Screenshot-Set pro Sprache ist in Ordnung.
 
 **Assets → Screenshots** zeigt pro Sprache, welche Bilder geliehen sind:
 *Aus en (Fallback)*, *Aus de (Standardsprache)*; fahre mit der Maus über eine

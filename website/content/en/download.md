@@ -12,7 +12,7 @@ lead: "Vitrine Studio is in **pre-alpha**. Signed installers for macOS, Windows 
 You need [rustup](https://rustup.rs) – the pinned Rust toolchain is installed
 automatically – and, for the desktop app, the
 [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) of your
-platform. No Node.js or npm is needed.
+platform.
 
 ```sh
 git clone https://github.com/vitrinestudio-app/vitrine.git

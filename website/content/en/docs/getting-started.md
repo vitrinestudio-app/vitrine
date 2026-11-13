@@ -69,7 +69,7 @@ Other ways:
   picks them up immediately.
 
 Languages without their own screenshots use the default language's, so you can
-start with English only.
+start with English or your own language only.
 
 ## 4. Write your headlines
 
@@ -92,13 +92,15 @@ see [Fitting long texts](../languages/#fitting-long-texts).
 - Drag elements to move them – they snap to page edges, centres and other
   elements. Handles resize and rotate.
 - A device can sit across two pages; drag it over the border.
-- Drag on empty space to pan, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + scroll or pinch to
-  zoom, <kbd>⌘</kbd><kbd>0</kbd> to fit.
+- Drag on empty space to pan. To zoom, scroll while holding <kbd>⌘</kbd>
+  (macOS) or <kbd>Ctrl</kbd> (Windows, Linux), or pinch on the trackpad;
+  <kbd>⌘</kbd><kbd>0</kbd> fits the view to the window.
 - Made a mistake? <kbd>⌘</kbd><kbd>Z</kbd>. Every change is one undo step and
   saved at once.
 
-The [editor page](../editor/) has everything else; press <kbd>?</kbd> for all
-shortcuts.
+On Windows and Linux, read <kbd>Ctrl</kbd> wherever this guide says
+<kbd>⌘</kbd>. The [editor page](../editor/) has everything else; the **?**
+button at the bottom right shows all shortcuts.
 
 ## 6. Check all formats
 
@@ -122,7 +124,7 @@ The images land in the project's `export/` folder:
 
 ```text
 export/
-  index.html                  ← overview of every image, opens in any browser
+  index.html                  ← overview of every image
   ios-iphone-69/en/01_welcome.png
   ios-iphone-69/en/02_features.png
   ios-iphone-69/en/03_start.png
@@ -147,8 +149,9 @@ vitrine validate --project my-app              # what's missing or doesn't fit
 vitrine export --project my-app                # → my-app/export/
 ```
 
-Edit the texts in `my-app/i18n/en.yaml` and `de.yaml`, or open the folder in
-the app. See the [CLI reference](../cli/).
+Edit the texts directly in `my-app/i18n/en.yaml` and `de.yaml` – or open the
+project (the `my-app` folder) in the desktop app and write them there as
+described above. You can mix both: the app reloads changed files at once. See the [CLI reference](../cli/).
 
 ## Next steps
 

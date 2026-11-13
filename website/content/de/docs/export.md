@@ -72,8 +72,9 @@ Eingaben sich geändert haben – ein geänderter Text, Screenshot, Stil oder ei
 Einstellung – und überspringt den Rest. *Alles neu rendern* / `--force` rendert
 alle.
 
-Wird ein Satz kürzer (weniger Seiten, umbenannte Seiten-IDs), entfernt der
-Export die Bilder, die **er selbst früher** für diese Ziele und Sprachen
+Erzeugt ein Ziel weniger oder andere Bilder als beim letzten Export (du hast
+z. B. Seiten gelöscht oder Seiten-IDs umbenannt), entfernt der Export die
+Bilder, die **er selbst früher** für diese Ziele und Sprachen
 geschrieben hat und nicht mehr erzeugt. Andere Dateien im Ordner löscht er nie.
 
 `export/` und `.cache/` stehen in der `.gitignore` des Projekts – Exporte sind
@@ -99,15 +100,15 @@ metadata/android/en-US/images/featureGraphic.png
 - Mit Hinweis ausgelassen: Ziele ohne Store-Slot (Web, Blog), die
   App-Store-Creatives für Header und Suchergebnisse, Größen, die deliver
   ablehnt, Sprachen ohne Store-Locale.
-- deliver erkennt den Screenshot-Satz an der Pixelgröße, deshalb sind zwei
+- deliver erkennt das Screenshot-Set an der Pixelgröße, deshalb sind zwei
   Ziele derselben Größenklasse in einem Locale-Ordner ein **Konflikt** (das
   erste gewinnt, das andere wird gemeldet). Dasselbe gilt für zwei Ziele mit
-  einem Play-Bildtyp. Mehr als 10 (Apple) bzw. 8 (Play) Bilder in einem Satz →
+  einem Play-Bildtyp. Mehr als 10 (Apple) bzw. 8 (Play) Bilder in einem Set →
   Warnung.
 - Liegen im Ordner noch frameit-Dateien `*_framed.png`, gibt es eine Warnung –
   deliver würde nur diese hochladen.
 
-Schritt für Schritt: [Umstieg von fastlane](../fastlane/).
+Schritt für Schritt: [Nutzung mit fastlane](../fastlane/).
 
 ## Auf der Kommandozeile exportieren {#exporting-from-the-command-line}
 

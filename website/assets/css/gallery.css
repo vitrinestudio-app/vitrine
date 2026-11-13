@@ -342,28 +342,44 @@
 .gal-nomatch[hidden], .gal-empty[hidden] { display: none; }
 .gal-empty h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); }
 .gal-empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
-.gal-empty__art {
+
+/* ================= Loading placeholders =================
+   Neutral cards while the live data loads (no build-time snapshot);
+   the script removes them. Without JS they never show. */
+
+.gskel {
+  --h: clamp(196px, 20vw, 258px);
+  --pad: clamp(20px, 2.2vw, 28px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: var(--pad);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.no-js .gskel, .gskel[hidden] { display: none; }
+.gskel__stage {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  height: 190px;
-  margin: 8px 0 36px;
-  perspective: 900px;
+  gap: clamp(8px, 1vw, 12px);
+  height: calc(var(--h) + 2 * var(--pad));
+  padding: var(--pad);
+  border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+  background: var(--surface-2);
 }
-.gal-empty__art span {
-  width: 88px;
-  border-radius: 14px;
-  background: var(--grad);
-  background-size: 500% 100%;
-  background-position: calc(var(--i) * 25%) 0;
-  box-shadow: var(--shadow-md);
-  opacity: .85;
-  transform: rotateY(-14deg) translateZ(calc((2 - var(--i)) * (2 - var(--i)) * -10px));
+.gskel .gp { box-shadow: none; }
+.gskel__line {
+  height: 14px;
+  width: 55%;
+  margin: 4px var(--pad) 0;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--line) 70%, var(--surface));
 }
+.gskel__line--short { width: 35%; margin-top: 0; }
 @media (prefers-reduced-motion: no-preference) {
-  .gal-empty__art span { animation: gp-float calc(4s + var(--i) * .6s) ease-in-out calc(var(--i) * -1.4s) infinite alternate; }
+  .gskel .gp, .gskel__line { animation: gp-wait 1.6s ease-in-out infinite alternate; animation-delay: calc(var(--i, 0) * 120ms); }
 }
-@media (max-width: 520px) { .gal-empty__art span { width: 52px; } .gal-empty__art { height: 120px; } }
 
 /* ================= Detail view ================= */
 
