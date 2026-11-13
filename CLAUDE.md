@@ -87,10 +87,12 @@ deny.toml, about.toml   licence allow-list (cargo deny, CI) / third-party notice
 .signpath/              SignPath artifact configuration drafts (Windows signing)
 docker/cli/             Dockerfile of the CLI image ghcr.io/vitrinestudio-app/vitrine-cli
                         (target `release` = musl release binary, default = from source)
-integrations/           unpublished CI drafts, MIT, each folder self-contained for its
+integrations/           unpublished drafts, MIT, each folder self-contained for its
                         own repo: github-action/ (vitrinestudio-app/vitrine-github-action),
                         gitlab/ (gitlab.com vitrinestudio/vitrine-gitlab-ci),
-                        fastlane-plugin/ (docs/research/2026-11-12-ci-integrations.md)
+                        fastlane-plugin/ (docs/research/2026-11-12-ci-integrations.md);
+                        skill/ = vendor-neutral agent skill (Agent Skills format) for
+                        store screenshots over MCP
 .github/workflows/      ci.yml (fmt/clippy/test per OS + licences), release.yml
                         (tag v* → draft release + CLI image; docs/dev/releasing.md)
 docs/example/           preview images of the example project (README)
