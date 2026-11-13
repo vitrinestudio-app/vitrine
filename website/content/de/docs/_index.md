@@ -20,5 +20,5 @@ und folge dann den [ersten Schritten](getting-started/), um dein erstes Set
 zu gestalten und zu exportieren.
 
 **Du nutzt fastlane?** Dann sieh dir
-[Nutzung mit fastlane](fastlane/) an. **Du nutzt Claude?** Sieh dir
+[Nutzung mit fastlane](automation/fastlane/) an. **Du nutzt Claude?** Sieh dir
 [KI-Assistenten (MCP)](ai-mcp/) an.

@@ -122,7 +122,7 @@ Meldungen unter [Store-Upload](../store-upload/#troubleshooting).
 **Kann ich Vitrine Studio ohne die App nutzen, z. B. in CI?**
 Ja – die [CLI](../cli/) prüft, exportiert, importiert und lädt hoch; nimm auf
 Build-Rechnern das eigenständige CLI-Archiv und `VITRINE_APP_DIR` für einen
-separaten Einstellungsordner.
+separaten Einstellungsordner. Siehe [Automatisierung](../automation/).
 
 **Schickt Vitrine Studio Daten irgendwohin?**
 Nur wenn du es darum bittest: Store-Uploads und Verbindungstests gehen an

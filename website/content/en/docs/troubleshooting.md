@@ -115,7 +115,7 @@ Create a new version in App Store Connect, then plan again. See
 **Can I use Vitrine Studio without the app, e.g. in CI?**
 Yes – the [CLI](../cli/) validates, exports, imports and uploads; use the
 standalone CLI archive on build machines and `VITRINE_APP_DIR` for a separate
-settings folder.
+settings folder. See [Automation](../automation/).
 
 **Does Vitrine Studio send data anywhere?**
 Only when you ask it to: store uploads and connection tests go to Apple or
