@@ -409,20 +409,6 @@ fn bulk_upload_dry_run_samples_and_admin() {
     let o = vitrine(
         &env,
         &[
-            "gallery", "admin", "reject", "bulk-mac", "nope", "--note", "test", "--api", api,
-        ],
-        &admin,
-    );
-    assert_eq!(o.status.code(), Some(1));
-    let (out, err) = text(&o);
-    assert!(
-        out.contains("ok bulk-mac reject") && err.contains("nope"),
-        "{out}{err}"
-    );
-    assert!(!out.contains("admin-secret") && !err.contains("admin-secret"));
-    let o = vitrine(
-        &env,
-        &[
             "gallery",
             "admin",
             "approve",
@@ -435,4 +421,26 @@ fn bulk_upload_dry_run_samples_and_admin() {
         &[("MY_ADMIN", "admin-secret")],
     );
     assert!(o.status.success(), "{:?}", text(&o));
+    let o = vitrine(
+        &env,
+        &[
+            "gallery", "admin", "reject", "bulk-mac", "nope", "--note", "test", "--api", api,
+        ],
+        &admin,
+    );
+    assert_eq!(o.status.code(), Some(1));
+    let (out, err) = text(&o);
+    assert!(
+        out.contains("ok bulk-mac reject") && err.contains("nope"),
+        "{out}{err}"
+    );
+    // Rejecting deletes the template: it is gone from the queue and the
+    // gallery, so approving it again fails.
+    let o = vitrine(
+        &env,
+        &["gallery", "admin", "approve", "bulk-mac", "--api", api],
+        &admin,
+    );
+    assert_eq!(o.status.code(), Some(1));
+    assert!(!out.contains("admin-secret") && !err.contains("admin-secret"));
 }

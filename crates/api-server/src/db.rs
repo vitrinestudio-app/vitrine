@@ -425,10 +425,27 @@ pub fn open_reports(db: &Connection) -> rusqlite::Result<Vec<Report>> {
     .collect()
 }
 
-pub fn resolve_reports(db: &Connection, template: &str) -> rusqlite::Result<()> {
-    db.execute(
-        "UPDATE reports SET resolved = 1 WHERE template_id = ?1",
-        [template],
-    )?;
+/// Deletes the reports of a template once a moderator has dealt with it
+/// (approve or reject): resolved reports are not kept (privacy policy).
+pub fn delete_reports(db: &Connection, template: &str) -> rusqlite::Result<()> {
+    db.execute("DELETE FROM reports WHERE template_id = ?1", [template])?;
     Ok(())
+}
+
+/// Deletes a template row and its reports; `false` when it did not exist.
+pub fn delete_template(db: &Connection, id: &str) -> rusqlite::Result<bool> {
+    delete_reports(db, id)?;
+    Ok(db.execute("DELETE FROM templates WHERE id = ?1", [id])? > 0)
+}
+
+/// Templates still marked rejected by older versions (rejecting deletes
+/// now); removed at start-up.
+pub fn rejected_ids(db: &Connection) -> rusqlite::Result<Vec<String>> {
+    let mut stmt = db.prepare("SELECT id FROM templates WHERE status = ?1")?;
+    stmt.query_map([REJECTED], |r| r.get(0))?.collect()
+}
+
+/// Removes reports that older versions kept as resolved.
+pub fn purge_resolved_reports(db: &Connection) -> rusqlite::Result<usize> {
+    db.execute("DELETE FROM reports WHERE resolved = 1", [])
 }

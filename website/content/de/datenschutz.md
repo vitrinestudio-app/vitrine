@@ -5,11 +5,6 @@ description: "Datenschutzerklärung von Vitrine Studio: Website, Vorlagen-Galeri
 noindex: true
 ---
 
-{{< callout warn >}}
-**Vor dem Livegang:** Stellen mit „[OFFEN: …]“ müssen vom Inhaber ergänzt
-werden.
-{{< /callout >}}
-
 Diese Datenschutzerklärung klärt dich über Art, Umfang und Zweck der
 Verarbeitung deiner personenbezogenen Daten auf. Sie gilt für alle Dienste
 von Vitrine Studio der Looking4Cache UG (haftungsbeschränkt) (nachfolgend
@@ -41,10 +36,10 @@ Looking4Cache UG (haftungsbeschränkt)<br>
 Oberer Wasen 12<br>
 74626 Bretzfeld<br>
 Deutschland<br>
-E-Mail: [OFFEN: Kontaktadresse, wie im [Impressum](/de/impressum/)]
+E-Mail: info@grove.eco
 
 Einen Datenschutzbeauftragten haben wir nicht benannt, da wir dazu nicht
-verpflichtet sind. [OFFEN: bitte bestätigen]
+verpflichtet sind.
 
 ## 2. Rechtsgrundlagen der Verarbeitung
 
@@ -72,31 +67,37 @@ Abs. 2 Nr. 2 TDDDG).
 
 ### 3.1. Hosting und Logdateien des Webservers
 
-Die Website besteht aus statischen Seiten. Sie wird betrieben bei
-[OFFEN: Hoster / Rechenzentrum, Name und Anschrift, Serverstandort;
-Auftragsverarbeitungsvertrag nach Art. 28 DSGVO].
+Die Website besteht aus statischen Seiten. Sie liegt auf Servern der Hetzner
+Online GmbH, Industriestr. 25, 91710 Gunzenhausen, Deutschland, in
+Rechenzentren in Deutschland. Mit Hetzner haben wir einen Vertrag zur
+Auftragsverarbeitung nach Art. 28 DSGVO geschlossen.
 
 Bei jedem Zugriff auf die Website protokolliert der Webserver den Zugriff in
 Logdateien. Gespeichert werden:
 
-- IP-Adresse [OFFEN: vollständig oder gekürzt/anonymisiert]
+- IP-Adresse in anonymisierter (gekürzter) Form
 - Datum und Uhrzeit
 - aufgerufene URL, HTTP-Methode und -Status, übertragene Datenmenge
 - Referrer-URL (die zuvor besuchte Seite), sofern dein Browser sie sendet
 - Browser-Kennung (User-Agent)
 
-[OFFEN: Umfang der Protokollierung mit der tatsächlichen
-Webserver-Konfiguration abgleichen.]
-
 Zweck der Protokollierung ist die Auslieferung der Website, die
-Nachvollziehbarkeit von Fehlern und die Abwehr von Angriffen. Eine Zuordnung
-zu deiner Person findet nicht statt.
+Nachvollziehbarkeit von Fehlern und die Analyse der Stabilität des Servers.
+Eine Zuordnung zu deiner Person findet nicht statt.
+
+Eine Kürzung der IP-Adresse geschieht nicht bei sicherheitsrelevanten
+Vorgängen, etwa bei erkennbaren Angriffsversuchen auf den Server. Diese
+Einträge werden mit vollständiger IP-Adresse gespeichert, um Angriffe
+erkennen, abwehren und gegebenenfalls verfolgen zu können.
 
 **Rechtsgrundlage:** unser berechtigtes Interesse an einem sicheren und
-stabilen Betrieb, Art. 6 Abs. 1 lit. f DSGVO.
+stabilen Betrieb sowie an der Abwehr von Angriffen, Art. 6 Abs. 1 lit. f
+DSGVO.
 
-**Speicherdauer:** Die Protokolle werden nach [OFFEN: Anzahl] Tagen
-automatisch gelöscht.
+**Speicherdauer:** Die Protokolle werden nach höchstens 30 Tagen
+automatisch gelöscht. Länger bewahren wir einzelne Einträge nur auf, wenn sie
+im Einzelfall zur Aufklärung eines konkreten Sicherheitsvorfalls als
+Beweismittel benötigt werden, und nur bis zu dessen Abschluss.
 
 ### 3.2. Keine Cookies, lokaler Speicher für die Farbdarstellung
 
@@ -136,23 +137,24 @@ und es gelten deren Datenschutzbestimmungen.
 
 Über die Galerie kannst du Vorlagen ohne Konto ansehen und herunterladen.
 Zum Hochladen eigener Vorlagen meldest du dich mit deinem GitHub-Konto an.
-Die Galerie wird betrieben bei [OFFEN: Hoster / Rechenzentrum, Name und
-Anschrift, Serverstandort; Auftragsverarbeitungsvertrag nach Art. 28 DSGVO].
+Auch die Galerie liegt auf Servern der Hetzner Online GmbH in Deutschland
+(Anschrift und Auftragsverarbeitung wie in Abschnitt 3.1).
 
 ### 4.1. Zugriffe, Protokolle und Begrenzung der Anfragen
 
 Jeder Zugriff auf die Galerie – über die Website, die App oder die
 Kommandozeile – geht über einen vorgeschalteten Webserver (Reverse Proxy),
-der Zugriffe wie in Abschnitt 3.1 protokolliert. [OFFEN: Umfang und
-Speicherdauer dieser Protokolle.] Die App und die Kommandozeile senden dabei
+der Zugriffe wie in Abschnitt 3.1 protokolliert (anonymisierte IP-Adresse,
+vollständige nur bei sicherheitsrelevanten Vorgängen; Löschung nach
+höchstens 30 Tagen). Die App und die Kommandozeile senden dabei
 die Programmkennung `VitrineStudio/<Versionsnummer>` als User-Agent.
 
 Zum Schutz vor Missbrauch und Überlastung begrenzt die Galerie die Zahl der
 Anfragen je Absender und Stunde (z. B. Abrufe, Uploads, Meldungen,
 Anmeldeversuche). Dazu zählt sie Anfragen je IP-Adresse in einem Zeitfenster
 von einer Stunde. Diese Zähler liegen nur im Arbeitsspeicher, werden nicht
-auf einen Datenträger geschrieben und gehen bei jedem Neustart des Servers
-verloren.
+auf einen Datenträger geschrieben und nach Ablauf des einstündigen
+Zeitfensters automatisch gelöscht (bei einem Neustart des Servers sofort).
 
 Beim Herunterladen einer Vorlage erhöht sich ein Download-Zähler der Vorlage;
 dabei wird nicht gespeichert, wer heruntergeladen hat.
@@ -185,11 +187,9 @@ mehr benötigt.
 Upload-Funktion); für das Anmelde-Cookie zusätzlich § 25 Abs. 2 Nr. 2
 TDDDG.
 
-**Speicherdauer:** Eine Sitzung gilt [OFFEN: 90 Tage, falls die
-Server-Einstellung nicht geändert wurde]. Beim Abmelden wird sie sofort
-gelöscht; abgelaufene Sitzungen werden nicht mehr angenommen und beim
-nächsten Anmeldevorgang am Server gelöscht. Einmal verwendete oder
-abgelaufene Anmelde-Zwischenstände werden ebenso gelöscht.
+**Speicherdauer:** Eine Sitzung gilt 90 Tage. Beim Abmelden wird sie sofort
+gelöscht; abgelaufene Sitzungen werden automatisch gelöscht. Einmal
+verwendete oder abgelaufene Anmelde-Zwischenstände werden ebenso gelöscht.
 
 Für die Anmeldung bei GitHub ist GitHub selbst verantwortlich (siehe
 Abschnitt 6).
@@ -215,8 +215,8 @@ Versionen deiner Vorlagen hochladen kannst).
 
 **Speicherdauer:** solange die Vorlage in der Galerie angeboten wird. Auf
 Anfrage per E-Mail löschen wir deine Vorlagen und die zugehörigen Angaben.
-Abgelehnte Vorlagen löschen wir [OFFEN: Frist, z. B. innerhalb von 30
-Tagen]. Bereits heruntergeladene Kopien können wir nicht zurückholen.
+Lehnen wir eine Vorlage ab, wird sie mit allen Dateien und Angaben sofort
+gelöscht. Bereits heruntergeladene Kopien können wir nicht zurückholen.
 
 ### 4.4. Meldungen von Vorlagen
 
@@ -230,8 +230,10 @@ können.
 Services Act) und Art. 6 Abs. 1 lit. f DSGVO (Schutz der Galerie vor
 rechtswidrigen Inhalten).
 
-**Speicherdauer:** bis zur Erledigung der Meldung und anschließend
-[OFFEN: Frist].
+**Speicherdauer:** bis zur Erledigung der Meldung. Sobald wir über die
+gemeldete Vorlage entschieden haben (sie bleibt veröffentlicht oder wird
+abgelehnt und gelöscht), werden alle Meldungen zu dieser Vorlage sofort
+gelöscht.
 
 ## 5. Desktop-App und Kommandozeile
 
@@ -285,12 +287,11 @@ Datenschutzerklärung: https://docs.github.com/de/site-policy/privacy-policies/g
 ## 7. Empfänger und Übermittlung in Drittländer
 
 Wir verkaufen keine Daten und geben sie nicht zu Werbezwecken weiter.
-Empfänger personenbezogener Daten sind nur die Hosting-Dienstleister der
-Website und der Galerie (Abschnitte 3.1 und 4), mit denen wir Verträge zur
-Auftragsverarbeitung schließen, sowie Behörden, soweit wir gesetzlich dazu
-verpflichtet sind. Eine Übermittlung in Drittländer findet durch uns nicht
-statt [OFFEN: bestätigen, sobald die Hoster feststehen]; zu GitHub siehe
-Abschnitt 6.
+Empfänger personenbezogener Daten sind nur unser Hosting-Dienstleister
+Hetzner Online GmbH (Abschnitte 3.1 und 4), mit dem wir einen Vertrag zur
+Auftragsverarbeitung geschlossen haben, sowie Behörden, soweit wir
+gesetzlich dazu verpflichtet sind. Eine Übermittlung in Drittländer findet
+durch uns nicht statt; zu GitHub siehe Abschnitt 6.
 
 ## 8. Speicherdauer
 
