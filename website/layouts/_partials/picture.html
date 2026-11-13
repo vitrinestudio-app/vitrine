@@ -1,29 +1,23 @@
 {{- /*
   Responsive image from assets/images: WebP srcset + JPEG fallback.
   dict "src" "images/x.jpg" "alt" "…" "sizes" "…" "class" "…" "widths" (slice 480 800 1200 1600) "eager" false
+
+  Theme pairs: when images/x-dark.jpg exists next to images/x.jpg, both are
+  rendered (classes theme-img--light / theme-img--dark) and base.css shows
+  the one matching the site theme (prefers-color-scheme, overridden by the
+  toggle's data-theme on <html>). Both are loading="lazy", so the hidden one
+  (display: none) is not downloaded. "theme" false turns this off.
 */ -}}
-{{- $img := resources.Get .src -}}
-{{- if not $img }}{{ errorf "picture: image %q not found" .src }}{{ end -}}
-{{- $widths := .widths | default (slice 480 800 1200 1600) -}}
-{{- $fits := slice -}}
-{{- range $widths }}{{ if le . $img.Width }}{{ $fits = $fits | append . }}{{ end }}{{ end -}}
-{{- if not $fits }}{{ $widths = slice $img.Width }}{{ end -}}
-{{- $sizes := .sizes | default "100vw" -}}
-{{- $webp := slice -}}
-{{- $jpg := slice -}}
-{{- $fallback := $img -}}
-{{- range $widths -}}
-  {{- if le . $img.Width -}}
-    {{- $w := $img.Resize (printf "%dx webp q80" .) -}}
-    {{- $webp = $webp | append (printf "%s %dw" $w.RelPermalink .) -}}
-    {{- $j := $img.Resize (printf "%dx jpg q82" .) -}}
-    {{- $jpg = $jpg | append (printf "%s %dw" $j.RelPermalink .) -}}
-    {{- $fallback = $j -}}
-  {{- end -}}
+{{- $dark := "" -}}
+{{- if and (ne .theme false) (not (strings.HasSuffix (path.BaseName .src) "-dark")) -}}
+  {{- $ext := path.Ext .src -}}
+  {{- $dark = printf "%s-dark%s" (strings.TrimSuffix $ext .src) $ext -}}
+  {{- if not (resources.Get $dark) }}{{ $dark = "" }}{{ end -}}
 {{- end -}}
-<picture{{ with .class }} class="{{ . }}"{{ end }}>
-  <source type="image/webp" srcset="{{ delimit $webp ", " }}" sizes="{{ $sizes }}">
-  <img src="{{ $fallback.RelPermalink }}" srcset="{{ delimit $jpg ", " }}" sizes="{{ $sizes }}"
-       width="{{ $img.Width }}" height="{{ $img.Height }}" alt="{{ .alt }}"
-       {{ if .eager }}fetchpriority="high"{{ else }}loading="lazy"{{ end }} decoding="async">
-</picture>
+{{- if $dark -}}
+  {{- $cls := .class | default "" -}}
+  {{- partial "picture-one.html" (merge . (dict "class" (printf "%s theme-img--light" $cls | strings.TrimSpace) "eager" false)) -}}
+  {{- partial "picture-one.html" (merge . (dict "src" $dark "class" (printf "%s theme-img--dark" $cls | strings.TrimSpace) "eager" false)) -}}
+{{- else -}}
+  {{- partial "picture-one.html" . -}}
+{{- end -}}

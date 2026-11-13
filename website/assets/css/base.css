@@ -93,6 +93,17 @@
   color-scheme: dark;
 }
 
+/* Screenshot theme pairs (_partials/picture.html): show the light or the dark
+   capture to match the theme. The hidden one is lazy and display: none, so the
+   browser does not fetch it. */
+.theme-img--dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-img--light { display: none; }
+  :root:not([data-theme="light"]) .theme-img--dark { display: block; }
+}
+:root[data-theme="dark"] .theme-img--light { display: none; }
+:root[data-theme="dark"] .theme-img--dark { display: block; }
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html {

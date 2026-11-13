@@ -1,0 +1,29 @@
+{{- /*
+  One responsive image from assets/images: WebP srcset + JPEG fallback.
+  Called by picture.html (which adds the dark-theme sibling); same dict.
+*/ -}}
+{{- $img := resources.Get .src -}}
+{{- if not $img }}{{ errorf "picture: image %q not found" .src }}{{ end -}}
+{{- $widths := .widths | default (slice 480 800 1200 1600) -}}
+{{- $fits := slice -}}
+{{- range $widths }}{{ if le . $img.Width }}{{ $fits = $fits | append . }}{{ end }}{{ end -}}
+{{- if not $fits }}{{ $widths = slice $img.Width }}{{ end -}}
+{{- $sizes := .sizes | default "100vw" -}}
+{{- $webp := slice -}}
+{{- $jpg := slice -}}
+{{- $fallback := $img -}}
+{{- range $widths -}}
+  {{- if le . $img.Width -}}
+    {{- $w := $img.Resize (printf "%dx webp q80" .) -}}
+    {{- $webp = $webp | append (printf "%s %dw" $w.RelPermalink .) -}}
+    {{- $j := $img.Resize (printf "%dx jpg q82" .) -}}
+    {{- $jpg = $jpg | append (printf "%s %dw" $j.RelPermalink .) -}}
+    {{- $fallback = $j -}}
+  {{- end -}}
+{{- end -}}
+<picture{{ with .class }} class="{{ . }}"{{ end }}>
+  <source type="image/webp" srcset="{{ delimit $webp ", " }}" sizes="{{ $sizes }}">
+  <img src="{{ $fallback.RelPermalink }}" srcset="{{ delimit $jpg ", " }}" sizes="{{ $sizes }}"
+       width="{{ $img.Width }}" height="{{ $img.Height }}" alt="{{ .alt }}"
+       {{ if .eager }}fetchpriority="high"{{ else }}loading="lazy"{{ end }} decoding="async">
+</picture>

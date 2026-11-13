@@ -47,6 +47,30 @@ ignored by Git.
 - Privacy: no third-party requests at all (fonts and images are local), no
   analytics, no cookies.
 
+### Screenshots
+
+- Images live in `assets/images/` and are embedded with
+  `_partials/picture.html` (home page) or the `shot` shortcode (docs);
+  Hugo makes the WebP/JPEG `srcset`. Keep sources at most 2400 px wide
+  (full editor shots, galleries) or 1520 px (dialogs; the docs column is
+  760 px), JPEG quality ~84.
+- **Light/dark pairs:** an app screenshot `x.jpg` may have a sibling
+  `x-dark.jpg` (same view, dark app theme). `picture.html` then renders both
+  `<picture>` elements (`theme-img--light` / `theme-img--dark`, both
+  `loading="lazy"`), and `base.css` hides the one that does not match the
+  site theme – via `prefers-color-scheme` and the toggle's `data-theme` on
+  `<html>`, so it works without JS and switches without a flash. The hidden
+  image is `display: none` and lazy, so the browser does not download it.
+  Pass `"theme" false` to opt out. Store-gallery renders have one version.
+- App screenshots are taken in the dev bridge (`?lang=en`, `?theme=light|dark`)
+  at a 1600×1000 CSS px window with device scale 2, from projects made from
+  the gallery templates *Pop-Art Panels*, *Synthwave Sunset* and *Park
+  Poster*; galleries and banners are rendered with `vitrine render
+  --gallery` / `--image`. `example-ipad-grouped-de.jpg` is a render of
+  `tests/fixtures/example` (the targets page describes that project).
+- The docs still support `{{</* placeholder "…" */>}}` for screenshots that
+  cannot be taken yet.
+
 ### Regenerating the font subsets
 
 The WOFF2 files are subsets of `/assets/fonts/` made with fontTools:
