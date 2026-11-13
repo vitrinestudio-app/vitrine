@@ -206,12 +206,16 @@ All need a published release with CLI archives (7.3). Doc:
 - [x] **Owner** – repo `vitrinestudio-app/vitrine-agent-skill` created (2026-11-13) for the
       agent skill (`integrations/skill/`, MIT, open Agent Skills format; that folder is the
       repo root: `skills/vitrine-store-screenshots/SKILL.md`, README, LICENSE).
-- [ ] **Agent** – before publishing: validate the skill against the spec (`skills-ref
+- [x] **Agent** – before publishing: validate the skill against the spec (`skills-ref
       validate skills/vitrine-store-screenshots`, https://agentskills.io/specification:
       `name` = folder name, lowercase/hyphens, `description` ≤ 1024 chars, SKILL.md < 500
       lines); check `npx skills add <local path> --list` finds it; re-check the tool names
       against the released app; verify the per-client install notes in the README (marked
-      "verify") and the licences of the sources in CREDITS.md.
+      "verify") and the licences of the sources in CREDITS.md. Done 2026-11-13: valid
+      (desc 413 chars, 121 lines), `skills add --list` finds it, every tool/op/field/finding
+      name exists in the code, all four credited repos MIT, README client notes checked
+      (Claude Desktop upload now under Customize → Skills). Re-check tool names once more
+      if the MCP surface changes before the app release.
 - [x] **Agent** – push `integrations/skill/` to the repo (folder = repo root; later syncs the
       same way as the GitHub Action) – pushed 2026-11-13 (reported by the coordinator).
 - [ ] **Owner** – repo settings: public, description ("Agent skill: App Store & Google Play

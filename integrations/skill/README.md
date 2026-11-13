@@ -58,21 +58,24 @@ directory (keep the folder name – it must match the skill's `name`), or upload
 where your client takes skill uploads. Restart or reload the agent if it reads skills at
 start-up. Then ask for something like "make App Store screenshots for my app in Vitrine".
 
-Per-client notes – examples, paths and menus change, **verify** them in your client's docs:
+Per-client notes (checked against the clients' docs in November 2026; paths and menus
+change, so look at your client's docs if something doesn't match):
 
-- **Claude Code** *(verify)*: personal `~/.claude/skills/vitrine-store-screenshots/`, or
-  per project `.claude/skills/vitrine-store-screenshots/`. Plugin marketplaces are another
-  way to distribute skills; this folder does not ship a plugin manifest.
-- **Claude Desktop / claude.ai** *(verify)*: zip the folder `vitrine-store-screenshots`
-  (the zip contains that folder) and upload it under Settings → Capabilities → Skills.
-- **OpenAI Codex CLI** *(verify)*: reported to read Agent Skills from a skills folder such as
-  `~/.codex/skills/` or `.agents/skills/`.
-- **Gemini CLI** *(verify)*: reported to read skills from `.gemini/skills/` (or
-  `~/.gemini/skills/`).
-- **Cursor** *(verify)*: reported to read skills from `.cursor/skills/` (project) or
-  `~/.cursor/skills/` (global) since version 2.4.
-- Cross-agent installers (for example the `skills` CLI from Vercel Labs) can copy a skill into
-  the right folder for several agents *(verify)*.
+- **Claude Code**: personal `~/.claude/skills/vitrine-store-screenshots/`, or per project
+  `.claude/skills/vitrine-store-screenshots/`. Plugin marketplaces are another way to
+  distribute skills; this folder does not ship a plugin manifest.
+- **Claude Desktop / claude.ai**: zip the folder `vitrine-store-screenshots` (the zip
+  contains that folder) and upload it under Customize → Skills → "+" → Create skill →
+  Upload a skill. Skills need code execution ("Create and edit files") switched on in
+  Settings → Capabilities; older app versions have the upload there too.
+- **OpenAI Codex**: per repository `.agents/skills/`, personal `~/.codex/skills/`
+  (`$CODEX_HOME/skills/`).
+- **Gemini CLI**: per project `.gemini/skills/` (or `.agents/skills/`), personal
+  `~/.gemini/skills/`; `/skills list` shows what it found.
+- **Cursor**: per project `.cursor/skills/`; it also reads `.claude/skills/`,
+  `.codex/skills/` and their counterparts in your home folder.
+- The cross-agent `skills` CLI (above) copies the skill into the right folder for each agent
+  you pick.
 
 Client-specific packaging (a plugin manifest, an `.mcp.json`) is deliberately not part of the
 main structure; if it is added later, it goes into a separate subfolder.
