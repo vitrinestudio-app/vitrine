@@ -101,14 +101,14 @@ vitrine import screenshots fastlane/ --save-mapping
 vitrine import screenshots shots/ --device-map "iPhone 17 Pro Max=ios-phone" --lang-map pt-PT=pt --key-map 01_home=home
 ```
 
-Mehr zum Ablösen von frameit: [Umstieg von fastlane](../fastlane/).
+Wie Vitrine Studio in eine fastlane-Lane passt: [Nutzung mit fastlane](../fastlane/).
 
 ## Fehlende Screenshots und Platzhalter {#missing-screenshots-and-placeholders}
 
 Ein Schlüssel ohne Datei in irgendeiner Sprache der Kette zeigt im Editor
 einen **Platzhalter**, damit du gestalten kannst, bevor du Aufnahmen hast. Die
 Prüfung meldet ihn als Fehler (`screenshot_missing`), und der Store-Upload
-blockiert jeden Satz, der noch einen enthält – so landet kein Platzhalter
+blockiert jedes Screenshot-Set, das noch einen enthält – so landet kein Platzhalter
 versehentlich im Store. (Ein Export schreibt das Bild trotzdem mit Platzhalter,
 was für Reviews praktisch ist.) Während du gestaltest, behandelt der
 **Vorschau-Modus** in der Prüfliste (oder `vitrine validate --preview`) sie als

@@ -167,7 +167,7 @@ include:
 
 Die meisten Mobile-Pipelines laufen über fastlane. Exportiere direkt in die
 fastlane-Ordner – deliver und supply laden sie unverändert hoch (siehe
-[Umstieg von fastlane](../fastlane/)):
+[Nutzung mit fastlane](../fastlane/)):
 
 ```ruby
 lane :screenshots do
@@ -219,8 +219,8 @@ aus Umgebungsvariablen. Setze sie aus dem Secret-Speicher deiner CI:
   aus den Projekteinstellungen verwendet. Das Werkzeug gibt aus, welchen
   Schlüssel es nimmt (Key-ID bzw. E-Mail des Dienstkontos, nie den
   Schlüssel selbst).
-- Alle oder keine: Ein halb gefüllter Satz bricht mit Exit-Code 2 ab. So
-  greift ein falsch konfigurierter Job nie auf ein anderes Konto zurück.
+- Alle oder keine: Sind die Variablen eines Stores nur zum Teil gesetzt,
+  bricht der Befehl mit Exit-Code 2 ab. So greift ein falsch konfigurierter Job nie auf ein anderes Konto zurück.
 - Vitrine Studio schreibt die Schlüssel nie auf die Festplatte und nie in
   ein Log. Nur `vitrine upload` liest diese Variablen; die App und die
   Verbindung zu KI-Assistenten (MCP) ignorieren sie.

@@ -1,6 +1,6 @@
 ---
 title: KI-Assistenten (MCP)
-description: "Claude Desktop, Claude Code oder einen anderen MCP-Client verbinden: Der Assistent gestaltet, übersetzt, prüft und exportiert im geöffneten Projekt – live und rückgängig machbar."
+description: "Claude Desktop, Claude Code oder einen anderen MCP-Client verbinden: Der Assistent gestaltet, übersetzt, prüft und exportiert im geöffneten Projekt. Jede Änderung erscheint sofort in der App, und du kannst sie wie deine eigenen zurücknehmen."
 weight: 130
 icon: sparkle
 ---

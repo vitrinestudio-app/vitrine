@@ -20,6 +20,6 @@ nicht fertig ist.
 und folge dann den [ersten Schritten](getting-started/), um dein erstes Set
 zu gestalten und zu exportieren.
 
-**Du kommst von fastlane frameit?** Dann geh direkt zu
-[Umstieg von fastlane](fastlane/). **Du nutzt Claude?** Sieh dir
+**Du nutzt fastlane?** Dann sieh dir
+[Nutzung mit fastlane](fastlane/) an. **Du nutzt Claude?** Sieh dir
 [KI-Assistenten (MCP)](ai-mcp/) an.

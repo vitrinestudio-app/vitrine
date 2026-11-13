@@ -113,14 +113,14 @@ features:
       title: "Colour-managed output"
       text: "Display P3 screenshots are converted to sRGB once; exports are opaque, incremental and come with an `index.html` overview."
     - icon: fonts
-      title: "11 bundled font families"
+      title: "Bundled font families"
       text: "Inter, Montserrat, Playfair Display, Lora, Bebas Neue and more – all SIL OFL, always available, no font files needed."
     - icon: terminal
       title: "CLI for CI"
       text: "`vitrine validate`, `export` and `upload` work in scripts and pipelines, with clear exit codes and JSON output."
     - icon: sparkle
       title: "AI assistants via MCP"
-      text: "Claude and other MCP clients can design, translate, preview and export – live in your editor, every step undoable."
+      text: "Claude and other MCP clients can design, translate, preview and export – live in your editor, and you can undo every step like your own."
     - icon: template
       title: "Templates"
       text: "Start from a template, save your own canvases as templates and share them – a community gallery is on its way."
@@ -180,16 +180,16 @@ ai:
     toast: "Claude Desktop: Set French texts · Undo"
 
 fastlane:
-  eyebrow: "Coming from fastlane?"
-  title: "A drop-in replacement for frameit"
+  eyebrow: "Using fastlane?"
+  title: "Fits right into your fastlane lane"
   lead: "Keep snapshot, screengrab, deliver and supply. Vitrine Studio reads your captures and writes exactly the folders deliver and supply upload."
   terminalLabel: "Terminal: importing fastlane screenshots and exporting in the fastlane layout."
-  more: "Read the migration guide"
+  more: "Using Vitrine Studio with fastlane"
   points:
     - "Imports whole `fastlane/` folders – snapshot **and** screengrab output, store locales, `01Home` names"
     - "Skips frameit leftovers (`_framed.png`, `Framefile.json`) with a reason"
     - "Exports the **deliver/supply layout** with store-locale folders, conflict checks and limits"
-    - "Or skip deliver for screenshots and use the built-in store upload"
+    - "Optionally Vitrine Studio uploads the screenshots itself – deliver and supply keep uploading binary and metadata"
   terminal:
     - {comment: "1 · bring your captures in (frameit files are ignored)"}
     - {cmd: "vitrine import screenshots fastlane/"}
@@ -198,7 +198,7 @@ fastlane:
     - {cmd: "vitrine export --layout fastlane --out fastlane"}
     - {out: "✓ screenshots/de-DE/01_ios-iphone-69.png …"}
     - {out: "✓ metadata/android/de-DE/images/phoneScreenshots/ …"}
-    - {comment: "3 · drop frameit from the Fastfile – upload as before"}
+    - {comment: "3 · upload as before"}
     - {cmd: "fastlane deliver"}
 
 upload:
@@ -286,7 +286,7 @@ faq:
     - q: "Does it come with Apple device frames?"
       a: "Vitrine Studio draws its own device frames parametrically and ships no vendor artwork. You can import Apple's Product Bezels yourself (downloaded from Apple Design Resources) or use your own frame packs."
     - q: "Can I keep my fastlane setup?"
-      a: "Yes. Vitrine Studio imports snapshot and screengrab output and exports the exact folder layout deliver and supply upload – it replaces frameit, not the rest of your lane."
+      a: "Yes. Vitrine Studio imports snapshot and screengrab output and exports the exact folder layout deliver and supply upload – Vitrine Studio designs the screenshots in your lane, everything else stays with fastlane."
     - q: "Which AI assistants work with it?"
       a: "Any MCP client. Claude Desktop is set up with one click from the app settings, Claude Code with one command. Assistants can plan store uploads, but executing one needs your confirmation in the app."
     - q: "Which languages are supported?"

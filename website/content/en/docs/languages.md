@@ -32,7 +32,8 @@ translation still renders:
 
 Validation tells you where texts come from: a text from the **default
 language** is a warning ("not translated", and `vitrine validate --strict`
-fails), one from a regional or configured fallback is just an info.
+fails), one from a regional or configured fallback is just an info. A text
+that exists in no language of the chain is an error (`text_missing`).
 Screenshots from any fallback are an info – a partial screenshot set per
 language is fine.
 

@@ -5,7 +5,7 @@ weight: 70
 icon: fonts
 ---
 
-Stile halten einen Satz einheitlich: Ändere den Überschrift-Stil einmal, und
+Stile halten deine Bilder einheitlich: Ändere den Überschrift-Stil einmal, und
 jede Überschrift auf jeder Leinwand, in jeder Sprache folgt. Sie stehen unter
 **Projekteinstellungen → Stile**.
 
@@ -22,9 +22,9 @@ Ein Textstil legt *Schrift*, *Gewicht*, *Kursiv*, *Größe* (in lu),
 *Zeilenhöhe*, *Laufweite*, *Farbe*, *Hinterlegung* (ein Hintergrund hinter dem
 Text), *Schreibweise* (*wie geschrieben*, *GROSSBUCHSTABEN*,
 *kleinbuchstaben*), *Schatten*, Kontur und Leuchten fest, und ob *Bei Bedarf
-automatisch trennen* gilt. Textelemente wählen im Inspektor einen Stil
-(*Stil*) und können einzelne Werte (Farbe, Schriftgröße, Effekte) für sich
-überschreiben.
+automatisch trennen* gilt. Im Inspektor wählst du für ein Textelement einen
+Stil (*Stil*) und kannst dort einzelne Werte (Farbe, Schriftgröße, Effekte)
+nur für dieses Element überschreiben.
 
 Größen sind in lu: Auf einer 1000 lu breiten Seite ist eine 90-lu-Überschrift
 9 % der Seitenbreite – auf jeder Gerätegröße.
@@ -54,14 +54,16 @@ transparenter Bilder folgen deren Form (wie CSS `drop-shadow`).
 
 Texte können eine **Kontur** (Breite in lu, *Außen* oder *Mittig*), ein
 **Leuchten** (Radius, Deckkraft, Ausdehnung) und einen **Schatten** haben.
-Setze sie am Textstil, an einem Span-Stil oder am Element – das Genaueste
-gewinnt (Span > Element > Stil). Um einen geerbten Effekt abzuschalten, setze
+Setze sie am Textstil, am Element oder an einem Span-Stil. Der Textstil
+gibt die Grundwerte vor, ein am Element gesetzter Effekt ersetzt den des
+Stils, und ein Span-Stil gilt für seine markierten Wörter vor beidem – das
+Genaueste gewinnt (Span vor Element vor Textstil). Um einen geerbten Effekt abzuschalten, setze
 die Konturbreite auf 0, die Leuchtdeckkraft auf 0 oder den Schatten auf
 *none*. Effektgrößen sind in lu und schrumpfen beim Auto-Fit nicht mit.
 
 ## Mitgelieferte Schriften {#bundled-fonts}
 
-Elf Familien sind eingebaut – immer verfügbar in der App, in der CLI und für
+Diese Familien sind eingebaut – immer verfügbar in der App, in der CLI und für
 KI-Assistenten, ohne Dateien, alle unter der SIL Open Font License:
 
 | Familie | Kategorie | Gewichte | Kursiv |
@@ -90,7 +92,7 @@ KI-Assistenten, ohne Dateien, alle unter der SIL Open Font License:
   **Griechisch:** Inter und JetBrains Mono. **Vietnamesisch:** alle außer
   Bebas Neue und Caveat.
 
-Sechs weitere mitgelieferte Familien decken andere Schriftsysteme ab und
+Weitere mitgelieferte Familien decken andere Schriftsysteme ab und
 werden automatisch verwendet – siehe
 [Unterstützte Schriftsysteme](#supported-scripts).
 
@@ -223,7 +225,7 @@ Schrift, die zu deiner Überschriftenschrift passt):
 2. **Projekteinstellungen → Schriften** → die Familie, die du nutzt →
    **Fallback-Familie hinzufügen** → Noto Sans JP.
 
-Die Prüfung meldet Zeichen, die keine Schrift zeichnen kann
+Die Prüfung meldet Zeichen, die keine Schrift zeichnen kann, als Warnung
 (`missing_glyphs`), und Zeichen, die eine installierte Fallback-Schrift
 zeichnet (`system_font_fallback`, Info).
 

@@ -18,7 +18,7 @@ Ziel-Auswahl) → eine Leinwand → **Ziel hinzufügen**. Wähle ein Preset – 
 Filterfeld hilft – und **Mit dieser Größe hinzufügen**, wenn ein Preset mehrere
 Größen anbietet. Jedes Preset bringt die exakten Größen des Stores mit, den
 Store-Slot, ein passendes Gerät und das Galerie-Profil. Plaketten zeigen, ob
-der Store den Satz **verlangt** (*Pflicht*, *bedingt*, *optional*) und wie gut
+der Store das Set **verlangt** (*Pflicht*, *bedingt*, *optional*) und wie gut
 die Daten geprüft sind.
 
 {{< placeholder "Leinwände & Ziele: die Liste Ziel hinzufügen mit Presets, Plaketten und Größen." >}}
@@ -27,9 +27,9 @@ die Daten geprüft sind.
 
 | Preset | Größe (px, Vorgabe zuerst) | Hinweise |
 |---|---|---|
-| `ios-iphone-69` | 1320×2868, 1290×2796 | iPhone 6,9″/6,7″ – wird als Apples 6,7″-Satz hochgeladen |
+| `ios-iphone-69` | 1320×2868, 1290×2796 | iPhone 6,9″/6,7″ – wird als Apples 6,7″-Set hochgeladen |
 | `ios-iphone-65` | 1284×2778, 1242×2688 | iPhone 6,5″ |
-| `ios-iphone-63` | 1206×2622, 1179×2556 | iPhone 6,3″ – **der Pflicht-Satz für iPhone** |
+| `ios-iphone-63` | 1206×2622, 1179×2556 | iPhone 6,3″ – **das Pflicht-Set für iPhone** |
 | `ios-iphone-61` | 1170×2532, 1125×2436, 1080×2340 | iPhone 6,1″/5,8″ |
 | `ios-iphone-55`, `ios-iphone-47` | 1242×2208, 750×1334 | iPhones mit Home-Button |
 | `ios-iphone-duo-inner`, `-outer` | 2007×2853, 1398×2034 | iPhone Duo, nur über die App Asset Library |
@@ -48,8 +48,8 @@ die Daten geprüft sind.
 | `banner-blog-header`, `banner-open-graph`, `banner-web-hero` | 2400×1000, 1200×630, 2880×1200 | für deine Website und Social Media |
 
 Jedes Preset hat auch eine Querformat-Größe, wo der Store es erlaubt (*Breite
-und Höhe tauschen*). Bei Apple *brauchst* du nur einen iPhone-Satz (6,3″) und
-für iPad-Apps einen iPad-Satz (13″); App Store Connect skaliert die anderen
+und Höhe tauschen*). Bei Apple *brauchst* du nur ein iPhone-Set (6,3″) und
+für iPad-Apps ein iPad-Set (13″); App Store Connect skaliert die anderen
 herunter. Google Play will 2–8 Bilder pro Gerätetyp und mindestens vier mit
 1080 px oder mehr, damit die App für Empfehlungen infrage kommt.
 
@@ -84,13 +84,13 @@ Stattdessen:
 Eine Smartphone-Leinwand, die fürs iPhone gestaltet ist (Seitenverhältnis
 1320:2868), wird auch für Google Play (1080:2160) gerendert: Die Seite wird
 etwas kürzer. Jedes Element hält den Abstand zu der Kante, die sein **Anker**
-nennt – Überschriften oben bleiben oben (*Oben*), Smartphones unten bleiben
-unten (*Unten*). Ist die Seite eines Ziels viel höher oder kürzer als die
+nennt – Überschriften oben bleiben oben, Smartphones unten bleiben
+unten. Ist die Seite eines Ziels viel höher oder kürzer als die
 Leinwandseite, schlägt die Prüfung eine Variante vor (`variant_suggested`).
 
 ### Querformat aus Hochformat-Seiten: Gruppierung {#landscape-from-portrait-pages-grouping}
 
-Der iPad-Querformat-Satz des Beispielprojekts nutzt die **Smartphone**-Leinwand:
+Das iPad-Querformat-Set des Beispielprojekts nutzt die **Smartphone**-Leinwand:
 `Seiten pro Bild: 2` setzt die Seiten 1+2, 3+4 und 5+6 in drei
 Querformat-Bilder. Der Geräte-Tausch zeichnet iPads statt iPhones, und eine
 Variante verschiebt die Geräte ein wenig. Die exportierten Dateinamen nennen

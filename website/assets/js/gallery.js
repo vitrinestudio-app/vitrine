@@ -208,7 +208,13 @@
   var searchEl = root.querySelector('[data-gal-search]');
   var emptyEl = root.querySelector('[data-gal-empty]');
   var noMatchEl = root.querySelector('[data-gal-nomatch]');
+  var emptyTitle = root.querySelector('[data-gal-empty-title]');
+  var emptyText = root.querySelector('[data-gal-empty-text]');
+  var retryBtn = root.querySelector('[data-gal-retry]');
   var clearBtns = root.querySelectorAll('[data-gal-clear]');
+  // 'loading' (no snapshot, live data pending: placeholder cards),
+  // 'done' (data known) or 'error' (live load failed, nothing to show).
+  var loadState = (snapshot.templates || []).length ? 'done' : 'loading';
 
   var data = [];          // templates, API order (newest first)
   var byId = {};
@@ -545,7 +551,15 @@
       : (total === 1 ? S.galCountOne : fmt(S.galCount, { n: total }));
     clearBtns[0].hidden = !anyFilter();
     noMatchEl.hidden = !(total > 0 && visible.length === 0);
-    emptyEl.hidden = total > 0;
+    var skel = loadState === 'loading' && total === 0;
+    root.querySelectorAll('[data-gal-skel]').forEach(function (n) { n.hidden = !skel; });
+    emptyEl.hidden = total > 0 || loadState === 'loading';
+    if (!emptyEl.hidden) {
+      var failed = loadState === 'error';
+      emptyTitle.textContent = failed ? S.galErrorTitle : S.galEmptyTitle;
+      emptyText.textContent = failed ? S.galErrorText : S.galEmptyText;
+      retryBtn.hidden = !failed;
+    }
   }
 
   function changed(animate) {
@@ -605,15 +619,29 @@
     return page(0, 0);
   }
   function refresh() {
-    if (!api || !window.fetch) return;
+    if (!api || !window.fetch) {
+      if (loadState === 'loading') { loadState = 'error'; render(false); }
+      return;
+    }
     var tagsReady = taxonomy.length ? Promise.resolve() : fetchJson(api + '/v1/tags').then(function (j) { setTaxonomy(j.facets); }, function () {});
     Promise.all([fetchAll(), tagsReady]).then(function (res) {
       var live = res[0];
-      if (signature(live) === signature(data)) return;
+      loadState = 'done';
+      if (signature(live) === signature(data)) { render(false); return; }
       setData(live, true);
       if (pendingHash) routeHash();
-    }, function () { /* offline or no CORS: the snapshot stays */ });
+    }, function () {
+      // Offline or no CORS: a snapshot stays; without one, say so.
+      if (data.length) return;
+      loadState = 'error';
+      render(false);
+    });
   }
+  if (retryBtn) retryBtn.addEventListener('click', function () {
+    loadState = 'loading';
+    render(false);
+    refresh();
+  });
 
   // ---------- detail view ----------
   var dialog = document.querySelector('[data-gal-detail]');

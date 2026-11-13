@@ -1,6 +1,6 @@
 ---
 title: AI assistants (MCP)
-description: "Connect Claude Desktop, Claude Code or any MCP client: the assistant designs, translates, checks and exports in the project you have open – live, with undo."
+description: "Connect Claude Desktop, Claude Code or any MCP client: the assistant designs, translates, checks and exports in the project you have open. Every change shows up in the app right away, and you can undo it like your own edits."
 weight: 130
 icon: sparkle
 ---

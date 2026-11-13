@@ -12,7 +12,7 @@ Console after your first uploads, and please report anything unexpected.
 {{< /callout >}}
 
 Vitrine Studio uploads your screenshots, the Google Play feature graphic and
-the App Store creatives directly – no fastlane needed. It always works in
+the App Store creatives directly. It always works in
 three steps: **plan → confirm → upload**. Nothing reaches a store without a
 plan you have seen and confirmed.
 
@@ -31,6 +31,11 @@ through Git while the keys stay with you. The key itself goes into the
 Service, service `app.vitrinestudio`); the app settings only reference it.
 Vitrine Studio never writes keys into the project or into logs, and never
 shows their content.
+
+Your keys never leave your computer: Vitrine Studio sends them to no server of
+its own and to no cloud. The app uses the key to sign a short-lived sign-in
+locally and sends only that, directly to Apple (App Store Connect API) or
+Google (Google sign-in and the Play Developer API).
 
 ### App Store Connect API key
 
@@ -158,8 +163,12 @@ Options:
 
 **Confirm & upload** asks once more ("… set(s) with … image(s) go to … and
 replace the screenshots there"), then shows progress per set. **Cancel
-upload** stops at any time. The confirmation is valid for 30 minutes, once, and
-only for the project state of the plan – after any change, plan again.
+upload** stops at any time. A confirmation belongs to
+exactly one plan: it is valid for 30 minutes and for one upload. Before
+uploading, Vitrine Studio checks that the project and the images are still
+exactly as they were in the plan. If you changed something since, or the 30
+minutes are over, nothing is uploaded – just make a new plan. That way nothing
+reaches the store except what you saw in the plan.
 
 - **App Store:** each set is made to hold exactly the planned images in
   order: screenshots already there with the same content are kept, the others
