@@ -21,7 +21,7 @@ Store-Slot, ein passendes Gerät und das Galerie-Profil. Plaketten zeigen, ob
 der Store den Satz **verlangt** (*Pflicht*, *bedingt*, *optional*) und wie gut
 die Daten geprüft sind.
 
-{{< placeholder "Leinwände & Ziele: die Liste Ziel hinzufügen mit Presets, Plaketten und Größen." >}}
+{{< shot src="images/targets-add.jpg" alt="Leinwände & Ziele: die Liste Ziel hinzufügen mit Presets für iPhone, iPhone Duo, App-Store-Creatives und iPad, mit Plaketten (geprüft, Pflicht) und Größen." caption="Leinwände & Ziele → **Ziel hinzufügen**: Presets mit Plaketten und Größen." >}}
 
 ### Presets {#presets}
 
@@ -96,7 +96,7 @@ Querformat-Bilder. Der Geräte-Tausch zeichnet iPads statt iPhones, und eine
 Variante verschiebt die Geräte ein wenig. Die exportierten Dateinamen nennen
 beide Seiten: `01_plan+beds.png`.
 
-{{< shot src="images/ipad-gallery-de.jpg" alt="iPad-Querformat-Galerie des Beispielprojekts: Jedes Bild zeigt zwei Smartphone-Seiten nebeneinander." caption="`ios-ipad-13` im Querformat mit `Seiten pro Bild: 2`, der Variante `tablet-landscape` und einem Geräte-Tausch zum iPad." >}}
+{{< shot src="images/example-ipad-grouped-de.jpg" alt="iPad-Querformat-Galerie des Beispielprojekts: Jedes Bild zeigt zwei Smartphone-Seiten nebeneinander." caption="`ios-ipad-13` im Querformat mit `Seiten pro Bild: 2`, der Variante `tablet-landscape` und einem Geräte-Tausch zum iPad (Beispielprojekt, Deutsch)." >}}
 
 ### Umordnen: Varianten {#rearranging-variants}
 
@@ -130,7 +130,9 @@ an: lückenlos, bildfüllend (*cover*), mit denselben Screenshots, demselben
 Geräte-Tausch und derselben Variante wie das Screenshot-Ziel dieses Stores auf
 der Leinwand – das Play-Banner zeigt also die Android-Geräte.
 
-{{< shot src="images/blog-header-de.jpg" alt="Ein breites Banner mit der deutschen Überschrift und Smartphones aus dem Beispielprojekt." caption="Ein Banner-Ziel (`blog-header`, Deutsch), ausgeschnitten aus der Smartphone-Leinwand." >}}
+{{< shot src="images/canvas-dialog.jpg" alt="Leinwände & Ziele mit ausgewählter Phone-Leinwand: ihre Ziele, Banner aus dieser Leinwand mit vier Store-Bannern und ihren Seitenbereichen, und die Varianten." caption="Eine Leinwand in **Leinwände & Ziele**, mit **Banner aus dieser Leinwand**." >}}
+
+{{< shot src="images/blog-header-en.jpg" alt="Ein breites Banner mit vier Synthwave-Überschriften und schrägen Smartphones vor einer Neon-Sonne." caption="Ein Banner-Ziel (`blog-header`, 2400×1000) aus der Phone-Leinwand von *Synthwave Sunset*: ein freies Rechteck über vier Seiten, ohne Lücken." >}}
 
 ### Banner-Einstellungen {#banner-settings}
 

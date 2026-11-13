@@ -91,7 +91,7 @@ Projekt auf diesem Rechner.
 4. Prüfe die Liste – Gerät, Farbe und Ausrichtung werden aus den Dateinamen
    erkannt, der Bildschirmbereich wird erkannt – und klicke **Importieren**.
 
-{{< placeholder "Der Dialog Frame-Pakete nach dem Analysieren eines Apple-Bezel-Pakets." >}}
+{{< shot src="images/frame-import.jpg" alt="Der Dialog Frame-Pakete nach dem Analysieren eines Pakets: pro Datei Aktion, Modell, Farbe, Ausrichtung und Bildschirmgröße; eine nicht erkannte Datei lässt sich von Hand zuordnen." caption="Der Dialog **Frame-Pakete** nach dem Analysieren eines Bezel-Pakets (hier ein synthetisches Testpaket)." >}}
 
 So nutzt du sie:
 

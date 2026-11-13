@@ -93,6 +93,8 @@ vitrine template save --name "Demo set" --style minimal --color light --use prod
 vitrine template tags                      # all tag values
 ```
 
+{{< shot src="images/save-template.jpg" alt="The Save as template dialog: name, id, description, author, style, colour and category tags, the canvases to include, and the options for sample screenshots and fonts." caption="**Save as template…** with tags for the gallery and two of three canvases." >}}
+
 ## Insert from template
 
 Add canvases of a template to an **existing** project: **Canvases &

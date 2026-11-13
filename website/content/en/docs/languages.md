@@ -54,11 +54,13 @@ full fallback chain.
 - **All languages** view: every language next to each other, to spot texts
   that are too long.
 
-{{< placeholder "The Translations tab: keys × languages, a missing German text shown from the fallback, an overflowing French cell." >}}
+{{< shot src="images/translations.jpg" alt="The Translations tab: keys × languages en, de and fr; missing texts show their fallback in grey italics, an overflowing French title is marked." caption="The **Translations** tab: German falls back to English for four keys, French for most; the long French title overflows." >}}
 
 A text element shows the text of its **Key** (e.g. `plan.title`). Several
 elements can share one key. Changing the key in the inspector to a new name
 offers to copy the current text to it.
+
+{{< shot src="images/all-languages.jpg" alt="The All languages view: the six iPhone pages in English, German and French, one row each; the overflowing French title on page 2 is framed in red." caption="The **All languages** view: one row per language, problems marked per row." >}}
 
 ## Working with translators: CSV and XLIFF
 

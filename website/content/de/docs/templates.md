@@ -98,6 +98,8 @@ vitrine template save --name "Demo set" --style minimal --color light --use prod
 vitrine template tags                      # alle Schlagwörter
 ```
 
+{{< shot src="images/save-template.jpg" alt="Der Dialog Als Vorlage speichern: Name, Id, Beschreibung, Autor, Stil-, Farb- und Kategorie-Tags, die Leinwände und die Optionen für Beispiel-Screenshots und Schriften." caption="**Als Vorlage speichern…** mit Tags für die Galerie und zwei von drei Leinwänden." >}}
+
 ## Aus Vorlage einfügen {#insert-from-template}
 
 Leinwände einer Vorlage in ein **bestehendes** Projekt übernehmen:

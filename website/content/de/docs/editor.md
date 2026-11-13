@@ -53,6 +53,8 @@ Rollbalken erscheinen, wenn der Inhalt nicht passt.
 Unter Windows und Linux liest du in diesem Handbuch <kbd>⌘</kbd> als
 <kbd>Strg</kbd> und <kbd>⌥</kbd> als <kbd>Alt</kbd>.
 
+{{< shot src="images/gallery-view.jpg" alt="Die Ansicht Store-Galerie: sechs iPhone-Bilder einer Pop-Art-Dating-App nebeneinander, mit den Lücken und abgerundeten Ecken des Stores." caption="Die Ansicht **Store-Galerie** (Vorlage *Pop-Art Panels*, iPhone 6.9″)." >}}
+
 ## Elemente {#elements}
 
 **Hinzufügen** in der oberen Leiste setzt ein neues Element auf die
@@ -129,7 +131,7 @@ wirkt auf die ganze Auswahl.
 Rechtsklick auf leere Fläche bietet **Auf Seite N einsetzen**, **Alles auf
 Seite N auswählen**, **Alles auswählen** und **An Fenster anpassen**.
 
-{{< placeholder "Das Kontextmenü der Leinwand auf einem ausgewählten Smartphone." >}}
+{{< shot src="images/context-menu.jpg" alt="Das Kontextmenü auf einem ausgewählten Smartphone mit seinen Befehlen zum Bearbeiten und Anordnen." caption="Das Kontextmenü der Leinwand auf einem ausgewählten Smartphone." >}}
 
 ### Kopieren und einsetzen {#copy-and-paste}
 
@@ -199,7 +201,7 @@ Der Inspektor ist breiter als früher und **in der Breite veränderbar**: Zieh
 seinen linken Rand (Doppelklick darauf: Standardbreite). Die Breite bleibt
 gespeichert.
 
-{{< shot src="images/inspector-text.jpg" alt="Der Inspektor mit einem ausgewählten Textelement." caption="Der Inspektor mit einem ausgewählten Text." >}}
+{{< shot src="images/inspector-text.jpg" alt="Der Inspektor mit einer ausgewählten Überschrift: Layout, Text-Schlüssel und Inhalt, Stil, Schriftgröße, Farbe, Box, Ausrichtung und Auto-Fit." caption="Der Inspektor mit einer ausgewählten Überschrift." >}}
 
 ## Ebenen {#layers}
 
@@ -278,6 +280,8 @@ verdeckte oder angeschnittene Bildschirm-Kopfzeilen, Überlappungen über
 Seitengrenzen, die abgerundeten Ecken des Stores. Häufige Befunde – und wie
 man einen gewollten mit `allow` markiert – erklärt
 [Fehlerbehebung](../troubleshooting/).
+
+{{< shot src="images/validation.jpg" alt="Die Prüfliste für das iPhone-Ziel: deutsche und französische Texte, die auf Englisch zurückfallen, und ein französischer Titel, der überläuft." caption="Die Prüfliste mit eingeschaltetem **Vorschau-Modus**: Fallbacks sind Warnungen, der überlaufende französische Titel ist ein Fehler." >}}
 
 ## Projekteinstellungen und App-Einstellungen {#project-settings-and-app-settings}
 

@@ -86,7 +86,7 @@ that need a decision are marked. **Save mapping to project** stores the
 device, locale and key mappings in `project.yaml`, so the next import (e.g.
 after a new snapshot run) maps the same way without questions.
 
-{{< placeholder "The Import screenshots dialog with a fastlane folder: detected languages, variants and keys." >}}
+{{< shot src="images/import-screenshots.jpg" alt="The Import screenshots dialog with a fastlane snapshot folder: 25 new files grouped by language and screenshot variant, each with language, variant and key." caption="**Import screenshots** with a fastlane snapshot folder: detected languages, variants and keys." >}}
 
 On the command line:
 

@@ -85,7 +85,7 @@ computer.
 4. Check the list – device, colour and orientation are recognised from the
    file names, the screen area is detected – and click **Import**.
 
-{{< placeholder "The Frame packages dialog after analysing an Apple bezel package." >}}
+{{< shot src="images/frame-import.jpg" alt="The Frame packages dialog after analysing a package: per file the action, model, colour, orientation and screen size; one unmatched file can be assigned by hand." caption="The **Frame packages** dialog after analysing a bezel package (here a synthetic test package)." >}}
 
 To use them:
 

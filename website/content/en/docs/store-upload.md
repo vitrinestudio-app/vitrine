@@ -90,7 +90,7 @@ offline?*, or a server problem / rate limit (try again later).
 **Remove account** also deletes the key from the keychain. Projects keep the
 reference and show "not found" until you add an account with that id again.
 
-{{< placeholder "App settings → Stores: two accounts with Test buttons and the help for App Store Connect keys." >}}
+{{< shot src="images/store-accounts.jpg" alt="App settings, section Stores: an App Store Connect key and a Google Play service account, each with a Test button, and the expanded help for App Store Connect keys." caption="App settings → **Stores**: two accounts and the help for App Store Connect keys." >}}
 
 ## 2. Link the project
 
@@ -115,6 +115,8 @@ reference and show "not found" until you add an account with that id again.
 Only stores listed here are uploaded. Which images go where comes from each
 target's **Store slot** (App Store display type / Play image type) – the presets
 set it for you.
+
+{{< shot src="images/project-stores.jpg" alt="Project settings, Stores tab: account, app, Apple ID, bundle ID, platform and upload method for the App Store; account and package name for Google Play; store languages." caption="Project settings → **Stores**: the project linked to both stores." >}}
 
 ## 3. Plan, confirm, upload
 
@@ -152,7 +154,7 @@ Options:
   already has identically shows *Unchanged*.
 - **Upload unchanged sets too** forces a complete upload.
 
-{{< placeholder "The upload plan: targets × languages with actions, and the Confirm & upload button." >}}
+{{< shot src="images/upload-plan.jpg" alt="The upload plan for the App Store: six sets (two targets × three languages) marked Upload, and the Confirm & upload button." caption="The plan: six sets to upload, nothing sent yet." >}}
 
 ### Confirm and upload
 

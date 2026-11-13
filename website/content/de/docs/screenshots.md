@@ -91,7 +91,7 @@ speichern** legt die Geräte-, Locale- und Schlüssel-Zuordnungen in
 `project.yaml` ab, damit der nächste Import (z. B. nach einem neuen
 snapshot-Lauf) ohne Rückfragen genauso zuordnet.
 
-{{< placeholder "Der Dialog Screenshots importieren mit einem fastlane-Ordner: erkannte Sprachen, Varianten und Schlüssel." >}}
+{{< shot src="images/import-screenshots.jpg" alt="Der Dialog Screenshots importieren mit einem fastlane-Snapshot-Ordner: 25 neue Dateien, gruppiert nach Sprache und Screenshot-Variante, jede mit Sprache, Variante und Schlüssel." caption="**Screenshots importieren** mit einem fastlane-Snapshot-Ordner: erkannte Sprachen, Varianten und Schlüssel." >}}
 
 Auf der Kommandozeile:
 

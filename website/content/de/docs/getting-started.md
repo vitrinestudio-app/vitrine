@@ -27,7 +27,7 @@ einen Projektordner auf das Fenster ziehen).
    z. B. `en, de`.
 6. **Erstellen.**
 
-{{< placeholder "Der Startbildschirm mit dem Dialog Neues Projekt: Name, Speicherort, Vorlagen-Karten und Sprachen." >}}
+{{< shot src="images/new-project.jpg" alt="Der Dialog Neues Projekt: Name, Speicherort, die Vorlagen-Karten (Phone, Minimal und die Galerie-Vorlagen Park Poster, Pop-Art Panels und Synthwave Sunset) und die Sprachen." caption="Neues Projekt aus der Vorlage *Synthwave Sunset*, auf Englisch, Deutsch und Französisch." >}}
 
 Beim ersten Öffnen eines Projekts erscheint die Übersicht *So ist Vitrine
 Studio aufgebaut* auf einer Seite. Ein Blick lohnt sich; im Hilfe-Menü findest
@@ -35,7 +35,7 @@ du sie jederzeit wieder.
 
 ## 2. Ein Rundgang durchs Fenster {#2-a-tour-of-the-window}
 
-{{< shot src="images/editor-dark.jpg" alt="Der Editor von Vitrine Studio im dunklen Modus: Seitenleiste links, Leinwand in der Mitte, Inspektor rechts." caption="Der Editor (eine ältere Version – der linke Tab heißt jetzt *Leinwände*)." >}}
+{{< shot src="images/editor.jpg" alt="Der Editor von Vitrine Studio: links der Tab Ebenen, in der Mitte eine Leinwand mit sechs Seiten, rechts ein ausgewähltes Smartphone mit seinen Einstellungen im Inspektor." caption="Der Editor mit einem Projekt aus der Vorlage *Synthwave Sunset*: Menü und Auswahlen in der oberen Leiste, Ansichten und Zoom in der unteren." >}}
 
 - **Obere Leiste:** das ☰-Menü (öffnet sich auch über App-Symbol und
   Projektnamen); die Auswahlen **Leinwand**, **Ziel**,
@@ -123,7 +123,7 @@ Drück <kbd>⌘</kbd><kbd>E</kbd> (oder **Export** in der oberen Leiste). Der
 Dialog zeigt ein Raster aus **Zielen × Sprachen** – alles ist angehakt. Klick
 auf **Exportieren**.
 
-{{< placeholder "Der Export-Dialog: Raster aus Zielen × Sprachen, Ausgabeordner, Struktur und Optionen." >}}
+{{< shot src="images/export-dialog.jpg" alt="Der Export-Dialog: Raster aus Zielen × Sprachen, Ausgabeordner, Struktur und Optionen." caption="Der Export-Dialog eines Projekts mit sechs Zielen und drei Sprachen." >}}
 
 Die Bilder landen im Ordner `export/` des Projekts:
 

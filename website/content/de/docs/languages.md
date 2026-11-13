@@ -59,11 +59,13 @@ Sprache, um ihre ganze Fallback-Kette zu sehen.
 - Ansicht **Alle Sprachen:** alle Sprachen nebeneinander, um zu lange Texte zu
   entdecken.
 
-{{< placeholder "Der Tab Übersetzungen: Schlüssel × Sprachen, ein fehlender deutscher Text aus dem Fallback, eine überlaufende französische Zelle." >}}
+{{< shot src="images/translations.jpg" alt="Der Tab Übersetzungen: Schlüssel × Sprachen en, de und fr; fehlende Texte zeigen ihren Fallback grau und kursiv, ein überlaufender französischer Titel ist markiert." caption="Der Tab **Übersetzungen**: Deutsch fällt bei vier Schlüsseln auf Englisch zurück, Französisch bei den meisten; der lange französische Titel läuft über." >}}
 
 Ein Textelement zeigt den Text seines **Schlüssels** (z. B. `plan.title`).
 Mehrere Elemente können sich einen Schlüssel teilen. Änderst du den Schlüssel
 im Inspektor auf einen neuen Namen, wird der aktuelle Text dorthin übernommen.
+
+{{< shot src="images/all-languages.jpg" alt="Die Ansicht Alle Sprachen: die sechs iPhone-Seiten auf Englisch, Deutsch und Französisch, je eine Zeile; der überlaufende französische Titel auf Seite 2 ist rot umrandet." caption="Die Ansicht **Alle Sprachen**: eine Zeile pro Sprache, Probleme pro Zeile markiert." >}}
 
 ## Mit Übersetzern arbeiten: CSV und XLIFF {#working-with-translators-csv-and-xliff}
 

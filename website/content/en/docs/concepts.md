@@ -45,7 +45,7 @@ becomes one store screenshot. Because it is one picture:
 A project can have several canvases – for example *phone*, *tablet* and
 *mac* – each with its own page format.
 
-{{< shot src="images/canvas-phone-en.jpg" alt="A canvas with six phone pages: a green gradient and a diagonal band run across all pages, one phone sits across the border of pages 3 and 4." caption="The example project's phone canvas: six pages, one continuous background, one phone across pages 3 and 4. The hatched stripes are the store gaps." >}}
+{{< shot src="images/canvas-phone-en.jpg" alt="A canvas with six phone pages of a music app: one continuous synthwave sky with a sun, a neon grid floor and palms runs across all pages; hatched stripes mark the gaps between the pages." caption="The phone canvas of the *Synthwave Sunset* template: six pages, one continuous background. The hatched stripes are the store gaps." >}}
 
 ## Gaps like in the store
 
@@ -114,7 +114,7 @@ Put together: you edit one canvas; each target renders it at its size with its
 variant, in each language. A project with 3 targets and 4 languages gives you
 12 complete image sets – and when you change a headline, all of them change.
 
-{{< shot src="images/ipad-gallery-de.jpg" alt="The iPad landscape gallery of the example project in German: two phone pages per landscape image." caption="The same canvas as the iPad 13″ landscape target in German: two pages per image, a variant moves the phones, a device swap draws iPads." >}}
+{{< shot src="images/play-gallery-en.jpg" alt="The same six pages as a Google Play set: Android phones instead of iPhones on the synthwave background." caption="The same canvas as the Google Play phone target: the device swap draws Android phones, the variant `play` adapts the shorter pages." >}}
 
 ## One renderer for everything
 
