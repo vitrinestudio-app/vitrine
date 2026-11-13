@@ -35,7 +35,11 @@
 .prose li::marker { color: var(--magenta); }
 .prose a { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 .prose a:hover { text-decoration-color: currentColor; }
-.prose :not(pre) > code { white-space: normal; overflow-wrap: anywhere; }
+/* Inline code (file names, commands) breaks only where it must: never
+   mid-word just to fit a narrow table column (tables scroll instead),
+   in running text only when a single name is wider than the line. */
+.prose :not(pre) > code { white-space: normal; overflow-wrap: break-word; hyphens: none; }
+.prose td code, .prose th code { white-space: nowrap; }
 .prose pre {
   margin: 0 0 1.3em;
   padding: 18px 20px;

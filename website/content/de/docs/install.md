@@ -62,8 +62,13 @@ nicht signierte Version zeigt beim ersten Start eine Warnung:
 - **Windows SmartScreen:** *Weitere Informationen* → *Trotzdem ausführen*.
 
 Beim ersten Start einer neu signierten Version fragt macOS eventuell einmal,
-ob Vitrine Studio die Schlüsselbund-Einträge deiner Store-Schlüssel verwenden
-darf – erlaube es (der Eintrag ist an die Signatur der App gebunden).
+ob Vitrine Studio seine eigenen Schlüsselbund-Einträge weiter verwenden darf –
+erlaube es (ein Eintrag ist an die Signatur der App gebunden, die sich
+geändert hat). Gemeint sind nur die Einträge, die Vitrine Studio selbst
+angelegt hat: die Store-Schlüssel, die du in der App eingetragen hast, und
+gegebenenfalls deine Anmeldung bei der Vorlagen-Galerie (Dienst
+`app.vitrinestudio`). Andere Einträge in deinem Schlüsselbund liest
+die App nicht.
 
 ## Das Kommandozeilen-Tool {#the-command-line-tool}
 
@@ -132,7 +137,7 @@ oder gib `--app-dir` an, wo ein Befehl das anbietet.
 Du brauchst [rustup](https://rustup.rs) (die festgelegte Rust-Toolchain
 installiert sich selbst) und für die Desktop-App die
 [Tauri-2-Voraussetzungen](https://v2.tauri.app/start/prerequisites/) deines
-Systems. Kein Node.js, kein npm.
+Systems.
 
 ```sh
 git clone https://github.com/vitrinestudio-app/vitrine.git
