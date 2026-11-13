@@ -13,6 +13,14 @@ for part of the outputs:
   height, anchor_y, style, box, align, valign, fit, color, font_size, stroke,
   glow, shadow, hyphenate.
 
+**Coordinates in a variant override** are in the same frame as the base:
+`at.y` refers to the canvas page height (`page.aspect`), not to the page
+height of the variant's targets; the element's `anchor_y` then moves it
+for each target (`bottom` adds the height difference Δ, `center` Δ/2,
+`stretch` scales). To put a bottom-anchored element at y on a target page
+that is Δ lu lower than the canvas page, write `at.y = y + |Δ|` (see
+docs_get {topic: "overview"} → Groups, variants and anchors).
+
 Resolution order: base → variant override → language overrides (`de`, then
 `de-AT`). An override only **sets values**; a field it does not set shows the
 base value. Overrides never contain `null` (a hand-written `null` is ignored,
