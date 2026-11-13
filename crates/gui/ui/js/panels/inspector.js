@@ -335,7 +335,13 @@ export function mount(el, ctx) {
       layout.push(
         row(t('inspector.rotation'), numberInput({ key: 'rotation', label: '∠', value: e.rotation ?? 0, unit: '°', precision: 2, step: 1, big: 15, onCommit: (v) => set({ rotation: v === 0 ? null : v }) }).el, { field: 'rotation', info }),
       );
-      if (kind !== 'group' || pv) {
+      if (kind === 'group') {
+        // Scales the whole group around its pivot (ADR 0030).
+        layout.push(
+          row(t('inspector.scale'), numberInput({ key: 'scale', label: '×', value: e.scale ?? 1, scale: 100, unit: '%', precision: 0, min: 0.1, max: 10, step: 0.01, big: 0.1, onCommit: (v) => set({ scale: v == null || v === 1 ? null : v }) }).el, { field: 'scale', info, hint: t('inspector.scale.hint') }),
+        );
+      }
+      if (kind !== 'group' || pv || (e.scale ?? 1) !== 1) {
         layout.push(
           row(
             t('inspector.pivot'),
@@ -343,7 +349,7 @@ export function mount(el, ctx) {
               numberInput({ key: 'pivot.x', label: 'X', value: pv?.x ?? null, optional: true, placeholder: '0', precision: 1, onCommit: (v) => set({ pivot: v == null && !pv?.y ? null : { x: v ?? 0, y: pv?.y ?? 0 } }) }).el,
               numberInput({ key: 'pivot.y', label: 'Y', value: pv?.y ?? null, optional: true, placeholder: '0', precision: 1, onCommit: (v) => set({ pivot: v == null && !pv?.x ? null : { x: pv?.x ?? 0, y: v ?? 0 } }) }).el,
             ],
-            { field: 'pivot', info, hint: kind === 'text' && !e.height && !e.box?.bottom ? t('inspector.pivot.text') : t('inspector.pivot.hint') },
+            { field: 'pivot', info, hint: kind === 'group' ? t('inspector.pivot.group') : kind === 'text' && !e.height && !e.box?.bottom ? t('inspector.pivot.text') : t('inspector.pivot.hint') },
           ),
         );
       }
