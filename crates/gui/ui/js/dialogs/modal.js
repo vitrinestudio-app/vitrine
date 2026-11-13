@@ -11,11 +11,14 @@ import { t } from '../i18n.js';
  * Opens a modal dialog. `body` is a node (or array of nodes); `footer`
  * buttons go at the bottom. Escape / the close button / backdrop click
  * close it (unless `dismissable: false`). Returns `{ el, body, close,
- * closed }` (`closed` is a promise resolving when it closes).
+ * closed, setBusy }` (`closed` is a promise resolving when it closes;
+ * `setBusy(true)` blocks Escape / close button / backdrop while work runs,
+ * `close()` itself still works).
  */
 export function openModal({ title, body, footer = [], size = 'medium', dismissable = true, onClose, cls = '' }) {
   const bodyEl = h('div', { class: 'dlg-body' }, body);
-  const closeBtn = h('button', { class: 'icon-btn', type: 'button', title: t('project.dialog.close'), onclick: () => close() }, icon('close'));
+  let busy = false;
+  const closeBtn = h('button', { class: 'icon-btn', type: 'button', title: t('project.dialog.close'), onclick: () => !busy && close() }, icon('close'));
   const dlg = h(
     'dialog',
     { class: `dlg dlg-${size} ${cls}`.trim() },
@@ -36,14 +39,19 @@ export function openModal({ title, body, footer = [], size = 'medium', dismissab
   }
   dlg.addEventListener('cancel', (e) => {
     e.preventDefault();
-    if (dismissable) close();
+    if (dismissable && !busy) close();
   });
   dlg.addEventListener('mousedown', (e) => {
-    if (dismissable && e.target === dlg) close();
+    if (dismissable && !busy && e.target === dlg) close();
   });
+  function setBusy(on) {
+    busy = Boolean(on);
+    closeBtn.disabled = busy;
+    dlg.classList.toggle('dlg-busy', busy);
+  }
   document.body.append(dlg);
   dlg.showModal();
-  return { el: dlg, body: bodyEl, close, closed };
+  return { el: dlg, body: bodyEl, close, closed, setBusy };
 }
 
 /**

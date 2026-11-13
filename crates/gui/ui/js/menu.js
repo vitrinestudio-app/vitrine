@@ -33,6 +33,7 @@ const ITEMS = [
   { id: 'exportDialog', label: 'project.menu.export', key: 'mod+e', project: true },
   { id: 'uploadDialog', label: 'project.menu.upload', project: true },
   { id: 'importScreenshots', label: 'import.menu', project: true },
+  { id: 'saveTemplate', label: 'templates.save.open', project: true },
   { sep: true },
   { id: 'appSettings', label: 'project.menu.app_settings', key: 'mod+,' },
   { id: 'checkUpdates', label: 'update.menu', app: true },
@@ -70,7 +71,7 @@ const HELP_LINKS = [
 ];
 
 /**
- * `handlers`: { newProject, openProject, projectSettings, targets, exportDialog, uploadDialog, importScreenshots,
+ * `handlers`: { newProject, openProject, projectSettings, targets, exportDialog, uploadDialog, importScreenshots, saveTemplate,
  * appSettings, checkUpdates, closeProject, guide, gestures, hasProject() }.
  */
 export function createMenu(handlers) {

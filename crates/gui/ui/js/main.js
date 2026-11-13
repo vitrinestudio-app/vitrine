@@ -13,6 +13,7 @@ import { initUploadConfirm, openUpload } from './dialogs/upload.js';
 import { openScreenshotImport } from './dialogs/screenshot-import.js';
 import { openProjectSettings } from './dialogs/project-settings.js';
 import { openTargets } from './dialogs/targets.js';
+import { openSaveTemplate } from './dialogs/templates.js';
 import { openNewVariant } from './dialogs/variants.js';
 import { editor } from './editor.js';
 import { applyTranslations, initI18n } from './i18n.js';
@@ -69,6 +70,7 @@ const appActions = {
   exportDialog: () => openExport(),
   uploadDialog: () => openUpload(),
   importScreenshots: () => openScreenshotImport().catch(report),
+  saveTemplate: () => openSaveTemplate({ canvases: store.get().summary?.canvases ?? [], toast: (msg) => editor.toast(msg) }).catch(report),
   appSettings: () => openAppSettings().catch(report),
   checkUpdates: () => checkForUpdates().catch(report),
   closeProject: () => closeProject().catch(report),

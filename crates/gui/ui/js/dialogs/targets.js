@@ -13,7 +13,7 @@ import { editor } from '../editor.js';
 import { t } from '../i18n.js';
 import { store } from '../store.js';
 import { checkbox, confirmDialog, errorLine, input, openModal, row, segmented, select } from './modal.js';
-import { insertFromTemplate, openSaveTemplate } from './templates.js';
+import { insertFromTemplate } from './templates.js';
 import { openNewVariant, removeVariant } from './variants.js';
 
 /** Value of the "+ New variant…" entry of the target form's variant select. */
@@ -604,7 +604,6 @@ export async function openTargets(focus, opts = {}) {
           h('span', { class: 'spacer' }),
           h('button', { class: 'btn btn-small', type: 'button', disabled: !info.targets.length, onclick: () => showInEditor() }, t('canvases.show')),
           h('button', { class: 'btn btn-small', type: 'button', onclick: duplicate }, t('canvases.duplicate')),
-          h('button', { class: 'btn btn-small', type: 'button', title: t('templates.save.hint_short'), onclick: () => openSaveTemplate({ canvases: s.canvases, current: id }) }, t('templates.save.open')),
           h('button', { class: 'btn btn-small', type: 'button', disabled: last, title: last ? t('canvases.remove.last') : '', onclick: remove }, t('canvases.remove')),
         ),
         h(
