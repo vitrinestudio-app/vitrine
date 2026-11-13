@@ -141,6 +141,14 @@ pub struct VisibleIn {
 }
 flow_style!(VisibleIn);
 
+impl VisibleIn {
+    /// No restriction at all (`visible_in: {}` = visible everywhere; never
+    /// written, read as no `visible_in`).
+    pub fn is_empty(&self) -> bool {
+        self.targets.is_empty() && self.langs.is_empty()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

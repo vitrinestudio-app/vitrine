@@ -983,9 +983,8 @@ impl TryFrom<ElementWire> for Element {
             z: w.z.unwrap_or(0),
             clip: w.clip,
             visible: w.visible.unwrap_or(true),
-            visible_in: w
-                .visible_in
-                .filter(|v| !v.targets.is_empty() || !v.langs.is_empty()),
+            // `visible_in: {}` restricts nothing: the same as no `visible_in`.
+            visible_in: w.visible_in.filter(|v| !v.is_empty()),
             allow: w.allow.unwrap_or_default(),
             kind: props,
         })
@@ -1038,7 +1037,7 @@ impl From<Element> for ElementWire {
             z: (e.z != 0).then_some(e.z),
             clip: e.clip,
             visible: (!e.visible).then_some(false),
-            visible_in: e.visible_in,
+            visible_in: e.visible_in.filter(|v| !v.is_empty()),
             allow: (!e.allow.is_empty()).then_some(e.allow),
             langs: None,
             children: None,
