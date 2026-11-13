@@ -108,7 +108,7 @@ metadata/android/en-US/images/featureGraphic.png
 - Liegen im Ordner noch frameit-Dateien `*_framed.png`, gibt es eine Warnung –
   deliver würde nur diese hochladen.
 
-Schritt für Schritt: [Nutzung mit fastlane](../fastlane/).
+Schritt für Schritt: [Nutzung mit fastlane](../automation/fastlane/).
 
 ## Auf der Kommandozeile exportieren {#exporting-from-the-command-line}
 

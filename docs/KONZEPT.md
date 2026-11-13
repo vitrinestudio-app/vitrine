@@ -170,7 +170,7 @@ Gemeinsame Eigenschaften: `id`, `kind`, `page` (Heimatseite), Position (`at`, re
 | **text** | Übersetzungsschlüssel, Stil, Textbox (Ränder zur Seite oder freie Box), Ausrichtung horizontal/vertikal, Auto-Fit (`shrink_to` Mindestgröße), max. Zeilen, Inline-Formatierung. |
 | **image** | Asset (PNG/JPEG/SVG), optional mit Sprachvarianten (z. B. Badges „Neu“/„New“). |
 | **shape** | Rechteck/abgerundet, Kreis, Linie; Füllung, Kontur, Schatten. Für Hervorhebungen, Pfeile, Sprechblasen. |
-| **group** | Gruppiert Elemente für gemeinsames Verschieben/Rotieren. |
+| **group** | Gruppiert Elemente für gemeinsames Verschieben/Rotieren/Skalieren (`scale` um den Gruppen-Drehpunkt, auch als Varianten-Override; ADR 0030). |
 
 **Text an Seiten binden.** Ein Text mit `page: 2` und `box: { top: 120, left: 80, right: 80 }` liegt auf Seite 3 mit 80 lu Rand links und rechts. Er wird an den Seitengrenzen beschnitten (`clip: page`) und kann nicht versehentlich in die Nachbarseite laufen. Geräte haben standardmäßig `clip: none` und laufen frei über Seitengrenzen.
 

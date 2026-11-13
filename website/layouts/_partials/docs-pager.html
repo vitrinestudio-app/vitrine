@@ -1,14 +1,25 @@
-{{- $pages := (site.GetPage "/docs").Pages.ByWeight -}}
-{{- $prev := $pages.Prev . -}}
-{{- $next := $pages.Next . -}}
-{{- /* Pages.ByWeight.Next returns the *previous* entry in list order, so swap. */ -}}
+{{- /* Previous / next in reading order: the docs pages by weight, a nested
+       section (docs/automation/) followed by its own pages by weight. */ -}}
+{{- $order := slice -}}
+{{- range (site.GetPage "/docs").Pages.ByWeight -}}
+  {{- $order = $order | append . -}}
+  {{- if .IsSection }}{{ range .Pages.ByWeight }}{{ $order = $order | append . }}{{ end }}{{ end -}}
+{{- end -}}
+{{- $prev := false -}}
+{{- $next := false -}}
+{{- range $i, $p := $order -}}
+  {{- if eq $p.RelPermalink $.RelPermalink -}}
+    {{- if gt $i 0 }}{{ $prev = index $order (sub $i 1) }}{{ end -}}
+    {{- if lt (add $i 1) (len $order) }}{{ $next = index $order (add $i 1) }}{{ end -}}
+  {{- end -}}
+{{- end -}}
 <nav class="docs-pager" aria-label="{{ T "previous" }} / {{ T "next" }}">
-  {{- with $next }}
+  {{- with $prev }}
   <a class="docs-pager__link docs-pager__link--prev card card--hover" href="{{ .RelPermalink }}" rel="prev">
     <span>← {{ T "previous" }}</span><strong>{{ .LinkTitle }}</strong>
   </a>
   {{- else }}<span></span>{{ end }}
-  {{- with $prev }}
+  {{- with $next }}
   <a class="docs-pager__link docs-pager__link--next card card--hover" href="{{ .RelPermalink }}" rel="next">
     <span>{{ T "next" }} →</span><strong>{{ .LinkTitle }}</strong>
   </a>

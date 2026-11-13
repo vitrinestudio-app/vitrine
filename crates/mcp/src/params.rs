@@ -1,6 +1,9 @@
 //! Shared argument pieces of the tools and their mapping onto the view
 //! context of `vitrine_app` edit commands.
 
+use std::fmt::Write as _;
+use std::path::{Component, Path, PathBuf};
+
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
@@ -249,20 +252,81 @@ pub fn edit_summary(r: &Value) -> Value {
     if !changed.is_empty() {
         out["changed"] = Value::Object(changed);
     }
+    if let Some(d) = r
+        .get("dropped_override_fields")
+        .filter(|d| d.as_array().is_some_and(|a| !a.is_empty()))
+    {
+        out["dropped_override_fields"] = d.clone();
+    }
     out
+}
+
+/// An existing file inside the project folder `dir`, given relative to it:
+/// absolute paths, `..` and symlinks leading out of the folder are refused.
+pub fn project_file(dir: &Path, rel: &str) -> Result<PathBuf, CommandError> {
+    let path = Path::new(rel);
+    if rel.is_empty()
+        || path
+            .components()
+            .any(|c| !matches!(c, Component::Normal(_) | Component::CurDir))
+    {
+        return Err(CommandError::invalid(format!(
+            "`{rel}`: give a path relative to the project folder (no absolute path, no `..`)"
+        )));
+    }
+    let root = dir
+        .canonicalize()
+        .map_err(|e| CommandError::io(format!("{}: {e}", dir.display())))?;
+    let full = root
+        .join(path)
+        .canonicalize()
+        .map_err(|e| CommandError::not_found(format!("`{rel}` in the project folder: {e}")))?;
+    if !full.starts_with(&root) {
+        return Err(CommandError::invalid(format!(
+            "`{rel}` leads out of the project folder (symlink)"
+        )));
+    }
+    if !full.is_file() {
+        return Err(CommandError::invalid(format!("`{rel}` is not a file")));
+    }
+    Ok(full)
 }
 
 /// One-line text for an edit result.
 pub fn edit_line(r: &Value) -> String {
-    if r["applied"] == true {
-        format!(
-            "done: {} (revision {})",
-            r["step"].as_str().unwrap_or("change"),
-            r["revision"]
-        )
-    } else {
-        "nothing changed".to_owned()
+    if r["applied"] != true {
+        return "nothing changed".to_owned();
     }
+    let mut line = format!(
+        "done: {} (revision {})",
+        r["step"].as_str().unwrap_or("change"),
+        r["revision"]
+    );
+    // `set_variant_override` replaces the whole override: say which
+    // fields it removed, in case that was not meant.
+    for d in r["dropped_override_fields"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        let fields: Vec<&str> = d["fields"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        let _ = write!(
+            line,
+            "\nwarning: set_variant_override replaced the override of `{}` in variant `{}` of \
+             `{}` and dropped {} – re-add them, or use element_update {{scope: \"variant\"}} \
+             (merges) next time",
+            d["element"].as_str().unwrap_or_default(),
+            d["variant"].as_str().unwrap_or_default(),
+            d["canvas"].as_str().unwrap_or_default(),
+            fields.join(", ")
+        );
+    }
+    line
 }
 
 #[cfg(test)]
@@ -286,6 +350,60 @@ mod tests {
         assert_eq!(edit_line(&s), "done: Claude Code: Move a (revision 4)");
         let none = edit_summary(&json!({"applied": false, "revision": 4, "changes": {}}));
         assert_eq!(edit_line(&none), "nothing changed");
+    }
+
+    #[test]
+    fn dropped_override_fields_are_kept_and_warned() {
+        let r = json!({
+            "applied": true, "revision": 5, "changes": {},
+            "history": {"undo": ["Apply ops"]},
+            "dropped_override_fields": [
+                {"canvas": "phone", "variant": "android", "element": "shot", "fields": ["at", "rotation"]}
+            ],
+        });
+        let s = edit_summary(&r);
+        assert_eq!(s["dropped_override_fields"][0]["element"], "shot");
+        let line = edit_line(&s);
+        assert!(
+            line.contains("dropped at, rotation") && line.contains("element_update"),
+            "{line}"
+        );
+        let none = edit_summary(&json!({"applied": true, "revision": 5,
+                                        "dropped_override_fields": []}));
+        assert!(none.get("dropped_override_fields").is_none());
+    }
+
+    #[test]
+    fn project_files_stay_inside_the_project() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("p");
+        std::fs::create_dir_all(dir.join("ops")).unwrap();
+        std::fs::write(dir.join("ops/a.json"), "[]").unwrap();
+        std::fs::write(tmp.path().join("outside.json"), "[]").unwrap();
+        assert!(
+            project_file(&dir, "ops/a.json")
+                .unwrap()
+                .ends_with("a.json")
+        );
+        assert!(project_file(&dir, "./ops/a.json").is_ok());
+        let abs = dir.join("ops/a.json");
+        for bad in [
+            abs.to_str().unwrap(),
+            "../outside.json",
+            "ops/../../outside.json",
+            "",
+            "ops",
+            "ops/missing.json",
+        ] {
+            assert!(project_file(&dir, bad).is_err(), "{bad}");
+        }
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(tmp.path().join("outside.json"), dir.join("link.json"))
+                .unwrap();
+            let e = project_file(&dir, "link.json").unwrap_err();
+            assert!(e.message.contains("leads out"), "{e:?}");
+        }
     }
 
     #[test]

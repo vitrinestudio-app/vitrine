@@ -335,3 +335,113 @@ fn free_aspect_device_follows_the_screenshot() {
     };
     assert!(!dev.free_aspect);
 }
+
+fn op(v: serde_json::Value) -> vitrine_core::ops::Op {
+    serde_json::from_value(v).unwrap()
+}
+
+/// Group `scale` (ADR 0030): base and variant override, around the group
+/// pivot, every child length scaled.
+#[test]
+fn group_scale_scales_children_around_the_pivot() {
+    let mut p = sample();
+    let plain = run(&p, "ios-phone-69", "de");
+    let plain_ipad = run(&p, "ios-ipad-13-landscape", "en");
+    p.apply_ops(vec![op(serde_json::json!({
+        "op": "update_element", "id": "badge-group", "patch": {"scale": 0.5}
+    }))])
+    .unwrap();
+    let s = run(&p, "ios-phone-69", "de");
+    // Both children are centred on the pivot: they stay where they are.
+    let (a, b) = (plain.element("badge").unwrap(), s.element("badge").unwrap());
+    assert!(close(a.center.x, b.center.x) && close(a.center.y, b.center.y));
+    assert!(close(b.size.x, 110.0) && close(b.scale, 0.5));
+    let ring = s.element("badge-ring").unwrap();
+    let ResolvedKind::Shape(shape) = &ring.props else {
+        panic!()
+    };
+    assert!(close(ring.size.x, 130.0));
+    assert!(close(shape.stroke.as_ref().unwrap().width, 3.0));
+    // Saved only when ≠ 1.
+    let yaml = vitrine_core::io::to_yaml(&p.canvases[0]).unwrap();
+    assert!(yaml.contains("scale: 0.5"), "{yaml}");
+    assert_eq!(yaml.matches("scale:").count(), 2, "content_scale + group");
+    // A variant override replaces it; `pivot` moves the origin: 100 lu
+    // left of the centre, so the scaled badge moves 100 lu right.
+    p.apply_ops(vec![op(serde_json::json!({
+        "op": "set_variant_override", "canvas": "phone", "variant": "tablet-landscape",
+        "element": "badge-group", "patch": {"scale": 2, "pivot": {"x": -100, "y": 0}}
+    }))])
+    .unwrap();
+    let s = run(&p, "ios-ipad-13-landscape", "en");
+    let (a, b) = (
+        plain_ipad.element("badge").unwrap(),
+        s.element("badge").unwrap(),
+    );
+    assert!(close(b.center.x, a.center.x + 100.0), "{b:?}");
+    assert!(close(b.center.y, a.center.y));
+    assert!(close(b.size.x, 2.0 * a.size.x) && close(b.scale, 2.0));
+    // Out of range: rejected, base and override; only groups have it.
+    for (id, k) in [("badge-group", 20.0), ("badge-group", 0.0), ("badge", 2.0)] {
+        let r = p.apply_ops(vec![op(serde_json::json!({
+            "op": "update_element", "id": id, "patch": {"scale": k}
+        }))]);
+        assert!(r.is_err(), "{id} {k}");
+    }
+    let r = p.apply_ops(vec![op(serde_json::json!({
+        "op": "set_variant_override", "canvas": "phone", "variant": "tablet-landscape",
+        "element": "badge-group", "patch": {"scale": 11}
+    }))]);
+    assert!(r.is_err());
+}
+
+/// Texts in a scaled group are laid out at the scaled size (not a bitmap
+/// scale): font size, box and effects grow, the line breaks stay.
+#[test]
+fn group_scale_lays_out_text_at_the_scaled_size() {
+    let yaml = |k: f64| {
+        format!(
+            "format: vitrine/1\nname: t\nlanguages: {{default: en, available: [en]}}\n\
+canvases:\n- id: s\n  page: {{aspect: \"1:2\", count: 1}}\n  elements:\n  - {{id: g, kind: group, page: 0, scale: {k}, children: [\
+{{id: t, kind: text, text: k, page: 0, at: {{x: 500, y: 600}}, width: 400, font_size: 40, stroke: {{color: \"#000000\", width: 2}}}}, \
+{{id: r, kind: shape, shape: rect, page: 0, at: {{x: 500, y: 1000}}, width: 400, height: 200, radius: 20}}]}}\n\
+targets:\n- id: t\n  canvas: s\n  size: [1000, 2000]\n"
+        )
+    };
+    let load = |k: f64| {
+        let mut p = vitrine_core::io::project_from_yaml(&yaml(k)).unwrap();
+        p.apply_ops(vec![op(serde_json::json!({
+            "op": "set_string", "lang": "en", "key": "k",
+            "value": "Plan your garden beds in minutes"
+        }))])
+        .unwrap();
+        p
+    };
+    let files = BTreeSet::new();
+    let scene = |p: &Project| resolve(p, "t", "en", &ResolveOptions::new(&files)).unwrap();
+    let (s1, s2) = (scene(&load(1.0)), scene(&load(1.5)));
+    let text = |s: &ResolvedScene| match &s.element("t").unwrap().props {
+        ResolvedKind::Text(t) => (**t).clone(),
+        _ => panic!(),
+    };
+    let (t1, t2) = (text(&s1), text(&s2));
+    assert!(close(t2.style.size, 60.0) && close(t2.frame.rect.w, 600.0));
+    assert!(close(t2.style.stroke.unwrap().width, 3.0));
+    assert!(close(t2.scale, 1.5));
+    // Pivot = centre of (500, 600) and (500, 1000) = (500, 800).
+    let c = s2.element("t").unwrap().center;
+    assert!(
+        close(c.x, 500.0) && close(c.y, 800.0 - 200.0 * 1.5),
+        "{c:?}"
+    );
+    let m1 = vitrine_core::layout::measure_with_bundled_fonts(&t1, &s1.spans).unwrap();
+    let m2 = vitrine_core::layout::measure_with_bundled_fonts(&t2, &s2.spans).unwrap();
+    assert!((m2.w / m1.w - 1.5).abs() < 0.01, "{m1:?} {m2:?}");
+    assert!((m2.h / m1.h - 1.5).abs() < 0.01, "{m1:?} {m2:?}");
+    let r = s2.element("r").unwrap();
+    let ResolvedKind::Shape(shape) = &r.props else {
+        panic!()
+    };
+    assert!(close(shape.radius, 30.0));
+    assert!(close(r.center.y, 800.0 + 200.0 * 1.5));
+}

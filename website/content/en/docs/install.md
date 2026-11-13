@@ -30,7 +30,7 @@ where you don't need the app. The regular Linux builds need glibc 2.35 or
 newer (Ubuntu 22.04, Debian 12 and later); the static `-musl` builds have no
 dependencies and run on any Linux, including Alpine. For CI there is also a
 container image with the command line tool (amd64 and arm64):
-`ghcr.io/vitrinestudio-app/vitrine-cli` – see [CI/CD](../ci/).
+`ghcr.io/vitrinestudio-app/vitrine-cli` – see [Automation](../automation/).
 
 Every release also has `SHA256SUMS.txt` to check your download:
 

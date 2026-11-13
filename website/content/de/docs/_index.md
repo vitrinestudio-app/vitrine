@@ -10,9 +10,8 @@ Play. Dieses Handbuch zeigt dir Schritt für Schritt, wie das geht.
 
 {{< callout status >}}
 Vitrine Studio ist noch **vor dem ersten Release**. Die ersten signierten
-Installer sind in Vorbereitung, der Upload in die Stores funktioniert, wird
-aber noch mit echten Store-Konten getestet, und die Vorlagen-Galerie lässt
-sich noch nicht in der App durchsuchen. Jede Seite sagt dir, wo etwas noch
+Installer sind in Vorbereitung, und der Upload in die Stores funktioniert,
+wird aber noch mit echten Store-Konten getestet. Jede Seite sagt dir, wo etwas noch
 nicht fertig ist.
 {{< /callout >}}
 
@@ -21,5 +20,5 @@ und folge dann den [ersten Schritten](getting-started/), um dein erstes Set
 zu gestalten und zu exportieren.
 
 **Du nutzt fastlane?** Dann sieh dir
-[Nutzung mit fastlane](fastlane/) an. **Du nutzt Claude?** Sieh dir
+[Nutzung mit fastlane](automation/fastlane/) an. **Du nutzt Claude?** Sieh dir
 [KI-Assistenten (MCP)](ai-mcp/) an.

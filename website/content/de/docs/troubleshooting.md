@@ -72,8 +72,10 @@ Ja. Änderungen auf der Platte werden live übernommen. Hast du im selben
 Moment in der App dasselbe geändert, lädt die App die Datei neu und sagt dir,
 dass deine letzte Änderung nicht gespeichert wurde.
 
-**Meine deutsche Überschrift ist winzig.**
-Das automatische Einpassen hat sie verkleinert. Gib Deutsch einen
+**Meine französische Überschrift ist winzig.**
+Das automatische Einpassen hat sie verkleinert. Französisch braucht oft
+deutlich mehr Platz als Englisch – aus „Edit photos in seconds“ wird
+„Retouchez vos photos en quelques secondes“. Gib Französisch einen
 [Sprach-Override](../languages/#language-overrides) mit breiterer Box oder
 höherer Mindestgröße, füge einen weichen Trennstrich ein oder schalte die
 Silbentrennung ein.
@@ -120,11 +122,12 @@ Meldungen unter [Store-Upload](../store-upload/#troubleshooting).
 **Kann ich Vitrine Studio ohne die App nutzen, z. B. in CI?**
 Ja – die [CLI](../cli/) prüft, exportiert, importiert und lädt hoch; nimm auf
 Build-Rechnern das eigenständige CLI-Archiv und `VITRINE_APP_DIR` für einen
-separaten Einstellungsordner.
+separaten Einstellungsordner. Siehe [Automatisierung](../automation/).
 
 **Schickt Vitrine Studio Daten irgendwohin?**
 Nur wenn du es darum bittest: Store-Uploads und Verbindungstests gehen an
-Apple oder Google, die Galerie-Befehle an `api.vitrinestudio.app`, und die
+Apple oder Google, die Vorlagen-Galerie (in der App oder mit `vitrine gallery`)
+an `api.vitrinestudio.app`, und die
 tägliche Update-Prüfung fragt GitHub, ob es eine neue Version gibt (abschalten
 unter *App-Einstellungen → Updates*). Keine Statistik, kein Konto.
 
@@ -144,7 +147,6 @@ siehst sie live. Store-Uploads brauchen deinen Klick. Siehe
 - Keine schwedischen Trennmuster.
 - Frame-Pakete in `frames/` werden bei geöffnetem Projekt nicht neu eingelesen
   – öffne das Projekt nach Änderungen neu.
-- Die Vorlagen-Galerie lässt sich noch nicht in der App durchsuchen.
 
 ## Hilfe bekommen {#getting-help}
 
