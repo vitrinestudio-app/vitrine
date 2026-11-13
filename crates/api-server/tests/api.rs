@@ -107,15 +107,20 @@ fn admin(uri: &str) -> Request<Body> {
 }
 
 #[tokio::test]
-#[allow(clippy::many_single_char_names)]
-async fn upload_moderate_list_download() {
+async fn health_reports_status_and_terms() {
     let tmp = tempfile::tempdir().unwrap();
     let app = app(tmp.path(), false);
-
     let (s, v) = json_of(&app, get("/health")).await;
     assert_eq!((s, v["status"].as_str()), (StatusCode::OK, Some("ok")));
     assert_eq!(v["terms_url"], "https://www.vitrinestudio.app/terms/");
     assert!(v["terms_version"].is_string());
+}
+
+#[tokio::test]
+#[allow(clippy::many_single_char_names)]
+async fn upload_moderate_list_download() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app = app(tmp.path(), false);
 
     // Auth required; garbage refused with a reason.
     assert_eq!(
