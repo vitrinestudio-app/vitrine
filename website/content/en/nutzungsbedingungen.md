@@ -134,7 +134,8 @@ In particular, templates must not contain:
    Act, “DSA”), insofar as we can reach you [OPEN: decide how to notify –
    the gallery does not know uploaders' e-mail addresses so far]. Beyond
    that we do not have to give reasons for our decisions.
-4. If you disagree with a decision, you can object by e-mail; we will then
+4. If you disagree with a decision, you can object by e-mail to
+   info@grove.eco; we will then
    review it again. Your right to go to court remains unaffected. [OPEN:
    check whether the exemption for micro and small enterprises under
    Art. 19 DSA applies; otherwise an internal complaint-handling system
@@ -144,8 +145,8 @@ In particular, templates must not contain:
 ## 7. Notices of illegal content
 
 1. Anyone who considers a template illegal or infringing can report it to
-   us: by e-mail to [OPEN: e-mail address, as in the
-   [legal notice](/legal-notice/)] or through the gallery's report function
+   us: by e-mail to
+   [info@grove.eco](mailto:info@grove.eco) or through the gallery's report function
    (interface `POST /v1/templates/{id}/report`).
 2. A notice should state which template is affected (name or link), why the
    content is illegal and – so that we can reply – your name and e-mail
@@ -155,8 +156,8 @@ In particular, templates must not contain:
    the text; then we cannot reply to you.
 3. We handle notices promptly, diligently and objectively and hide a
    template until the matter is clarified where appropriate.
-4. The point of contact under Art. 11 and 12 DSA is the e-mail address given
-   in the legal notice; we communicate in German and English.
+4. The point of contact under Art. 11 and 12 DSA is the e-mail address
+   info@grove.eco (see the [legal notice](/legal-notice/)); we communicate in German and English.
 
 ## 8. Blocking and ending the use
 

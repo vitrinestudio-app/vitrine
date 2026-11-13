@@ -136,7 +136,7 @@ Vorlagen dürfen insbesondere nicht enthalten:
    bisher keine E-Mail-Adresse der Hochladenden]. Darüber hinaus müssen wir
    Entscheidungen nicht begründen.
 4. Bist du mit einer Entscheidung nicht einverstanden, kannst du uns per
-   E-Mail widersprechen; wir prüfen sie dann erneut. Dein Recht, Gerichte
+   E-Mail an info@grove.eco widersprechen; wir prüfen sie dann erneut. Dein Recht, Gerichte
    anzurufen, bleibt unberührt. [OFFEN: prüfen, ob die Ausnahme für Kleinst-
    und Kleinunternehmen nach Art. 19 DSA greift; sonst sind ein internes
    Beschwerdemanagementsystem (Art. 20 DSA) und der Hinweis auf
@@ -145,8 +145,8 @@ Vorlagen dürfen insbesondere nicht enthalten:
 ## 7. Hinweise auf rechtswidrige Inhalte
 
 1. Hält jemand eine Vorlage für rechtswidrig oder rechteverletzend, kann er
-   sie uns melden: per E-Mail an [OFFEN: E-Mail-Adresse, wie im
-   [Impressum](/de/impressum/)] oder über die Meldefunktion der Galerie
+   sie uns melden: per E-Mail an
+   [info@grove.eco](mailto:info@grove.eco) oder über die Meldefunktion der Galerie
    (Schnittstelle `POST /v1/templates/{id}/report`).
 2. Eine Meldung sollte enthalten: welche Vorlage betroffen ist (Name oder
    Link), warum der Inhalt rechtswidrig ist, und – damit wir antworten
@@ -156,8 +156,8 @@ Vorlagen dürfen insbesondere nicht enthalten:
    im Text angibst; dann können wir dir nicht antworten.
 3. Wir bearbeiten Meldungen zeitnah, sorgfältig und objektiv und blenden
    eine Vorlage bis zur Klärung aus, wenn das angemessen ist.
-4. Kontaktstelle nach Art. 11 und 12 DSA ist die im Impressum genannte
-   E-Mail-Adresse; wir kommunizieren auf Deutsch und Englisch.
+4. Kontaktstelle nach Art. 11 und 12 DSA ist die E-Mail-Adresse
+   info@grove.eco (siehe [Impressum](/de/impressum/)); wir kommunizieren auf Deutsch und Englisch.
 
 ## 8. Sperre und Ende der Nutzung
 
