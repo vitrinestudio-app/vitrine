@@ -6228,7 +6228,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vitrine-api-server"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -6251,7 +6251,7 @@ dependencies = [
 
 [[package]]
 name = "vitrine-app"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aws-lc-rs",
  "base64 0.23.1",
@@ -6277,7 +6277,7 @@ dependencies = [
 
 [[package]]
 name = "vitrine-cli"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -6299,7 +6299,7 @@ dependencies = [
 
 [[package]]
 name = "vitrine-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "csv",
  "flate2",
@@ -6322,7 +6322,7 @@ dependencies = [
 
 [[package]]
 name = "vitrine-gui"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "png",
  "serde",
@@ -6341,7 +6341,7 @@ dependencies = [
 
 [[package]]
 name = "vitrine-mcp"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -6365,7 +6365,7 @@ dependencies = [
 
 [[package]]
 name = "vitrine-publish"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aws-lc-rs",
  "base64 0.23.1",
@@ -6388,7 +6388,7 @@ dependencies = [
 
 [[package]]
 name = "vitrine-render"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "fast_image_resize",
