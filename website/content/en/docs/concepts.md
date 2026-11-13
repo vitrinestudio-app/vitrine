@@ -114,7 +114,7 @@ Put together: you edit one canvas; each target renders it at its size with its
 variant, in each language. A project with 3 targets and 4 languages gives you
 12 complete image sets – and when you change a headline, all of them change.
 
-{{< shot src="images/play-gallery-en.jpg" alt="The same six pages as a Google Play set: Android phones instead of iPhones on the synthwave background." caption="The same canvas as the Google Play phone target: the device swap draws Android phones, the variant `play` adapts the shorter pages." >}}
+{{< shot src="images/play-gallery-en.jpg" alt="The same six pages as a Google Play set: Android phones instead of iPhones on the synthwave background." caption="The same canvas as the Google Play phone target, shown as its **gallery preview** – the images side by side the way the store shows them, which is why it looks different from the canvas above: the device swap draws Android phones, the variant `play` adapts the shorter pages." >}}
 
 ## One renderer for everything
 
