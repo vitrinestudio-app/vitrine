@@ -16,8 +16,9 @@ repo · **Owner + Agent** = agent prepares, owner applies/approves.
 
 Release order in short: fix Linux bundling → re-tag `v0.1.0` → test the draft
 on all three OS → publish → ghcr image public → website live with downloads
-and legal pages → integrations published → SignPath application → 0.1.x
-updates (tests the updater) → 1.0.
+and legal pages → integrations published → 0.1.x updates (tests the
+updater) → 1.0. Windows ships unsigned (owner decision 2026-11-13, 7.1);
+SignPath / Azure signing is deferred.
 
 ## 7.1 Code signing & notarization
 
@@ -43,36 +44,52 @@ updates (tests the updater) → 1.0.
       manager + offline copy). Losing it means installed apps can never
       update again.
 
-### Windows (SignPath Foundation)
-Until accepted, Windows builds ship **unsigned** and labelled (SmartScreen
-"More info → Run anyway").
-- [ ] **Owner** – ask SignPath about the clause "without commercial
-      dual-licensing" vs. the CLA's relicensing right (ADR 0022) before
-      applying. Doc: `docs/research/2026-11-11-windows-signing.md`.
-- [ ] **Owner** – MFA for every member of the GitHub org (and later SignPath).
-- [ ] **Owner + Agent** – "Code signing policy" section/page on the website
-      (term on the home page and the download page; "Free code signing
-      provided by SignPath.io, certificate by SignPath Foundation";
-      committers/reviewers/approvers; privacy link incl. the update check).
-      Agent writes it, owner fills the names. Needs: privacy policy final
-      (7.5). Doc: `releasing.md` §4.
-- [ ] **Agent** – Windows version resource for `vitrine.exe` (e.g.
-      `winresource` build script), then enforce product name/version in
-      `.signpath/artifact-configurations/binaries.xml` for the CLI too.
-- [ ] **Owner** – apply at signpath.org/apply. Needs: first public
-      (unsigned) release (7.3) with some reputation, policy page, MFA.
-- [ ] **Owner** – after acceptance: trusted build system GitHub.com, project,
-      artifact configurations from `.signpath/artifact-configurations/`
-      (`binaries.xml`, `installer.xml` – drafts, check in SignPath's editor),
-      signing policy (manual approval, refs `v*` – check tag refs), CI user
-      token. Then in the GitHub environment `release`: secret
-      `SIGNPATH_API_TOKEN`; variables `SIGNPATH_ORGANIZATION_ID`,
-      `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_POLICY_SLUG`,
-      `SIGNPATH_ARTIFACT_CONFIG_BINARIES`, `SIGNPATH_ARTIFACT_CONFIG_INSTALLER`.
-      Doc: `releasing.md` §4.
-- [ ] **Owner** – fallback if SignPath declines: Azure Artifact Signing
-      (~$10/month, company validation) via `bundle.windows.signCommand`
-      (agent wires it).
+### Windows – unsigned for now (owner decision 2026-11-13)
+- [x] **Owner** – decision: no Windows code-signing certificate for now.
+      The Windows setup and `vitrine.exe` ship **unsigned** (no
+      Authenticode signature) in the first releases; SignPath Foundation
+      and Azure Artifact Signing are deferred (list below).
+- [x] What it means for users: SmartScreen shows "Windows protected your
+      PC" with "Unknown publisher" when the downloaded setup is started;
+      **More info → Run anyway** installs it (per user, no admin rights).
+      The release notes say "Windows: unsigned (SmartScreen warns on first
+      start)" (`release.yml`), the website install page explains the steps
+      (`website/content/{en,de}/docs/install.md`). Some antivirus tools may
+      be stricter with unsigned files; the checksums in `SHA256SUMS.txt`
+      let users verify the download.
+- [x] Updater on Windows: unaffected. The Tauri updater checks its **own**
+      minisign signature (`TAURI_SIGNING_PRIVATE_KEY` → `…-setup.exe.sig`,
+      entry `windows-x86_64` in `latest.json`), not Authenticode; the
+      unsigned build path creates that `.sig` like on macOS/Linux, so
+      0.1.x updates install from the app. The update is downloaded by the
+      app itself (no browser "downloaded from the internet" mark), so
+      SmartScreen is not expected to ask again – to confirm in the updater
+      test (7.3). Switching to a signed build later needs no change for
+      installed apps (the updater key stays the same).
+- [x] Workflow checked (2026-11-13): no change needed. `release.yml`
+      switches the SignPath path on only when `SIGNPATH_API_TOKEN` **and**
+      `SIGNPATH_ORGANIZATION_ID` are set (step "Detect signing material");
+      without them the Windows job takes "Build and bundle (… Windows
+      without SignPath)", still signs the updater artifact, and labels the
+      build unsigned. The `sign` input of `workflow_dispatch` only means
+      "use the secrets that exist". The `v0.1.0` tag run already built
+      Windows this way.
+- [ ] **Owner** – MFA for every member of the GitHub org (good practice
+      anyway; SignPath would require it).
+
+Deferred (revisit after the first releases have some reputation, or when
+users ask; doc: `docs/dev/releasing.md` §4,
+`docs/research/2026-11-11-windows-signing.md`):
+- SignPath Foundation: ask about the clause "without commercial
+  dual-licensing" vs. the CLA's relicensing right (ADR 0022); "Code
+  signing policy" page on the website (agent writes it, owner fills the
+  names); Windows version resource for `vitrine.exe` (e.g. `winresource`)
+  + product name/version rule in `.signpath/artifact-configurations/binaries.xml`;
+  apply at signpath.org/apply; then trusted build system, artifact
+  configurations, signing policy, CI token and the `SIGNPATH_*` secret and
+  variables (table below). The workflow path is ready and stays dormant.
+- Alternative: Azure Artifact Signing (~$10/month, company validation)
+  via `bundle.windows.signCommand` (agent wires it).
 
 ### Linux
 - [ ] **Agent** – fix AppImage bundling on CI (`linuxdeploy` fails even with
@@ -89,8 +106,8 @@ Until accepted, Windows builds ship **unsigned** and labelled (SmartScreen
 | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` | secret | set |
 | `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8` | secret | set |
 | `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | secret | set |
-| `SIGNPATH_API_TOKEN` | secret | after SignPath acceptance |
-| `SIGNPATH_ORGANIZATION_ID` (switches the SignPath path on), `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_POLICY_SLUG`, `SIGNPATH_ARTIFACT_CONFIG_BINARIES`, `SIGNPATH_ARTIFACT_CONFIG_INSTALLER` | variable | after SignPath acceptance |
+| `SIGNPATH_API_TOKEN` | secret | not set – Windows signing deferred (2026-11-13); leave empty |
+| `SIGNPATH_ORGANIZATION_ID` (switches the SignPath path on), `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_POLICY_SLUG`, `SIGNPATH_ARTIFACT_CONFIG_BINARIES`, `SIGNPATH_ARTIFACT_CONFIG_INSTALLER` | variable | not set – deferred; without them Windows builds unsigned |
 | `GITHUB_TOKEN` (`packages: write`, ghcr image) | automatic | – |
 
 - [x] **Owner** – environment `release` limited to `main` + tags `v*`
@@ -141,8 +158,9 @@ Until accepted, Windows builds ship **unsigned** and labelled (SmartScreen
     first store-key import (only Vitrine's own entries); bundled CLI
     `…/Contents/MacOS/vitrine --version`; "Install command line tool";
     MCP: "Add to Claude Desktop" with the bundled CLI path; native menu.
-  - Windows: NSIS per-user install, SmartScreen text, PATH prompt, first
-    start, keychain (Credential Manager), uninstall.
+  - Windows (unsigned, 7.1): SmartScreen "Unknown publisher" → More info
+    → Run anyway, NSIS per-user install, PATH prompt, first start,
+    keychain (Credential Manager), uninstall.
   - Linux: deb + rpm install (`/usr/bin/vitrine`), AppImage if built,
     WebKitGTK start, Secret Service keyring.
   - Everywhere: real file drop onto the window (asset import, folder →
@@ -150,7 +168,8 @@ Until accepted, Windows builds ship **unsigned** and labelled (SmartScreen
 - [ ] **Owner** – publish the draft; check `releases/latest/download/latest.json`.
 - [ ] **Owner** – updater end to end: install 0.1.0, publish 0.1.1, the app
       offers the update, installs and restarts (macOS, Windows, AppImage;
-      deb/rpm only notify).
+      deb/rpm only notify). Windows: note whether SmartScreen asks again
+      for the app-downloaded update (expected not to, 7.1).
 - [ ] **Agent** – after publishing: website `downloads_available = true` +
       `[params.downloads]` URLs (`releasing.md` step 7), remove the
       "pre-release" `status` callouts (`install.md`, docs `_index.md`),
@@ -160,7 +179,7 @@ Until accepted, Windows builds ship **unsigned** and labelled (SmartScreen
 - [ ] **Owner** – announcement (where: own channels, Mastodon/Bluesky,
       Hacker News / Product Hunt, fastlane community?) – decide.
 - [ ] Later versions: version bump in `[workspace.package]`, tag, draft,
-      SignPath approvals, publish; bump the GitLab component's default
+      publish (SignPath approvals only once Windows signing is set up); bump the GitLab component's default
       image tag on minor releases (`releasing.md`).
 
 ## 7.4 Integrations (MIT, separate homes)
@@ -200,29 +219,43 @@ Doc: `website/README.md` (TODO section, deployment).
       or a CI deploy job (**Agent** can write one; owner provides the
       deploy key as a secret). Rebuild after approving templates (gallery
       snapshot).
-- [~] **Owner + Agent** – legal pages: Impressum and Datenschutz drafted
-      2026-11-13 (German binding, English translation); completion in
-      progress (agent); **Owner** fills every `[OFFEN: …]` / `[OPEN: …]`
-      (contact e-mail, hosters + server location, log scope/retention,
-      deletion periods), removes the "before going live" callouts.
+- [x] **Owner + Agent** – legal pages: Impressum and Datenschutz complete
+      (2026-11-13, merged a2e5b45; German binding, English translation;
+      owner answers filled: info@grove.eco, Hetzner Germany + AVV,
+      anonymised logs 30 days, full IP only for security events; no
+      `[OFFEN]` left). The API server enforces the stated retention
+      (rejected templates and dealt-with reports deleted at once,
+      rate-limit counters and expired sessions pruned).
+- [ ] **Owner** – configure the website's and the API's nginx log format
+      and retention to match the privacy policy (anonymised IP, 30 days).
       Recommended: legal review (lawyer / IT-Recht-Kanzlei service).
-- [~] **Owner + Agent** – terms of use for the template gallery
-      (Nutzungsbedingungen: rights confirmation, CC0 grant, sample
-      screenshots only if own, OFL fonts only, notice-and-takedown, DSA
-      contact) – in progress (agent); owner legal review. Notes:
-      `docs/api/DEPLOY.md` "GDPR / Impressum".
-- [ ] **Owner** – a contact mailbox (e.g. `info@`/`hello@vitrinestudio.app`)
-      for Impressum, privacy requests, abuse reports, SignPath.
+- [x] **Agent** – terms of use for the template gallery
+      (`/de/nutzungsbedingungen/` binding, `/terms/` translation: rights
+      confirmation, CC0 grant, own sample screenshots only, OFL fonts only,
+      notice-and-takedown, DSA contact; merged da3855c); CLI upload prints
+      the link, `/health` has `terms_url`/`terms_version`.
+- [ ] **Owner** – terms of use: fill the 9 `[OFFEN: …]` items per language
+      (notice periods, session lifetime, age limit, how uploaders are
+      notified – the gallery knows no e-mail addresses, Art. 19 DSA
+      micro-enterprise check, consumer arbitration), remove the "Vor dem
+      Livegang" callout, legal review. Notes: `docs/api/DEPLOY.md`
+      "GDPR / Impressum".
+- [ ] **Owner** – optional: an own contact mailbox (e.g.
+      `info@`/`hello@vitrinestudio.app`); the legal pages use
+      `info@grove.eco` today.
 - [ ] **Owner** – review texts and design (en + de); German UI wording
       questions (see 7.9).
-- [ ] **Owner + Agent** – screenshots: 11 docs placeholders per language
-      (22 `placeholder` shortcodes, list in `website/README.md`), outdated
-      `editor-dark.jpg` ("Strip"), showcase galleries from the new
-      templates, a dedicated 1200×630 Open Graph image. Agent can render
-      galleries with the CLI; app screenshots need the real app (owner or
-      agent via the dev bridge).
-- [ ] **Agent** – "Code signing policy" page (7.1) and the downloads switch
-      (7.3).
+- [x] **Agent** – screenshots: all app screenshots retaken with the
+      current UI as light/dark pairs (2026-11-13, 520b4b0; no `placeholder`
+      shortcodes left in the docs, README editor shots as `<picture>`),
+      home matrix with real renders from the Warm Stay template (9cfa24f),
+      new page-grouping image.
+- [ ] **Owner + Agent** – a dedicated 1200×630 Open Graph image (today a
+      crop of `iphone-gallery-en.jpg`); optionally showcase tabs from the
+      gallery templates; update the stale "Images to replace" table in
+      `website/README.md`.
+- [ ] **Agent** – the downloads switch (7.3). ("Code signing policy" page
+      only with SignPath, deferred – 7.1.)
 - [ ] **Agent** – link to the website guide in the MCP `docs_get`
       `overview` once the site is online (phase 6.7).
 - Search console / analytics: not planned (site has no trackers).
@@ -254,11 +287,17 @@ Doc: `docs/api/DEPLOY.md`, `docs/api/API.md`, ADR 0023, 0025.
       privacy policy.
 - [ ] **Owner** – moderation routine: `vitrine gallery admin queue|approve|reject`,
       answer abuse reports; delete data on request (by hand today).
+- [x] Deletion of rejected templates (row, reports, files) and resolved
+      reports at once, legacy rows purged at start-up (2026-11-13, 5690935).
 - [ ] **Agent** – gallery follow-ups (after 1.0 unless needed): uploader
-      self-service (own templates, delete), deletion of rejected files,
-      gallery rule for templates with "required, not included" fonts (7.9).
+      self-service (own templates, delete), GUI upload/login (CLI only
+      today), technical uploader ban, gallery rule for templates with
+      "required, not included" fonts (7.9).
 - [ ] **Owner** – rebuild/redeploy the server image with every release
       that changes `crates/api-server` or the template format.
+- [ ] **Owner** – redeploy now for the 2026-11-13 server changes (terms
+      link in `/health`, immediate deletion of rejected templates and
+      reports, pruning of counters/sessions).
 
 ## 7.7 Store accounts & real upload runs (from Phase 5)
 Doc: `docs/plan/phase-5.md`, ADR 0016–0019, website `docs/store-upload`.
@@ -337,17 +376,33 @@ Compact list; details in `docs/plan/STATUS.md` ("Open owner decisions",
 - [ ] Proposed, not built: `{lang}` placeholder in image asset paths
       (P2.3); GUI in `--release`/`opt-level = 1` for long MCP sessions.
 - [ ] German wording "Frame" vs. "Rahmen"; translate device/colour names?
-- [ ] SignPath vs. the CLA's relicensing clause (7.1); crates.io names
-      (7.4); fastlane plugin name/repo (7.4); announcement (7.3).
+- [x] Windows signing: none for now, ships unsigned (2026-11-13, 7.1);
+      SignPath vs. the CLA's relicensing clause only matters if SignPath
+      is taken up again.
+- [ ] crates.io names (7.4); fastlane plugin name/repo (7.4); announcement (7.3).
 - [ ] Later integrations (Bitrise, CircleCI, Azure) only on demand (g4).
 
-## 7.10 Work in progress (agents, 2026-11-13)
-- [~] Design checks round 2 (WP-C) – MCP test round 2,
+## 7.10 Agent work packages of 2026-11-13 (all merged)
+- [x] Design checks round 2 (WP-C): `device_cut`, `screen_covered`
+      (`checks.screen_cover`), clearer contrast/header-cut messages,
+      corner occluders (ADR 0029 amendment; c968e8b) – MCP test round 2,
       `docs/research/2026-11-13-mcp-test-results2.md`.
-- [~] `clip_to` for images + span padding/radius (F2).
-- [~] Gallery terms of use (7.5).
-- [~] fastlane folder flow fix.
-- [~] Legal pages completion (7.5).
+- [x] `clip_to` for images + span highlight padding/radius (F2, ADR 0031;
+      198a602), scaled by group `scale` (ADR 0030, d454387).
+- [x] MCP tool surface (WP-A): `apply_ops {file}`, dropped-override
+      warning, `styles_update {fonts}`, gallery `pages` (c829456); quieter
+      checks (WP-B): own screenshot variant folders, `page_not_covered`
+      looks underneath, no-op edits not saved (80ca617).
+- [x] Gallery terms of use (7.5; da3855c).
+- [x] fastlane folder flow: captures in their own folder, import skips
+      own exports, export reports foreign images, `--remove-foreign`
+      (ADR 0032; 5c453e3).
+- [x] Legal pages completion + API retention (7.5; a2e5b45).
+- [x] Template language fix: language-only elements remapped, never
+      `visible_in: {}` (d05f3d3).
+- [x] Website: Automation docs section, home page update, new light/dark
+      app screenshots (website + README), Warm Stay matrix, floating
+      narrow screenshots, Home link + section index (ce43fba … aa1cfdb).
 
 ## 7.11 Before tagging 1.0
 - [ ] All of 7.1–7.8 done or consciously moved after 1.0; 7.9 answered.

@@ -291,7 +291,7 @@ faq:
       open: true
       a: "Yes – 100 % free, really. Vitrine Studio is free, open-source software under the GPL-3.0-or-later. There is no subscription, no paid tier, no account and no watermark on your screenshots, and no limit on languages, devices or exports. Using it for commercial apps is fine. How we plan to fund development: [here](#funding)."
     - q: "When can I download it?"
-      a: "Vitrine Studio is in pre-alpha. Signed installers for macOS, Windows and Linux are being prepared; until then you can [build it from source](https://github.com/vitrinestudio-app/vitrine) with Rust."
+      a: "Vitrine Studio is in pre-alpha. Installers for macOS, Windows and Linux are being prepared; until then you can [build it from source](https://github.com/vitrinestudio-app/vitrine) with Rust."
     - q: "Do I need an account or an internet connection?"
       a: "No. Projects are local folders. The network is only used when you upload to a store or use the template gallery – publishing a template there needs a GitHub login, browsing and downloading do not."
     - q: "Does it come with Apple device frames?"

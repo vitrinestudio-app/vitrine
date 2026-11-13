@@ -4,7 +4,7 @@ Scope: KONZEPT.md §12, Phase 6 ("Vorlagen, eigene Frame-Pakete,
 Farbmanagement P3 → sRGB, Feature Graphic, Installer/Signierung, Website
 vitrinestudio.app, Doku"). Done when release 1.0 ships.
 
-State 2026-11-13: the features of this phase are built; what remains are
+State 2026-11-13: the features of this phase are built and merged; what remains are
 mostly owner steps (signing, publishing, legal, real-app checks) and the
 release itself. Those are collected, with every other remaining step to
 the first public version, in **`docs/plan/phase-7.md`** (release). Open
@@ -183,11 +183,13 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
       `v0.1.0`: macOS signed + notarized OK, Windows OK (unsigned), Linux
       AppImage bundling fails (linuxdeploy) – see STATUS hand-off; the
       tag exists, no draft release yet → Phase 7
-- [~] Windows: SignPath Foundation researched
+- [x] Windows: SignPath Foundation researched
       (`docs/research/2026-11-11-windows-signing.md`), SignPath path in the
       workflow (two requests, re-signed updater artifact), switched on by
-      the `SIGNPATH_*` variables; until then unsigned + labelled –
-      [ ] owner: first public release, code signing policy page, apply
+      the `SIGNPATH_*` variables; until then unsigned + labelled – owner
+      decision 2026-11-13: **no Windows certificate for now**, Windows
+      ships unsigned (updater unaffected), SignPath/Azure deferred
+      (Phase 7.1)
 - [~] Linux: desktop file + icons from the Tauri bundler; packages unsigned
       (checksums); AppImage self-updates, deb/rpm only notify – AppImage
       build fails on CI (linuxdeploy), deb/rpm untested → Phase 7
@@ -235,14 +237,16 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
       fastlane, store upload, templates teaser, open source + CLA, FAQ
 - [x] Download page ("coming soon" until 6.5; `downloads_available` +
       URLs in `hugo.toml`), fastlane migration page (docs)
-- [~] Owner: Impressum + Datenschutz texts – drafted 2026-11-13 from the
-      company data and the real data flows (German binding, English
-      translation), `[OFFEN: …]` items left for the owner; completion in
-      progress; domain/hosting/deployment (SFTP pattern of the other
-      sites, see `website/README.md`) and review of texts and design open
-      → Phase 7
-- [ ] Screenshots made with Vitrine Studio itself / from the new templates
-      (list of images to replace in `website/README.md`) → Phase 7
+- [x] Impressum + Datenschutz complete (2026-11-13, owner answers
+      filled; German binding, English translation); gallery terms of use
+      drafted (`/de/nutzungsbedingungen/`, `/terms/`; owner fills the
+      `[OFFEN: …]` items); domain/hosting/deployment (SFTP pattern of the
+      other sites, see `website/README.md`) and review of texts and design
+      open → Phase 7
+- [x] Screenshots made with Vitrine Studio itself (2026-11-13): all app
+      screenshots retaken with the current UI (light + dark, following the
+      site theme), home matrix rendered from the Warm Stay template;
+      dedicated Open Graph image still open → Phase 7
 - [x] Template gallery page (2026-11-12): `/gallery/` + `/de/galerie/`,
       build-time snapshot + live refresh from the API (CORS allow list
       `VITRINE_API_CORS_ORIGINS`, list limit 200, per-canvas `devices`),
@@ -256,7 +260,9 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
       fonts tile, "how development is funded" with sponsor placeholders,
       `sponsors_available = false`), docs section **Automation**
       (GitHub Actions, GitLab CI, fastlane, other systems; old URLs
-      redirect), owner review of the German docs applied
+      redirect), owner review of the German docs applied; header "Home"
+      link and a section index on the home page, narrow screenshots float
+      beside the text
 - [ ] Frame pack gallery (6.4) on the website – after 1.0
 
 ## 6.7 Documentation (own step)
@@ -272,9 +278,9 @@ project's `frames/` or app-wide. Vitrine Studio ships no vendor images.
 - [x] CLI reference generated from the real `--help` output
       (`scripts/docs/cli-help.sh` → `website/data/cli_help.json`,
       shortcode `cli-help`); link checker `website/scripts/check-links.py`
-- [~] Screenshots of the real app: 11 placeholders per language ("Screenshot
-      coming soon"), list in `website/README.md`; owner reviewed the German
-      texts 2026-11-13 (fixes merged); screenshots → Phase 7
+- [x] Screenshots of the real app: the 11 placeholders per language
+      replaced by light/dark screenshots (2026-11-13); owner reviewed the
+      German texts 2026-11-13 (fixes merged)
 - [ ] `docs_get` MCP tool content stays in sync (it serves the model
       reference for assistants – elements, ops, project, markup, targets,
       scopes – not the user guide; no change needed now, a link to the
@@ -303,12 +309,15 @@ Owner requests and MCP test-run findings, built 2026-11-10 to 2026-11-13:
       from the environment, CLI image + integration drafts
       (`docs/research/2026-11-12-ci-integrations.md`)
 - [x] Design checks in `validate` (pixel inspector, contrast, seams,
-      device distance …; ADR 0029) – [~] round 2 (WP-C) in progress
+      device distance …; ADR 0029) – round 2 (WP-C, 2026-11-13):
+      `device_cut`, `screen_covered`, clearer messages, corner occluders
 - [x] MCP test round 1 + 2 fixes: preview sizes, store background,
       background exports, frame metrics, image cache, group `scale`
       (ADR 0030), `apply_ops {file}`, dropped-override warning,
       `styles_update {fonts}`, own screenshot variant folders, no-op edits
       not saved
-- [~] In progress (agents, 2026-11-13): `clip_to` + span padding/radius
-      (F2), fastlane folder flow fix, gallery terms of use, legal pages
-      completion – see Phase 7
+- [x] Done 2026-11-13 (agents): `clip_to` for images + span highlight
+      padding/radius (F2, ADR 0031), fastlane captures in their own folder
+      (import skips own exports, export reports foreign images; ADR 0032),
+      gallery terms of use, legal pages completion, template language fix
+      (`visible_in` remapped, never `{}`) – see Phase 7.10

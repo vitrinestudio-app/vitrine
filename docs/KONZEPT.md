@@ -4,7 +4,7 @@
 >
 > Open-Source-Desktop-Programm (GPL-3.0-or-later, kostenlos) zum Erstellen von App-Store- und Play-Store-Screenshots mit Device-Frames, Texten, Übersetzungen, Panorama-Sets, Store-Upload und MCP-Schnittstelle.
 >
-> Stand: November 2026 · Status: Entwurf (verbindliches Konzept) · Umsetzung (13.11.2026): Phasen 0–5 gebaut, Phase 6 weitgehend gebaut, Veröffentlichung in Vorbereitung – siehe §12 und `docs/plan/STATUS.md`
+> Stand: November 2026 · Status: Entwurf (verbindliches Konzept) · Umsetzung (13.11.2026): Phasen 0–5 gebaut, Phase 6 gebaut, Veröffentlichung (Phase 7) in Vorbereitung – siehe §12 und `docs/plan/STATUS.md`
 
 ---
 
@@ -656,7 +656,7 @@ pub enum Op {
 | **7 – Veröffentlichung** | Signierung (macOS, Windows), erste öffentliche Releases, Repo öffentlich, CLA-Bot, Container-Image und CI-Integrationen veröffentlichen, Website mit Rechtstexten live, Galerie-Server im Normalbetrieb, Store-Testläufe, Smoke-Tests pro Betriebssystem (`docs/plan/phase-7.md`). | Release 1.0 veröffentlicht. |
 | **8 – 3D (optional)** | Perspektivische Neigung von Geräten (Mesh-Warp), Presets wie „leicht gekippt“. | nach 1.0 |
 
-**Stand 13.11.2026:** Phasen 0–4 fertig; Phase 5 gebaut, echte Uploads testet der Inhaber noch; Phase 6 weitgehend gebaut (Farbmanagement, Feature Graphic, Vorlagen + Web-Galerie, eigene Frame-Pakete, Installer/Updater, Website, Doku), dazu nicht geplante Ergänzungen (fastlane-Kompatibilität, Systemschriften, Design-Prüfungen, CI-Anbindungen). Die Veröffentlichungsschritte wurden am 13.11.2026 als eigene Phase 7 herausgelöst; 3D rückt auf Phase 8. Details: `docs/plan/phase-*.md`, `docs/plan/STATUS.md`.
+**Stand 13.11.2026:** Phasen 0–4 fertig; Phase 5 gebaut, echte Uploads testet der Inhaber noch; Phase 6 gebaut (Farbmanagement, Feature Graphic, Vorlagen + Web-Galerie, eigene Frame-Pakete, Installer/Updater, Website, Doku), dazu nicht geplante Ergänzungen (fastlane-Kompatibilität mit getrenntem Aufnahme-Ordner, Systemschriften, Design-Prüfungen, Gruppen-Skalierung, `clip_to` und Span-Boxen, CI-Anbindungen als Entwürfe); Impressum, Datenschutz und Galerie-Nutzungsbedingungen liegen auf der Website. Die Veröffentlichungsschritte wurden am 13.11.2026 als eigene Phase 7 herausgelöst; 3D rückt auf Phase 8. Phase 7 läuft: macOS signiert und notarisiert; Windows erscheint vorerst unsigniert (Entscheidung des Inhabers 13.11.2026, SmartScreen-Hinweis; Signierung über SignPath/Azure zurückgestellt). Details: `docs/plan/phase-*.md`, `docs/plan/STATUS.md`.
 
 ---
 
