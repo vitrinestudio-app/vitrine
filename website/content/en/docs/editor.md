@@ -168,6 +168,15 @@ With an element selected, the inspector shows its settings. The most important:
   languages* (e.g. a badge only in the App Store targets).
 - **Device:** *Model*, *Frame*, *Colour*, *Orientation*, *Screenshot* (the
   key), *Fit*, *Shadow* … – see [Devices & frames](../devices-frames/).
+  Next to *Screenshot*, ▾ (<kbd>⌥</kbd> + <kbd>↓</kbd>) lists the keys with
+  a thumbnail: first those with a file for the current language and variant,
+  then the others. To use a new key, just type it into the field.
+- **Drag a screenshot onto a device:** in the **Assets** tab, drag a
+  screenshot onto a device on the canvas (it is highlighted while you are
+  over it). This sets the device's *Screenshot* key, as one undo step. Only
+  the key counts: a file from another language or variant folder sets it
+  too, and every language shows its own file of that key (or the fallback).
+  Images from `assets/` cannot go into a device.
 - **Text:** *Key*, *Text*, *Style*, *Box* (*Margins* to the page edges or a
   *Free box*), *Align*, *Vertical*, *Auto-fit* (*Shrink down to*, *Maximum
   lines*), *Hyphenation*, *Colour*, *Font size*, *Outline*, *Glow*, *Shadow*.

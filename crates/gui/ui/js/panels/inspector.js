@@ -14,7 +14,7 @@
 // typing are kept by `data-key`.
 
 import { h, icon } from '../dom.js';
-import { currentCanvas, effectiveVariant } from '../store.js';
+import { currentCanvas, currentTarget, effectiveVariant } from '../store.js';
 import {
   checkInput,
   colorInput,
@@ -27,6 +27,8 @@ import {
 } from './fields.js';
 import { renderCanvasSettings } from './canvas-settings.js';
 import { openImagePreview } from '../dialogs/image-preview.js';
+import { notifyImported, onImported } from './importer.js';
+import { screenshotPicker } from './screenshot-picker.js';
 
 const KIND_ICON = { device: 'device', text: 'text', image: 'image', shape: 'shape', group: 'group', background: 'background' };
 const BUILTIN_SHADOWS = ['soft', 'hard', 'none'];
@@ -548,8 +550,13 @@ export function mount(el, ctx) {
       rows.push(row(t('inspector.fold'), selectInput({ key: 'fold', options: folds, value: e.fold ?? '', title: t('inspector.fold'), onChange: (v) => set({ fold: v || null }) }), { field: 'fold', info }));
     }
     const keys = [...new Set((extra.assets?.screenshots ?? []).map((s) => s.key))].sort();
+    const st = store.get();
+    const pickShot = async (v) => {
+      await set({ screenshot: v || null });
+      notifyImported([]); // asset listings show which devices use each key
+    };
     rows.push(
-      row(t('inspector.screenshot'), textInput({ key: 'screenshot', value: e.screenshot ?? '', list: keys, mono: true, placeholder: t('inspector.screenshot.none'), title: t('inspector.screenshot'), onCommit: (v) => set({ screenshot: v || null }) }), {
+      row(t('inspector.screenshot'), screenshotPicker({ key: 'screenshot', value: e.screenshot ?? '', listing: extra.assets, lang: st.lang, variant: currentTarget(st)?.screenshots ?? null, onCommit: pickShot }), {
         field: 'screenshot',
         info,
         hint: e.screenshot && !keys.includes(e.screenshot) ? t('inspector.screenshot.unknown') : null,
@@ -914,6 +921,11 @@ export function mount(el, ctx) {
   const unsubs = [
     store.select((s) => [s.selection, s.overlay, s.variant, s.lang, s.target, s.canvas, s.summary], () => refresh()),
     editor.on('reset', () => cache.invalidate()),
+    // Imports and screenshot key changes (drops from the assets panel).
+    onImported(() => {
+      cache.invalidate();
+      refresh();
+    }),
     // Full invalidations (asset imports, external edits): asset lists and
     // translation keys may have changed.
     editor.on('invalidate', (p) => {

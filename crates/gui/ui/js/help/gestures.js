@@ -121,6 +121,8 @@ export const GESTURES = [
       { keys: ['dblclick', 'enter', 'f2'], text: 'help.g.layers_rename' },
       { keys: ['drag'], text: 'help.g.layers_reorder' },
       { keys: ['drag', 'dblclick'], text: 'help.g.inspector_resize' },
+      { keys: ['drag'], text: 'help.g.asset_drag_device' },
+      { keys: ['alt+down'], text: 'help.g.screenshot_pick' },
       { keys: ['click', 'enter'], text: 'help.g.asset_preview' },
       { keys: ['left', 'right'], text: 'help.g.preview_step' },
     ],

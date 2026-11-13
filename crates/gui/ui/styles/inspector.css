@@ -834,3 +834,93 @@ body.scrubbing * {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Screenshot key field of devices (js/panels/screenshot-picker.js). */
+.shot-pick {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.shot-pick > .insp-text,
+.shot-pick > .insp-text-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.shot-pick-thumb {
+  flex: none;
+  width: 18px;
+  height: 26px;
+  object-fit: contain;
+  border-radius: 3px;
+  background: var(--bg-active);
+}
+
+.shot-pick-thumb.empty,
+.shot-pick-thumb.broken {
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+}
+
+.shot-pick-btn {
+  flex: none;
+}
+
+.shot-menu {
+  width: 280px;
+  max-height: min(420px, calc(100vh - 16px));
+  overflow-y: auto;
+}
+
+.shot-menu .menu-item {
+  height: auto;
+  min-height: 26px;
+  padding: 3px 8px;
+}
+
+.shot-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shot-pick-row .shot-pick-thumb {
+  width: 24px;
+  height: 36px;
+}
+
+.shot-pick-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shot-pick-text > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-heading {
+  padding: 6px 10px 2px;
+}
+
+.shot-menu {
+  overflow-x: hidden;
+}
+
+.shot-menu .menu-item .grow {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.shot-menu .menu-item > .ctx-icon {
+  display: none;
+}
+
+.shot-menu .menu-item {
+  gap: 8px;
+}

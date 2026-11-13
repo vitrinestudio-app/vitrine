@@ -1,6 +1,7 @@
 // Context menu (right-click, ⇧F10 or the context-menu key): a popover at a
-// screen point with items `{ label, icon?, key?, action, disabled? }` and
-// `'-'` separators. Keyboard: ↑/↓ (Home/End) move, Enter/Space run, Esc or
+// screen point with items `{ label, icon?, key?, action, disabled?, title?,
+// current? }` (`label` may be a node; `current` gets the initial focus),
+// `{ heading }` group labels and `'-'` separators. Keyboard: ↑/↓ (Home/End) move, Enter/Space run, Esc or
 // Tab close; a click outside, scrolling, resizing or losing the window
 // closes it too. Focus returns to where it was. Only one menu is open at
 // a time. Styles: `.popover.menu` (styles/dialogs.css).
@@ -17,15 +18,20 @@ export function closeContextMenu() {
 
 /**
  * Opens a context menu at client point (`x`, `y`). Returns `{ el, close }`.
- * `label`: accessible name of the menu.
+ * `label`: accessible name of the menu; `cls`: extra class of the popover.
  */
-export function openContextMenu({ x, y, items, label }) {
+export function openContextMenu({ x, y, items, label, cls = '' }) {
   closeContextMenu();
   const returnFocus = document.activeElement;
   const buttons = [];
-  const menu = h('div', { class: 'popover menu ctx-menu', role: 'menu', 'aria-label': label ?? null });
+  let initial = 0;
+  const menu = h('div', { class: `popover menu ctx-menu ${cls}`.trim(), role: 'menu', 'aria-label': label ?? null });
   for (const it of items) {
     if (!it) continue;
+    if (it.heading) {
+      menu.append(h('div', { class: 'menu-heading muted small', role: 'presentation' }, it.heading));
+      continue;
+    }
     if (it === '-') {
       if (menu.lastChild && !menu.lastChild.classList.contains('menu-sep')) menu.append(h('div', { class: 'menu-sep', role: 'separator' }));
       continue;
@@ -37,6 +43,7 @@ export function openContextMenu({ x, y, items, label }) {
         role: 'menuitem',
         class: 'menu-item',
         tabindex: '-1',
+        title: it.title ?? null,
         disabled: Boolean(it.disabled),
         'aria-disabled': it.disabled ? 'true' : null,
         onclick: () => {
@@ -48,6 +55,7 @@ export function openContextMenu({ x, y, items, label }) {
       h('span', { class: 'grow' }, it.label),
       it.key ? h('span', { class: 'muted small ctx-key' }, keyLabel(it.key)) : null,
     );
+    if (it.current && !it.disabled) initial = buttons.filter((x) => !x.disabled).length;
     buttons.push(b);
     menu.append(b);
   }
@@ -125,7 +133,8 @@ export function openContextMenu({ x, y, items, label }) {
   // A right-click inside the menu opens nothing else.
   menu.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  focusAt(0);
+  focusAt(initial);
+  enabled()[initial]?.scrollIntoView({ block: 'nearest' });
   current = { el: menu, close };
   return current;
 }
