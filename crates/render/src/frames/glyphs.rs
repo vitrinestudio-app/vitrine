@@ -7,7 +7,7 @@ use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, GlyphId, MetadataProvider};
 use tiny_skia::{Path, PathBuilder};
 
-static INTER: &[u8] = include_bytes!("../../../../assets/fonts/Inter-Regular.ttf");
+static INTER: &[u8] = include_bytes!("../../../../assets/fonts/inter/Inter-Regular.ttf");
 
 struct Pen<'a> {
     pb: &'a mut PathBuilder,

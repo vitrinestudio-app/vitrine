@@ -2,8 +2,8 @@
 
 All fonts are licensed under the **SIL Open Font License 1.1**. Each family
 ships its own licence file with its copyright line (`OFL.txt` in the
-family folder; Inter: `assets/fonts/OFL.txt`). The files are unmodified
-(no subsetting, no renaming inside the font), so the Reserved Font Names
+family folder; Inter and Inter Display share `inter/OFL.txt`). The files
+are unmodified (no subsetting, no renaming inside the font), so the Reserved Font Names
 some families declare (Dancing Script, Lora, Playfair Display) are not
 affected.
 
@@ -19,11 +19,11 @@ https://github.com/rsms/inter).
 
 | File | Bytes | SHA-256 |
 |---|---:|---|
-| `Inter-Regular.ttf` | 411640 | `40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82` |
-| `Inter-SemiBold.ttf` | 419744 | `78a843fade9d4612a5567302fb595b56976eb5fcebf4fea5a5912d638bafcde3` |
-| `InterDisplay-Bold.ttf` | 418856 | `b74c8e0dd744b3347faca4c96bc7b2e32f7d6f62300a79b1d1a99331e44a5bc4` |
-| `InterDisplay-Black.ttf` | 417540 | `25460b0d5b3afd9764d63cf838f94145af624f8d4c9d20e0f74116be42878b32` |
-| `OFL.txt` | | `262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a` |
+| `inter/Inter-Regular.ttf` | 411640 | `40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82` |
+| `inter/Inter-SemiBold.ttf` | 419744 | `78a843fade9d4612a5567302fb595b56976eb5fcebf4fea5a5912d638bafcde3` |
+| `inter/InterDisplay-Bold.ttf` | 418856 | `b74c8e0dd744b3347faca4c96bc7b2e32f7d6f62300a79b1d1a99331e44a5bc4` |
+| `inter/InterDisplay-Black.ttf` | 417540 | `25460b0d5b3afd9764d63cf838f94145af624f8d4c9d20e0f74116be42878b32` |
+| `inter/OFL.txt` | | `262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a` |
 
 ## Added 2026-11-11
 

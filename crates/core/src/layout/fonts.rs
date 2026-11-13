@@ -870,7 +870,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(
             dir.path().join("b.ttf"),
-            include_bytes!("../../../../assets/fonts/Inter-Regular.ttf"),
+            include_bytes!("../../../../assets/fonts/inter/Inter-Regular.ttf"),
         )
         .unwrap();
         std::fs::write(dir.path().join("a.otf"), b"not a font").unwrap();
@@ -888,7 +888,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(
             dir.path().join("Inter-Regular.ttf"),
-            include_bytes!("../../../../assets/fonts/Inter-Regular.ttf"),
+            include_bytes!("../../../../assets/fonts/inter/Inter-Regular.ttf"),
         )
         .unwrap();
         let mut lib = FontLibrary::empty();

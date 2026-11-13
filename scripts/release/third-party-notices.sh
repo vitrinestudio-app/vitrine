@@ -23,8 +23,6 @@ cp LICENSE "$out/LICENSE.txt"
 cargo about generate --workspace --locked --fail \
   -c about.toml scripts/release/about.hbs -o "$out/THIRD-PARTY-NOTICES.html"
 
-mkdir -p "$out/fonts/inter"
-cp assets/fonts/OFL.txt "$out/fonts/inter/OFL.txt"
 for dir in assets/fonts/*/; do
   family="$(basename "$dir")"
   if [ -f "$dir/OFL.txt" ]; then

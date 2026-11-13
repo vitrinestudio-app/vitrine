@@ -82,17 +82,17 @@ const N: usize = 24;
 /// A `static`, not a `const`: a `const` would be instantiated at every use
 /// and could copy the embedded font bytes into the binary several times.
 pub static FILES: [BundledFile; N] = [
-    file!("Inter-Regular.ttf", "Inter", 400, 400..=400, false),
-    file!("Inter-SemiBold.ttf", "Inter", 600, 600..=600, false),
+    file!("inter/Inter-Regular.ttf", "Inter", 400, 400..=400, false),
+    file!("inter/Inter-SemiBold.ttf", "Inter", 600, 600..=600, false),
     file!(
-        "InterDisplay-Bold.ttf",
+        "inter/InterDisplay-Bold.ttf",
         "Inter Display",
         700,
         700..=700,
         false
     ),
     file!(
-        "InterDisplay-Black.ttf",
+        "inter/InterDisplay-Black.ttf",
         "Inter Display",
         900,
         900..=900,
@@ -212,8 +212,8 @@ pub static FILES: [BundledFile; N] = [
 
 /// Every bundled family, in picker order (Inter first).
 pub static FAMILIES: &[BundledFamily] = &[
-    family("Inter", FontCategory::SansSerif, "OFL.txt"),
-    family("Inter Display", FontCategory::SansSerif, "OFL.txt"),
+    family("Inter", FontCategory::SansSerif, "inter/OFL.txt"),
+    family("Inter Display", FontCategory::SansSerif, "inter/OFL.txt"),
     family("Montserrat", FontCategory::SansSerif, "montserrat/OFL.txt"),
     family("Nunito", FontCategory::SansSerif, "nunito/OFL.txt"),
     family("Oswald", FontCategory::SansSerif, "oswald/OFL.txt"),

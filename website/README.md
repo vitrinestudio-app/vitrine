@@ -111,7 +111,7 @@ The WOFF2 files are subsets of `/assets/fonts/` made with fontTools:
 pip install fonttools brotli
 U="U+0000-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+21E7,U+2212,U+2248,U+2260,U+2264-2265,U+2318,U+2325,U+232B,U+2713,U+2715,U+00D7,U+2026,U+2033"
 for f in Inter-Regular Inter-SemiBold InterDisplay-Bold InterDisplay-Black; do
-  pyftsubset ../assets/fonts/$f.ttf --unicodes="$U" --layout-features='kern,liga,calt,tnum,ss01,cv11,case' --flavor=woff2 --output-file=static/fonts/$f.woff2
+  pyftsubset ../assets/fonts/inter/$f.ttf --unicodes="$U" --layout-features='kern,liga,calt,tnum,ss01,cv11,case' --flavor=woff2 --output-file=static/fonts/$f.woff2
 done
 pyftsubset "../assets/fonts/jetbrainsmono/JetBrainsMono[wght].ttf" --unicodes="$U" --flavor=woff2 --output-file=static/fonts/JetBrainsMono.woff2
 ```

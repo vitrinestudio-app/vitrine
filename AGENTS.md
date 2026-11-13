@@ -51,7 +51,7 @@ changing the model, renderer or architecture. Glossary: KONZEPT §2
 | `crates/cli` (`vitrine-cli`) | binary `vitrine` (clap), one module per command |
 | `crates/gui` (`vitrine-gui`) | Tauri 2 app (`src/main.rs`), dev HTTP bridge (`src/bridge.rs`, `src/bin/vitrine-devbridge.rs`), updater, native menu; frontend in `crates/gui/ui/` (vanilla ES modules, no npm) |
 | `crates/api-server` (`vitrine-api-server`) | backend of api.vitrinestudio.app (axum, SQLite, Docker; binary `vitrine-api`): template gallery + GitHub login. Not part of the app. |
-| `assets/` | bundled OFL fonts (`assets/fonts/`, `SOURCES.md`), hyphenation patterns (`assets/hyphenation/`, `LICENSES.md`), brand files (`assets/brand/`, not GPL) |
+| `assets/` | bundled OFL fonts (`assets/fonts/<family>/` with its `OFL.txt`, Inter + Inter Display in `inter/`; `assets/fonts/SOURCES.md`), hyphenation patterns (`assets/hyphenation/`, `LICENSES.md`), brand files (`assets/brand/`, not GPL) |
 | `tests/fixtures/example/` | example project (all target kinds; en, de, fr, fr-CA with deliberate fallbacks) + golden images (`golden/`) |
 | `tests/fixtures/scripts/` | non-Latin script fixture (render tests) |
 | `website/` | www.vitrinestudio.app (Hugo, no theme): landing page, user guide `content/{en,de}/docs/`, template gallery page; see `website/README.md` |
