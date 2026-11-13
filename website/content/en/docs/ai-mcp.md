@@ -41,7 +41,7 @@ Config file: macOS `~/Library/Application Support/Claude/claude_desktop_config.j
 Windows `%APPDATA%\Claude\claude_desktop_config.json`, Linux
 `~/.config/Claude/claude_desktop_config.json`.
 
-{{< placeholder "App settings → AI assistants (MCP): connection status, Add to Claude Desktop, the Claude Code command." >}}
+{{< shot src="images/mcp-settings.jpg" alt="App settings, section AI assistants (MCP): connection status, fixed port, start on demand, the commands for other MCP clients, Add to Claude Desktop and the Claude Code command." caption="App settings → **AI assistants (MCP)**." >}}
 
 ## Claude Code
 

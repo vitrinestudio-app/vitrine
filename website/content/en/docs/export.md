@@ -60,7 +60,7 @@ internet, and has a light and dark look – handy to send around for review. It
 lists all current files in the folder, also from earlier exports of other
 targets.
 
-{{< placeholder "The index.html overview page of an export, with the enlarged view." >}}
+{{< shot src="images/export-overview.jpg" alt="The index.html overview page of an export with one image enlarged." caption="The `index.html` overview of an export, one image enlarged." >}}
 
 ## Incremental exports
 

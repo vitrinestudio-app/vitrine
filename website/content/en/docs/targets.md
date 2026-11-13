@@ -18,7 +18,7 @@ store's exact sizes, the store slot, a matching device and gallery profile.
 Badges show whether the store **requires** the set (*required*, *conditional*,
 *optional*) and how well the data is verified.
 
-{{< placeholder "Canvases & targets: the Add target list with presets, badges and sizes." >}}
+{{< shot src="images/targets-add.jpg" alt="Canvases & targets: the Add target list with presets for iPhone, iPhone Duo, App Store creatives and iPad, with verified/required badges and the sizes." caption="Canvases & targets → **Add target**: presets with badges and sizes." >}}
 
 ### Presets
 
@@ -90,7 +90,7 @@ The iPad landscape set of the example project uses the **phone** canvas:
 The device swap draws iPads instead of iPhones, and a variant moves the phones
 a little. Exported file names show both pages: `01_plan+beds.png`.
 
-{{< shot src="images/ipad-gallery-de.jpg" alt="iPad landscape gallery of the example project: each image shows two phone pages side by side." caption="`ios-ipad-13` landscape with `Pages per image: 2`, variant `tablet-landscape` and a device swap to iPad." >}}
+{{< shot src="images/example-ipad-grouped-de.jpg" alt="iPad landscape gallery of the example project: each image shows two phone pages side by side." caption="`ios-ipad-13` landscape with `Pages per image: 2`, variant `tablet-landscape` and a device swap to iPad (example project, German)." >}}
 
 ### Rearranging: variants
 
@@ -122,7 +122,9 @@ pages for the feature graphic, 5 for the header, 3 for search results) –
 with the same screenshots, device swap and variant as the canvas's screenshot
 target of that store – so the Play banner shows the Android phones.
 
-{{< shot src="images/blog-header-de.jpg" alt="A wide banner with the German headline and phones from the example project." caption="A banner target (`blog-header`, German) cut from the phone canvas." >}}
+{{< shot src="images/canvas-dialog.jpg" alt="Canvases & targets with the phone canvas selected: its targets, Banner from this canvas with four store banners and their page ranges, and the variants." caption="A canvas in **Canvases & targets**, with **Banner from this canvas**." >}}
+
+{{< shot src="images/blog-header-en.jpg" alt="A wide banner with four synthwave headlines and tilted phones in front of a neon sun." caption="A banner target (`blog-header`, 2400×1000) cut from the phone canvas of *Synthwave Sunset*: a free rectangle across four pages, without gaps." >}}
 
 ### Banner settings
 

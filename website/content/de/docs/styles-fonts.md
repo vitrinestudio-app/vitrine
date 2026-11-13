@@ -145,6 +145,8 @@ Speichere die Schriften im Projekt (nächster Abschnitt) oder nutze
 mitgelieferte Schriften für Projekte, die anderswo exportiert werden.
 {{< /callout >}}
 
+{{< shot src="images/project-fonts.jpg" alt="Projekteinstellungen, Tab Schriften: Fallback-Familien für Inter und die Projektschrift Bangers, der Status der Systemschriften, das Speichern verwendeter Systemschriften und die mitgelieferten Schriften." caption="Projekteinstellungen → **Schriften**." >}}
+
 ## Verwendete Systemschriften im Projekt speichern {#store-system-fonts}
 
 **Projekteinstellungen → Schriften → Verwendete Systemschriften im Projekt

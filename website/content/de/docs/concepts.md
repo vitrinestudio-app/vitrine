@@ -47,7 +47,7 @@ gestaltest. Jede Seite wird zu einem Store-Screenshot. Weil es ein Bild ist,
 Ein Projekt kann mehrere Leinwände haben – zum Beispiel *phone*, *tablet* und
 *mac* –, jede mit ihrem eigenen Seitenformat.
 
-{{< shot src="images/canvas-phone-en.jpg" alt="Eine Leinwand mit sechs Smartphone-Seiten: ein grüner Verlauf und ein diagonales Band laufen über alle Seiten, ein Smartphone liegt über der Grenze von Seite 3 und 4." caption="Die Phone-Leinwand des Beispielprojekts: sechs Seiten, ein durchgehender Hintergrund, ein Smartphone über Seite 3 und 4. Die schraffierten Streifen sind die Store-Lücken." >}}
+{{< shot src="images/canvas-phone-en.jpg" alt="Eine Leinwand mit sechs Smartphone-Seiten einer Musik-App: ein durchgehender Synthwave-Himmel mit Sonne, Neon-Gitterboden und Palmen läuft über alle Seiten; schraffierte Streifen markieren die Lücken zwischen den Seiten." caption="Die Phone-Leinwand der Vorlage *Synthwave Sunset*: sechs Seiten, ein durchgehender Hintergrund. Die schraffierten Streifen sind die Store-Lücken." >}}
 
 ## Lücken wie im Store {#gaps-like-in-the-store}
 
@@ -124,7 +124,7 @@ seiner Größe mit seiner Variante, in jeder Sprache. Ein Projekt mit 3 Zielen
 und 4 Sprachen liefert dir 12 komplette Bildsätze – und wenn du eine
 Überschrift änderst, ändern sich alle.
 
-{{< shot src="images/ipad-gallery-de.jpg" alt="Die iPad-Querformat-Galerie des Beispielprojekts auf Deutsch: zwei Smartphone-Seiten pro Querformat-Bild." caption="Dieselbe Leinwand als Ziel iPad 13″ quer auf Deutsch: zwei Seiten pro Bild, eine Variante verschiebt die Smartphones, ein Geräte-Tausch zeichnet iPads." >}}
+{{< shot src="images/play-gallery-en.jpg" alt="Dieselben sechs Seiten als Google-Play-Satz: Android-Smartphones statt iPhones auf dem Synthwave-Hintergrund." caption="Dieselbe Leinwand als Google-Play-Ziel: Der Geräte-Tausch zeichnet Android-Smartphones, die Variante `play` passt die kürzeren Seiten an." >}}
 
 ## Ein Renderer für alles {#one-renderer-for-everything}
 

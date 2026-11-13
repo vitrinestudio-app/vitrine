@@ -108,7 +108,7 @@ Serverproblem bzw. Anfragelimit (später noch einmal versuchen).
 behalten den Verweis und zeigen „nicht gefunden“, bis du wieder ein Konto mit
 dieser Id hinzufügst.
 
-{{< placeholder "App-Einstellungen → Stores: zwei Konten mit Testen-Knöpfen und die Hilfe für App-Store-Connect-Schlüssel." >}}
+{{< shot src="images/store-accounts.jpg" alt="App-Einstellungen, Abschnitt Stores: ein App-Store-Connect-Schlüssel und ein Google-Play-Dienstkonto, je mit Testen-Knopf, und die aufgeklappte Hilfe für App-Store-Connect-Schlüssel." caption="App-Einstellungen → **Stores**: zwei Konten und die Hilfe für App-Store-Connect-Schlüssel." >}}
 
 ## 2. Das Projekt verbinden {#2-link-the-project}
 
@@ -134,6 +134,8 @@ dieser Id hinzufügst.
 Hochgeladen werden nur die hier eingetragenen Stores. Welche Bilder wohin
 gehen, bestimmt der **Store-Slot** jedes Ziels (App-Store-Display-Typ /
 Play-Bildtyp) – die Presets setzen ihn für dich.
+
+{{< shot src="images/project-stores.jpg" alt="Projekteinstellungen, Tab Stores: Konto, App, Apple-ID, Bundle-ID, Plattform und Upload-Verfahren für den App Store; Konto und Paketname für Google Play; Store-Sprachen." caption="Projekteinstellungen → **Stores**: das Projekt mit beiden Stores verbunden." >}}
 
 ## 3. Planen, bestätigen, hochladen {#3-plan-confirm-upload}
 
@@ -173,7 +175,7 @@ Optionen:
   hat, zeigt *Unverändert*.
 - **Auch unveränderte Sets hochladen** erzwingt einen vollständigen Upload.
 
-{{< placeholder "Der Upload-Plan: Ziele × Sprachen mit Aktionen und dem Knopf Bestätigen & hochladen." >}}
+{{< shot src="images/upload-plan.jpg" alt="Der Upload-Plan für den App Store: sechs Sätze (zwei Ziele × drei Sprachen) mit der Aktion Hochladen, und der Knopf Bestätigen & hochladen." caption="Der Plan: sechs Sätze zum Hochladen, noch nichts gesendet." >}}
 
 ### Bestätigen und hochladen {#confirm-and-upload}
 

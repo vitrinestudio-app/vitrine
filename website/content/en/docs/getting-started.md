@@ -25,14 +25,14 @@ onto the window).
    e.g. `en, de`.
 6. **Create.**
 
-{{< placeholder "The start screen with the New project dialog: name, location, template cards and languages." >}}
+{{< shot src="images/new-project.jpg" alt="The New project dialog: name, location and languages, and the Template gallery tab with search, filters and template cards such as Fruit Pop, Hero Landing, Paper Calm and the selected Pop-Art Panels." caption="New project from the online **Template gallery** – here *Pop-Art Panels*, in English, German and French." >}}
 
 The first time you open a project, a one-screen overview *How Vitrine Studio
 is organised* appears. It's worth a look; it's always in the Help menu.
 
 ## 2. A tour of the window
 
-{{< shot src="images/editor-dark.jpg" alt="The Vitrine Studio editor in dark mode: sidebar on the left, canvas in the middle, inspector on the right." caption="The editor (an earlier version – the left tab now says *Canvases*)." >}}
+{{< shot src="images/editor.jpg" alt="The Vitrine Studio editor: the Layers tab on the left, a canvas with six pages in the middle, a selected phone with its settings in the inspector on the right." caption="The editor with a project made from the *Synthwave Sunset* template: menu and pickers in the top bar, views and zoom in the bottom bar." >}}
 
 - **Top bar:** the ☰ menu (also opens from the app icon and the project
   name); the pickers **Canvas**, **Target**, **Language**
@@ -118,7 +118,7 @@ Press <kbd>⌘</kbd><kbd>E</kbd> (or **Export** in the top bar). The dialog
 shows a grid of **targets × languages** – everything is ticked. Click
 **Export**.
 
-{{< placeholder "The export dialog: targets × languages grid, output folder, layout and options." >}}
+{{< shot src="images/export-dialog.jpg" alt="The export dialog: a grid of targets × languages, output folder, layout and options." caption="The export dialog of a project with six targets and three languages." >}}
 
 The images land in the project's `export/` folder:
 

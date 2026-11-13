@@ -134,6 +134,8 @@ this out (`system_font_used`, info). Store the fonts in the project (next
 section) or use bundled fonts for projects that are exported elsewhere.
 {{< /callout >}}
 
+{{< shot src="images/project-fonts.jpg" alt="Project settings, Fonts tab: fallback families for Inter and the project font Bangers, the system-font status, storing used system fonts, and the bundled fonts." caption="Project settings → **Fonts**." >}}
+
 ## Store used system fonts in the project {#store-system-fonts}
 
 **Project settings → Fonts → Store used system fonts in the project** copies

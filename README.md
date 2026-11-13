@@ -72,9 +72,15 @@ dialog. On macOS the app menu also lives in the native menu bar. Every
 preview is rendered by the same Rust pipeline as the export; every change
 is saved immediately as plain YAML.
 
-![The editor with the example project](docs/gui/editor-dark.jpg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/gui/editor-dark.jpg">
+  <img src="docs/gui/editor.jpg" alt="The editor with a project made from the Synthwave Sunset template: layers on the left, six pages on one canvas, a selected phone in the inspector">
+</picture>
 
-![A selected headline with its settings in the inspector](docs/gui/text-editing.jpg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/gui/text-editing-dark.jpg">
+  <img src="docs/gui/text-editing.jpg" alt="A selected headline of the Park Poster template with its settings in the inspector">
+</picture>
 
 ### Example
 

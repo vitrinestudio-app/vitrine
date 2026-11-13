@@ -26,6 +26,8 @@ The tab **Template gallery** lists the online gallery (search, filters,
 a link to the large view on the website); **Download and create**
 downloads the chosen template once and keeps it under **Local templates**.
 
+{{< shot src="images/new-project-local.jpg" alt="The Local templates tab of the New project dialog: the built-in Phone and Minimal templates, the downloaded Park Poster, Pop-Art Panels and Synthwave Sunset, and Import file." caption="**Local templates**: built-in ones, downloaded gallery templates and your own." >}}
+
 - All canvases of the template come along.
 - **Texts:** each of your languages gets the template's text in the same
   language, else in its base language (`de-AT` ← `de`), else the template's
@@ -108,6 +110,8 @@ vitrine template save --name "Demo set" --style minimal --color light --use prod
   --sample-screenshots
 vitrine template tags                      # all tag values
 ```
+
+{{< shot src="images/save-template.jpg" alt="The Save as template dialog: name, id, description, author, style, colour and category tags, the canvases to include, and the options for sample screenshots, fonts and the .vitrine-template file." caption="**Save as template…** (☰ menu) with tags for the gallery; all canvases are selected." >}}
 
 ## Insert from template
 

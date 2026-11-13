@@ -44,7 +44,7 @@ Konfigurationsdatei: macOS `~/Library/Application Support/Claude/claude_desktop_
 Windows `%APPDATA%\Claude\claude_desktop_config.json`, Linux
 `~/.config/Claude/claude_desktop_config.json`.
 
-{{< placeholder "App-Einstellungen → KI-Assistenten (MCP): Verbindungsstatus, Zu Claude Desktop hinzufügen, der Befehl für Claude Code." >}}
+{{< shot src="images/mcp-settings.jpg" alt="App-Einstellungen, Abschnitt KI-Assistenten (MCP): Verbindungsstatus, fester Port, Start bei Bedarf, die Befehle für andere MCP-Clients, Zu Claude Desktop hinzufügen und der Befehl für Claude Code." caption="App-Einstellungen → **KI-Assistenten (MCP)**." >}}
 
 ## Claude Code {#claude-code}
 

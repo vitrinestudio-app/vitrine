@@ -62,7 +62,7 @@ aus dem Dateisystem, braucht kein Internet und hat einen hellen und dunklen
 Look – praktisch, um sie zur Abstimmung herumzuschicken. Sie listet alle
 aktuellen Dateien im Ordner, auch aus früheren Exporten anderer Ziele.
 
-{{< placeholder "Die Übersichtsseite index.html eines Exports, mit vergrößerter Ansicht." >}}
+{{< shot src="images/export-overview.jpg" alt="Die Übersichtsseite index.html eines Exports mit einem vergrößerten Bild." caption="Die Übersicht `index.html` eines Exports, ein Bild vergrößert." >}}
 
 ## Inkrementelle Exporte {#incremental-exports}
 

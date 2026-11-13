@@ -48,6 +48,8 @@ content doesn't fit.
 On Windows and Linux, read <kbd>⌘</kbd> as <kbd>Ctrl</kbd> and <kbd>⌥</kbd>
 as <kbd>Alt</kbd> throughout this guide.
 
+{{< shot src="images/gallery-view.jpg" alt="The Store gallery view: six iPhone images of a pop-art dating app side by side with the store's gaps and rounded corners." caption="The **Store gallery** view (*Pop-Art Panels* template, iPhone 6.9″)." >}}
+
 ## Elements
 
 **Add** in the top bar puts a new element on the **visible page**:
@@ -125,7 +127,7 @@ selection.
 Right-click empty space for **Paste on page N**, **Select all on page N**,
 **Select all** and **Fit to window**.
 
-{{< placeholder "The canvas context menu on a selected phone." >}}
+{{< shot src="images/context-menu.jpg" alt="The context menu on a selected phone with its editing and arranging commands." caption="The canvas context menu on a selected phone." >}}
 
 ### Copy and paste
 
@@ -185,7 +187,7 @@ backgrounds* and the *Variants*.
 The inspector is wider than before and **resizable**: drag its left edge
 (double-click it for the default width). The width is remembered.
 
-{{< shot src="images/inspector-text.jpg" alt="The inspector with a selected text element." caption="The inspector with a text selected." >}}
+{{< shot src="images/inspector-text.jpg" alt="The inspector with a selected headline: layout, text key and content, style, font size, colour, box, alignment and auto-fit." caption="The inspector with a headline selected." >}}
 
 ## Layers
 
@@ -255,6 +257,8 @@ devices, covered or cut screen top bars, overlaps across page borders, the
 store's rounded corners. Common findings, and how to mark a deliberate one
 with `allow`, are explained in [Troubleshooting](../troubleshooting/).
 
+{{< shot src="images/validation.jpg" alt="The validation list for the iPhone target: German and French texts that fall back to English, and one French title that overflows." caption="The validation list with **Preview mode** on: fallbacks are warnings, the overflowing French title is an error." >}}
+
 ## Project settings and app settings
 
 | | Project settings (☰ → *Project settings…*) | App settings (☰ → *App settings…*, <kbd>⌘</kbd><kbd>,</kbd>) |
@@ -267,6 +271,8 @@ with `allow`, are explained in [Troubleshooting](../troubleshooting/).
 The ☰ menu opens from the ☰ button, the app icon or the project name in the
 top bar (also with <kbd>Enter</kbd>/<kbd>Space</kbd> when focused; arrow keys
 move through the entries).
+
+{{< shot src="images/app-menu.jpg" alt="The ☰ menu with New project, Open project, Close project, Project settings, Canvases & targets, Export, Upload to stores, Import screenshots, Save as template, App settings, and the Help submenu open." caption="The ☰ menu with the **Help** submenu." >}}
 
 - **Keyboard & mouse…** (☰ → Help, the **?** button in the bottom bar, or
   <kbd>?</kbd>) – every shortcut and gesture. Also on
