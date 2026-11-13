@@ -13,7 +13,7 @@ use std::fmt::Write as _;
 use vitrine_core::model::{COMMON_FIELDS, ElementKindTag, ElementPatch, LANG_OVERRIDE_FIELDS};
 
 /// Topics of `docs_get`, with a one-line summary each.
-pub const TOPICS: [(&str, &str); 7] = [
+pub const TOPICS: [(&str, &str); 8] = [
     (
         "overview",
         "concepts: project, canvas, pages, lu, elements, targets, workflow",
@@ -42,6 +42,10 @@ pub const TOPICS: [(&str, &str); 7] = [
         "scopes",
         "base / variant / language overrides: resolution order, setting, resetting",
     ),
+    (
+        "checks",
+        "every validate finding: level, what is measured, thresholds, allow / checks.off, layout_report",
+    ),
 ];
 
 const OVERVIEW: &str = include_str!("docs/overview.md");
@@ -49,6 +53,7 @@ const PROJECT: &str = include_str!("docs/project.md");
 const MARKUP: &str = include_str!("docs/markup.md");
 const TARGETS: &str = include_str!("docs/targets.md");
 const SCOPES: &str = include_str!("docs/scopes.md");
+const CHECKS: &str = include_str!("docs/checks.md");
 
 /// Markdown of `topic` (`None` for an unknown topic).
 pub fn topic(topic: &str) -> Option<String> {
@@ -67,6 +72,7 @@ pub fn topic(topic: &str) -> Option<String> {
         "markup" => MARKUP.to_owned(),
         "targets" => TARGETS.to_owned(),
         "scopes" => SCOPES.to_owned(),
+        "checks" => CHECKS.to_owned(),
         _ => return None,
     })
 }
@@ -410,6 +416,13 @@ mod tests {
             assert!(body.starts_with("# "), "{t} starts with a heading");
         }
         assert!(topic("nope").is_none());
+        let checks = topic("checks").unwrap();
+        for code in vitrine_core::validate::FindingCode::ALL {
+            assert!(
+                checks.contains(&format!("`{}`", code.as_str())),
+                "checks topic documents `{code}`"
+            );
+        }
         let ops = topic("ops").unwrap();
         for op in [
             "set_lang_override",

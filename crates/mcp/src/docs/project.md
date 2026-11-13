@@ -67,12 +67,14 @@ checks:                     # design-check settings (op set_checks); all optiona
   device_distance: 16       # lu glyphs ↔ device frame (text_near_device)
   min_contrast: 4.5         # WCAG ratio, normal text (low_contrast)
   min_contrast_large: 3     # large text (≥ 80 lu, bold ≥ 62 lu)
+  screen_cover: 0.15        # share of a screen below its top bar an element may cover (screen_covered)
   off: [page_blends_with_store]   # codes not reported for this project
 ```
 
 Per element, `allow: [code]` switches design findings off for that element
 (and a group's children) – for designs that mean it (giant clipped type,
-labels pointing at a device).
+labels pointing at a device). Every code, its threshold and whether it is
+allowable: docs_get {topic: "checks"}.
 
 Translations: `i18n/<lang>.yaml` is a flat map `key: text` (keys may contain
 dots: `hero.title: Plan your garden **in minutes**`).

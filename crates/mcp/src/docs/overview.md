@@ -65,6 +65,81 @@ automatically for every target (store size) and language.
 - Transparent PNG/SVG panoramas can sit above coloured page backgrounds;
   an opaque photo hides everything below it.
 
+## Panoramas and seams
+Page x positions depend on the target: page `n` starts at canvas x
+`n·1000 + ⌊n/group⌋·gap` (gap = the target's store gap in lu,
+`layout_report.gallery.gap_lu`; App Store iPhone 45 lu, Play phone 71–87
+lu by size, `group: 2` has a gap only between images). Content in a gap is cut
+out, so anything drawn **continuously on the canvas** continues exactly
+behind every gap in every target. Never slice a motif per page and
+compute gaps yourself. Three ways, simplest first:
+
+1. **Canvas background image** – one wide picture behind everything:
+   ```yaml
+   canvases:
+   - id: phone
+     backgrounds:
+     - {kind: image, asset: assets/panorama.jpg, fit: cover, focus: {x: 0.5, y: 0.6}}
+   ```
+   Mapped onto the whole canvas of each target (all pages + gaps, the
+   target's page height). `cover` scales it to fill and crops the excess
+   (`focus` picks what stays); a target with another gap or page height
+   crops / scales it slightly differently, so a feature does not stay at
+   the same spot of a page. Cannot be overridden per variant. Best for
+   skies, gradients, textures, scenery without page-exact features.
+2. **One wide image element** – when you need control (z order, size,
+   per-variant override):
+   ```yaml
+   - id: scene
+     kind: image
+     page: 0
+     clip: none            # images default to none; keep it so
+     z: -30
+     anchor_y: stretch     # height follows each target's page height
+     asset: assets/scene.svg
+     fit: stretch          # or cover
+     at: {x: 1600, y: 1086.5}   # centre; x = width / 2 starts it at page 0's left edge
+     width: 3200           # ≥ pages·1000 + gaps of the widest target (3 pages: 3000 + 2·~90)
+     height: 2173          # the canvas page height
+   ```
+   Its width in lu is the same in every target; only the page origins
+   move with the gap, so the part of the motif seen on page n shifts by
+   n × (gap difference) between targets (≈ 26–42 lu per page between iPhone
+   and Play). Leave 50–100 lu of calm margin around anything that must
+   sit at an exact page position. A variant can override it in one go
+   (`{asset, width, height, at}` – e.g. a separate Play or landscape
+   picture).
+3. **Bridging pieces** for exact motifs at seams (a phone lying across
+   the border, a ribbon, a card): one element homed on the left page with
+   `clip: none`, reaching into the next page. Its position is relative to
+   its home page, so it stays continuous behind the gap whatever the gap:
+   ```yaml
+   - id: ribbon
+     kind: shape
+     shape: rect
+     page: 1
+     clip: none
+     at: {x: 1000, y: 1500}   # centred on the border of pages 1 and 2
+     width: 600
+     height: 80
+     fill: "@accent"
+   ```
+   Combine with one `background` element per page for per-page colours.
+
+Slice per page only when pages really differ per variant (e.g. a separate
+composition for iPad landscape) – then put one `background` element (or
+image) per page with its own asset and override `fill` / `asset` per
+variant; the slices no longer join at seams, so let the seam fall on calm
+areas or cover it with a bridging piece.
+
+Checking: `layout_report.seams[]` lists each border with a gap
+(`after_page`, canvas `x`, `gap_lu`, `next_page_offset` = −(1000 + gap):
+a point x on `after_page` is x + `next_page_offset` on the next page);
+`render_preview {view: "gallery"}` per target. validate: `seam_split`
+(two clipped halves of one shape at a border – use ONE element instead),
+`seam_overlap` (a bridging piece covers something of the next page), see
+docs_get {topic: "checks"}.
+
 ## Groups, variants and anchors
 - A group's `at` is an OFFSET added to all children (default {x: 0, y: 0}),
   not a centre; `width`/`height` of a group are not used. Children keep
@@ -76,10 +151,17 @@ automatically for every target (store size) and language.
   shadows, glows; `at` stays an unscaled offset. A card/ticket built as a
   group gets smaller for a format with ONE variant override
   `{scale: 0.85}` (+ `at` if it should move) instead of one per child.
-- anchor_y applies after overrides: `at.y` (base or variant override) is
-  always written for the canvas' own page height; for a target whose page
-  is `Δ` lu higher, `bottom` adds Δ, `center` Δ/2, `stretch` scales y (and
-  the height of backgrounds) by the height ratio, `top` keeps y.
+- anchor_y applies after overrides: `at.y` (base AND variant override) is
+  always written for the CANVAS page height (`page.aspect`, e.g. 2173 lu
+  for 1320:2868) – never for the target's page height, even in an override
+  used only by a Play or landscape target. For a target whose page is `Δ`
+  lu higher (Δ < 0 = lower), `bottom` adds Δ, `center` Δ/2, `stretch`
+  scales y (and the height of images, shapes and backgrounds) by the
+  height ratio, `top` keeps y. Example: canvas 2173 lu, Play page 1500 lu
+  (Δ = −673), device `anchor_y: bottom`: to place its centre at y 1300 on
+  the Play page, write `at.y: 1973` (1300 + 673) in the Play override.
+  Height and width values are not anchored (only `stretch` scales height).
+  layout_report shows the resulting boxes in target page lu.
 - Variant `content_scale` scales DEVICE elements only (size around their
   centre, and their shadows); texts, images, shapes and backgrounds keep
   their size (images with `fit: cover` in a page background only follow
