@@ -5,7 +5,9 @@ for part of the outputs:
 
 - **Variant override** (`canvases[].variants.<variant>.overrides.<id>`): for the
   targets that use the variant (e.g. `tablet-landscape` for iPad with
-  `group: 2`). Any element field except `id`, `kind`, `children`.
+  `group: 2`). Any element field except `id`, `kind`, `children`. For objects
+  built as a group (cards, tickets, polaroids) one override of the group's
+  `scale` (and `at`) resizes all its children – no override per child.
 - **Language override** (`langs.<lang>` on a text element): for one language
   and its sub-languages (`de` also applies to `de-AT`). Only at, width,
   height, anchor_y, style, box, align, valign, fit, color, font_size, stroke,

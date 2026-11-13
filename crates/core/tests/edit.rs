@@ -611,6 +611,18 @@ fn group_and_ungroup_keep_positions() {
             (point(&p, &c, i.as_str()), r.rotation)
         })
         .collect();
+    // A scaled group is not dissolved (ADR 0030).
+    let scaled = with_editor(&p, &c, |ed| {
+        ed.patch(
+            "group",
+            &serde_json::from_value(serde_json::json!({"scale": 1.5})).unwrap(),
+        )
+        .unwrap()
+    });
+    let undo = p.apply_ops(scaled).unwrap();
+    let err = with_editor(&p, &c, |ed| ed.ungroup("group").unwrap_err());
+    assert!(err.to_string().contains("is scaled"), "{err}");
+    p.apply_ops(undo).unwrap();
     let ops = with_editor(&p, &c, |ed| ed.ungroup("group").unwrap());
     apply(&mut p, ops);
     assert!(p.element("group").is_none());
@@ -1040,7 +1052,7 @@ mod prop {
         height: f64,
         rotation: f64,
         pivot: Option<(f64, f64)>,
-        in_group: Option<(f64, f64, f64)>,
+        in_group: Option<(f64, f64, f64, f64)>,
         variant: Option<(f64, bool)>,
         goal: (f64, f64),
         keep_page: bool,
@@ -1072,7 +1084,12 @@ mod prop {
                 -170.0..170.0f64,
                 proptest::option::of((-200.0..200.0f64, -200.0..200.0f64)),
             ),
-            proptest::option::of((-300.0..300.0f64, -300.0..300.0f64, -45.0..45.0f64)),
+            proptest::option::of((
+                -300.0..300.0f64,
+                -300.0..300.0f64,
+                -45.0..45.0f64,
+                0.4..2.5f64,
+            )),
             proptest::option::of((0.5..1.3f64, any::<bool>())),
             ((-600.0..6000.0f64, -400.0..3000.0f64), any::<bool>()),
         )
@@ -1147,8 +1164,8 @@ mod prop {
         };
         let sibling = "{id: sib, kind: shape, shape: ellipse, page: 0, at: {x: 300, y: 400}, width: 50, height: 50}";
         let elements = match c.in_group {
-            Some((x, y, r)) => format!(
-                "  - {{id: g, kind: group, page: 0, at: {{x: {x}, y: {y}}}, rotation: {r}, children: [{element}, {sibling}]}}\n"
+            Some((x, y, r, k)) => format!(
+                "  - {{id: g, kind: group, page: 0, at: {{x: {x}, y: {y}}}, rotation: {r}, scale: {k}, children: [{element}, {sibling}]}}\n"
             ),
             None => format!("  - {element}\n  - {sibling}\n"),
         };

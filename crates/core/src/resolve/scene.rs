@@ -127,6 +127,11 @@ pub struct ResolvedElement {
     pub rotation: f64,
     /// Rotation pivot as offset from `center`, lu.
     pub pivot: Vec2,
+    /// Product of the `scale` of the enclosing groups (ADR 0030), already
+    /// applied to `center`, `size`, `pivot` and the kind-specific lengths
+    /// (font sizes, strokes, radii, shadows); 1 outside scaled groups.
+    #[serde(skip_serializing_if = "is_one")]
+    pub scale: f64,
     /// `0..=1`, group opacity multiplied in.
     pub opacity: f64,
     /// Clip rectangle on the canvas (`clip: page` → home page / column).
@@ -315,6 +320,36 @@ pub struct ResolvedText {
     /// (ADR 0004, *Texts*), else zero. [`ResolvedElement::pivot`] is this
     /// plus the element's own `pivot` offset.
     pub default_pivot: Vec2,
+    /// Group scale (ADR 0030), already applied to `frame`, `style`,
+    /// `shrink_to` and `default_pivot`. Span styles are project-wide, so
+    /// their effect lengths are multiplied by it when laying out. 1 =
+    /// unscaled.
+    #[serde(skip_serializing_if = "is_one")]
+    pub scale: f64,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref, reason = "serde signature")]
+fn is_one(v: &f64) -> bool {
+    (*v - 1.0).abs() < 1e-12
+}
+
+impl ResolvedText {
+    /// Scale every length of the text by `k` (group scale, ADR 0030):
+    /// frame size, font size, auto-fit bound, outline, glow, shadow and
+    /// default pivot. The frame keeps its centre; the caller moves it.
+    pub fn scale_by(&mut self, k: f64) {
+        let c = self.frame.rect.center();
+        self.frame.rect = Rect::centered(c, self.frame.rect.w * k, self.frame.rect.h * k);
+        self.style.size *= k;
+        self.style.stroke = self.style.stroke.map(|s| s.scaled(k));
+        self.style.glow = self.style.glow.map(|g| g.scaled(k));
+        for l in &mut self.style.shadow {
+            *l = l.scaled(k);
+        }
+        self.shrink_to = self.shrink_to.map(|v| v * k);
+        self.default_pivot = self.default_pivot * k;
+        self.scale *= k;
+    }
 }
 
 /// Text box on the canvas.
@@ -373,6 +408,15 @@ pub struct ResolvedTextStroke {
 }
 
 impl ResolvedTextStroke {
+    /// The outline with its width multiplied by `k`.
+    #[must_use]
+    pub fn scaled(self, k: f64) -> Self {
+        Self {
+            width: self.width * k,
+            ..self
+        }
+    }
+
     pub fn is_visible(&self) -> bool {
         self.width > 0.0 && self.color.a > 0
     }
@@ -400,6 +444,16 @@ pub struct ResolvedGlow {
 }
 
 impl ResolvedGlow {
+    /// The glow with radius and spread multiplied by `k`.
+    #[must_use]
+    pub fn scaled(self, k: f64) -> Self {
+        Self {
+            radius: self.radius * k,
+            spread: self.spread * k,
+            ..self
+        }
+    }
+
     pub fn is_visible(&self) -> bool {
         self.opacity > 0.0 && self.color.a > 0
     }
@@ -415,6 +469,17 @@ impl ResolvedGlow {
 }
 
 impl ResolvedShadowLayer {
+    /// The layer with blur and offset multiplied by `k`.
+    #[must_use]
+    pub fn scaled(self, k: f64) -> Self {
+        Self {
+            blur: self.blur * k,
+            x: self.x * k,
+            y: self.y * k,
+            ..self
+        }
+    }
+
     /// How far the blurred, offset shadow reaches beyond the silhouette, lu.
     pub fn outset(&self) -> f64 {
         3.0 * self.blur + self.x.abs().max(self.y.abs())
