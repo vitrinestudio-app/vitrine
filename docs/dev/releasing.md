@@ -92,11 +92,26 @@ with the Developer role is enough for notarization.)
    lost, existing installations can never update again** (users would have
    to reinstall a build with a new key).
 
-### 4. Windows: SignPath Foundation (when accepted)
+### 4. Windows: unsigned for now (SignPath deferred)
 
-Until this is set up, Windows builds are unsigned (SmartScreen: "More info"
-→ "Run anyway") and labelled so. Conditions and alternatives: the research
-note above. Before applying:
+**Owner decision 2026-11-13:** no Windows code-signing certificate for
+now. Windows releases ship unsigned; nothing has to be set up for them:
+
+- Leave `SIGNPATH_API_TOKEN` and the `SIGNPATH_*` variables unset. The
+  workflow then builds the Windows setup on the normal path, still signs
+  the updater artifact (`…-setup.exe.sig`, entry `windows-x86_64` in
+  `latest.json`) and writes "Windows: unsigned (SmartScreen warns on first
+  start)" into the release notes.
+- Users see SmartScreen's "Windows protected your PC" / "Unknown
+  publisher" on the downloaded setup and continue with **More info → Run
+  anyway** (website: Install & update → "Unknown developer" warnings).
+- In-app updates keep working: the Tauri updater verifies its own
+  signature (the updater key, §3), not an Authenticode signature. A later
+  switch to signed builds needs no change in installed apps.
+
+The SignPath path below stays in the workflow, dormant, for when the
+decision is revisited. Conditions and alternatives: the research note
+above. Before applying:
 
 - Publish a first (unsigned) release; SignPath wants software that is
   already released and has some reputation.
@@ -184,12 +199,12 @@ The first push creates the package `vitrine-cli` in the organisation. Once:
    ```
    The workflow fails early when the tag and the version differ.
 4. Wait for the workflow (~45–60 min, macOS is the slowest). Approve the
-   SignPath requests if Windows signing is on.
+   SignPath requests if Windows signing is on (not the case for now, §4).
 5. Review the **draft release**: write the highlights at the top of the
    notes, check the signing lines, download one installer per OS.
 6. Publish. From now on `releases/latest/download/latest.json` points to
    it and installed apps (with the real updater key) offer the update.
-7. Website: once the first signed release is out, set
+7. Website: once the first release is published, set
    `downloads_available = true` in `website/hugo.toml` and fill
    `[params.downloads]` with the stable links
    `https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_macos_universal.dmg`,
