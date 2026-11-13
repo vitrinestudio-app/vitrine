@@ -739,3 +739,124 @@ fn zip_bombs_are_still_refused() {
         .to_string();
     assert!(e.contains("is larger than 5.0 MB"), "{e}");
 }
+
+/// The example with `card-good` and `text-good` shown in German only and
+/// `icon-good` in English only (optionally clipped to `card-good`).
+fn with_language_elements(clip_icon: bool) -> Package {
+    use crate::model::{Lang, VisibleIn};
+    let mut p = example();
+    let only = |l: &str| {
+        Some(VisibleIn {
+            targets: Vec::new(),
+            langs: vec![Lang::parse(l).unwrap()],
+        })
+    };
+    for c in &mut p.canvases {
+        walk::elements_mut(&mut c.elements, &mut |e| match e.id.as_str() {
+            "card-good" | "text-good" => e.visible_in = only("de"),
+            "icon-good" => {
+                e.visible_in = only("en");
+                if clip_icon && let ElementKind::Image(i) = &mut e.kind {
+                    i.clip_to = Some(crate::model::ElementId::new("card-good"));
+                }
+            }
+            _ => {}
+        });
+    }
+    extract(&p, &example_dir(), &save_opts("Langs", None))
+        .unwrap()
+        .0
+}
+
+fn new_project(pkg: &Package, langs: &[&str]) -> (tempfile::TempDir, Project) {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("p");
+    let langs: Vec<String> = langs.iter().map(|l| (*l).to_owned()).collect();
+    let created = create_project(pkg, &dir, "P", &parse_langs(&langs).unwrap()).unwrap();
+    let yaml = std::fs::read_to_string(dir.join("project.yaml")).unwrap();
+    assert!(!yaml.contains("visible_in: {}"), "empty visible_in written");
+    (tmp, created.project)
+}
+
+/// `visible_in.langs` of element `id` (`None`: no such element).
+fn langs_of(p: &Project, id: &str) -> Option<Vec<String>> {
+    let (_, e) = p.element(id)?;
+    Some(
+        e.visible_in
+            .as_ref()
+            .map(|v| v.langs.iter().map(ToString::to_string).collect())
+            .unwrap_or_default(),
+    )
+}
+
+#[test]
+fn elements_of_missing_languages_are_dropped_not_shown_everywhere() {
+    let pkg = with_language_elements(false);
+    // English only: the German card and text go, with their variant
+    // overrides; the English icon keeps its restriction.
+    let (_tmp, p) = new_project(&pkg, &["en"]);
+    assert_eq!(langs_of(&p, "card-good"), None);
+    assert_eq!(langs_of(&p, "text-good"), None);
+    assert_eq!(langs_of(&p, "icon-good").unwrap(), ["en"]);
+    for c in &p.canvases {
+        for v in c.variants.values() {
+            assert!(!v.overrides.keys().any(|k| k.as_str() == "card-good"));
+        }
+    }
+    // Japanese takes the English texts, so it shows what English shows.
+    let (_tmp, p) = new_project(&pkg, &["ja", "en"]);
+    assert_eq!(langs_of(&p, "icon-good").unwrap(), ["ja", "en"]);
+    assert_eq!(langs_of(&p, "card-good"), None);
+    // A regional variant takes `de` (and names a project language).
+    let (_tmp, p) = new_project(&pkg, &["en", "de-AT"]);
+    assert_eq!(langs_of(&p, "card-good").unwrap(), ["de-AT"]);
+    assert_eq!(langs_of(&p, "icon-good").unwrap(), ["en"]);
+}
+
+#[test]
+fn a_dropped_mask_of_a_kept_image_stays_hidden() {
+    let pkg = with_language_elements(true);
+    let (_tmp, p) = new_project(&pkg, &["en"]);
+    let (_, card) = p.element("card-good").unwrap();
+    assert!(!card.visible, "kept as a hidden mask");
+    assert!(card.visible_in.is_none());
+    assert_eq!(langs_of(&p, "text-good"), None);
+}
+
+#[test]
+fn insert_drops_elements_of_languages_the_project_lacks() {
+    let pkg = with_language_elements(false);
+    let (tmp, p) = new_project(&pkg, &["en"]);
+    let plan = plan_insert(&p, &tmp.path().join("p"), &pkg, &InsertOptions::default()).unwrap();
+    let mut q = p.clone();
+    for op in plan.ops {
+        q.apply(op).unwrap();
+    }
+    let mut ids = Vec::new();
+    for c in &q.canvases {
+        c.walk_elements(&mut |e| {
+            assert!(
+                e.visible_in.as_ref().is_none_or(|v| !v.is_empty()),
+                "{} has an empty visible_in",
+                e.id
+            );
+            ids.push(e.id.to_string());
+        });
+    }
+    assert!(!ids.iter().any(|i| i.starts_with("card-good")));
+    assert!(ids.iter().filter(|i| i.starts_with("icon-good")).count() >= 2);
+}
+
+#[test]
+fn empty_visible_in_is_not_written() {
+    let mut p = example();
+    for c in &mut p.canvases {
+        walk::elements_mut(&mut c.elements, &mut |e| {
+            if e.id.as_str() == "card-good" {
+                e.visible_in = Some(crate::model::VisibleIn::default());
+            }
+        });
+    }
+    let yaml = p.to_yaml().unwrap();
+    assert!(!yaml.contains("visible_in"), "{yaml}");
+}
