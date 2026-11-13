@@ -9,6 +9,9 @@ findings:
   - level: warn
     code: unknown_font
     message: "fallback font `Noto Sans SC` of `Inter` is not available (put it into `fonts/`)"
+  - level: warn
+    code: required_store_set_missing
+    message: "no iPhone 6.3″ (Dynamic Island, medium display) set (`APP_IPHONE_61`), required by App Store Connect for iPhone apps: add the target `ios-iphone-63` (Canvases & targets → Add target)"
   - level: info
     code: screenshot_fallback
     target: ios-phone-69

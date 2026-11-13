@@ -2,13 +2,14 @@
 //! locale codes, languages without or with a shared store locale, store
 //! slots missing or used twice. Project-level findings; only for stores the
 //! project is mapped to (`store.apple` / `store.google`), except the
-//! explicit-map checks.
+//! explicit-map checks. Plus the sets App Store Connect requires
+//! ([`missing_required_sets`]).
 
 use std::collections::BTreeMap;
 
 use super::{Ctx, FindingCode, Severity, Sink};
-use crate::catalog::store_locales;
-use crate::model::{Lang, Project, StoreKind, Target};
+use crate::catalog::{Catalog, Platform, Requirement, Store, TargetPreset, store_locales};
+use crate::model::{ApplePlatform, Lang, Project, StoreKind, StoreSlot, Target};
 
 /// Slot value of `target` for `store` (`APP_IPHONE_67`, `phoneScreenshots`).
 pub(crate) fn slot_value(target: &Target, store: StoreKind) -> Option<&str> {
@@ -168,5 +169,130 @@ fn slot_duplicates(project: &Project, store: StoreKind, targets: &[&Target], out
             f.target = Some(b.id.clone());
             out.push(f);
         }
+    }
+}
+
+/// An App Store set that `targets.yaml` marks `requirement: required` for
+/// a platform the project targets, and that no target fills.
+#[derive(Clone, Copy, Debug)]
+pub struct MissingStoreSet<'c> {
+    /// The required preset (id = the target to add, label, slot).
+    pub preset: &'c TargetPreset,
+    /// Why the platform counts: the project has targets of it (`true`) or
+    /// only `store.apple.platform` names it (`false`).
+    pub from_targets: bool,
+}
+
+impl MissingStoreSet<'_> {
+    /// Display type of the missing set (`APP_IPHONE_61`).
+    pub fn display_type(&self) -> &str {
+        self.preset
+            .slot
+            .as_ref()
+            .and_then(|s| s.apple.as_ref())
+            .map_or("", |a| a.display_type.as_str())
+    }
+
+    /// Who needs the set, in words (`iPhone apps`).
+    fn needed_by(&self) -> &'static str {
+        match self.preset.platform {
+            Platform::Ios => "iPhone apps",
+            Platform::Ipados => "apps that run on iPad",
+            Platform::Macos => "Mac apps",
+            Platform::Watchos => "Apple Watch apps",
+            _ => "this platform",
+        }
+    }
+
+    /// The finding / readiness message: what is missing and how to add it.
+    pub fn message(&self) -> String {
+        let why = match (self.preset.platform, self.from_targets) {
+            (_, false) => " (the project is mapped to the App Store: store.apple.platform)",
+            (Platform::Ipados, true) => " (reported because the project has iPad targets)",
+            (Platform::Macos, true) => " (reported because the project has Mac targets)",
+            _ => "",
+        };
+        format!(
+            "no {} set (`{}`), required by App Store Connect for {}{why}: add the target \
+             `{}` (Canvases & targets → Add target)",
+            self.preset.label,
+            self.display_type(),
+            self.needed_by(),
+            self.preset.id,
+        )
+    }
+}
+
+/// Required App Store sets the project lacks. Data-driven: every Apple
+/// preset with `requirement: required` and a store slot is needed for its
+/// `platform` (iPhone `ios`, iPad `ipados`, Mac `macos`) once the project
+/// targets that platform, and is filled by any target with the same slot.
+///
+/// The project's platforms are those of the presets its Apple targets'
+/// slots belong to. Whether an app runs on iPad (or Mac) cannot be known
+/// otherwise, so those sets are only asked for when the project already
+/// has such targets. A project mapped to the App Store (`store.apple`)
+/// without iPhone or iPad targets also needs the sets of its
+/// `store.apple.platform` (`ios` → iPhone, `macos` → Mac).
+pub fn missing_required_sets<'c>(
+    project: &Project,
+    catalog: &'c Catalog,
+) -> Vec<MissingStoreSet<'c>> {
+    let presets = &catalog.targets.presets;
+    let apple_slots: Vec<&StoreSlot> = project
+        .targets
+        .iter()
+        .filter_map(|t| t.store.as_ref().filter(|s| s.apple.is_some()))
+        .collect();
+    let mut platforms: Vec<(Platform, bool)> = Vec::new();
+    for slot in &apple_slots {
+        for p in presets.iter().filter(|p| p.slot.as_ref() == Some(*slot)) {
+            if !platforms.iter().any(|(q, _)| *q == p.platform) {
+                platforms.push((p.platform, true));
+            }
+        }
+    }
+    if let Some(apple) = &project.store.apple {
+        let named = match apple.platform {
+            ApplePlatform::Ios => Platform::Ios,
+            ApplePlatform::Macos => Platform::Macos,
+        };
+        let covered = platforms.iter().any(|(q, _)| match named {
+            // An iOS app is an iPhone and/or an iPad app.
+            Platform::Ios => matches!(q, Platform::Ios | Platform::Ipados),
+            other => *q == other,
+        });
+        if !covered {
+            platforms.push((named, false));
+        }
+    }
+    presets
+        .iter()
+        .filter(|p| p.store == Store::Apple && p.requirement == Some(Requirement::Required))
+        .filter_map(|p| {
+            let slot = p.slot.as_ref().filter(|s| s.apple.is_some())?;
+            let (_, from_targets) = *platforms.iter().find(|(q, _)| *q == p.platform)?;
+            if apple_slots.contains(&slot) {
+                return None;
+            }
+            Some(MissingStoreSet {
+                preset: p,
+                from_targets,
+            })
+        })
+        .collect()
+}
+
+/// [`FindingCode::RequiredStoreSetMissing`] for every missing required set.
+pub(super) fn required_set_checks(project: &Project, catalog: &Catalog, out: &mut Sink) {
+    for missing in missing_required_sets(project, catalog) {
+        out.push(Ctx::default().finding(
+            Severity::Warn,
+            FindingCode::RequiredStoreSetMissing,
+            false,
+            None,
+            None,
+            missing.message(),
+        ));
     }
 }
