@@ -43,7 +43,9 @@ Element kinds and their fields:
 - image: `asset`, `width`, `height`, `fit`, `shadow`
 - shape: `shape` (rect|ellipse|line), `width`, `height`, `radius`, `fill`, `stroke`, `shadow`
 - background: `fill` (a per-page background; canvas backgrounds are canvas `backgrounds`)
-- group: `children: [elements]`
+- group: `children: [elements]`, `scale` (0.1..10, default 1: scales all children like a
+  transform around the group pivot – positions, sizes, fonts, strokes, radii, effects; `at`
+  is an offset, `pivot` the origin of rotation and scale)
 - common: `page`, `at`, `rotation` (degrees, clockwise), `pivot`, `anchor_y`,
   `opacity`, `z`, `clip` (none|page), `visible`, `visible_in: {targets, langs}`, `lock_page`, `locked`,
   `allow: [finding codes]` (design findings meant on purpose, see validate)
@@ -57,6 +59,7 @@ languages). Per format or language use these ops (or element_update with
 - `{"op": "rename_variant", "canvas": "phone", "from": "a", "to": "b"}`
 - `{"op": "set_variant_content_scale", "canvas": "phone", "variant": "tablet-landscape", "content_scale": 0.8 | null}`
 - `{"op": "set_variant_override", "canvas": "phone", "variant": "tablet-landscape", "element": "phone-plan", "patch": {"width": 520} | null}`
+  (a whole card/ticket group smaller in one override: `"element": "card", "patch": {"scale": 0.85}`)
 - `{"op": "reset_override_field", "canvas": "phone", "variant": "tablet-landscape", "element": "phone-plan", "field": "width"}`
 - `{"op": "set_lang_override", "element": "title", "lang": "de", "patch": {"box": {"top": 170, "left": 40, "right": 40}} | null}`
   (only at, width, height, anchor_y, style, box, align, valign, fit, color, font_size, stroke, glow, shadow, hyphenate)

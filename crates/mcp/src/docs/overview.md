@@ -70,7 +70,12 @@ automatically for every target (store size) and language.
   not a centre; `width`/`height` of a group are not used. Children keep
   their own page-relative `at`. Moving a group in a variant = override its
   `at` (one override instead of one per child); `rotation` turns all
-  children around the centre of their bounding box (+ `pivot`).
+  children around the centre of their bounding box (+ `pivot`). `scale`
+  (0.1..10) scales all children around that same point like a transform –
+  positions, sizes, font sizes (text re-laid out, sharp), strokes, radii,
+  shadows, glows; `at` stays an unscaled offset. A card/ticket built as a
+  group gets smaller for a format with ONE variant override
+  `{scale: 0.85}` (+ `at` if it should move) instead of one per child.
 - anchor_y applies after overrides: `at.y` (base or variant override) is
   always written for the canvas' own page height; for a target whose page
   is `Δ` lu higher, `bottom` adds Δ, `center` Δ/2, `stretch` scales y (and
