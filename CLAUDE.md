@@ -4,8 +4,9 @@
 
 All agent guidance lives in `AGENTS.md` (shared with other coding agents);
 the line above makes Claude Code load it automatically. The owner speaks
-German: answer in German, write repo content (code, docs, commits) in
-English.
+German, answer in German if the user wrote you in German.
+
+Write repo content (code, docs, commits) in English.
 
 Claude Code specifics:
 
