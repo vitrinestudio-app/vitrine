@@ -58,8 +58,10 @@ env:
   # Static musl CLI builds (job `cli`): zig as C compiler and linker.
   ZIG_VERSION: "0.17.1"
   CARGO_ZIGBUILD_VERSION: "0.24.1"
-  # Signing only for tags or when asked for in a manual run.
-  SIGN: ${{ github.event_name == 'push' || inputs.sign }}
+  # Signing only for tags or when asked for in a manual run. Not named
+  # `SIGN`: linuxdeploy's AppImage plugin reads $SIGN and then tries to
+  # GPG-sign the AppImage (no key on the runner → "Signing failed").
+  RELEASE_SIGN: ${{ github.event_name == 'push' || inputs.sign }}
 
 jobs:
   prepare:
@@ -207,7 +209,7 @@ jobs:
           HAS_UPDATER: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
           HAS_SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
         run: |
-          on() { [ "$SIGN" = "true" ] && [ "$1" = "true" ] && echo true || echo false; }
+          on() { [ "$RELEASE_SIGN" = "true" ] && [ "$1" = "true" ] && echo true || echo false; }
           {
             echo "apple_cert=$(on "$HAS_APPLE_CERT")"
             echo "apple_api=$(on "$HAS_APPLE_API")"

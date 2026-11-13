@@ -165,7 +165,7 @@ Options:
   already has identically shows *Unchanged*.
 - **Upload unchanged sets too** forces a complete upload.
 
-{{< shot src="images/upload-plan.jpg" alt="The upload plan for the App Store: six sets (two targets × three languages) marked Upload, and the Confirm & upload button." caption="The plan: six sets to upload, nothing sent yet." >}}
+{{< shot src="images/upload-plan.jpg" alt="The upload plan for the App Store: a note that the required iPhone 6.3″ set is missing, six sets (two targets × three languages) marked Upload, and the Confirm & upload button." caption="The plan: six sets to upload, nothing sent yet. The note above the table does not block the upload." >}}
 
 ### Confirm and upload
 
