@@ -123,7 +123,7 @@ features:
       text: "Claude and other MCP clients can design, translate, preview and export – live in your editor, and you can undo every step like your own."
     - icon: template
       title: "Templates"
-      text: "Start from a template, save your own canvases as templates and share them – a community gallery is on its way."
+      text: "Start from a template, save your own canvases as templates and share them – or browse the community gallery, right in the app."
 
 showcase:
   eyebrow: "Made with Vitrine Studio"

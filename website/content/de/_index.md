@@ -123,7 +123,7 @@ features:
       text: "Claude und andere MCP-Clients gestalten, übersetzen, prüfen Vorschauen und exportieren – live in deinem Editor, und jeden Schritt kannst du wie deinen eigenen zurücknehmen."
     - icon: template
       title: "Vorlagen"
-      text: "Mit einer Vorlage starten, eigene Leinwände als Vorlage speichern und teilen – eine Community-Galerie ist unterwegs."
+      text: "Mit einer Vorlage starten, eigene Leinwände als Vorlage speichern und teilen – oder direkt in der App in der Community-Galerie stöbern."
 
 showcase:
   eyebrow: "Gemacht mit Vitrine Studio"
