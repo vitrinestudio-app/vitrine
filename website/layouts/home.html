@@ -112,28 +112,20 @@
       </ul>
     </div>
     <div class="matrix__visual reveal" aria-label="{{ $p.matrix.alt }}" role="img">
+      {{- /* Real renders of one project (images/matrix/<target>-<lang>.jpg, see website/README.md). */}}
       <div class="matrix__grid" style="--cols:{{ len $p.matrix.devices }}">
         <span class="matrix__corner" aria-hidden="true"></span>
-        {{- range $p.matrix.devices }}<span class="matrix__colhead">{{ .name }}</span>{{ end }}
+        {{- range $p.matrix.devices }}<span class="matrix__colhead">{{ .name }}<small>{{ .store }}</small></span>{{ end }}
         {{- range $r, $lang := $p.matrix.langs }}
           <span class="matrix__rowhead">{{ $lang.code }}</span>
           {{- range $c, $d := $p.matrix.devices }}
           <span class="tile tile--{{ $d.shape }}" style="--n:{{ add (mul $r (len $p.matrix.devices)) $c }}">
-            <span class="tile__page">
-              <span class="tile__title">{{ $lang.headline }}</span>
-              <span class="tile__device"></span>
-            </span>
-            {{- if eq $d.shape "landscape" }}
-            <span class="tile__page">
-              <span class="tile__title">{{ $lang.headline2 }}</span>
-              <span class="tile__device"></span>
-            </span>
-            {{- end }}
+            {{- partial "picture-one.html" (dict "src" (printf "images/matrix/%s-%s.jpg" $d.target $lang.lang) "alt" "" "sizes" (cond (in (slice "phone" "android") $d.shape) "60px" "120px") "widths" (slice 120 240 400)) -}}
           </span>
           {{- end }}
         {{- end }}
       </div>
-      <p class="matrix__count"><strong data-count="{{ mul (len $p.matrix.langs) (len $p.matrix.devices) }}">{{ mul (len $p.matrix.langs) (len $p.matrix.devices) }}</strong> {{ $p.matrix.countLabel }}</p>
+      <p class="matrix__count"><strong data-count="{{ $p.matrix.count }}">{{ $p.matrix.count }}</strong> {{ $p.matrix.countLabel }}</p>
     </div>
   </div>
 </section>

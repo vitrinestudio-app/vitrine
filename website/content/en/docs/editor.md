@@ -118,6 +118,8 @@ next to **Home page** in the inspector.
 
 ## The context menu
 
+{{< shot src="images/context-menu.jpg" float="right" width="330" alt="The context menu on a selected phone with its editing and arranging commands." caption="The canvas context menu on a selected phone." >}}
+
 Right-click an element (or press <kbd>Shift</kbd>+<kbd>F10</kbd> / the menu
 key) for: **Cut**, **Copy**, **Paste**, **Duplicate**, **Delete**, **Bring to
 front**, **Bring forward**, **Send backward**, **Send to back**, **Group** /
@@ -126,8 +128,6 @@ selection.
 
 Right-click empty space for **Paste on page N**, **Select all on page N**,
 **Select all** and **Fit to window**.
-
-{{< shot src="images/context-menu.jpg" alt="The context menu on a selected phone with its editing and arranging commands." caption="The canvas context menu on a selected phone." >}}
 
 ### Copy and paste
 
@@ -152,6 +152,8 @@ copy, cut and paste elements – also between canvases of the same project.
   tab has an eye button to show it again.
 
 ## The inspector
+
+{{< shot src="images/inspector-text.jpg" float="right" width="338" alt="The inspector with a selected headline: layout, text key and content, style, font size, colour, box, alignment and auto-fit." caption="The inspector with a headline selected." >}}
 
 With an element selected, the inspector shows its settings. The most important:
 
@@ -186,8 +188,6 @@ backgrounds* and the *Variants*.
 
 The inspector is wider than before and **resizable**: drag its left edge
 (double-click it for the default width). The width is remembered.
-
-{{< shot src="images/inspector-text.jpg" alt="The inspector with a selected headline: layout, text key and content, style, font size, colour, box, alignment and auto-fit." caption="The inspector with a headline selected." >}}
 
 ## Layers
 
@@ -247,6 +247,8 @@ editor, `git checkout`) reload the project.
 
 ## Validation
 
+{{< shot src="images/validation.jpg" float="right" width="380" alt="The validation list for the iPhone target: German and French texts that fall back to English, and one French title that overflows." caption="The validation list with **Preview mode** on: fallbacks are warnings, the overflowing French title is an error." >}}
+
 The badge in the top bar checks the current target and language continuously:
 **OK**, or the number of errors and warnings. Click it for the list – filter by
 level or code, switch between languages, **Show on the canvas** jumps to the
@@ -257,8 +259,6 @@ devices, covered or cut screen top bars, overlaps across page borders, the
 store's rounded corners. Common findings, and how to mark a deliberate one
 with `allow`, are explained in [Troubleshooting](../troubleshooting/).
 
-{{< shot src="images/validation.jpg" alt="The validation list for the iPhone target: German and French texts that fall back to English, and one French title that overflows." caption="The validation list with **Preview mode** on: fallbacks are warnings, the overflowing French title is an error." >}}
-
 ## Project settings and app settings
 
 | | Project settings (☰ → *Project settings…*) | App settings (☰ → *App settings…*, <kbd>⌘</kbd><kbd>,</kbd>) |
@@ -268,11 +268,11 @@ with `allow`, are explained in [Troubleshooting](../troubleshooting/).
 
 ## Help in the app
 
+{{< shot src="images/app-menu.jpg" float="right" width="380" alt="The ☰ menu with New project, Open project, Close project, Project settings, Canvases & targets, Export, Upload to stores, Import screenshots, Save as template, App settings, and the Help submenu open." caption="The ☰ menu with the **Help** submenu." >}}
+
 The ☰ menu opens from the ☰ button, the app icon or the project name in the
 top bar (also with <kbd>Enter</kbd>/<kbd>Space</kbd> when focused; arrow keys
 move through the entries).
-
-{{< shot src="images/app-menu.jpg" alt="The ☰ menu with New project, Open project, Close project, Project settings, Canvases & targets, Export, Upload to stores, Import screenshots, Save as template, App settings, and the Help submenu open." caption="The ☰ menu with the **Help** submenu." >}}
 
 - **Keyboard & mouse…** (☰ → Help, the **?** button in the bottom bar, or
   <kbd>?</kbd>) – every shortcut and gesture. Also on

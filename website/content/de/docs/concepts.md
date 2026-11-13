@@ -124,7 +124,7 @@ seiner Größe mit seiner Variante, in jeder Sprache. Ein Projekt mit 3 Zielen
 und 4 Sprachen liefert dir 12 komplette Bildsätze – und wenn du eine
 Überschrift änderst, ändern sich alle.
 
-{{< shot src="images/play-gallery-en.jpg" alt="Dieselben sechs Seiten als Google-Play-Satz: Android-Smartphones statt iPhones auf dem Synthwave-Hintergrund." caption="Dieselbe Leinwand als Google-Play-Ziel: Der Geräte-Tausch zeichnet Android-Smartphones, die Variante `play` passt die kürzeren Seiten an." >}}
+{{< shot src="images/play-gallery-en.jpg" alt="Dieselben sechs Seiten als Google-Play-Satz: Android-Smartphones statt iPhones auf dem Synthwave-Hintergrund." caption="Dieselbe Leinwand als Google-Play-Ziel, gezeigt als **Galerie-Vorschau** – die Bilder nebeneinander, so wie der Store sie zeigt; deshalb sieht sie anders aus als die Leinwand oben: Der Geräte-Tausch zeichnet Android-Smartphones, die Variante `play` passt die kürzeren Seiten an." >}}
 
 ## Ein Renderer für alles {#one-renderer-for-everything}
 

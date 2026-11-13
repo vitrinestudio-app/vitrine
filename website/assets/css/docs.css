@@ -255,6 +255,15 @@
   box-shadow: var(--shadow-sm);
 }
 .docs-figure figcaption { margin-top: 10px; color: var(--ink-faint); font-size: .9rem; }
+/* Narrow panels beside the text: shot float="right", width from --fig-w. */
+.docs-figure--float { width: min(100%, var(--fig-w, 360px)); margin-top: .3em; }
+.docs-figure--right { float: right; margin-left: clamp(20px, 3vw, 36px); }
+.docs-figure--float figcaption { font-size: .85rem; }
+.prose h2, .prose h3, .prose h4, .prose pre, .prose table, .prose hr,
+.prose .docs-figure, .prose .callout, .prose .docs-cards { clear: both; }
+@media (max-width: 640px) {
+  .docs-figure--float { float: none; margin-left: auto; margin-right: auto; }
+}
 .docs-placeholder {
   display: flex;
   flex-direction: column;

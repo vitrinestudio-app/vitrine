@@ -90,13 +90,16 @@ Leinwandseite, schlägt die Prüfung eine Variante vor (`variant_suggested`).
 
 ### Querformat aus Hochformat-Seiten: Gruppierung {#landscape-from-portrait-pages-grouping}
 
-Das iPad-Querformat-Set des Beispielprojekts nutzt die **Smartphone**-Leinwand:
-`Seiten pro Bild: 2` setzt die Seiten 1+2, 3+4 und 5+6 in drei
-Querformat-Bilder. Der Geräte-Tausch zeichnet iPads statt iPhones, und eine
-Variante verschiebt die Geräte ein wenig. Die exportierten Dateinamen nennen
-beide Seiten: `01_plan+beds.png`.
+**Seiten pro Bild** (`group: 2`) setzt zwei Seiten einer Leinwand
+nebeneinander in ein Bild: Aus den Seiten 1+2, 3+4 und 5+6 werden drei
+Querformat-Bilder. Eine Tablet-Leinwand im Hochformat, je zwei Seiten
+gruppiert, ergibt einen iPad-Querformat-Satz ohne zweites Layout. Auch eine
+Smartphone-Leinwand geht: Der iPad-Querformat-Satz des Beispielprojekts
+gruppiert dessen Smartphone-Seiten, ein Geräte-Tausch zeichnet iPads statt
+iPhones, und eine Variante verschiebt die Geräte ein wenig. Die exportierten
+Dateinamen nennen beide Seiten: `01_plan+beds.png`.
 
-{{< shot src="images/example-ipad-grouped-de.jpg" alt="iPad-Querformat-Galerie des Beispielprojekts: Jedes Bild zeigt zwei Smartphone-Seiten nebeneinander." caption="`ios-ipad-13` im Querformat mit `Seiten pro Bild: 2`, der Variante `tablet-landscape` und einem Geräte-Tausch zum iPad (Beispielprojekt, Deutsch)." >}}
+{{< shot src="images/ipad-grouped-gallery-en.jpg" alt="Galerie-Vorschau eines iPad-Querformat-Satzes für eine Ferienhaus-App: drei Querformat-Bilder, jedes mit zwei Hochformat-Seiten mit Foto-Hintergründen, Überschriften und iPads nebeneinander; ein Laptop reicht über das mittlere Paar." caption="Ein iPad-Querformat-Ziel (2752×2064) auf der Hochformat-**Tablet**-Leinwand der Vorlage *Warm Stay* mit `Seiten pro Bild: 2`: Aus sechs Seiten werden drei Bilder (Galerie-Vorschau, englische Texte)." >}}
 
 ### Umordnen: Varianten {#rearranging-variants}
 

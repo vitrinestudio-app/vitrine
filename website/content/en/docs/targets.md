@@ -85,12 +85,15 @@ variant (`variant_suggested`).
 
 ### Landscape from portrait pages: grouping
 
-The iPad landscape set of the example project uses the **phone** canvas:
-`Pages per image: 2` puts pages 1+2, 3+4 and 5+6 into three landscape images.
-The device swap draws iPads instead of iPhones, and a variant moves the phones
-a little. Exported file names show both pages: `01_plan+beds.png`.
+**Pages per image** (`group: 2`) puts two pages of a canvas side by side
+into one image: pages 1+2, 3+4 and 5+6 become three landscape images. A
+portrait tablet canvas grouped by two gives a landscape iPad set without a
+second layout. A phone canvas works too: the iPad landscape set of the example
+project groups its phone pages, a device swap draws iPads instead of iPhones,
+and a variant moves the devices a little. Exported file names show both pages:
+`01_plan+beds.png`.
 
-{{< shot src="images/example-ipad-grouped-de.jpg" alt="iPad landscape gallery of the example project: each image shows two phone pages side by side." caption="`ios-ipad-13` landscape with `Pages per image: 2`, variant `tablet-landscape` and a device swap to iPad (example project, German)." >}}
+{{< shot src="images/ipad-grouped-gallery-en.jpg" alt="Gallery preview of an iPad landscape set for a holiday-home app: three landscape images, each showing two portrait pages with photo backgrounds, headlines and iPads side by side; a laptop spans the middle pair." caption="An iPad landscape target (2752×2064) on the portrait **tablet** canvas of the *Warm Stay* template with `Pages per image: 2`: six pages become three images (gallery preview)." >}}
 
 ### Rearranging: variants
 

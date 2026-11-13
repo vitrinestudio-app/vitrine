@@ -128,6 +128,8 @@ gehört), nutze das Schloss neben **Heimatseite** im Inspektor.
 
 ## Das Kontextmenü {#the-context-menu}
 
+{{< shot src="images/context-menu.jpg" float="right" width="330" alt="Das Kontextmenü auf einem ausgewählten Smartphone mit seinen Befehlen zum Bearbeiten und Anordnen." caption="Das Kontextmenü der Leinwand auf einem ausgewählten Smartphone." >}}
+
 Rechtsklick auf ein Element (oder <kbd>Umschalt</kbd>+<kbd>F10</kbd> / die
 Menütaste) bietet: **Ausschneiden**, **Kopieren**, **Einsetzen**,
 **Duplizieren**, **Löschen**, **Ganz nach vorne**, **Eine Ebene nach vorne**,
@@ -137,8 +139,6 @@ wirkt auf die ganze Auswahl.
 
 Rechtsklick auf leere Fläche bietet **Auf Seite N einsetzen**, **Alles auf
 Seite N auswählen**, **Alles auswählen** und **An Fenster anpassen**.
-
-{{< shot src="images/context-menu.jpg" alt="Das Kontextmenü auf einem ausgewählten Smartphone mit seinen Befehlen zum Bearbeiten und Anordnen." caption="Das Kontextmenü der Leinwand auf einem ausgewählten Smartphone." >}}
 
 ### Kopieren und einsetzen {#copy-and-paste}
 
@@ -167,6 +167,8 @@ desselben Projekts.
   Ebenen blendest du es mit dem Augen-Button wieder ein.
 
 ## Der Inspektor {#the-inspector}
+
+{{< shot src="images/inspector-text.jpg" float="right" width="338" alt="Der Inspektor mit einer ausgewählten Überschrift: Layout, Text-Schlüssel und Inhalt, Stil, Schriftgröße, Farbe, Box, Ausrichtung und Auto-Fit." caption="Der Inspektor mit einer ausgewählten Überschrift." >}}
 
 Ist ein Element ausgewählt, zeigt der Inspektor seine Einstellungen. Die
 wichtigsten:
@@ -207,8 +209,6 @@ die *Varianten*.
 Der Inspektor ist breiter als früher und **in der Breite veränderbar**: Zieh
 seinen linken Rand (Doppelklick darauf: Standardbreite). Die Breite bleibt
 gespeichert.
-
-{{< shot src="images/inspector-text.jpg" alt="Der Inspektor mit einer ausgewählten Überschrift: Layout, Text-Schlüssel und Inhalt, Stil, Schriftgröße, Farbe, Box, Ausrichtung und Auto-Fit." caption="Der Inspektor mit einer ausgewählten Überschrift." >}}
 
 ## Ebenen {#layers}
 
@@ -276,6 +276,8 @@ Projekt neu.
 
 ## Prüfung {#validation}
 
+{{< shot src="images/validation.jpg" float="right" width="380" alt="Die Prüfliste für das iPhone-Ziel: deutsche und französische Texte, die auf Englisch zurückfallen, und ein französischer Titel, der überläuft." caption="Die Prüfliste mit eingeschaltetem **Vorschau-Modus**: Fallbacks sind Warnungen, der überlaufende französische Titel ist ein Fehler." >}}
+
 Das Abzeichen in der oberen Leiste prüft laufend das aktuelle Ziel und die
 aktuelle Sprache: **OK** oder die Zahl der Fehler und Warnungen. Ein Klick
 zeigt die Liste – filtern nach Stufe oder Code, zwischen Sprachen wechseln,
@@ -288,8 +290,6 @@ Seitengrenzen, die abgerundeten Ecken des Stores. Häufige Befunde – und wie
 man einen gewollten mit `allow` markiert – erklärt
 [Fehlerbehebung](../troubleshooting/).
 
-{{< shot src="images/validation.jpg" alt="Die Prüfliste für das iPhone-Ziel: deutsche und französische Texte, die auf Englisch zurückfallen, und ein französischer Titel, der überläuft." caption="Die Prüfliste mit eingeschaltetem **Vorschau-Modus**: Fallbacks sind Warnungen, der überlaufende französische Titel ist ein Fehler." >}}
-
 ## Projekteinstellungen und App-Einstellungen {#project-settings-and-app-settings}
 
 | | Projekteinstellungen (☰ → *Projekteinstellungen …*) | App-Einstellungen (☰ → *App-Einstellungen …*, <kbd>⌘</kbd><kbd>,</kbd>) |
@@ -299,11 +299,11 @@ man einen gewollten mit `allow` markiert – erklärt
 
 ## Hilfe in der App {#help-in-the-app}
 
+{{< shot src="images/app-menu.jpg" float="right" width="380" alt="Das ☰-Menü mit Neues Projekt, Projekt öffnen, Projekt schließen, Projekteinstellungen, Leinwände & Ziele, Export, In die Stores hochladen, Screenshots importieren, Als Vorlage speichern, App-Einstellungen und dem geöffneten Untermenü Hilfe." caption="Das ☰-Menü mit dem Untermenü **Hilfe** (englische Oberfläche)." >}}
+
 Das ☰-Menü öffnet sich über den ☰-Button, das App-Symbol oder den
 Projektnamen in der oberen Leiste (mit Fokus auch per <kbd>Enter</kbd>/
 <kbd>Leertaste</kbd>; die Pfeiltasten gehen durch die Einträge).
-
-{{< shot src="images/app-menu.jpg" alt="Das ☰-Menü mit Neues Projekt, Projekt öffnen, Projekt schließen, Projekteinstellungen, Leinwände & Ziele, Export, In die Stores hochladen, Screenshots importieren, Als Vorlage speichern, App-Einstellungen und dem geöffneten Untermenü Hilfe." caption="Das ☰-Menü mit dem Untermenü **Hilfe** (englische Oberfläche)." >}}
 
 - **Tastatur & Maus …** (☰ → Hilfe, der **?**-Button in der unteren Leiste
   oder <kbd>?</kbd>) – alle Tastenkürzel und Gesten. Auch auf
