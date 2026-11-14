@@ -26,7 +26,7 @@ ignored by Git.
 | `i18n/en.yaml`, `de.yaml` | UI strings |
 | `layouts/` | `baseof.html`, `home.html`, `page.html`, `docs/{section,page}.html`, `404.html`, `_partials/`, `_shortcodes/` (Hugo ≥ 0.146 template layout) |
 | `assets/css/` | `base.css` (tokens, fonts, light/dark), `layout.css`, `components.css`, `home.css`, `docs.css`, `gallery.css` – concatenated, minified and fingerprinted by Hugo Pipes |
-| `assets/js/site.js` | nav toggle, theme switch, scroll reveal, home section index, tabs, hero tilt |
+| `assets/js/site.js` | nav toggle, language choice, theme switch, scroll reveal, home section index, tabs, hero tilt |
 | `assets/js/gallery.js` | template gallery: live refresh, filters (FLIP), detail view, floating/tilting cards; also the live cards on the home page |
 | `content/*/gallery.md`, `layouts/gallery.html`, `layouts/_partials/gallery/` | template gallery page (`/gallery/`, `/de/galerie/`): `data.html` (build-time snapshot), `labels.html` (tag labels), `card.html` (one card, mirrored by the script) |
 | `assets/images/` | screenshots (resized to WebP/JPEG `srcset` by `_partials/picture.html`) |
@@ -38,6 +38,11 @@ ignored by Git.
 - Brand gradient from the logo: violet `#6a5bff` → magenta `#c04bf2` →
   coral `#ff7a59`. Light and dark mode via `prefers-color-scheme`, plus a
   toggle that stores the choice in `localStorage` (no cookie).
+- Language: an English page opened by a browser that prefers German (first
+  site language in `navigator.languages`) replaces itself with its German
+  translation before first paint (inline script in `_partials/head.html`).
+  A click on the EN/DE switch stores `lang` in `localStorage` and wins from
+  then on. German pages never redirect, so a shared `/de/` link stays German.
 - Motion: load-in of the hero, scroll reveal (`.reveal`, IntersectionObserver),
   the animated "continuous canvas" SVG in the hero (`_partials/hero-canvas.html`:
   six pages with phones, a shared laptop and two tablets on one background,

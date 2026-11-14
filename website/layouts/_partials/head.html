@@ -16,6 +16,29 @@
 
   {{- /* Theme before first paint: the visitor's explicit choice (localStorage,
          no cookie), else the system setting via CSS. */}}
+  {{- /* Language before first paint: on a page of the default language, a
+         visitor without an explicit choice (localStorage `lang`, set by the
+         language switch in site.js) whose browser prefers another site
+         language goes to that translation. Only from the default language,
+         so a shared /de/ link stays German. */}}
+  {{- if and (eq site.Language.Lang (index site.Languages 0).Lang) .Translations }}
+  {{- $alts := dict }}
+  {{- range .Translations }}{{ $alts = merge $alts (dict .Language.Lang .RelPermalink) }}{{ end }}
+  <script>
+    (function () {
+      var cur = {{ site.Language.Lang }}, alts = {{ $alts }}, pref = null;
+      try { pref = localStorage.getItem('lang'); } catch (e) {}
+      if (!pref) {
+        var langs = navigator.languages || [navigator.language || ''];
+        for (var i = 0; i < langs.length; i++) {
+          var l = String(langs[i]).toLowerCase().split('-')[0];
+          if (l === cur || alts[l]) { pref = l; break; }
+        }
+      }
+      if (pref && pref !== cur && alts[pref]) location.replace(alts[pref] + location.search + location.hash);
+    })();
+  </script>
+  {{- end }}
   <script>
     document.documentElement.classList.replace('no-js', 'js');
     try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}

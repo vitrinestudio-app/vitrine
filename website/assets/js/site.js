@@ -44,6 +44,16 @@
   var docsNav = document.querySelector('[data-docs-nav]');
   if (docsNav && window.matchMedia('(max-width: 900px)').matches) docsNav.open = false;
 
+  // ---------- Language: an explicit choice beats the browser language ----------
+  // The head script (layouts/_partials/head.html) sends a first visit of an
+  // English page to the German one when the browser prefers German; a click
+  // on the language switch is remembered so that never overrides it again.
+  document.querySelectorAll('.lang-switch a[hreflang]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      try { localStorage.setItem('lang', a.getAttribute('hreflang')); } catch (e) { /* private mode */ }
+    });
+  });
+
   // ---------- Theme: explicit choice in localStorage (no cookie) ----------
   var themeBtn = document.querySelector('[data-theme-toggle]');
   if (themeBtn) {
