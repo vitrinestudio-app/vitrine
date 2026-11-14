@@ -44,24 +44,23 @@ disableKinds = ['taxonomy', 'term', 'rss']
   # HUGO_PARAMS_GALLERYAPI=http://127.0.0.1:8787 hugo server
   galleryAPI = 'https://api.vitrinestudio.app'
   company = 'Looking4Cache UG (haftungsbeschränkt)'
-  # The downloads switch (website/README.md "Release switch"): set to true
-  # and fill `downloads` below once the GitHub release is PUBLISHED (not
-  # while it is a draft). While false, the download buttons say "with the
-  # 1.0.0 release", the download page shows `lead_pending`, the home page
-  # `notePending`/`aPending` and the `callout status pending` boxes appear.
+  # The downloads switch (website/README.md "Release switch"): on since
+  # v1.0.0 was published (2026-11-13). While false, the download buttons say
+  # "with the 1.0.0 release", the download page shows `lead_pending`, the home
+  # page `notePending`/`aPending` and the `callout status pending` boxes appear.
   # Stable links (asset names have no version, docs/dev/releasing.md):
   # https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_macos_universal.dmg
   # …/VitrineStudio_windows_x64-setup.exe, …/VitrineStudio_linux_x86_64.AppImage
-  downloads_available = false
+  downloads_available = true
   # Sponsoring (home page, open-source section, #funding). PLACEHOLDER URLs:
   # neither the GitHub Sponsors profile of the org nor the Liberapay account
   # exists yet. Until `sponsors_available = true` the page shows only an
   # "opens soon" note, never these links. Then also add .github/FUNDING.yml.
   sponsors_available = false
   [params.downloads]
-    macos = ''
-    windows = ''
-    linux = ''
+    macos = 'https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_macos_universal.dmg'
+    windows = 'https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_windows_x64-setup.exe'
+    linux = 'https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_linux_x86_64.AppImage'
   [params.sponsors]
     github = 'https://github.com/sponsors/vitrinestudio-app'   # PLACEHOLDER
     liberapay = 'https://liberapay.com/vitrinestudio'          # PLACEHOLDER

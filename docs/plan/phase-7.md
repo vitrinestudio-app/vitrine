@@ -186,7 +186,7 @@ users ask; doc: `docs/dev/releasing.md` §4,
       offers the update, installs and restarts (macOS, Windows, AppImage;
       deb/rpm only notify). Windows: note whether SmartScreen asks again
       for the app-downloaded update (expected not to, 7.1).
-- [ ] **Agent/Owner** – after publishing (not while a draft): the website
+- [x] **Agent/Owner** – after publishing (not while a draft): the website
       downloads switch in `website/hugo.toml` – `downloads_available = true`
       and `[params.downloads]` `macos` =
       `https://github.com/vitrinestudio-app/vitrine/releases/latest/download/VitrineStudio_macos_universal.dmg`,
@@ -196,7 +196,9 @@ users ask; doc: `docs/dev/releasing.md` §4,
       `curl -sI` (302), rebuild, deploy. Nothing else: the release texts
       are in place and the pending variants (download lead, home hero note
       + FAQ, `callout status pending` in `install.md`) switch with the flag.
-      Snippet: `website/README.md` "Release switch".
+      Snippet: `website/README.md` "Release switch". Done 2026-11-14
+      (v1.0.0 published 2026-11-13, all three URLs 302, AppImage included);
+      **Owner** – deploy the site.
 - [ ] **Agent** – link the third-party notices from the About panel and
       `vitrine --help` (phase 6.5 "later").
 - [ ] **Owner** – announcement (where: own channels, Mastodon/Bluesky,
@@ -312,7 +314,7 @@ Doc: `website/README.md` (TODO section, deployment).
       crop of `iphone-gallery-en.jpg`); optionally showcase tabs from the
       gallery templates; update the stale "Images to replace" table in
       `website/README.md`.
-- [ ] **Agent** – the downloads switch (7.3). ("Code signing policy" page
+- [x] **Agent** – the downloads switch (7.3, 2026-11-14). ("Code signing policy" page
       only with SignPath, deferred – 7.1.)
 - [ ] **Agent** – link to the website guide in the MCP `docs_get`
       `overview` once the site is online (phase 6.7).
