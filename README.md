@@ -40,11 +40,9 @@ and the [download page](https://www.vitrinestudio.app/download/):
 Installing, updating and verifying downloads:
 [Install & update](https://www.vitrinestudio.app/docs/install/).
 
-Store upload has been verified with a live App Store Connect account for
-screenshots and the product page header and search results creatives. Other
-Apple platforms (Mac, Apple Watch, iPhone Duo) and Google Play have been
-tested against simulated stores so far – check the result in App Store
-Connect or the Play Console after your first upload. The gallery gap widths
+Store upload has been verified with live App Store Connect and Google Play
+accounts – check the result in App Store Connect or the Play Console after
+your first upload. The gallery gap widths
 of the native store apps are still estimates (see
 [Open questions](#open-questions)).
 

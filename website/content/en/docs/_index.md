@@ -9,10 +9,9 @@ need: every device size, every language, App Store and Google Play. This guide
 shows you how, task by task.
 
 {{< callout status >}}
-This guide describes **Vitrine Studio 1.0**. Uploading to the App Store is
-verified with a live account for screenshots and creatives; Google Play and
-the other Apple device classes are tested against simulated stores so far.
-Pages say where something is not verified yet.
+This guide describes **Vitrine Studio 1.0**. Uploading to App Store Connect
+and Google Play is verified with live accounts. Pages say where something is
+not verified yet.
 {{< /callout >}}
 
 **New here?** Read [How Vitrine Studio works](concepts/) (five minutes), then
