@@ -153,12 +153,12 @@ end
 `fastlane/metadata/android/`.) Der CI-Rechner hat keine eigenen Apple-Bezels –
 siehe [Geräterahmen in der CI](../../automation/#device-frames-in-ci).
 
-## Das fastlane-Plugin (Entwurf) {#the-fastlane-plugin-draft}
+## Das fastlane-Plugin {#the-fastlane-plugin}
 
 {{< callout status >}}
-Das Plugin `fastlane-plugin-vitrine` ist ein **Entwurf**: Es ist noch nicht
-veröffentlicht und wurde noch nicht in fastlane ausgeführt. Bis dahin
-erledigen die `sh`-Aufrufe oben dasselbe.
+Das Plugin `fastlane-plugin-vitrine` ist noch nicht auf RubyGems; es wird
+dort in Kürze veröffentlicht. Bis dahin erledigen die `sh`-Aufrufe oben
+dasselbe.
 {{< /callout >}}
 
 Es verpackt das Kommandozeilenwerkzeug in drei Actions:

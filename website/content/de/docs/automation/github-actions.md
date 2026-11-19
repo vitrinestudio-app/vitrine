@@ -50,18 +50,13 @@ jobs:
   `vitrine-cli_macos_universal.tar.gz` – siehe
   [die Liste der Archive](../../automation/#installing-the-cli-in-ci).
 
-## Die geplante Action {#the-planned-action}
-
-{{< callout status >}}
-Das Repository der Action ist online, hat aber noch keinen Release-Tag
-(`v1`) und keinen Marketplace-Eintrag; `@v1` funktioniert deshalb noch
-nicht. Bis dahin nimmst du den Installationsschritt oben.
-{{< /callout >}}
+## Die fertige Action {#the-ready-made-action}
 
 [`vitrinestudio-app/vitrine-github-action`](https://github.com/vitrinestudio-app/vitrine-github-action)
 übernimmt die Installation (Prüfsumme, Cache; sie wählt bei Bedarf den
 arm64- oder den statischen Build) und die Prüf- und Exportschritte in einem
-`uses:`:
+`uses:`. `@v1` folgt dem neuesten 1.x-Release der Action; `version` legt die
+CLI-Version fest:
 
 ```yaml
       - uses: vitrinestudio-app/vitrine-github-action@v1

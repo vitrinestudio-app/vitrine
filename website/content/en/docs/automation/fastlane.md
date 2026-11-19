@@ -147,12 +147,11 @@ end
 The CI machine has no Apple bezels of its own – see
 [Device frames in CI](../../automation/#device-frames-in-ci).
 
-## The fastlane plugin (draft)
+## The fastlane plugin
 
 {{< callout status >}}
-The plugin `fastlane-plugin-vitrine` is a **draft**: it is not published yet
-and has not been run inside fastlane. Until it is, the `sh` calls above do the
-same.
+The plugin `fastlane-plugin-vitrine` is not on RubyGems yet; it will be
+published there soon. Until then, the `sh` calls above do the same.
 {{< /callout >}}
 
 It wraps the CLI in three actions:

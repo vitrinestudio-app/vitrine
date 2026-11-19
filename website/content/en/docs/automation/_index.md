@@ -20,11 +20,10 @@ to upload them to the stores from a release job.
 
 {{< callout status >}}
 The CLI archives and the container image are published with every release,
-starting with 1.0.0. Of the ready-made integrations, the GitHub Action's
-repository is online but has no release tag or Marketplace listing yet; the
-GitLab components and the fastlane plugin are **drafts** and not published
-yet. Everything in this section that uses only the CLI or the image works
-with 1.0.0.
+starting with 1.0.0. Of the ready-made integrations, the GitHub Action is
+released (`vitrinestudio-app/vitrine-github-action@v1`); the GitLab
+components and the fastlane plugin are not published yet. Everything in this
+section that uses only the CLI or the image works with 1.0.0.
 {{< /callout >}}
 
 This page covers what every setup shares. Step by step for your system:

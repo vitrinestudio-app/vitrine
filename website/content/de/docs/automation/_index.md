@@ -21,11 +21,11 @@ Stores hochladen.
 
 {{< callout status >}}
 Die CLI-Archive und das Container-Image erscheinen mit jedem Release, ab
-1.0.0. Von den fertigen Integrationen ist das Repository der GitHub Action
-online, hat aber noch keinen Release-Tag und keinen Marketplace-Eintrag; die
-GitLab-Komponenten und das fastlane-Plugin sind **Entwürfe** und noch nicht
-veröffentlicht. Alles in diesem Abschnitt, was nur das
-Kommandozeilenwerkzeug oder das Image nutzt, funktioniert ab 1.0.0.
+1.0.0. Von den fertigen Integrationen ist die GitHub Action veröffentlicht
+(`vitrinestudio-app/vitrine-github-action@v1`); die GitLab-Komponenten und
+das fastlane-Plugin sind noch nicht veröffentlicht. Alles in diesem
+Abschnitt, was nur das Kommandozeilenwerkzeug oder das Image nutzt,
+funktioniert ab 1.0.0.
 {{< /callout >}}
 
 Diese Seite beschreibt, was alle Setups gemeinsam haben. Schritt für Schritt

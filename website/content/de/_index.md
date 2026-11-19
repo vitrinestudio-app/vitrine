@@ -192,7 +192,7 @@ automation:
   points:
     - "**Jede CI:** `validate`, `export` und `upload` mit klaren Exit-Codes, GitHub-Annotationen, GitLab Code Quality und JUnit-Berichten – [Überblick](docs/automation/)"
     - "**Container-Image** `ghcr.io/vitrinestudio-app/vitrine-cli` für GitLab, Jenkins, CircleCI und andere"
-    - "**GitHub Actions:** [Workflow-Beispiele](docs/automation/github-actions/); eine fertige Action ist in Arbeit (Entwurf)"
+    - "**GitHub Actions:** [Workflow-Beispiele](docs/automation/github-actions/) und eine [fertige Action](https://github.com/vitrinestudio-app/vitrine-github-action)"
     - "**GitLab CI:** [Job-Beispiele](docs/automation/gitlab-ci/); CI/CD-Komponenten sind in Arbeit (Entwurf)"
     - "**fastlane:** importiert snapshot- und screengrab-Ausgaben, exportiert das deliver/supply-Layout – [Nutzung mit fastlane](docs/automation/fastlane/); ein Plugin ist in Arbeit (Entwurf)"
     - "**Andere Systeme:** Jenkins, Xcode Cloud, Bitrise, Codemagic und mehr – [Hinweise](docs/automation/other-systems/)"
