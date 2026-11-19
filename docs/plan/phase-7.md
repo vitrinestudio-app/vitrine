@@ -160,7 +160,7 @@ users ask; doc: `docs/dev/releasing.md` §4,
 - [x] **Agent** – repo prepared for 1.0.0 (2026-11-13): workspace version
       + `Cargo.lock`, AGENTS/ARCHITECTURE/README state, integration and
       automation-doc pins (`1.0.0`, GitLab default image `vitrine-cli:1.0`;
-      the fastlane gem keeps its own version 0.1.0), website release texts
+      the fastlane gem keeps its own version – starts at 1.0.0, owner decision 2026-11-19), website release texts
       with pending variants behind the downloads switch.
 - [ ] **Owner** – delete the stale tag `v0.1.0` (remote + local, see the
       version decision above) or leave it; then tag `v1.0.0` on `main`
@@ -239,8 +239,8 @@ All need a published release with CLI archives (7.3). Doc:
       before the gem push (the gemspec links to it).
 - [ ] **Owner** – RubyGems account with MFA; `gem build
       fastlane-plugin-vitrine.gemspec && gem push
-      fastlane-plugin-vitrine-0.1.0.gem` (in `integrations/fastlane-plugin/`),
-      tag `v0.1.0` in the plugin repo (`releasing.md` "CI integrations").
+      fastlane-plugin-vitrine-1.0.0.gem` (in `integrations/fastlane-plugin/`),
+      tag `v1.0.0` in the plugin repo (`releasing.md` "CI integrations").
       **Agent** afterwards: website fastlane page + landing (en + de),
       README table, `integrations/README.md` → "published".
 - [ ] Optional decision: a `vitrine_upload` action.
