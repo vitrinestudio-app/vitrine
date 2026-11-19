@@ -194,7 +194,7 @@ automation:
     - "**Container image** `ghcr.io/vitrinestudio-app/vitrine-cli` for GitLab, Jenkins, CircleCI and others"
     - "**GitHub Actions:** [workflow examples](docs/automation/github-actions/) and a [ready-made action](https://github.com/vitrinestudio-app/vitrine-github-action)"
     - "**GitLab CI:** [job examples](docs/automation/gitlab-ci/); CI/CD components are in the works (draft)"
-    - "**fastlane:** imports snapshot and screengrab output, exports the deliver/supply layout – [using with fastlane](docs/automation/fastlane/); a plugin is in the works (draft)"
+    - "**fastlane:** imports snapshot and screengrab output, exports the deliver/supply layout – [using with fastlane](docs/automation/fastlane/), plugin `fastlane add_plugin vitrine`"
     - "**Other systems:** Jenkins, Xcode Cloud, Bitrise, Codemagic and more – [setup notes](docs/automation/other-systems/)"
   terminal:
     - {comment: "1 · check every pull request (annotations in the diff)"}

@@ -232,17 +232,13 @@ All need a published release with CLI archives (7.3). Doc:
 - [x] **Agent** – scaffold (fastlane template: Gemfile, Rakefile, rubocop,
       rspec, CI), run the actions inside fastlane once (2026-11-19, against
       the 1.0.0 CLI).
-- [x] **Owner** – create the repo `vitrinestudio-app/fastlane-plugin-vitrine`;
-      **Agent** pushed `integrations/fastlane-plugin/` (folder = repo root,
-      92c4ac9, 2026-11-19); its `Test` workflow passed (Ruby 3.1–3.4).
-      Repo still private on 2026-11-19 (API 404) – owner: set it to public
-      before the gem push (the gemspec links to it).
-- [ ] **Owner** – RubyGems account with MFA; `gem build
-      fastlane-plugin-vitrine.gemspec && gem push
-      fastlane-plugin-vitrine-1.0.0.gem` (in `integrations/fastlane-plugin/`),
-      tag `v1.0.0` in the plugin repo (`releasing.md` "CI integrations").
-      **Agent** afterwards: website fastlane page + landing (en + de),
-      README table, `integrations/README.md` → "published".
+- [x] **Owner** – create the repo `vitrinestudio-app/fastlane-plugin-vitrine`
+      (public); **Agent** pushed `integrations/fastlane-plugin/` (folder =
+      repo root, 2026-11-19); its `Test` workflow passed (Ruby 3.1–3.4).
+- [x] **Owner** – `gem push fastlane-plugin-vitrine-1.0.0.gem` (2026-11-19,
+      https://rubygems.org/gems/fastlane-plugin-vitrine); **Agent** tagged `v1.0.0` in the plugin repo and switched
+      website (fastlane page, automation index, landing; en + de), README,
+      NOTES and `integrations/README.md` to "published".
 - [ ] Optional decision: a `vitrine_upload` action.
 - [x] **Owner** – repo `vitrinestudio-app/vitrine-agent-skill` created (2026-11-13) for the
       agent skill (`integrations/skill/`, MIT, open Agent Skills format; that folder is the

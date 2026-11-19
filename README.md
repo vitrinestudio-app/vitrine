@@ -220,7 +220,7 @@ golden-image tests.
 | CLI container image | `ghcr.io/vitrinestudio-app/vitrine-cli` | built with every release (amd64, arm64) |
 | GitHub Action | [`vitrinestudio-app/vitrine-github-action`](https://github.com/vitrinestudio-app/vitrine-github-action) | released (`@v1`), [GitHub Marketplace](https://github.com/marketplace/actions/vitrine-studio-cli) |
 | GitLab CI/CD components | `gitlab.com/vitrinestudio/vitrine-gitlab-ci` | coming – draft in [`integrations/gitlab/`](integrations/gitlab/) |
-| fastlane plugin | `fastlane-plugin-vitrine` (repo `vitrinestudio-app/fastlane-plugin-vitrine`) | ready in [`integrations/fastlane-plugin/`](integrations/fastlane-plugin/), not on RubyGems yet |
+| fastlane plugin | `fastlane-plugin-vitrine` (repo `vitrinestudio-app/fastlane-plugin-vitrine`) | released 1.0.0 on [RubyGems](https://rubygems.org/gems/fastlane-plugin-vitrine) (`fastlane add_plugin vitrine`); source in [`integrations/fastlane-plugin/`](integrations/fastlane-plugin/) |
 | Agent skill | [`vitrinestudio-app/vitrine-agent-skill`](https://github.com/vitrinestudio-app/vitrine-agent-skill) | online: `npx skills add vitrinestudio-app/vitrine-agent-skill` |
 
 The sources live in [`integrations/`](integrations/) (MIT). Setup:

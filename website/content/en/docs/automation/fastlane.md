@@ -149,12 +149,15 @@ The CI machine has no Apple bezels of its own – see
 
 ## The fastlane plugin
 
-{{< callout status >}}
-The plugin `fastlane-plugin-vitrine` is not on RubyGems yet; it will be
-published there soon. Until then, the `sh` calls above do the same.
-{{< /callout >}}
+The plugin [`fastlane-plugin-vitrine`](https://rubygems.org/gems/fastlane-plugin-vitrine)
+([source](https://github.com/vitrinestudio-app/fastlane-plugin-vitrine)) wraps the CLI in three actions. Add it to your project once:
 
-It wraps the CLI in three actions:
+```sh
+fastlane add_plugin vitrine
+```
+
+It needs the `vitrine` command on `PATH` (or `binary:` / `VITRINE_CLI`).
+
 
 | Action | Does |
 |---|---|

@@ -155,13 +155,16 @@ siehe [Geräterahmen in der CI](../../automation/#device-frames-in-ci).
 
 ## Das fastlane-Plugin {#the-fastlane-plugin}
 
-{{< callout status >}}
-Das Plugin `fastlane-plugin-vitrine` ist noch nicht auf RubyGems; es wird
-dort in Kürze veröffentlicht. Bis dahin erledigen die `sh`-Aufrufe oben
-dasselbe.
-{{< /callout >}}
+Das Plugin [`fastlane-plugin-vitrine`](https://rubygems.org/gems/fastlane-plugin-vitrine)
+([Quellcode](https://github.com/vitrinestudio-app/fastlane-plugin-vitrine)) verpackt das Kommandozeilenwerkzeug in drei Actions. Du
+fügst es einmal deinem Projekt hinzu:
 
-Es verpackt das Kommandozeilenwerkzeug in drei Actions:
+```sh
+fastlane add_plugin vitrine
+```
+
+Es braucht den Befehl `vitrine` im `PATH` (oder `binary:` / `VITRINE_CLI`).
+
 
 | Action | Macht |
 |---|---|
