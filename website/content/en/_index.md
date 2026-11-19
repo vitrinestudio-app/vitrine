@@ -1,6 +1,6 @@
 ---
 title: Vitrine Studio
-description: "Open-source desktop app for App Store and Google Play screenshots: design once on a continuous canvas, render for every language, device and store, upload directly – with an MCP server for AI assistants."
+description: "Free, open-source desktop app for App Store and Google Play screenshots: design once, render every language and device, upload directly. With MCP and CLI."
 
 hero:
   eyebrow: "Open source · macOS, Windows, Linux"

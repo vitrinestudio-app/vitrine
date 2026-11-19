@@ -4,6 +4,9 @@ slug: privacy
 eyebrow: "Legal"
 description: "Privacy policy of Vitrine Studio: website, template gallery (api.vitrinestudio.app) and desktop app."
 noindex: true
+# noindex pages stay out of the sitemap
+sitemap:
+  disable: true
 ---
 
 {{< callout note >}}

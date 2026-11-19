@@ -1,0 +1,48 @@
+{{- /* schema.org data for search engines (home and download page):
+       the organisation, the website and the app as a free
+       SoftwareApplication. No softwareVersion on purpose: the version's
+       single source is the workspace Cargo.toml, which Hugo cannot read
+       from outside website/. Takes (dict "image" $og). */ -}}
+{{- $home := site.Home.Permalink -}}
+{{- $org := printf "%s#organization" (absURL "/") -}}
+{{- $logo := (resources.Get "brand/vitrine-studio.png").Resize "512x512 png" -}}
+{{- $download := "" -}}
+{{- with site.GetPage "/download" }}{{ $download = .Permalink }}{{ end -}}
+{{- $app := dict
+    "@type" "SoftwareApplication"
+    "@id" (printf "%s#app" $home)
+    "name" site.Title
+    "description" site.Params.description
+    "url" $home
+    "applicationCategory" "DesignApplication"
+    "operatingSystem" "macOS, Windows, Linux"
+    "isAccessibleForFree" true
+    "license" "https://www.gnu.org/licenses/gpl-3.0.html"
+    "inLanguage" site.Language.LanguageCode
+    "image" .image
+    "publisher" (dict "@id" $org)
+    "sameAs" (slice site.Params.github)
+    "offers" (dict "@type" "Offer" "price" "0" "priceCurrency" "EUR")
+-}}
+{{- with $download }}{{ $app = merge $app (dict "downloadUrl" .) }}{{ end -}}
+{{- $data := dict
+    "@context" "https://schema.org"
+    "@graph" (slice
+      (dict
+        "@type" "Organization"
+        "@id" $org
+        "name" site.Title
+        "legalName" site.Params.company
+        "url" (absURL "/")
+        "logo" $logo.Permalink
+        "sameAs" (slice site.Params.github))
+      (dict
+        "@type" "WebSite"
+        "@id" (printf "%s#website" $home)
+        "name" site.Title
+        "url" $home
+        "inLanguage" site.Language.LanguageCode
+        "publisher" (dict "@id" $org))
+      $app)
+-}}
+<script type="application/ld+json">{{ $data | jsonify | safeJS }}</script>

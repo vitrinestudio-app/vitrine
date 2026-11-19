@@ -13,6 +13,10 @@
   {{- range .AllTranslations }}
   <link rel="alternate" hreflang="{{ .Language.LanguageCode }}" href="{{ .Permalink }}">
   {{- end }}
+  {{- /* x-default: the default-language version (the only one that redirects by browser language) */}}
+  {{- range .AllTranslations }}{{ if eq .Language.Lang (index site.Languages 0).Lang }}
+  <link rel="alternate" hreflang="x-default" href="{{ .Permalink }}">
+  {{- end }}{{ end }}
 
   {{- /* Theme before first paint: the visitor's explicit choice (localStorage,
          no cookie), else the system setting via CSS. */}}
@@ -65,15 +69,29 @@
   <link rel="icon" href="{{ $fav.RelPermalink }}" sizes="48x48" type="image/png">
   <link rel="apple-touch-icon" href="{{ $touch.RelPermalink }}">
 
-  {{- /* Open Graph: the store gallery of the example project */}}
-  {{- $og := resources.Get "images/iphone-gallery-en.jpg" }}
-  {{- $og = $og.Fill "1200x630 Center jpg q80" }}
+  {{- /* Open Graph: the social card per language, made with Vitrine Studio
+         itself (project assets/social-card/ in the repo root, target
+         open-graph; website/README.md "Social card") */}}
+  {{- $og := resources.Get (printf "images/og/og-image-%s.png" site.Language.Lang) | default (resources.Get "images/og/og-image-en.png") }}
+  {{- $og = $og.Process "jpg q90" }}
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ site.Title }}">
   <meta property="og:title" content="{{ $title }}">
   <meta property="og:description" content="{{ $description }}">
   <meta property="og:url" content="{{ .Permalink }}">
   <meta property="og:image" content="{{ $og.Permalink }}">
-  <meta property="og:locale" content="{{ replace site.Language.LanguageCode "-" "_" }}">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="{{ $og.Width }}">
+  <meta property="og:image:height" content="{{ $og.Height }}">
+  <meta property="og:image:alt" content="{{ T "ogImageAlt" }}">
+  <meta property="og:locale" content="{{ site.Language.Params.ogLocale | default (replace site.Language.LanguageCode "-" "_") }}">
+  {{- range .Translations }}
+  <meta property="og:locale:alternate" content="{{ .Language.Params.ogLocale | default (replace .Language.LanguageCode "-" "_") }}">
+  {{- end }}
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image:alt" content="{{ T "ogImageAlt" }}">
+
+  {{- if or .IsHome (and .File (eq .File.ContentBaseName "download")) }}
+  {{ partial "structured-data.html" (dict "image" $og.Permalink) }}
+  {{- end }}
 </head>

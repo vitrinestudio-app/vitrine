@@ -4,6 +4,9 @@ linkTitle: Nutzungsbedingungen
 eyebrow: "Rechtliches"
 description: "Nutzungsbedingungen der Vorlagen-Galerie von Vitrine Studio (api.vitrinestudio.app, Galerie auf der Website und in der App)."
 noindex: true
+# noindex pages stay out of the sitemap
+sitemap:
+  disable: true
 ---
 
 {{< callout warn >}}

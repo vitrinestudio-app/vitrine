@@ -3,6 +3,8 @@ title = 'Vitrine Studio'
 defaultContentLanguage = 'en'
 defaultContentLanguageInSubdir = false
 enableRobotsTXT = true
+# lastmod in the sitemaps comes from the Git history of each content file.
+enableGitInfo = true
 disableKinds = ['taxonomy', 'term', 'rss']
 
 # No third parties: no analytics, no embedded services, no cookies.
@@ -27,14 +29,17 @@ disableKinds = ['taxonomy', 'term', 'rss']
     weight = 1
     contentDir = 'content/en'
     [languages.en.params]
-      description = 'Open-source desktop app for App Store and Google Play screenshots: design once on a continuous canvas, render for every language, device and store, upload directly – with an MCP server for AI assistants.'
+      description = 'Free, open-source desktop app for App Store and Google Play screenshots: design once, render every language and device, upload directly. With MCP and CLI.'
+      # og:locale (Open Graph wants language_TERRITORY)
+      ogLocale = 'en_US'
   [languages.de]
     languageName = 'Deutsch'
     languageCode = 'de'
     weight = 2
     contentDir = 'content/de'
     [languages.de.params]
-      description = 'Open-Source-Desktop-App für App-Store- und Google-Play-Screenshots: einmal auf einer durchgehenden Leinwand gestalten, für jede Sprache, jedes Gerät und jeden Store rendern, direkt hochladen – mit MCP-Server für KI-Assistenten.'
+      description = 'Kostenlose Open-Source-App für App-Store- und Google-Play-Screenshots: einmal gestalten, für jede Sprache und jedes Gerät rendern, direkt hochladen.'
+      ogLocale = 'de_DE'
 
 [params]
   github = 'https://github.com/vitrinestudio-app/vitrine'

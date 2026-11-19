@@ -1,6 +1,6 @@
 ---
 title: Stile & Schriften
-description: "Projektfarben, Textstile, Span-Stile und Schatten; mitgelieferte, Projekt- und installierte Schriften, Schriften im Projekt speichern, unterstützte Schriftsysteme (Arabisch, Hebräisch, indische Schriften, Thai, CJK), Konturen und Leuchten."
+description: "Farben, Text- und Span-Stile, Schatten; mitgelieferte, Projekt- und installierte Schriften; Arabisch, Hebräisch, indische Schriften, Thai, CJK; Konturen, Leuchten."
 weight: 70
 icon: fonts
 ---

@@ -1,6 +1,6 @@
 ---
 title: Vitrine Studio
-description: "Open-Source-Desktop-App für App-Store- und Google-Play-Screenshots: einmal auf einer durchgehenden Leinwand gestalten, für jede Sprache, jedes Gerät und jeden Store rendern, direkt hochladen – mit MCP-Server für KI-Assistenten."
+description: "Kostenlose Open-Source-App für App-Store- und Google-Play-Screenshots: einmal gestalten, für jede Sprache und jedes Gerät rendern, direkt hochladen."
 
 hero:
   eyebrow: "Open Source · macOS, Windows, Linux"

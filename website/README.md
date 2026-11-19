@@ -287,12 +287,34 @@ visibly). No placeholders are left in the docs.
 | Images | Used on | Made from |
 |---|---|---|
 | App screenshots, each a light/dark pair (`x.jpg` + `x-dark.jpg`): `editor`, `inspector-text`, `text-editing`, `gallery-view`, `all-languages`, `context-menu`, `app-menu`, `translations`, `validation`, `new-project`, `new-project-local`, `export-dialog`, `export-overview`, `canvas-dialog`, `targets-add`, `import-screenshots`, `frame-import`, `save-template`, `project-fonts`, `project-stores`, `store-accounts`, `upload-plan`, `mcp-settings` | home (editor, floating inspector) and the docs | `scripts/docs/app-screenshots.mjs`, see *Taking the app screenshots* above (all but `export-overview`); projects made from the gallery templates *Pop-Art Panels*, *Synthwave Sunset* and *Park Poster* (the sample apps Swoonly, Glowtape and Ridgecast) |
-| `iphone-gallery-en`, `iphone-gallery-fr`, `ipad-gallery-de`, `play-gallery-en`, `ipad-landscape-gallery-en`, `blog-header-en` | home showcase tabs (`showcase:` in `_index.md`); `play-gallery-en` and `blog-header-en` also in concepts / targets; `iphone-gallery-en` is the Open Graph image (cropped to 1200×630 in `head.html`) | `vitrine render --gallery` / `--image` of the same three template projects; one version (store renders, no dark pair) |
+| `iphone-gallery-en`, `iphone-gallery-fr`, `ipad-gallery-de`, `play-gallery-en`, `ipad-landscape-gallery-en`, `blog-header-en` | home showcase tabs (`showcase:` in `_index.md`); `play-gallery-en` and `blog-header-en` also in concepts / targets; | `vitrine render --gallery` / `--image` of the same three template projects; one version (store renders, no dark pair) |
 | `canvas-phone-en` | concepts | the *Synthwave Sunset* phone canvas, `vitrine render --canvas --width 2400` |
 | `matrix/<target>-<lang>.jpg`, `ipad-grouped-gallery-en` | home matrix, targets | the *Warm Stay* project, see *Matrix on the home page* above |
 | CSS/SVG illustrations: hero canvas, AI chat, terminal, upload plan, template cards | home | hand-made; the template cards give way to live gallery cards once the snapshot has templates |
 
-Still open: a dedicated 1200×630 Open Graph image.
+## Social card (Open Graph image) and SEO tags
+
+`assets/images/og/og-image-{en,de}.png` (1200×630) is the `og:image` of every
+page in that language (`head.html`, served as JPEG q90 with width, height and
+`ogImageAlt` from `i18n/`). It is made with Vitrine Studio itself: the project
+`assets/social-card/` in the repo root (targets `open-graph` 1200×630 and
+`github-social` 1280×640 for the GitHub repo's social preview, en + de; the
+wall shows screens of our CC0 gallery templates). Change it in the app or over
+MCP, export, then copy `export/open-graph/<lang>/banner.png` here as
+`og-image-<lang>.png` (`export/` itself is git-ignored; `press-kit/` holds
+copies for press).
+
+Other SEO bits in `head.html` / config, keep them when changing the head:
+home title = site title + `siteTagline` (i18n), meta description from the page
+front matter (≤ ~160 characters; home and fallback in `_index.md` and
+`hugo.toml`), canonical, `hreflang` per translation + `x-default` (the English
+page), `og:locale` from `languages.<lang>.params.ogLocale`, and on the home
+and download pages schema.org JSON-LD (`_partials/structured-data.html`:
+Organization, WebSite, a free `SoftwareApplication`; no `softwareVersion`
+because Hugo cannot read the workspace `Cargo.toml`). `layouts/robots.txt`
+names the sitemap; `noindex` pages also set `sitemap: {disable: true}`;
+`enableGitInfo` gives the sitemap `lastmod` (build from a Git checkout).
+`static/favicon.ico` is a 48 px copy of `assets/brand/vitrine-studio.png`.
 
 The repo README uses separate, smaller copies (not used by the site):
 `docs/gui/` (`editor`, `gallery-view`, `text-editing`, `new-project`,

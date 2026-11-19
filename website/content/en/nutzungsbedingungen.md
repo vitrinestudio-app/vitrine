@@ -5,6 +5,9 @@ slug: terms
 eyebrow: "Legal"
 description: "Terms of use of the Vitrine Studio template gallery (api.vitrinestudio.app, the gallery on the website and in the app)."
 noindex: true
+# noindex pages stay out of the sitemap
+sitemap:
+  disable: true
 ---
 
 {{< callout note >}}

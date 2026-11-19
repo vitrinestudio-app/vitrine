@@ -322,8 +322,15 @@ Doc: `website/README.md` (TODO section, deployment).
       shortcodes left in the docs, README editor shots as `<picture>`),
       home matrix with real renders from the Warm Stay template (9cfa24f),
       new page-grouping image.
-- [ ] **Owner + Agent** – a dedicated 1200×630 Open Graph image (today a
-      crop of `iphone-gallery-en.jpg`); optionally showcase tabs from the
+- [x] **Owner + Agent** – a dedicated 1200×630 Open Graph image per language
+      (2026-11-19: Vitrine project `assets/social-card/`, also the GitHub
+      social preview 1280×640) plus an SEO pass of the head: JSON-LD
+      SoftwareApplication (free), titles/descriptions with "free",
+      `x-default`, `og:locale`, robots.txt sitemap line, sitemap without
+      noindex pages and with `lastmod`, favicon.ico (`website/README.md`,
+      "Social card"). Owner: upload `github-social-<lang>.png` from
+      `press-kit/` as the repo's social preview.
+- [ ] **Owner + Agent** – optionally showcase tabs from the
       gallery templates; update the stale "Images to replace" table in
       `website/README.md`.
 - [x] **Agent** – the downloads switch (7.3, 2026-11-14). ("Code signing policy" page

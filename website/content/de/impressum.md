@@ -3,6 +3,9 @@ title: Impressum
 eyebrow: "Rechtliches"
 description: "Impressum von Vitrine Studio (www.vitrinestudio.app)."
 noindex: true
+# noindex pages stay out of the sitemap
+sitemap:
+  disable: true
 ---
 
 ## Angaben gemäß § 5 DDG

@@ -3,6 +3,9 @@ title: Datenschutzerklärung
 eyebrow: "Rechtliches"
 description: "Datenschutzerklärung von Vitrine Studio: Website, Vorlagen-Galerie (api.vitrinestudio.app) und Desktop-App."
 noindex: true
+# noindex pages stay out of the sitemap
+sitemap:
+  disable: true
 ---
 
 Diese Datenschutzerklärung klärt dich über Art, Umfang und Zweck der

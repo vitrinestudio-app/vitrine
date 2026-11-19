@@ -1,6 +1,6 @@
 ---
 title: Styles & fonts
-description: "Project colours, text styles, span styles and shadows; bundled, project and installed fonts, storing fonts in the project, supported scripts (Arabic, Hebrew, Indic, Thai, CJK), outlines and glows."
+description: "Colours, text and span styles, shadows; bundled, project and installed fonts; Arabic, Hebrew, Indic, Thai and CJK scripts; outlines and glows."
 weight: 70
 icon: fonts
 ---

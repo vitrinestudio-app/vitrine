@@ -4,6 +4,9 @@ slug: legal-notice
 eyebrow: "Legal"
 description: "Legal notice (Impressum) of Vitrine Studio (www.vitrinestudio.app)."
 noindex: true
+# noindex pages stay out of the sitemap
+sitemap:
+  disable: true
 ---
 
 {{< callout note >}}
