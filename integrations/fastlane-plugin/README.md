@@ -4,7 +4,7 @@
 [Vitrine Studio](https://vitrinestudio.app): import snapshot/screengrab
 captures into a Vitrine Studio project, validate it and export the framed,
 localized App Store / Play Store screenshots straight into deliver's and
-supply's folders – a replacement for `frameit`.
+supply's folders, like `frameit`.
 
 ```sh
 fastlane add_plugin vitrine
@@ -53,7 +53,7 @@ lane :screenshots do
   capture_android_screenshots                           # screengrab → fastlane/captures/metadata/android
   vitrine_import(project: "store-screens")              # reads fastlane/captures
   vitrine_validate(project: "store-screens", strict: true)
-  vitrine_export(project: "store-screens")              # replaces frameit
+  vitrine_export(project: "store-screens")              # framed images, like frameit
   upload_to_app_store(skip_binary_upload: true, skip_metadata: true, overwrite_screenshots: true)
   upload_to_play_store(skip_upload_apk: true, skip_upload_aab: true, skip_upload_metadata: true,
                        skip_upload_changelogs: true, skip_upload_images: false, skip_upload_screenshots: false)

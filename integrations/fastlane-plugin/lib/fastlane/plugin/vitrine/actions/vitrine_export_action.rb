@@ -14,7 +14,7 @@ module Fastlane
     # `vitrine export --layout fastlane`: writes deliver's
     # `screenshots/<locale>/` and supply's `metadata/android/<locale>/images/`
     # folders, so `upload_to_app_store` / `upload_to_play_store` upload them
-    # unchanged. Replaces `frameit`.
+    # unchanged. Framed images like `frameit`.
     class VitrineExportAction < Action
       def self.run(params)
         binary = Helper::VitrineHelper.binary(params[:binary])

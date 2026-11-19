@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.name          = "fastlane-plugin-vitrine"
   spec.version       = Fastlane::Vitrine::VERSION
   spec.author        = "Vitrine Studio"
-  spec.summary       = "Import, validate and export App Store / Play Store screenshots with Vitrine Studio (replaces frameit)"
+  spec.summary       = "Import, validate and export App Store / Play Store screenshots with Vitrine Studio (like frameit)"
   spec.homepage      = "https://github.com/vitrinestudio-app/fastlane-plugin-vitrine"
   # Owner decision 2026-11-12: integrations that only call the CLI as a
   # separate program are MIT (the app/CLI stay GPL-3.0-or-later, ADR 0022).
