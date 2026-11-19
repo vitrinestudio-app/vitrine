@@ -1,10 +1,12 @@
-# Integrations – DRAFTS
+# Integrations
 
-None of the CI integrations is released yet: the GitHub Action's repository
-is online without a release tag or Marketplace listing, GitLab and fastlane
-are not published; the agent skill is online (see the `README.md`
-integrations table). Each CI integration needs a published Vitrine Studio
-release first (the first is 1.0.0) (CLI archives + `SHA256SUMS.txt` on GitHub
+Status (2026-11-19): the GitHub Action is released (`v1.0.0`, `v1`; its
+`Test` workflow passes against the 1.0.0 release; Marketplace listing still
+to publish); the fastlane plugin is ready (rspec + rubocop, run in a real
+lane against the 1.0.0 CLI) but its repository and the RubyGems release are
+still missing; the GitLab components are a draft; the agent skill is online
+(see the `README.md` integrations table). Each CI integration needs a
+published Vitrine Studio release (1.0.0 or later) (CLI archives + `SHA256SUMS.txt` on GitHub
 Releases, ADR 0026) and, for the container-based ones, the CLI image
 `ghcr.io/vitrinestudio-app/vitrine-cli` (built and pushed by
 `.github/workflows/release.yml` from the static musl archives). Research,
@@ -14,7 +16,7 @@ ranking and the owner decisions: `docs/research/2026-11-12-ci-integrations.md`.
 |---|---|---|---|
 | `github-action/` | composite action: install (checksum, cache, PATH; Linux x64/arm64 glibc or static musl, macOS, Windows), validate with annotations, export | CLI archive from GitHub Releases | repo `vitrinestudio-app/vitrine-github-action` (folder content = repo root) → GitHub Marketplace |
 | `gitlab/` | CI/CD components `validate` (Code Quality + JUnit) and `export` (artifact) – GitLab-only | container image | gitlab.com project `vitrinestudio/vitrine-gitlab-ci` → CI/CD Catalog |
-| `fastlane-plugin/` | fastlane actions `vitrine_validate`, `vitrine_export` | `vitrine` on PATH | gem `fastlane-plugin-vitrine` on RubyGems (repo open) |
+| `fastlane-plugin/` | fastlane actions `vitrine_import`, `vitrine_validate`, `vitrine_export` | `vitrine` on PATH | repo `vitrinestudio-app/fastlane-plugin-vitrine` (folder content = repo root; owner decision 2026-11-19) → gem `fastlane-plugin-vitrine` on RubyGems |
 | `skill/` | agent skill (open Agent Skills format) for making store screenshots of the user's own app over MCP; vendor-neutral | skill folder `skills/vitrine-store-screenshots/` copied into an agent's skills directory or uploaded as zip | own repo `vitrinestudio-app/vitrine-agent-skill` (install: `npx skills add vitrinestudio-app/vitrine-agent-skill`) |
 
 Every folder is self-contained (no references to files outside it), so its

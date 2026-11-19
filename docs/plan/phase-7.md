@@ -145,7 +145,7 @@ users ask; doc: `docs/dev/releasing.md` §4,
 - [ ] **Agent** – optional: issue templates (bug report with OS/version,
       feature request), `SECURITY.md` with a contact address – not planned
       anywhere yet; owner decides.
-- [ ] **Owner** – after the first tag run with a push: ghcr package
+- [x] **Owner** – after the first tag run with a push: ghcr package
       `vitrine-cli` → visibility **Public**, linked to the repo, Actions
       access Write; try `docker run --rm ghcr.io/vitrinestudio-app/vitrine-cli:1.0.0 vitrine --version`.
       Doc: `releasing.md` §5.
@@ -213,21 +213,36 @@ All need a published release with CLI archives (7.3). Doc:
 `docs/research/2026-11-12-ci-integrations.md`.
 - [x] GitHub Action pushed to `vitrinestudio-app/vitrine-github-action`
       (7d1645d; owner created the public repo).
-- [ ] **Agent** – sync `integrations/github-action/` to its repo after the
-      release, run its `Test` workflow against the real release.
-- [ ] **Owner** – tag `v1.0.0` + move `v1`, publish the GitHub Marketplace
-      listing from its release page (needs the owner's account to accept
-      the Marketplace agreement, 2FA).
+- [x] **Agent** – sync `integrations/github-action/` to its repo after the
+      release, run its `Test` workflow against the real release (2026-11-19:
+      6f00839, all five jobs green against 1.0.0).
+- [x] **Agent** (owner approved) – tag `v1.0.0` + `v1` on 6f00839 (2026-11-19).
+- [ ] **Owner** – publish the GitHub Marketplace listing: repo →
+      Releases → "Draft a new release" with tag `v1.0.0` → tick "Publish
+      this Action to the GitHub Marketplace" (an org owner must accept the
+      Marketplace Developer Agreement once; 2FA), categories e.g.
+      *Continuous integration* + *Utilities*, title `v1.0.0` → Publish.
+      Then: README/website "Marketplace listing coming" → link.
 - [ ] **Owner** – create the gitlab.com group/project
       `vitrinestudio/vitrine-gitlab-ci`, mark it as CI/CD Catalog project;
       **Agent** pushes `integrations/gitlab/`; **Owner** tags `1.0.0`
       (catalog release). Needs: the public ghcr image.
-- [ ] **Owner** – fastlane plugin: decide name/repo (proposed
-      `vitrinestudio-app/fastlane-plugin-vitrine`), RubyGems account (MFA),
-      **Agent** scaffolds (`fastlane new_plugin`, rspec, rubocop, CI) and
-      runs the actions inside fastlane once; **Owner** `gem push
-      fastlane-plugin-vitrine` (the plugin list picks it up by prefix).
-      Optional decision: a `vitrine_upload` action.
+- [x] **Owner** – fastlane plugin name/repo: gem `fastlane-plugin-vitrine`,
+      own repo `vitrinestudio-app/fastlane-plugin-vitrine` (2026-11-19).
+- [x] **Agent** – scaffold (fastlane template: Gemfile, Rakefile, rubocop,
+      rspec, CI), run the actions inside fastlane once (2026-11-19, against
+      the 1.0.0 CLI).
+- [ ] **Owner** – create the empty public repo
+      `vitrinestudio-app/fastlane-plugin-vitrine`; **Agent** pushes
+      `integrations/fastlane-plugin/` (folder = repo root), checks its `Test`
+      workflow.
+- [ ] **Owner** – RubyGems account with MFA; `gem build
+      fastlane-plugin-vitrine.gemspec && gem push
+      fastlane-plugin-vitrine-0.1.0.gem` (in `integrations/fastlane-plugin/`),
+      tag `v0.1.0` in the plugin repo (`releasing.md` "CI integrations").
+      **Agent** afterwards: website fastlane page + landing (en + de),
+      README table, `integrations/README.md` → "published".
+- [ ] Optional decision: a `vitrine_upload` action.
 - [x] **Owner** – repo `vitrinestudio-app/vitrine-agent-skill` created (2026-11-13) for the
       agent skill (`integrations/skill/`, MIT, open Agent Skills format; that folder is the
       repo root: `skills/vitrine-store-screenshots/SKILL.md`, README, LICENSE).

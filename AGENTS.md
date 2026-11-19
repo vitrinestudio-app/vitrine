@@ -57,7 +57,7 @@ explanation: `website/content/en/docs/concepts.md`. "ADR 00NN" and
 | `tests/fixtures/example/` | example project (all target kinds; en, de, fr, fr-CA with deliberate fallbacks) + golden images (`golden/`) |
 | `tests/fixtures/scripts/` | non-Latin script fixture (render tests) |
 | `website/` | www.vitrinestudio.app (Hugo, no theme): landing page, user guide `content/{en,de}/docs/`, template gallery page; see `website/README.md` |
-| `integrations/` | unpublished MIT drafts, each folder self-contained for its own repo: `github-action/`, `gitlab/`, `fastlane-plugin/`, `skill/` (agent skill); see `integrations/README.md` |
+| `integrations/` | MIT integrations, each folder self-contained for its own repo (status in `integrations/README.md`): `github-action/`, `gitlab/`, `fastlane-plugin/`, `skill/` (agent skill); see `integrations/README.md` |
 | `scripts/release/` | release helpers (licence files, CLI sidecar, Linux CLI builds, collect artifacts, `latest.json`) |
 | `scripts/docs/` | `cli-help.sh` regenerates `website/data/cli_help.json`; `app-screenshots.mjs` + shot list `app-shots.mjs` take the website's app screenshots (`website/README.md`, "Taking the app screenshots") |
 | `docker/cli/` | Dockerfile of the CLI image `ghcr.io/vitrinestudio-app/vitrine-cli` |
@@ -284,7 +284,7 @@ checked-in text normalise `\r\n` anyway.
 | `docs/dev/releasing.md` | releases, signing, secrets |
 | `docs/dev/adding-devices.md` | adding devices and frames |
 | `website/README.md` | website structure, screenshots (how to take them: "Taking the app screenshots"), gallery page, deployment |
-| `integrations/README.md` | CI integration and skill drafts |
+| `integrations/README.md` | CI integrations and agent skill: homes, status, sync |
 | `CONTRIBUTING.md`, `CLA.md` | contribution rules, CLA |
 | `website/content/{en,de}/docs/` | the user guide |
 

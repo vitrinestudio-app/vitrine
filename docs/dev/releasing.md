@@ -231,7 +231,15 @@ content to the root of its repository when it changed:
   (`ghcr.io/vitrinestudio-app/vitrine-cli:X.Y`, today `1.0`; the image has
   no major-only tag) when a new minor release changes the CLI, then tag
   `X.Y.Z` there.
-- `integrations/fastlane-plugin/` → gem `fastlane-plugin-vitrine`.
+- `integrations/fastlane-plugin/` → `vitrinestudio-app/fastlane-plugin-vitrine`
+  (folder content = repo root; its `Test` workflow runs rspec + rubocop) →
+  gem `fastlane-plugin-vitrine`. The gem has its own version
+  (`lib/fastlane/plugin/vitrine/version.rb`), independent of the app. Release:
+  bump the version, `bundle exec rake` (specs + rubocop), `gem build
+  fastlane-plugin-vitrine.gemspec`, `gem push fastlane-plugin-vitrine-X.Y.Z.gem`
+  (RubyGems account with MFA; `rubygems_mfa_required` is set), tag `vX.Y.Z`
+  in the plugin repo. fastlane's plugin list (`fastlane search_plugins`,
+  docs.fastlane.tools) picks the gem up by its `fastlane-plugin-` prefix.
 
 ## Local CLI builds for Linux (from the Mac)
 
