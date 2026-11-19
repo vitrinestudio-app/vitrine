@@ -328,8 +328,11 @@ Doc: `website/README.md` (TODO section, deployment).
       SoftwareApplication (free), titles/descriptions with "free",
       `x-default`, `og:locale`, robots.txt sitemap line, sitemap without
       noindex pages and with `lastmod`, favicon.ico (`website/README.md`,
-      "Social card"). Owner: upload `github-social-<lang>.png` from
-      `press-kit/` as the repo's social preview.
+      "Social card"). GitHub social preview set (`github-social-en.png`
+      from `press-kit/`), sitemap submitted in Search Console (domain
+      property `vitrinestudio.app`) – both 2026-11-19. JSON-LD checked
+      with validator.schema.org (0 errors). After the next deploy: Meta
+      Sharing Debugger + LinkedIn Post Inspector on the live URL.
 - [ ] **Owner + Agent** – optionally showcase tabs from the
       gallery templates; update the stale "Images to replace" table in
       `website/README.md`.
