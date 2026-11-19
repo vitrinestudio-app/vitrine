@@ -331,8 +331,12 @@ Doc: `website/README.md` (TODO section, deployment).
       "Social card"). GitHub social preview set (`github-social-en.png`
       from `press-kit/`), sitemap submitted in Search Console (domain
       property `vitrinestudio.app`) – both 2026-11-19. JSON-LD checked
-      with validator.schema.org (0 errors). After the next deploy: Meta
-      Sharing Debugger + LinkedIn Post Inspector on the live URL.
+      with validator.schema.org (0 errors). Live after the deploy
+      (2026-11-19): Meta Sharing Debugger scraped `/` and `/de/` with the
+      right card, title and description (only `fb:app_id` missing, not
+      needed); Google Rich Results Test: 1 valid Software App (optional
+      `aggregateRating` missing). Open: LinkedIn Post Inspector (needs the
+      owner's LinkedIn login).
 - [ ] **Owner + Agent** – optionally showcase tabs from the
       gallery templates; update the stale "Images to replace" table in
       `website/README.md`.
