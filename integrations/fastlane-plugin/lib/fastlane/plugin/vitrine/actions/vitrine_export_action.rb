@@ -1,4 +1,6 @@
 require "fastlane/action"
+require "fastlane/boolean"
+require "fastlane_core/configuration/config_item"
 require_relative "../helper/vitrine_helper"
 
 module Fastlane
@@ -17,43 +19,50 @@ module Fastlane
       def self.run(params)
         binary = Helper::VitrineHelper.binary(params[:binary])
         out = File.expand_path(params[:output_directory])
-        args = ["export", "--layout", params[:layout], "--out", out, "--format", "json", "--no-html"]
-        args << "--force" if params[:force]
-        fastlane_layout = params[:layout] == "fastlane"
-        args << "--remove-foreign" if fastlane_layout && params[:foreign_images] == "remove"
-        Array(params[:targets]).each { |t| args.push("--target", t) }
-        Array(params[:languages]).each { |l| args.push("--lang", l) }
-        stdout, code = Helper::VitrineHelper.run(binary: binary, project: params[:project], args: args)
-        UI.user_error!("vitrine export could not run (exit #{code})") if code == 2
-        report = Helper::VitrineHelper.parse_json(stdout, "export")
-        Array(report["notes"]).each { |n| UI.important("#{n['target']} #{n['lang']}: #{n['message']}") }
+        report, code = Helper::VitrineHelper.run_json(binary: binary, project: params[:project], args: cli_args(params, out), what: "export")
+        Array(report["notes"]).each { |n| UI.important("#{[n['target'], n['lang']].compact.join(' ')}: #{n['message']}") }
         Array(report["errors"]).each { |e| UI.error(e.to_s) }
         UI.user_error!("Vitrine Studio export failed") if code == 1
 
         Array(report["removed_foreign"]).each { |f| UI.message("Removed (not from Vitrine Studio): #{f}") }
-        # Images deliver/supply would upload together with Vitrine Studio's:
-        # raw snapshot/screengrab captures, frameit output.
-        foreign = Array(report["foreign"])
-        if foreign.any? && params[:foreign_images] == "fail"
-          foreign.first(10).each { |f| UI.error("not from Vitrine Studio: #{File.join(out, f)}") }
-          UI.user_error!("#{foreign.length} image(s) in the upload folders were not exported by Vitrine Studio; " \
-                         "deliver/supply would upload them too. Let snapshot/screengrab write to fastlane/captures " \
-                         "(output_directory) and import from there, or use foreign_images: \"remove\".")
-        end
+        check_foreign(Array(report["foreign"]), out) if params[:foreign_images] == "fail"
 
-        written = report["files"].count { |f| !f["skipped"] }
-        UI.success("Vitrine Studio: #{written} file(s) written, #{report['files'].length - written} unchanged → #{out}")
+        files = Array(report["files"])
+        written = files.count { |f| !f["skipped"] }
+        UI.success("Vitrine Studio: #{written} file(s) written, #{files.length - written} unchanged → #{out}")
         Actions.lane_context[SharedValues::VITRINE_EXPORT_DIR] = out
-        if fastlane_layout
-          screenshots = File.join(out, "screenshots")
-          metadata = File.join(out, "metadata", "android")
-          Actions.lane_context[SharedValues::VITRINE_SCREENSHOTS_PATH] = screenshots
-          Actions.lane_context[SharedValues::VITRINE_METADATA_PATH] = metadata
-          # deliver / supply read these when no explicit path is given.
-          ENV["DELIVER_SCREENSHOTS_PATH"] ||= screenshots if File.directory?(screenshots)
-          ENV["SUPPLY_METADATA_PATH"] ||= metadata if File.directory?(metadata)
-        end
+        publish_fastlane_paths(out) if params[:layout] == "fastlane"
         report
+      end
+
+      def self.cli_args(params, out)
+        args = ["export", "--layout", params[:layout], "--out", out, "--format", "json", "--no-html"]
+        args << "--force" if params[:force]
+        args << "--remove-foreign" if params[:layout] == "fastlane" && params[:foreign_images] == "remove"
+        Array(params[:targets]).each { |t| args.push("--target", t) }
+        Array(params[:languages]).each { |l| args.push("--lang", l) }
+        args
+      end
+
+      # Images deliver/supply would upload together with Vitrine Studio's:
+      # raw snapshot/screengrab captures, frameit output.
+      def self.check_foreign(foreign, out)
+        return if foreign.empty?
+
+        foreign.first(10).each { |f| UI.error("not from Vitrine Studio: #{File.join(out, f)}") }
+        UI.user_error!("#{foreign.length} image(s) in the upload folders were not exported by Vitrine Studio; " \
+                       "deliver/supply would upload them too. Let snapshot/screengrab write to fastlane/captures " \
+                       "(output_directory) and import from there, or use foreign_images: \"remove\".")
+      end
+
+      def self.publish_fastlane_paths(out)
+        screenshots = File.join(out, "screenshots")
+        metadata = File.join(out, "metadata", "android")
+        Actions.lane_context[SharedValues::VITRINE_SCREENSHOTS_PATH] = screenshots
+        Actions.lane_context[SharedValues::VITRINE_METADATA_PATH] = metadata
+        # deliver / supply read these when no explicit path is given.
+        ENV["DELIVER_SCREENSHOTS_PATH"] ||= screenshots if File.directory?(screenshots)
+        ENV["SUPPLY_METADATA_PATH"] ||= metadata if File.directory?(metadata)
       end
 
       def self.description
@@ -89,7 +98,7 @@ module Fastlane
                                                     "fail (default: stop the lane), warn, or remove (delete them after the export)",
                                        default_value: "fail",
                                        verify_block: proc { |v| UI.user_error!("foreign_images must be fail, warn or remove") unless %w[fail warn remove].include?(v) }),
-          FastlaneCore::ConfigItem.new(key: :force,description: "Render everything (ignore the export cache)", type: Boolean, default_value: false),
+          FastlaneCore::ConfigItem.new(key: :force, description: "Render everything (ignore the export cache)", type: Boolean, default_value: false),
           FastlaneCore::ConfigItem.new(key: :binary, env_name: "VITRINE_CLI", description: "Path of the vitrine binary", optional: true)
         ]
       end

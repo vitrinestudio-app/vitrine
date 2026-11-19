@@ -1,4 +1,6 @@
 require "fastlane/action"
+require "fastlane/boolean"
+require "fastlane_core/configuration/config_item"
 require_relative "../helper/vitrine_helper"
 
 module Fastlane
@@ -8,27 +10,31 @@ module Fastlane
     class VitrineValidateAction < Action
       def self.run(params)
         binary = Helper::VitrineHelper.binary(params[:binary])
+        report, code = Helper::VitrineHelper.run_json(binary: binary, project: params[:project], args: cli_args(params), what: "validate")
+        Array(report["findings"]).each { |f| print_finding(f) }
+        summary = "#{report['errors']} error(s), #{report['warnings']} warning(s)"
+        UI.user_error!("Vitrine Studio validation failed: #{summary}") if code == 1
+        UI.success("Vitrine Studio validation: #{summary}")
+        report
+      end
+
+      def self.cli_args(params)
         args = %w[validate --format json]
         args << "--strict" if params[:strict]
         args << "--preview" if params[:preview]
         Array(params[:targets]).each { |t| args.push("--target", t) }
         Array(params[:languages]).each { |l| args.push("--lang", l) }
-        out, code = Helper::VitrineHelper.run(binary: binary, project: params[:project], args: args)
-        UI.user_error!("vitrine validate could not run (exit #{code})") if code == 2
-        report = Helper::VitrineHelper.parse_json(out, "validate")
-        report["findings"].each do |f|
-          scope = [f["target"], f["lang"] && "(#{f['lang']})"].compact.join(" ")
-          line = "#{f['code']} #{scope}: #{f['message']}"
-          case f["level"]
-          when "error" then UI.error(line)
-          when "warn" then UI.important(line)
-          else UI.verbose(line)
-          end
+        args
+      end
+
+      def self.print_finding(finding)
+        scope = [finding["target"], finding["lang"] && "(#{finding['lang']})"].compact.join(" ")
+        line = "#{finding['code']} #{scope}: #{finding['message']}"
+        case finding["level"]
+        when "error" then UI.error(line)
+        when "warn" then UI.important(line)
+        else UI.verbose(line)
         end
-        summary = "#{report['errors']} error(s), #{report['warnings']} warning(s)"
-        UI.user_error!("Vitrine Studio validation failed: #{summary}") if code == 1
-        UI.success("Vitrine Studio validation: #{summary}")
-        report
       end
 
       def self.description
@@ -56,6 +62,10 @@ module Fastlane
 
       def self.is_supported?(platform)
         %i[ios mac android].include?(platform)
+      end
+
+      def self.example_code
+        ['vitrine_validate(project: "store-screens", strict: true)']
       end
 
       def self.category

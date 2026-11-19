@@ -1,0 +1,7 @@
+# Manual test against a real `vitrine` CLI (Vitrine Studio 1.0.0 or later):
+#   vitrine new demo && bundle exec fastlane test project:demo
+lane :test do |options|
+  project = options[:project] || "demo"
+  vitrine_validate(project: project, preview: true)
+  vitrine_export(project: project, output_directory: "./tmp/fastlane")
+end

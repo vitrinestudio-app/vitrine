@@ -1,14 +1,20 @@
-# fastlane-plugin-vitrine – DRAFT
+# fastlane-plugin-vitrine
 
-> **Draft, not published.** Not on RubyGems, not in fastlane's plugin list.
-> Publishing = a gem `fastlane-plugin-vitrine` pushed to RubyGems (fastlane's
-> plugin list picks gems up by that prefix), ideally from its own repository
-> (proposed `vitrinestudio-app/fastlane-plugin-vitrine`) with fastlane's
-> usual plugin scaffold (`fastlane new_plugin vitrine`: rspec, rubocop,
-> CI). Owner decisions open: name and repository. Licence: MIT (decided
-> 2026-11-12).
-> Only Ruby syntax was checked here (`ruby -c`); the actions were not run
-> inside fastlane yet.
+[fastlane](https://fastlane.tools) plugin for
+[Vitrine Studio](https://vitrinestudio.app): import snapshot/screengrab
+captures into a Vitrine Studio project, validate it and export the framed,
+localized App Store / Play Store screenshots straight into deliver's and
+supply's folders – a replacement for `frameit`.
+
+```sh
+fastlane add_plugin vitrine
+```
+
+Needs the `vitrine` command line tool (Vitrine Studio 1.0.0 or later), see
+below. The source is maintained in
+[`integrations/fastlane-plugin/`](https://github.com/vitrinestudio-app/vitrine/tree/main/integrations/fastlane-plugin)
+of the main repository and copied to
+[`vitrinestudio-app/fastlane-plugin-vitrine`](https://github.com/vitrinestudio-app/fastlane-plugin-vitrine).
 
 Three actions that call the `vitrine` CLI – fastlane runs on every CI system
 mobile teams use (GitHub Actions, Bitrise, Codemagic, CircleCI, Jenkins, and
@@ -71,6 +77,14 @@ token → execute flow that a single action would hide. A later
 `vitrine_upload` action could run `upload plan` and `upload execute
 --confirm <token> --yes` with the credentials mapped from fastlane's
 `app_store_connect_api_key` (owner decision).
+
+## Development
+
+```sh
+bundle install
+bundle exec rake          # rspec (with a fake `vitrine` binary) + rubocop
+vitrine new demo && bundle exec fastlane test project:demo   # against the real CLI
+```
 
 ## Licence
 

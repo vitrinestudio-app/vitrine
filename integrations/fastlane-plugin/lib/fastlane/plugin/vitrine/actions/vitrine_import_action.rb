@@ -1,4 +1,6 @@
 require "fastlane/action"
+require "fastlane/boolean"
+require "fastlane_core/configuration/config_item"
 require_relative "../helper/vitrine_helper"
 
 module Fastlane
@@ -13,57 +15,68 @@ module Fastlane
     # `capture_screenshots` / `capture_android_screenshots` and before
     # `vitrine_export`.
     class VitrineImportAction < Action
+      UNMAPPED = %w[unresolved duplicate].freeze
+      COPIES = %w[new overwrite].freeze
+
       def self.run(params)
         binary = Helper::VitrineHelper.binary(params[:binary])
         source = File.expand_path(params[:source] || default_source)
         UI.user_error!("Screenshot folder not found: #{source}") unless File.directory?(source)
 
-        args = ["import", "screenshots", source, "--format", params[:format], "--format-output", "json"]
-        (params[:lang_map] || {}).each { |k, v| args.push("--lang-map", "#{k}=#{v}") }
-        (params[:device_map] || {}).each { |k, v| args.push("--device-map", "#{k}=#{v}") }
-        (params[:key_map] || {}).each { |k, v| args.push("--key-map", "#{k}=#{v}") }
-        args << "--include-framed" if params[:include_framed]
-        args << "--save-mapping" if params[:save_mapping]
-        args << "--dry-run" if params[:dry_run]
-
-        stdout, code = Helper::VitrineHelper.run(binary: binary, project: params[:project], args: args)
-        UI.user_error!("vitrine import could not run (exit #{code})") if code == 2
-        report = Helper::VitrineHelper.parse_json(stdout, "import")
-        plan = report["plan"] || {}
-
-        # Files that could not be mapped (unknown device/locale/screen) or
-        # that map to the same destination twice.
-        Array(plan["items"]).each do |item|
-          next unless %w[unresolved duplicate].include?(item["action"])
-
-          hint = Array(item["notes"]).join("; ")
-          UI.error("#{item['source']}: #{item['action']}#{hint.empty? ? '' : " – #{hint}"}")
-        end
-        own = Array(plan["skipped"]).count { |s| s["reason"].to_s.include?("Vitrine Studio") }
-        UI.message("Skipped #{own} image(s) exported by Vitrine Studio (not captures)") if own > 0
-        Array(report.dig("applied", "failed")).each { |src, err| UI.error("#{src}: #{err}") }
-        Array(plan["missing"]).each do |m|
-          UI.important("missing screenshot #{m['lang']}/#{m['variant']}/#{m['key']} (#{m['status']})")
-        end
-
+        report, code = Helper::VitrineHelper.run_json(binary: binary, project: params[:project], args: cli_args(params, source), what: "import")
+        print_plan(report)
         if code == 1
           UI.user_error!("Vitrine Studio import: some screenshots could not be mapped. Add lang_map / device_map / key_map " \
                          "(or run with dry_run: true to see the plan).")
         end
 
-        if params[:dry_run]
-          copies = Array(plan["items"]).count { |i| %w[new overwrite].include?(i["action"]) }
-          UI.success("Vitrine Studio import (dry run): #{copies} file(s) would be copied")
-          Actions.lane_context[SharedValues::VITRINE_IMPORTED_COUNT] = 0
-        else
-          applied = report["applied"] || {}
-          copied = Array(applied["copied"]).length
-          unchanged = Array(applied["unchanged"]).length
-          UI.success("Vitrine Studio: #{copied} screenshot(s) imported, #{unchanged} unchanged")
-          UI.message("Mapping stored in project.yaml") if report["mapping_saved"]
-          Actions.lane_context[SharedValues::VITRINE_IMPORTED_COUNT] = copied
-        end
+        Actions.lane_context[SharedValues::VITRINE_IMPORTED_COUNT] = params[:dry_run] ? summarize_dry_run(report) : summarize(report)
         report
+      end
+
+      def self.cli_args(params, source)
+        args = ["import", "screenshots", source, "--format", params[:format], "--format-output", "json"]
+        { lang_map: "--lang-map", device_map: "--device-map", key_map: "--key-map" }.each do |key, flag|
+          (params[key] || {}).each { |k, v| args.push(flag, "#{k}=#{v}") }
+        end
+        args << "--include-framed" if params[:include_framed]
+        args << "--save-mapping" if params[:save_mapping]
+        args << "--dry-run" if params[:dry_run]
+        args
+      end
+
+      def self.print_plan(report)
+        plan = report["plan"] || {}
+        print_unmapped(Array(plan["items"]))
+        own = Array(plan["skipped"]).count { |s| s["reason"].to_s.include?("Vitrine Studio") }
+        UI.message("Skipped #{own} image(s) exported by Vitrine Studio (not captures)") if own.positive?
+        Array(report.dig("applied", "failed")).each { |src, err| UI.error("#{src}: #{err}") }
+        Array(plan["missing"]).each do |m|
+          UI.important("missing screenshot #{m['lang']}/#{m['variant']}/#{m['key']} (#{m['status']})")
+        end
+      end
+
+      # Files that could not be mapped (unknown device/locale/screen) or
+      # that map to the same destination twice.
+      def self.print_unmapped(items)
+        items.select { |i| UNMAPPED.include?(i["action"]) }.each do |item|
+          hint = Array(item["notes"]).join("; ")
+          UI.error("#{item['source']}: #{item['action']}#{hint.empty? ? '' : " – #{hint}"}")
+        end
+      end
+
+      def self.summarize_dry_run(report)
+        copies = Array(report.dig("plan", "items")).count { |i| COPIES.include?(i["action"]) }
+        UI.success("Vitrine Studio import (dry run): #{copies} file(s) would be copied")
+        0
+      end
+
+      def self.summarize(report)
+        applied = report["applied"] || {}
+        copied = Array(applied["copied"]).length
+        UI.success("Vitrine Studio: #{copied} screenshot(s) imported, #{Array(applied['unchanged']).length} unchanged")
+        UI.message("Mapping stored in project.yaml") if report["mapping_saved"]
+        copied
       end
 
       # Raw captures belong in their own folder (`fastlane/captures`,

@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+# Fake `vitrine` CLI for the specs: records its arguments, prints a canned
+# report and exits with the requested code.
+require "json"
+
+File.write(ENV.fetch("FAKE_VITRINE_ARGS"), JSON.generate(ARGV)) if ENV["FAKE_VITRINE_ARGS"]
+print(File.read(ENV.fetch("FAKE_VITRINE_STDOUT"))) if ENV["FAKE_VITRINE_STDOUT"]
+exit(Integer(ENV.fetch("FAKE_VITRINE_EXIT", "0")))
