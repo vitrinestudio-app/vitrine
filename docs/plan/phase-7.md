@@ -216,13 +216,13 @@ All need a published release with CLI archives (7.3). Doc:
 - [x] **Agent** – sync `integrations/github-action/` to its repo after the
       release, run its `Test` workflow against the real release (2026-11-19:
       6f00839, all five jobs green against 1.0.0).
-- [x] **Agent** (owner approved) – tag `v1.0.0` + `v1` on 6f00839 (2026-11-19).
-- [ ] **Owner** – publish the GitHub Marketplace listing: repo →
-      Releases → "Draft a new release" with tag `v1.0.0` → tick "Publish
-      this Action to the GitHub Marketplace" (an org owner must accept the
-      Marketplace Developer Agreement once; 2FA), categories e.g.
-      *Continuous integration* + *Utilities*, title `v1.0.0` → Publish.
-      Then: README/website "Marketplace listing coming" → link.
+- [x] **Agent** (owner approved) – tag `v1.0.0` + `v1` (2026-11-19; moved to
+      3118f90 after the description fix below, owner approved).
+- [x] **Owner** – GitHub Marketplace listing published 2026-11-19 (org
+      accepted the Marketplace Developer Agreement v2.4; release `v1.0.0`,
+      categories *Mobile CI* + *Continuous integration*): https://github.com/marketplace/actions/vitrine-studio-cli.
+      The first attempt was refused: `description` in `action.yml` must be
+      < 125 characters (now 119).
 - [ ] **Owner** – create the gitlab.com group/project
       `vitrinestudio/vitrine-gitlab-ci`, mark it as CI/CD Catalog project;
       **Agent** pushes `integrations/gitlab/`; **Owner** tags `1.0.0`

@@ -54,7 +54,8 @@ jobs:
 
 [`vitrinestudio-app/vitrine-github-action`](https://github.com/vitrinestudio-app/vitrine-github-action)
 does the install step (checksum, caching; it picks the arm64 or static
-build where needed) and the validate/export steps in one `uses:`. `@v1`
+build where needed) and the validate/export steps in one `uses:`; it is also
+listed on the [GitHub Marketplace](https://github.com/marketplace/actions/vitrine-studio-cli). `@v1`
 follows the latest 1.x release of the action; `version` pins the CLI:
 
 ```yaml

@@ -224,8 +224,10 @@ Sources live in `integrations/` (each folder self-contained); copy a folder's
 content to the root of its repository when it changed:
 
 - `integrations/github-action/` → `vitrinestudio-app/vitrine-github-action`;
-  tag `v1.x.y` and move the `v1` tag; Marketplace listing from the release
-  page. Its `Test` workflow runs against the latest Vitrine Studio release.
+  tag `v1.x.y` and move the `v1` tag; then a GitHub release for the tag with
+  "Publish this Action to the GitHub Marketplace" ticked (listing:
+  https://github.com/marketplace/actions/vitrine-studio-cli). The Marketplace
+  requires the `action.yml` `description` to stay under 125 characters. Its `Test` workflow runs against the latest Vitrine Studio release.
 - `integrations/gitlab/` → gitlab.com `vitrinestudio/vitrine-gitlab-ci`
   (CI/CD Catalog project); bump the default `image` tag
   (`ghcr.io/vitrinestudio-app/vitrine-cli:X.Y`, today `1.0`; the image has

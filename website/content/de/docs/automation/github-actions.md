@@ -55,7 +55,7 @@ jobs:
 [`vitrinestudio-app/vitrine-github-action`](https://github.com/vitrinestudio-app/vitrine-github-action)
 übernimmt die Installation (Prüfsumme, Cache; sie wählt bei Bedarf den
 arm64- oder den statischen Build) und die Prüf- und Exportschritte in einem
-`uses:`. `@v1` folgt dem neuesten 1.x-Release der Action; `version` legt die
+`uses:`; sie steht auch im [GitHub Marketplace](https://github.com/marketplace/actions/vitrine-studio-cli). `@v1` folgt dem neuesten 1.x-Release der Action; `version` legt die
 CLI-Version fest:
 
 ```yaml

@@ -1,8 +1,8 @@
 # Integrations
 
 Status (2026-11-19): the GitHub Action is released (`v1.0.0`, `v1`; its
-`Test` workflow passes against the 1.0.0 release; Marketplace listing still
-to publish); the fastlane plugin is ready (rspec + rubocop, run in a real
+`Test` workflow passes against the 1.0.0 release; listed on the GitHub
+Marketplace as "Vitrine Studio CLI", https://github.com/marketplace/actions/vitrine-studio-cli); the fastlane plugin is ready (rspec + rubocop, run in a real
 lane against the 1.0.0 CLI) but its repository and the RubyGems release are
 still missing; the GitLab components are a draft; the agent skill is online
 (see the `README.md` integrations table). Each CI integration needs a
