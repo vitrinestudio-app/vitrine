@@ -1,0 +1,179 @@
+format: vitrine/1
+revision: 48
+name: Vitrine Studio social card
+languages:
+  default: en
+  available: [en, de]
+styles:
+  colors:
+    accent: "#A99CFF"
+    accent-strong: "#FF9A7A"
+    bg: "#0B0A12"
+    ink: "#F3F1FB"
+    ink-soft: "#B7B2CC"
+    night: "#0D0B16"
+  text:
+    brand: {font: Inter Display, weight: 700, size: 28, line_height: 1.1, color: "@ink"}
+    free: {font: Inter Display, weight: 600, size: 17, line_height: 1.2, color: "@ink-soft"}
+    headline: {font: Inter Display, weight: 900, size: 58, line_height: 1, tracking: -0.03, color: "@ink"}
+    platforms: {font: Inter, weight: 500, size: 21, line_height: 1.2, color: "@ink-soft"}
+    sub: {font: Inter, weight: 500, size: 21, line_height: 1.35, color: "@ink-soft"}
+  spans:
+    accent: {color: "@accent-strong"}
+    chip: {weight: 700, color: "@ink", background: "#FFFFFF24", padding: {x: 12, y: 6}, radius: 100}
+    pill: {weight: 800, color: "#0B0A12", background: "@ink", padding: {x: 12, y: 6}, radius: 100}
+  shadows:
+    float:
+      layers:
+      - {color: "#05031280", blur: 36, y: 22}
+      - {color: "#050312B0", blur: 5, y: 3}
+canvases:
+- id: card
+  page: {aspect: 1200:630, count: 1, ids: [card]}
+  backgrounds:
+  - "#0B0A12"
+  - kind: radial-gradient
+    center: {x: 0.78, y: 0.35}
+    radius: 0.6
+    stops: [["#7B4DFF55", 0], ["#7B4DFF00", 1]]
+  - kind: radial-gradient
+    center: {x: 1, y: 1}
+    radius: 0.5
+    stops: [["#FF7A5940", 0], ["#FF7A5900", 1]]
+  elements:
+  - id: wall
+    kind: group
+    page: 0
+    at: {x: 40, y: 0}
+    rotation: 14
+    z: 1
+    children:
+    - id: wall-c1
+      kind: image
+      page: 0
+      at: {x: 500, y: 292}
+      width: 128
+      height: 1432.9
+      asset: assets/wall-c1.png
+      fit: stretch
+      shadow: float
+      clip: none
+    - id: wall-c2
+      kind: image
+      page: 0
+      at: {x: 642, y: 152}
+      width: 128
+      height: 1432.9
+      asset: assets/wall-c2.png
+      fit: stretch
+      shadow: float
+      clip: none
+    - id: wall-c3
+      kind: image
+      page: 0
+      at: {x: 784, y: 322}
+      width: 128
+      height: 1432.9
+      asset: assets/wall-c3.png
+      fit: stretch
+      shadow: float
+      clip: none
+    - id: wall-c4
+      kind: image
+      page: 0
+      at: {x: 926, y: 212}
+      width: 128
+      height: 1432.9
+      asset: assets/wall-c4.png
+      fit: stretch
+      shadow: float
+      clip: none
+    - id: wall-c5
+      kind: image
+      page: 0
+      at: {x: 1068, y: 382}
+      width: 128
+      height: 1432.9
+      asset: assets/wall-c5.png
+      fit: stretch
+      shadow: float
+      clip: none
+  - id: logo
+    kind: image
+    page: 0
+    at: {x: 86, y: 78}
+    width: 52
+    height: 52
+    anchor_y: center
+    asset: assets/appicon.svg
+    fit: contain
+    z: 6
+  - id: brand
+    kind: text
+    page: 0
+    anchor_y: top
+    text: card.brand
+    style: brand
+    box: {top: 63, left: 124, right: 560}
+    align: left
+    z: 6
+  - id: headline
+    kind: text
+    page: 0
+    anchor_y: top
+    text: card.headline
+    style: headline
+    box: {top: 138, left: 60, right: 530}
+    align: left
+    font_size: 56
+    fit: {shrink_to: 40, max_lines: 2}
+    z: 6
+    langs:
+      de: {font_size: 52}
+  - id: free
+    kind: text
+    page: 0
+    anchor_y: top
+    text: card.free
+    style: free
+    box: {top: 378, left: 62, right: 380}
+    align: left
+    z: 6
+    allow: [low_contrast]
+  - id: fade
+    kind: shape
+    page: 0
+    at: {x: 220, y: 262}
+    width: 740
+    height: 800
+    anchor_y: center
+    shape: rect
+    fill:
+      kind: linear-gradient
+      angle: 90
+      stops: [["#0B0A12", 0], ["#0B0A12", 0.62], ["#0B0A12E0", 0.8], ["#0B0A1260", 0.93], ["#0B0A1200", 1]]
+    z: 5
+    clip: page
+  - id: sub
+    kind: text
+    page: 0
+    text: card.sub
+    style: sub
+    box: {top: 290, left: 62, right: 560}
+    z: 6
+  - id: platforms
+    kind: text
+    page: 0
+    text: card.platforms
+    style: platforms
+    box: {top: 428, left: 64, right: 500}
+    z: 6
+targets:
+- id: open-graph
+  kind: banner
+  canvas: card
+  size: [1200, 630]
+- id: github-social
+  kind: banner
+  canvas: card
+  size: [1280, 640]
