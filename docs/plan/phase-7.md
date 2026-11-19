@@ -232,10 +232,11 @@ All need a published release with CLI archives (7.3). Doc:
 - [x] **Agent** – scaffold (fastlane template: Gemfile, Rakefile, rubocop,
       rspec, CI), run the actions inside fastlane once (2026-11-19, against
       the 1.0.0 CLI).
-- [ ] **Owner** – create the empty public repo
-      `vitrinestudio-app/fastlane-plugin-vitrine`; **Agent** pushes
-      `integrations/fastlane-plugin/` (folder = repo root), checks its `Test`
-      workflow.
+- [x] **Owner** – create the repo `vitrinestudio-app/fastlane-plugin-vitrine`;
+      **Agent** pushed `integrations/fastlane-plugin/` (folder = repo root,
+      92c4ac9, 2026-11-19); its `Test` workflow passed (Ruby 3.1–3.4).
+      Repo still private on 2026-11-19 (API 404) – owner: set it to public
+      before the gem push (the gemspec links to it).
 - [ ] **Owner** – RubyGems account with MFA; `gem build
       fastlane-plugin-vitrine.gemspec && gem push
       fastlane-plugin-vitrine-0.1.0.gem` (in `integrations/fastlane-plugin/`),
