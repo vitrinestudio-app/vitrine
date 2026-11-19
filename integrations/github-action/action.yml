@@ -3,10 +3,7 @@
 # also lives in integrations/github-action/ of vitrinestudio-app/vitrine).
 # MIT licence (LICENSE). See README.md.
 name: Vitrine Studio CLI
-description: >-
-  Install the vitrine CLI (App Store / Play Store screenshots) from the
-  GitHub release with checksum verification, and optionally validate the
-  project with annotations and export the images.
+description: Install the vitrine CLI (checksum-verified), validate App Store / Play Store screenshot projects and export the images.
 author: Vitrine Studio
 branding:
   icon: image
